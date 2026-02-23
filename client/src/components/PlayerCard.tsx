@@ -1,13 +1,13 @@
 // Hockey Lineup App – PlayerCard
-// Design: Industrial Ice Arena – glassmorfism, mörk bakgrund, grön accent
-// Draggable spelarkortet med redigerbar position och lag-tillhörighet (Grön/Vit)
+// Dropdowns renderas via React Portal för att alltid visas ovanpå allt
 
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, X } from "lucide-react";
 import type { Player, Position, TeamColor } from "@/lib/players";
 import { getPositionBadgeColor, ALL_POSITIONS } from "@/lib/players";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
+import { PortalDropdown } from "./PortalDropdown";
 
 const LOGO_GREEN = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/yvyuOVwYRSLbWwHt.png";
 const LOGO_WHITE = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/OmjlmGnLDLTblNdj.png";
@@ -29,30 +29,18 @@ export function DraggablePlayerCard({
 }: PlayerCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: player.id, data: { player } });
+
   const [showPosMenu, setShowPosMenu] = useState(false);
   const [showTeamMenu, setShowTeamMenu] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const teamMenuRef = useRef<HTMLDivElement>(null);
+
+  const posBtnRef = useRef<HTMLButtonElement>(null);
+  const teamBtnRef = useRef<HTMLButtonElement>(null);
 
   const style = {
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.4 : 1,
     zIndex: isDragging ? 999 : undefined,
   };
-
-  useEffect(() => {
-    if (!showPosMenu && !showTeamMenu) return;
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowPosMenu(false);
-      }
-      if (teamMenuRef.current && !teamMenuRef.current.contains(e.target as Node)) {
-        setShowTeamMenu(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [showPosMenu, showTeamMenu]);
 
   return (
     <div
@@ -62,7 +50,7 @@ export function DraggablePlayerCard({
         group relative flex items-center gap-1.5 rounded-md
         bg-white/10 border border-white/20 backdrop-blur-sm
         hover:bg-white/15 hover:border-white/35
-        transition-all duration-150 select-none overflow-visible
+        transition-all duration-150 select-none
         ${compact ? "px-1.5 py-1 text-xs" : "px-2 py-1.5 text-sm"}
         ${isDragging ? "shadow-2xl ring-2 ring-emerald-400/60" : ""}
       `}
@@ -72,41 +60,48 @@ export function DraggablePlayerCard({
         <GripVertical className="w-3 h-3 text-white/30" />
       </div>
 
-      {/* Lag-markering (logotyp eller färgad cirkel) */}
+      {/* Lag-markering */}
       {onChangeTeamColor ? (
-        <div className="relative shrink-0 overflow-visible" ref={teamMenuRef}>
+        <>
           <button
+            ref={teamBtnRef}
             onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => { e.stopPropagation(); setShowTeamMenu((v) => !v); setShowPosMenu(false); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowTeamMenu((v) => !v);
+              setShowPosMenu(false);
+            }}
             className="w-5 h-5 rounded-full overflow-hidden flex items-center justify-center hover:ring-2 hover:ring-white/40 transition-all shrink-0"
             title="Klicka för att ändra lag-tillhörighet"
           >
             <TeamColorIndicator teamColor={player.teamColor ?? null} size={20} />
           </button>
-          {showTeamMenu && (
-            <div className="absolute left-0 top-full mt-1 z-[9999] bg-gray-900/95 border border-white/20 rounded-lg shadow-2xl overflow-hidden backdrop-blur-md" style={{ zIndex: 9999 }}>
-              {([
-                { value: "green" as TeamColor, label: "Gröna" },
-                { value: "white" as TeamColor, label: "Vita" },
-                { value: null, label: "Inget lag" },
-              ] as { value: TeamColor; label: string }[]).map(({ value, label }) => (
-                <button
-                  key={String(value)}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onChangeTeamColor(value);
-                    setShowTeamMenu(false);
-                  }}
-                  className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left hover:bg-white/10 transition-colors whitespace-nowrap ${(player.teamColor ?? null) === value ? "bg-white/10" : ""}`}
-                >
-                  <TeamColorIndicator teamColor={value} size={16} />
-                  <span className="text-white/80">{label}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+          <PortalDropdown
+            anchorRef={teamBtnRef}
+            open={showTeamMenu}
+            onClose={() => setShowTeamMenu(false)}
+          >
+            {([
+              { value: "green" as TeamColor, label: "Gröna" },
+              { value: "white" as TeamColor, label: "Vita" },
+              { value: null, label: "Inget lag" },
+            ] as { value: TeamColor; label: string }[]).map(({ value, label }) => (
+              <button
+                key={String(value)}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChangeTeamColor(value);
+                  setShowTeamMenu(false);
+                }}
+                className={`flex items-center gap-2 w-full px-3 py-2 text-xs text-left hover:bg-white/10 transition-colors whitespace-nowrap ${(player.teamColor ?? null) === value ? "bg-white/10" : ""}`}
+              >
+                <TeamColorIndicator teamColor={value} size={16} />
+                <span className="text-white/80">{label}</span>
+              </button>
+            ))}
+          </PortalDropdown>
+        </>
       ) : (
         <div className="shrink-0">
           <TeamColorIndicator teamColor={player.teamColor ?? null} size={16} />
@@ -125,16 +120,20 @@ export function DraggablePlayerCard({
         {player.name}
       </span>
 
-      {/* Positions-badge – klickbar för att ändra */}
-      <div className="relative shrink-0 overflow-visible" ref={menuRef}>
+      {/* Positions-badge */}
+      <>
         <button
+          ref={posBtnRef}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
-            if (onChangePosition) { setShowPosMenu((v) => !v); setShowTeamMenu(false); }
+            if (onChangePosition) {
+              setShowPosMenu((v) => !v);
+              setShowTeamMenu(false);
+            }
           }}
           className={`
-            text-[9px] font-bold px-1.5 py-0.5 rounded transition-all
+            text-[9px] font-bold px-1.5 py-0.5 rounded transition-all shrink-0
             ${getPositionBadgeColor(player.position)}
             ${onChangePosition ? "hover:ring-2 hover:ring-white/40 cursor-pointer" : "cursor-default"}
           `}
@@ -142,10 +141,12 @@ export function DraggablePlayerCard({
         >
           {player.position}
         </button>
-
-        {/* Positions-dropdown */}
-        {showPosMenu && onChangePosition && (
-          <div className="absolute right-0 top-full mt-1 z-[9999] bg-gray-900/95 border border-white/20 rounded-lg shadow-2xl overflow-hidden backdrop-blur-md" style={{ zIndex: 9999 }}>
+        {onChangePosition && (
+          <PortalDropdown
+            anchorRef={posBtnRef}
+            open={showPosMenu}
+            onClose={() => setShowPosMenu(false)}
+          >
             {ALL_POSITIONS.map((pos) => (
               <button
                 key={pos}
@@ -155,7 +156,7 @@ export function DraggablePlayerCard({
                   onChangePosition(pos);
                   setShowPosMenu(false);
                 }}
-                className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left hover:bg-white/10 transition-colors ${player.position === pos ? "bg-white/10" : ""}`}
+                className={`flex items-center gap-2 w-full px-3 py-2 text-xs text-left hover:bg-white/10 transition-colors ${player.position === pos ? "bg-white/10" : ""}`}
               >
                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${getPositionBadgeColor(pos)}`}>
                   {pos}
@@ -165,9 +166,9 @@ export function DraggablePlayerCard({
                 </span>
               </button>
             ))}
-          </div>
+          </PortalDropdown>
         )}
-      </div>
+      </>
 
       {/* Ta bort-knapp */}
       {onRemove && (
@@ -205,7 +206,6 @@ export function TeamColorIndicator({ teamColor, size = 16 }: { teamColor: TeamCo
       />
     );
   }
-  // Inget lag – grå tom cirkel
   return (
     <div
       style={{ width: size, height: size }}
