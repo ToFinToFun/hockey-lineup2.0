@@ -30,7 +30,7 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition }: PlayerS
     <div
       ref={setNodeRef}
       className={`
-        flex items-center gap-2 rounded-md border transition-all duration-150 min-h-[32px]
+        flex items-center gap-2 rounded-md border transition-all duration-150 min-h-[32px] overflow-visible
         ${isOver && !player
           ? `${colors.bg} border-white/50 shadow-md ring-1 ring-white/30`
           : isOver && player
@@ -50,7 +50,7 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition }: PlayerS
 
       {/* Spelarkortet eller tom plats */}
       {player ? (
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 overflow-visible">
           <DraggablePlayerCard
             player={player}
             onRemove={onRemove}

@@ -80,7 +80,7 @@ export function TeamPanel({
       </div>
 
       {/* Scrollbar slots */}
-      <div className="flex-1 overflow-y-auto min-h-0 p-2 space-y-2">
+      <div className="flex-1 overflow-y-auto min-h-0 p-2 space-y-2 overflow-x-visible">
 
         {/* Målvakter */}
         <Section label="Målvakter" type="goalkeeper">

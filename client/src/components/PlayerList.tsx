@@ -23,7 +23,7 @@ const positionFilters: { label: string; value: FilterValue }[] = [
   { label: "B", value: "B" },
   { label: "F", value: "F" },
   { label: "C", value: "C" },
-  { label: "Ö", value: "Ö" },
+  { label: "IB", value: "IB" },
 ];
 
 export function PlayerList({ players, onAddPlayer, onChangePosition }: PlayerListProps) {
@@ -32,7 +32,7 @@ export function PlayerList({ players, onAddPlayer, onChangePosition }: PlayerLis
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState("");
   const [newNumber, setNewNumber] = useState("");
-  const [newPosition, setNewPosition] = useState<Position>("Ö");
+  const [newPosition, setNewPosition] = useState<Position>("IB");
 
   const { setNodeRef, isOver } = useDroppable({ id: "player-list" });
 
@@ -54,7 +54,7 @@ export function PlayerList({ players, onAddPlayer, onChangePosition }: PlayerLis
     });
     setNewName("");
     setNewNumber("");
-    setNewPosition("Ö");
+    setNewPosition("IB");
     setShowAddForm(false);
   };
 

@@ -52,7 +52,7 @@ export function DraggablePlayerCard({
         group relative flex items-center gap-1.5 rounded-md
         bg-white/10 border border-white/20 backdrop-blur-sm
         hover:bg-white/15 hover:border-white/35
-        transition-all duration-150 select-none
+        transition-all duration-150 select-none overflow-visible
         ${compact ? "px-1.5 py-1 text-xs" : "px-2 py-1.5 text-sm"}
         ${isDragging ? "shadow-2xl ring-2 ring-emerald-400/60" : ""}
       `}
@@ -75,7 +75,7 @@ export function DraggablePlayerCard({
       </span>
 
       {/* Positions-badge – klickbar för att ändra */}
-      <div className="relative shrink-0" ref={menuRef}>
+      <div className="relative shrink-0 overflow-visible" ref={menuRef}>
         <button
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
@@ -94,7 +94,7 @@ export function DraggablePlayerCard({
 
         {/* Positions-dropdown */}
         {showPosMenu && onChangePosition && (
-          <div className="absolute right-0 top-full mt-1 z-50 bg-gray-900/95 border border-white/20 rounded-lg shadow-2xl overflow-hidden backdrop-blur-md">
+          <div className="absolute right-0 top-full mt-1 z-[9999] bg-gray-900/95 border border-white/20 rounded-lg shadow-2xl overflow-hidden backdrop-blur-md" style={{position:'absolute', zIndex: 9999}}>
             {ALL_POSITIONS.map((pos) => (
               <button
                 key={pos}
@@ -114,7 +114,7 @@ export function DraggablePlayerCard({
                   {pos}
                 </span>
                 <span className="text-white/70">
-                  {pos === "MV" ? "Målvakt" : pos === "B" ? "Back" : pos === "F" ? "Forward" : pos === "C" ? "Center" : "Övrigt"}
+                  {pos === "MV" ? "Målvakt" : pos === "B" ? "Back" : pos === "F" ? "Forward" : pos === "C" ? "Center" : "Ingen bestämd"}
                 </span>
               </button>
             ))}
