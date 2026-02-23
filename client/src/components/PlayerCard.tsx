@@ -174,7 +174,7 @@ export function DraggablePlayerCard({
                   {pos}
                 </span>
                 <span className="text-white/70">
-                  {pos === "MV" ? "Målvakt" : pos === "B" ? "Back" : pos === "F" ? "Forward" : pos === "C" ? "Center" : "Ingen bestämd"}
+                  {pos === "MV" ? "Målvakt" : pos === "B" ? "Back" : pos === "F" ? "Forward" : pos === "C" ? "Center" : "Ice Box"}
                 </span>
               </button>
             ))}

@@ -1,5 +1,5 @@
 // Hockey Lineup App – Spelardata från laget.se Stålstadens A-lag Herrar
-// Positioner: MV=Målvakt, B=Back, F=Forward, C=Center, IB=Ingen bestämd
+// Positioner: MV=Målvakt, B=Back, F=Forward, C=Center, IB=Ice Box
 
 export type Position = "MV" | "B" | "F" | "C" | "IB";
 
@@ -8,7 +8,7 @@ export const POSITION_LABELS: Record<Position, string> = {
   B: "Back",
   F: "Forward",
   C: "Center",
-  IB: "Ingen bestämd",
+  IB: "Ice Box",
 };
 
 export const ALL_POSITIONS: Position[] = ["MV", "B", "F", "C", "IB"];
