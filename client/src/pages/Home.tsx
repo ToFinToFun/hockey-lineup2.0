@@ -280,11 +280,11 @@ export default function Home() {
 
           {/* Tre-kolumns layout */}
           <main className="flex-1 px-2 md:px-4 pb-4 min-h-0" ref={exportRef}>
-            <div className="max-w-7xl mx-auto h-full">
+            <div className="h-full">
               <div
                 className="grid gap-2 md:gap-3 h-full"
                 style={{
-                  gridTemplateColumns: "minmax(460px, 1fr) minmax(240px, 280px) minmax(460px, 1fr)",
+                  gridTemplateColumns: "minmax(520px, 1fr) minmax(230px, 260px) minmax(520px, 1fr)",
                   height: "calc(100vh - 90px)",
                 }}
               >

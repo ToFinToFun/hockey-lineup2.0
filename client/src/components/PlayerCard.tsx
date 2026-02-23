@@ -74,18 +74,16 @@ export function DraggablePlayerCard({
         </span>
       )}
 
-      {/* Lag-markering i compact-läge – liten logotyp utan klick */}
-      {compact && !hideExtras && player.teamColor && (
-        <div className="shrink-0">
-          <TeamColorIndicator teamColor={player.teamColor} size={12} />
-        </div>
-      )}
-
-      {/* Positions-badge i compact-läge – liten, ej klickbar */}
+      {/* Position + lag i compact-läge – visa som en sammansatt badge */}
       {compact && !hideExtras && (
-        <span className={`text-[8px] font-bold px-1 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position)}`}>
-          {player.position}
-        </span>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <span className={`text-[8px] font-bold px-1 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position)}`}>
+            {player.position}
+          </span>
+          {player.teamColor && (
+            <TeamColorIndicator teamColor={player.teamColor} size={13} />
+          )}
+        </div>
       )}
 
       {/* Lag-markering – dölj i compact-läge (visas separat ovan) */}
