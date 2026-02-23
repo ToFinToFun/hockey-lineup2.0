@@ -60,6 +60,18 @@ export function DraggablePlayerCard({
         <GripVertical className="w-3 h-3 text-white/30" />
       </div>
 
+      {/* Namn */}
+      <span className="text-white font-medium truncate flex-1 leading-tight">
+        {player.name}
+      </span>
+
+      {/* Nummer */}
+      {player.number && (
+        <span className={`font-bold text-white/50 shrink-0 ${compact ? "text-[10px] w-4" : "text-xs w-5"}`}>
+          {player.number}
+        </span>
+      )}
+
       {/* Lag-markering */}
       {onChangeTeamColor ? (
         <>
@@ -107,18 +119,6 @@ export function DraggablePlayerCard({
           <TeamColorIndicator teamColor={player.teamColor ?? null} size={16} />
         </div>
       )}
-
-      {/* Nummer */}
-      {player.number && (
-        <span className={`font-bold text-white/50 shrink-0 ${compact ? "text-[10px] w-4" : "text-xs w-5"}`}>
-          {player.number}
-        </span>
-      )}
-
-      {/* Namn */}
-      <span className="text-white font-medium truncate flex-1 leading-tight">
-        {player.name}
-      </span>
 
       {/* Positions-badge */}
       <>

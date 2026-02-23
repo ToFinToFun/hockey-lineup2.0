@@ -1,10 +1,10 @@
-// Hockey Lineup App – Huvudsida med fasta slots
+// Hockey Lineup App – Home
 // Design: Industrial Ice Arena
-// - Fasta namngivna platser per lag (MV, Res-MV, Backpar 1-4, Kedjor 1-4 LW/C/RW)
-// - Drag spelare från listan till en specifik plats
-// - Klicka X på en plats för att returnera spelaren till listan
+// - localStorage-sparning av alla ändringar
+// - Ta bort spelare från listan
+// - Export av uppställning (bild för sociala medier + A4-format)
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -20,9 +20,16 @@ import { createTeamSlots } from "@/lib/lineup";
 import { PlayerList } from "@/components/PlayerList";
 import { TeamPanel } from "@/components/TeamPanel";
 import { PlayerCardOverlay } from "@/components/PlayerCard";
+import { ExportModal } from "@/components/ExportModal";
+import { Download } from "lucide-react";
 
 const BG_URL =
   "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/gLOHFxhFzgQgHeKl.jpg";
+
+const LOGO_GREEN = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/yvyuOVwYRSLbWwHt.png";
+const LOGO_WHITE = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/OmjlmGnLDLTblNdj.png";
+
+const STORAGE_KEY = "stalstadens-lineup-v2";
 
 // Alla slots för respektive lag (skapas en gång, ändras ej)
 const TEAM_A_SLOTS = createTeamSlots("team-a");
@@ -34,22 +41,55 @@ const ALL_SLOT_IDS = new Set([
   ...TEAM_B_SLOTS.map((s) => s.id),
 ]);
 
+interface SavedState {
+  availablePlayers: Player[];
+  lineup: Record<string, Player>;
+  teamAName: string;
+  teamBName: string;
+}
+
+function loadState(): SavedState | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as SavedState;
+  } catch {
+    return null;
+  }
+}
+
+function saveState(state: SavedState) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // ignorera storage-fel
+  }
+}
+
 export default function Home() {
-  const [availablePlayers, setAvailablePlayers] = useState<Player[]>(initialPlayers);
-  const [teamAName, setTeamAName] = useState("VITA");
-  const [teamBName, setTeamBName] = useState("GRÖNA");
+  const saved = loadState();
 
-  // lineup: slotId -> Player
-  const [lineup, setLineup] = useState<Record<string, Player>>({});
-
+  const [availablePlayers, setAvailablePlayers] = useState<Player[]>(
+    saved?.availablePlayers ?? initialPlayers
+  );
+  const [teamAName, setTeamAName] = useState(saved?.teamAName ?? "VITA");
+  const [teamBName, setTeamBName] = useState(saved?.teamBName ?? "GRÖNA");
+  const [lineup, setLineup] = useState<Record<string, Player>>(saved?.lineup ?? {});
   const [activePlayer, setActivePlayer] = useState<Player | null>(null);
+  const [showExport, setShowExport] = useState(false);
+
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  // Spara till localStorage vid varje ändring
+  useEffect(() => {
+    saveState({ availablePlayers, lineup, teamAName, teamBName });
+  }, [availablePlayers, lineup, teamAName, teamBName]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
   );
 
-  // Hitta vilket slot en spelare sitter i (null = i listan)
   const findPlayerSlot = useCallback(
     (playerId: string): string | null => {
       for (const [slotId, p] of Object.entries(lineup)) {
@@ -73,21 +113,18 @@ export default function Home() {
     const playerId = active.id as string;
     const targetId = over.id as string;
 
-    // Målet måste vara ett slot
     if (!ALL_SLOT_IDS.has(targetId) && targetId !== "player-list") return;
 
     const sourceSlot = findPlayerSlot(playerId);
 
-    // Hämta spelaren
     const player =
       sourceSlot
         ? lineup[sourceSlot]
         : availablePlayers.find((p) => p.id === playerId);
     if (!player) return;
 
-    // Dra tillbaka till listan
     if (targetId === "player-list") {
-      if (!sourceSlot) return; // redan i listan
+      if (!sourceSlot) return;
       setLineup((prev) => {
         const next = { ...prev };
         delete next[sourceSlot];
@@ -97,37 +134,27 @@ export default function Home() {
       return;
     }
 
-    // Dra till ett slot
     const existingInTarget = lineup[targetId];
 
     setLineup((prev) => {
       const next = { ...prev };
-
-      // Ta bort från källan
       if (sourceSlot) {
         delete next[sourceSlot];
       } else {
-        // Ta bort från tillgängliga spelare
         setAvailablePlayers((prev) => prev.filter((p) => p.id !== playerId));
       }
-
-      // Om målet redan har en spelare – byt plats eller returnera till listan
       if (existingInTarget) {
         if (sourceSlot) {
-          // Byt plats: lägg den befintliga i källsloten
           next[sourceSlot] = existingInTarget;
         } else {
-          // Spelaren kom från listan – returnera befintlig till listan
           setAvailablePlayers((prev) => [existingInTarget, ...prev]);
         }
       }
-
       next[targetId] = player;
       return next;
     });
   };
 
-  // Ta bort spelare från slot → tillbaka till listan
   const handleRemoveFromSlot = useCallback((slotId: string) => {
     const player = lineup[slotId];
     if (!player) return;
@@ -143,7 +170,19 @@ export default function Home() {
     setAvailablePlayers((prev) => [...prev, player]);
   }, []);
 
-  // Ändra lag-tillhörighet för en spelare oavsett var den befinner sig
+  // Ta bort spelare permanent
+  const handleDeletePlayer = useCallback((playerId: string) => {
+    setAvailablePlayers((prev) => prev.filter((p) => p.id !== playerId));
+    // Om spelaren sitter i ett slot, ta bort den därifrån också
+    setLineup((prev) => {
+      const next = { ...prev };
+      for (const [slotId, p] of Object.entries(next)) {
+        if (p.id === playerId) delete next[slotId];
+      }
+      return next;
+    });
+  }, []);
+
   const handleChangeTeamColor = useCallback((playerId: string, color: TeamColor) => {
     const update = (p: Player) => p.id === playerId ? { ...p, teamColor: color } : p;
     setAvailablePlayers((prev) => prev.map(update));
@@ -156,7 +195,6 @@ export default function Home() {
     });
   }, []);
 
-  // Ändra position för en spelare oavsett var den befinner sig
   const handleChangePosition = useCallback((playerId: string, pos: Position) => {
     const update = (p: Player) => p.id === playerId ? { ...p, position: pos } : p;
     setAvailablePlayers((prev) => prev.map(update));
@@ -169,7 +207,6 @@ export default function Home() {
     });
   }, []);
 
-  // Filtrera lineup per lag
   const teamALineup: Record<string, Player> = {};
   const teamBLineup: Record<string, Player> = {};
   for (const [slotId, player] of Object.entries(lineup)) {
@@ -194,10 +231,8 @@ export default function Home() {
           backgroundRepeat: "no-repeat",
         }}
       >
-        {/* Mörkt overlay */}
         <div className="absolute inset-0 bg-black/45 pointer-events-none" />
 
-        {/* Innehåll */}
         <div className="relative z-10 flex flex-col min-h-screen">
           {/* Header */}
           <header className="px-4 pt-4 pb-2 shrink-0">
@@ -214,32 +249,42 @@ export default function Home() {
                   A-lag Herrar · Formations-verktyg
                 </p>
               </div>
-              <div className="hidden md:flex items-center gap-3 text-xs text-white/40">
-                {[
-                  { color: "bg-amber-400", label: "MV" },
-                  { color: "bg-blue-400", label: "Back" },
-                  { color: "bg-emerald-400", label: "LW / RW" },
-                  { color: "bg-purple-400", label: "Center" },
-                ].map(({ color, label }) => (
-                  <span key={label} className="flex items-center gap-1">
-                    <span className={`w-2 h-2 rounded-full ${color} inline-block`} />
-                    {label}
+              <div className="flex items-center gap-3">
+                <div className="hidden md:flex items-center gap-3 text-xs text-white/40">
+                  {[
+                    { color: "bg-amber-400", label: "MV" },
+                    { color: "bg-blue-400", label: "Back" },
+                    { color: "bg-emerald-400", label: "LW / RW" },
+                    { color: "bg-purple-400", label: "Center" },
+                  ].map(({ color, label }) => (
+                    <span key={label} className="flex items-center gap-1">
+                      <span className={`w-2 h-2 rounded-full ${color} inline-block`} />
+                      {label}
+                    </span>
+                  ))}
+                  <span className="text-white/20 ml-1 text-[10px] italic">
+                    Dra spelare till en plats · Klicka badge för att ändra position
                   </span>
-                ))}
-                <span className="text-white/20 ml-1 text-[10px] italic">
-                  Dra spelare till en plats · Klicka badge för att ändra position
-                </span>
+                </div>
+                {/* Export-knapp */}
+                <button
+                  onClick={() => setShowExport(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-bold hover:bg-emerald-500/30 transition-all uppercase tracking-wider"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Exportera
+                </button>
               </div>
             </div>
           </header>
 
           {/* Tre-kolumns layout */}
-          <main className="flex-1 px-2 md:px-4 pb-4 min-h-0">
+          <main className="flex-1 px-2 md:px-4 pb-4 min-h-0" ref={exportRef}>
             <div className="max-w-7xl mx-auto h-full">
               <div
                 className="grid gap-2 md:gap-3 h-full"
                 style={{
-                  gridTemplateColumns: "1fr minmax(240px, 290px) 1fr",
+                  gridTemplateColumns: "minmax(380px, 1fr) minmax(260px, 300px) minmax(380px, 1fr)",
                   height: "calc(100vh - 90px)",
                 }}
               >
@@ -259,6 +304,7 @@ export default function Home() {
                 <PlayerList
                   players={availablePlayers}
                   onAddPlayer={handleAddPlayer}
+                  onDeletePlayer={handleDeletePlayer}
                   onChangePosition={handleChangePosition}
                   onChangeTeamColor={handleChangeTeamColor}
                 />
@@ -284,6 +330,22 @@ export default function Home() {
       <DragOverlay>
         {activePlayer ? <PlayerCardOverlay player={activePlayer} /> : null}
       </DragOverlay>
+
+      {/* Export-modal */}
+      {showExport && (
+        <ExportModal
+          onClose={() => setShowExport(false)}
+          teamAName={teamAName}
+          teamBName={teamBName}
+          teamALineup={teamALineup}
+          teamBLineup={teamBLineup}
+          teamASlots={TEAM_A_SLOTS}
+          teamBSlots={TEAM_B_SLOTS}
+          logoGreen={LOGO_GREEN}
+          logoWhite={LOGO_WHITE}
+          bgUrl={BG_URL}
+        />
+      )}
     </DndContext>
   );
 }

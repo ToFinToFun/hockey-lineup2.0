@@ -12,6 +12,7 @@ import { nanoid } from "nanoid";
 interface PlayerListProps {
   players: Player[];
   onAddPlayer: (player: Player) => void;
+  onDeletePlayer: (playerId: string) => void;
   onChangePosition: (playerId: string, pos: Position) => void;
   onChangeTeamColor: (playerId: string, color: TeamColor) => void;
 }
@@ -35,7 +36,7 @@ const teamFilters: { label: string; value: TeamFilter; color: TeamColor }[] = [
   { label: "Inget lag", value: null, color: null },
 ];
 
-export function PlayerList({ players, onAddPlayer, onChangePosition, onChangeTeamColor }: PlayerListProps) {
+export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor }: PlayerListProps) {
   const [search, setSearch] = useState("");
   const [posFilter, setPosFilter] = useState<PosFilter>("Alla");
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("Alla");
@@ -164,12 +165,23 @@ export function PlayerList({ players, onAddPlayer, onChangePosition, onChangeTea
           </div>
         ) : (
           filtered.map((player) => (
-            <DraggablePlayerCard
-              key={player.id}
-              player={player}
-              onChangePosition={(pos) => onChangePosition(player.id, pos)}
-              onChangeTeamColor={(color) => onChangeTeamColor(player.id, color)}
-            />
+            <div key={player.id} className="group relative">
+              <DraggablePlayerCard
+                player={player}
+                onChangePosition={(pos) => onChangePosition(player.id, pos)}
+                onChangeTeamColor={(color) => onChangeTeamColor(player.id, color)}
+              />
+              <button
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => {
+                  if (confirm(`Ta bort ${player.name} permanent?`)) onDeletePlayer(player.id);
+                }}
+                className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center rounded bg-red-500/20 border border-red-400/30 text-red-400 hover:bg-red-500/40 transition-all"
+                title="Ta bort spelare"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
           ))
         )}
       </div>
