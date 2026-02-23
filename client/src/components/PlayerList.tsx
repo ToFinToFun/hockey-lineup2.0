@@ -1,13 +1,14 @@
 // Hockey Lineup App – PlayerList
 // Mittenpanel med spelarlista, sökfunktion, positions- och lag-filter
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard, TeamColorIndicator } from "./PlayerCard";
 import type { Player, Position, TeamColor } from "@/lib/players";
 import { ALL_POSITIONS, POSITION_LABELS } from "@/lib/players";
-import { Search, UserPlus, X } from "lucide-react";
+import { Search, UserPlus, X, Trash2 } from "lucide-react";
 import { nanoid } from "nanoid";
+import { createPortal } from "react-dom";
 
 interface PlayerListProps {
   players: Player[];
@@ -44,6 +45,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
   const [newName, setNewName] = useState("");
   const [newNumber, setNewNumber] = useState("");
   const [newPosition, setNewPosition] = useState<Position>("IB");
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; player: Player } | null>(null);
 
   const { setNodeRef, isOver } = useDroppable({ id: "player-list" });
 
@@ -165,26 +167,52 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
           </div>
         ) : (
           filtered.map((player) => (
-            <div key={player.id} className="group relative">
+            <div
+              key={player.id}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setContextMenu({ x: e.clientX, y: e.clientY, player });
+              }}
+            >
               <DraggablePlayerCard
                 player={player}
                 onChangePosition={(pos) => onChangePosition(player.id, pos)}
                 onChangeTeamColor={(color) => onChangeTeamColor(player.id, color)}
               />
-              <button
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={() => {
-                  if (confirm(`Ta bort ${player.name} permanent?`)) onDeletePlayer(player.id);
-                }}
-                className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center rounded bg-red-500/20 border border-red-400/30 text-red-400 hover:bg-red-500/40 transition-all"
-                title="Ta bort spelare"
-              >
-                <X className="w-3 h-3" />
-              </button>
             </div>
           ))
         )}
       </div>
+
+      {/* Högerklicks-kontextmeny */}
+      {contextMenu && createPortal(
+        <>
+          <div
+            className="fixed inset-0 z-[99998]"
+            onClick={() => setContextMenu(null)}
+            onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
+          />
+          <div
+            className="fixed z-[99999] bg-gray-900 border border-white/15 rounded-lg shadow-2xl py-1 min-w-[160px]"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+          >
+            <div className="px-3 py-1.5 border-b border-white/10 mb-1">
+              <p className="text-white/60 text-[10px] truncate max-w-[140px]">{contextMenu.player.name}</p>
+            </div>
+            <button
+              onClick={() => {
+                onDeletePlayer(contextMenu.player.id);
+                setContextMenu(null);
+              }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-red-400 hover:bg-red-500/15 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Ta bort spelare
+            </button>
+          </div>
+        </>,
+        document.body
+      )}
 
       {/* Lägg till spelare */}
       <div className="p-2 border-t border-white/10">
