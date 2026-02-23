@@ -74,15 +74,13 @@ export function DraggablePlayerCard({
         </span>
       )}
 
-      {/* Position + lag i compact-läge – visa som en sammansatt badge */}
+      {/* Lag-cirkel + position i compact-läge – lag först, sedan position */}
       {compact && !hideExtras && (
-        <div className="flex items-center gap-0.5 shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
+          <TeamColorIndicator teamColor={player.teamColor ?? null} size={10} />
           <span className={`text-[8px] font-bold px-1 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position)}`}>
             {player.position}
           </span>
-          {player.teamColor && (
-            <TeamColorIndicator teamColor={player.teamColor} size={13} />
-          )}
         </div>
       )}
 
@@ -198,25 +196,21 @@ export function DraggablePlayerCard({
   );
 }
 
-// Liten indikator för lag-tillhörighet
+// Liten indikator för lag-tillhörighet – solid färgcirkel
 export function TeamColorIndicator({ teamColor, size = 16 }: { teamColor: TeamColor; size?: number }) {
   if (teamColor === "green") {
     return (
-      <img
-        src={LOGO_GREEN}
-        alt="Gröna"
-        style={{ width: size, height: size, objectFit: "contain" }}
-        className="rounded-full"
+      <div
+        style={{ width: size, height: size, background: "#337931", borderRadius: "50%", flexShrink: 0, border: "1px solid rgba(255,255,255,0.2)" }}
+        title="Gröna"
       />
     );
   }
   if (teamColor === "white") {
     return (
-      <img
-        src={LOGO_WHITE}
-        alt="Vita"
-        style={{ width: size, height: size, objectFit: "contain" }}
-        className="rounded-full"
+      <div
+        style={{ width: size, height: size, background: "#ffffff", borderRadius: "50%", flexShrink: 0, border: "1px solid rgba(255,255,255,0.4)" }}
+        title="Vita"
       />
     );
   }
