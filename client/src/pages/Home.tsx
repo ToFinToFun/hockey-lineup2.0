@@ -15,7 +15,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { initialPlayers, type Player, type Position } from "@/lib/players";
+import { initialPlayers, type Player, type Position, type TeamColor } from "@/lib/players";
 import { createTeamSlots } from "@/lib/lineup";
 import { PlayerList } from "@/components/PlayerList";
 import { TeamPanel } from "@/components/TeamPanel";
@@ -36,8 +36,8 @@ const ALL_SLOT_IDS = new Set([
 
 export default function Home() {
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>(initialPlayers);
-  const [teamAName, setTeamAName] = useState("Lag A");
-  const [teamBName, setTeamBName] = useState("Lag B");
+  const [teamAName, setTeamAName] = useState("GRÖNA");
+  const [teamBName, setTeamBName] = useState("VITA");
 
   // lineup: slotId -> Player
   const [lineup, setLineup] = useState<Record<string, Player>>({});
@@ -143,6 +143,19 @@ export default function Home() {
     setAvailablePlayers((prev) => [...prev, player]);
   }, []);
 
+  // Ändra lag-tillhörighet för en spelare oavsett var den befinner sig
+  const handleChangeTeamColor = useCallback((playerId: string, color: TeamColor) => {
+    const update = (p: Player) => p.id === playerId ? { ...p, teamColor: color } : p;
+    setAvailablePlayers((prev) => prev.map(update));
+    setLineup((prev) => {
+      const next = { ...prev };
+      for (const [slotId, p] of Object.entries(next)) {
+        if (p.id === playerId) next[slotId] = update(p);
+      }
+      return next;
+    });
+  }, []);
+
   // Ändra position för en spelare oavsett var den befinner sig
   const handleChangePosition = useCallback((playerId: string, pos: Position) => {
     const update = (p: Player) => p.id === playerId ? { ...p, position: pos } : p;
@@ -246,6 +259,7 @@ export default function Home() {
                   players={availablePlayers}
                   onAddPlayer={handleAddPlayer}
                   onChangePosition={handleChangePosition}
+                  onChangeTeamColor={handleChangeTeamColor}
                 />
 
                 {/* Lag B */}

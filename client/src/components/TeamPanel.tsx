@@ -1,13 +1,14 @@
-// Hockey Lineup App – TeamPanel med fasta slots i 2-kolumns grid
-// Backpar 1+2 bredvid, Backpar 3+4 under
-// Kedja 1+2 bredvid, Kedja 3+4 under
+// Hockey Lineup App – TeamPanel med logotyp-header
+// VITA = vit logotyp, GRÖNA = grön logotyp
 
 import { useMemo } from "react";
 import { PlayerSlot } from "./PlayerSlot";
 import type { Player, Position } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
 import { groupSlots } from "@/lib/lineup";
-import { Shield } from "lucide-react";
+
+const LOGO_GREEN = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/yvyuOVwYRSLbWwHt.png";
+const LOGO_WHITE = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/OmjlmGnLDLTblNdj.png";
 
 interface TeamPanelProps {
   teamId: "team-a" | "team-b";
@@ -37,7 +38,6 @@ const sectionStyles = {
   },
 };
 
-// En enskild grupp (backpar eller kedja) som en kompakt kolumn
 function GroupCard({
   group,
   lineup,
@@ -87,7 +87,11 @@ export function TeamPanel({
   onChangePosition,
   onRenameTeam,
 }: TeamPanelProps) {
-  const isTeamA = teamId === "team-a";
+  const isGreen = teamId === "team-a"; // Lag A = GRÖNA, Lag B = VITA
+  const logo = isGreen ? LOGO_GREEN : LOGO_WHITE;
+  const accentColor = isGreen ? "text-emerald-400" : "text-slate-200";
+  const borderAccent = isGreen ? "border-emerald-400/20" : "border-slate-300/20";
+  const shadowColor = isGreen ? "shadow-emerald-900/20" : "shadow-slate-400/10";
 
   const goalkeeperSlots = slots.filter((s) => s.type === "goalkeeper");
   const defenseSlots = slots.filter((s) => s.type === "defense");
@@ -96,7 +100,6 @@ export function TeamPanel({
   const defenseGroups = useMemo(() => groupSlots(defenseSlots), [defenseSlots]);
   const forwardGroups = useMemo(() => groupSlots(forwardSlots), [forwardSlots]);
 
-  // Dela i rader om 2
   const defenseRows: (typeof defenseGroups)[] = [];
   for (let i = 0; i < defenseGroups.length; i += 2) {
     defenseRows.push(defenseGroups.slice(i, i + 2));
@@ -112,21 +115,27 @@ export function TeamPanel({
   return (
     <div className={`
       flex flex-col rounded-xl border backdrop-blur-md
-      bg-black/25 border-white/15 h-full overflow-hidden
-      ${isTeamA ? "shadow-emerald-900/20" : "shadow-blue-900/20"} shadow-xl
+      bg-black/25 ${borderAccent} h-full overflow-hidden
+      ${shadowColor} shadow-xl
     `}>
-      {/* Lagnamn-header */}
-      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-white/10 shrink-0">
-        <Shield className={`w-4 h-4 shrink-0 ${isTeamA ? "text-emerald-400" : "text-blue-400"}`} />
-        <input
-          type="text"
-          value={teamName}
-          onChange={(e) => onRenameTeam(e.target.value)}
-          className="bg-transparent border-none outline-none font-bold text-base text-white placeholder-white/30 w-full tracking-wide uppercase"
-          style={{ fontFamily: "'Oswald', sans-serif" }}
-          placeholder="Lagnamn..."
-          maxLength={30}
+      {/* Lagnamn-header med logotyp */}
+      <div className={`flex items-center gap-2.5 px-3 py-2 border-b ${borderAccent} shrink-0`}>
+        <img
+          src={logo}
+          alt={teamName}
+          className="w-10 h-10 object-contain shrink-0 drop-shadow-lg"
         />
+        <div className="flex-1 min-w-0">
+          <input
+            type="text"
+            value={teamName}
+            onChange={(e) => onRenameTeam(e.target.value)}
+            className={`bg-transparent border-none outline-none font-black text-lg w-full tracking-widest uppercase ${accentColor}`}
+            style={{ fontFamily: "'Oswald', sans-serif" }}
+            placeholder="Lagnamn..."
+            maxLength={30}
+          />
+        </div>
         <span className="text-white/30 text-xs shrink-0">{filledCount}/{totalSlots}</span>
       </div>
 

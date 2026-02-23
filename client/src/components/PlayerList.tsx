@@ -1,10 +1,10 @@
 // Hockey Lineup App – PlayerList
-// Design: Industrial Ice Arena – mittenpanel med spelarlista, sökfunktion och positions-redigering
+// Mittenpanel med spelarlista, sökfunktion, positions-redigering och lag-tillhörighet
 
 import { useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard } from "./PlayerCard";
-import type { Player, Position } from "@/lib/players";
+import type { Player, Position, TeamColor } from "@/lib/players";
 import { ALL_POSITIONS, POSITION_LABELS } from "@/lib/players";
 import { Search, UserPlus, X } from "lucide-react";
 import { nanoid } from "nanoid";
@@ -13,6 +13,7 @@ interface PlayerListProps {
   players: Player[];
   onAddPlayer: (player: Player) => void;
   onChangePosition: (playerId: string, pos: Position) => void;
+  onChangeTeamColor: (playerId: string, color: TeamColor) => void;
 }
 
 type FilterValue = Position | "Alla";
@@ -26,7 +27,7 @@ const positionFilters: { label: string; value: FilterValue }[] = [
   { label: "IB", value: "IB" },
 ];
 
-export function PlayerList({ players, onAddPlayer, onChangePosition }: PlayerListProps) {
+export function PlayerList({ players, onAddPlayer, onChangePosition, onChangeTeamColor }: PlayerListProps) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterValue>("Alla");
   const [showAddForm, setShowAddForm] = useState(false);
@@ -51,6 +52,7 @@ export function PlayerList({ players, onAddPlayer, onChangePosition }: PlayerLis
       name: newName.trim(),
       number: newNumber.trim(),
       position: newPosition,
+      teamColor: null,
     });
     setNewName("");
     setNewNumber("");
@@ -128,6 +130,7 @@ export function PlayerList({ players, onAddPlayer, onChangePosition }: PlayerLis
               key={player.id}
               player={player}
               onChangePosition={(pos) => onChangePosition(player.id, pos)}
+              onChangeTeamColor={(color) => onChangeTeamColor(player.id, color)}
             />
           ))
         )}

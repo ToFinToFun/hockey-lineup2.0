@@ -13,11 +13,14 @@ export const POSITION_LABELS: Record<Position, string> = {
 
 export const ALL_POSITIONS: Position[] = ["MV", "B", "F", "C", "IB"];
 
+export type TeamColor = "green" | "white" | null;
+
 export interface Player {
   id: string;
   number: string;
   name: string;
   position: Position;
+  teamColor?: TeamColor;
 }
 
 export const initialPlayers: Player[] = [
