@@ -239,7 +239,7 @@ export default function Home() {
               <div
                 className="grid gap-2 md:gap-3 h-full"
                 style={{
-                  gridTemplateColumns: "1fr minmax(190px, 230px) 1fr",
+                  gridTemplateColumns: "1fr minmax(240px, 290px) 1fr",
                   height: "calc(100vh - 90px)",
                 }}
               >
