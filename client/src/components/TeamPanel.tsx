@@ -2,7 +2,7 @@
 // Design: Industrial Ice Arena – glassmorfism lag-panel
 
 import { DropZone } from "./DropZone";
-import type { Player } from "@/lib/players";
+import type { Player, Position } from "@/lib/players";
 import { Shield } from "lucide-react";
 
 interface TeamLineup {
@@ -16,6 +16,7 @@ interface TeamPanelProps {
   teamName: string;
   lineup: TeamLineup;
   onRemovePlayer: (playerId: string, zone: string) => void;
+  onChangePosition: (playerId: string, pos: Position) => void;
   onRenameTeam: (name: string) => void;
 }
 
@@ -24,6 +25,7 @@ export function TeamPanel({
   teamName,
   lineup,
   onRemovePlayer,
+  onChangePosition,
   onRenameTeam,
 }: TeamPanelProps) {
   const isTeamA = teamId === "team-a";
@@ -36,29 +38,27 @@ export function TeamPanel({
     `}>
       {/* Lagnamn */}
       <div className="flex items-center gap-2 pb-2 border-b border-white/10">
-        <Shield className={`w-4 h-4 ${isTeamA ? "text-emerald-400" : "text-blue-400"}`} />
+        <Shield className={`w-4 h-4 shrink-0 ${isTeamA ? "text-emerald-400" : "text-blue-400"}`} />
         <input
           type="text"
           value={teamName}
           onChange={(e) => onRenameTeam(e.target.value)}
-          className={`
-            bg-transparent border-none outline-none font-bold text-base
-            text-white placeholder-white/30 w-full
-            font-['Oswald',sans-serif] tracking-wide uppercase
-          `}
+          className="bg-transparent border-none outline-none font-bold text-base text-white placeholder-white/30 w-full tracking-wide uppercase"
+          style={{ fontFamily: "'Oswald', sans-serif" }}
           placeholder="Lagnamn..."
           maxLength={30}
         />
       </div>
 
       {/* Formationszoner */}
-      <div className="flex flex-col gap-2 flex-1 overflow-y-auto">
+      <div className="flex flex-col gap-2 flex-1 overflow-y-auto min-h-0">
         <DropZone
           id={`${teamId}-goalkeeper`}
           label="Målvakter"
           players={lineup.goalkeepers}
           maxPlayers={2}
           onRemovePlayer={(id) => onRemovePlayer(id, `${teamId}-goalkeeper`)}
+          onChangePosition={onChangePosition}
           zoneType="goalkeeper"
         />
         <DropZone
@@ -67,6 +67,7 @@ export function TeamPanel({
           players={lineup.defense}
           maxPlayers={8}
           onRemovePlayer={(id) => onRemovePlayer(id, `${teamId}-defense`)}
+          onChangePosition={onChangePosition}
           zoneType="defense"
         />
         <DropZone
@@ -75,6 +76,7 @@ export function TeamPanel({
           players={lineup.forwards}
           maxPlayers={12}
           onRemovePlayer={(id) => onRemovePlayer(id, `${teamId}-forward`)}
+          onChangePosition={onChangePosition}
           zoneType="forward"
         />
       </div>

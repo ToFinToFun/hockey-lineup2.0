@@ -1,38 +1,44 @@
 // Hockey Lineup App – PlayerList
-// Design: Industrial Ice Arena – mittenpanel med spelarlista och sökfunktion
+// Design: Industrial Ice Arena – mittenpanel med spelarlista, sökfunktion och positions-redigering
 
 import { useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard } from "./PlayerCard";
 import type { Player, Position } from "@/lib/players";
+import { ALL_POSITIONS, POSITION_LABELS } from "@/lib/players";
 import { Search, UserPlus, X } from "lucide-react";
 import { nanoid } from "nanoid";
 
 interface PlayerListProps {
   players: Player[];
   onAddPlayer: (player: Player) => void;
+  onChangePosition: (playerId: string, pos: Position) => void;
 }
 
-const positionFilters: { label: string; value: Position | "Alla" }[] = [
+type FilterValue = Position | "Alla";
+
+const positionFilters: { label: string; value: FilterValue }[] = [
   { label: "Alla", value: "Alla" },
-  { label: "MV", value: "Målvakt" },
-  { label: "Back", value: "Back" },
-  { label: "Forward", value: "Forward" },
-  { label: "Ute", value: "Utespelare" },
+  { label: "MV", value: "MV" },
+  { label: "B", value: "B" },
+  { label: "F", value: "F" },
+  { label: "C", value: "C" },
+  { label: "Ö", value: "Ö" },
 ];
 
-export function PlayerList({ players, onAddPlayer }: PlayerListProps) {
+export function PlayerList({ players, onAddPlayer, onChangePosition }: PlayerListProps) {
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<Position | "Alla">("Alla");
+  const [filter, setFilter] = useState<FilterValue>("Alla");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState("");
   const [newNumber, setNewNumber] = useState("");
-  const [newPosition, setNewPosition] = useState<Position>("Utespelare");
+  const [newPosition, setNewPosition] = useState<Position>("Ö");
 
   const { setNodeRef, isOver } = useDroppable({ id: "player-list" });
 
   const filtered = players.filter((p) => {
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
+    const matchesSearch =
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.number.includes(search);
     const matchesFilter = filter === "Alla" || p.position === filter;
     return matchesSearch && matchesFilter;
@@ -48,7 +54,7 @@ export function PlayerList({ players, onAddPlayer }: PlayerListProps) {
     });
     setNewName("");
     setNewNumber("");
-    setNewPosition("Utespelare");
+    setNewPosition("Ö");
     setShowAddForm(false);
   };
 
@@ -67,7 +73,7 @@ export function PlayerList({ players, onAddPlayer }: PlayerListProps) {
       {/* Header */}
       <div className="p-3 border-b border-white/10">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-white font-bold text-sm uppercase tracking-widest font-['Oswald',sans-serif]">
+          <h2 className="text-white font-bold text-sm uppercase tracking-widest" style={{ fontFamily: "'Oswald', sans-serif" }}>
             Spelartrupp
           </h2>
           <span className="text-white/40 text-xs">{players.length} spelare</span>
@@ -81,7 +87,7 @@ export function PlayerList({ players, onAddPlayer }: PlayerListProps) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Sök spelare..."
-            className="w-full bg-white/5 border border-white/10 rounded-md pl-7 pr-3 py-1.5 text-xs text-white placeholder-white/30 outline-none focus:border-emerald-400/50 focus:bg-white/8 transition-all"
+            className="w-full bg-white/5 border border-white/10 rounded-md pl-7 pr-3 py-1.5 text-xs text-white placeholder-white/30 outline-none focus:border-emerald-400/50 transition-all"
           />
           {search && (
             <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60">
@@ -118,7 +124,11 @@ export function PlayerList({ players, onAddPlayer }: PlayerListProps) {
           </div>
         ) : (
           filtered.map((player) => (
-            <DraggablePlayerCard key={player.id} player={player} />
+            <DraggablePlayerCard
+              key={player.id}
+              player={player}
+              onChangePosition={(pos) => onChangePosition(player.id, pos)}
+            />
           ))
         )}
       </div>
@@ -159,10 +169,9 @@ export function PlayerList({ players, onAddPlayer }: PlayerListProps) {
               onChange={(e) => setNewPosition(e.target.value as Position)}
               className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white outline-none focus:border-emerald-400/50"
             >
-              <option value="Målvakt">Målvakt</option>
-              <option value="Back">Back</option>
-              <option value="Forward">Forward</option>
-              <option value="Utespelare">Utespelare</option>
+              {ALL_POSITIONS.map((pos) => (
+                <option key={pos} value={pos}>{pos} – {POSITION_LABELS[pos]}</option>
+              ))}
             </select>
             <div className="flex gap-1">
               <button

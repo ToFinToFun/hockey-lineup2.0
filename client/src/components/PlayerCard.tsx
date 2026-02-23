@@ -1,33 +1,48 @@
 // Hockey Lineup App – PlayerCard
 // Design: Industrial Ice Arena – glassmorfism, mörk bakgrund, grön accent
-// Draggable spelarkortet
+// Draggable spelarkortet med redigerbar position
 
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, X } from "lucide-react";
-import type { Player } from "@/lib/players";
-import { getPositionBadgeColor } from "@/lib/players";
+import type { Player, Position } from "@/lib/players";
+import { getPositionBadgeColor, ALL_POSITIONS } from "@/lib/players";
+import { useState, useRef, useEffect } from "react";
 
 interface PlayerCardProps {
   player: Player;
   onRemove?: () => void;
+  onChangePosition?: (pos: Position) => void;
   compact?: boolean;
-  isDragging?: boolean;
 }
 
 export function DraggablePlayerCard({
   player,
   onRemove,
+  onChangePosition,
   compact = false,
 }: PlayerCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: player.id, data: { player } });
+  const [showPosMenu, setShowPosMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const style = {
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.4 : 1,
     zIndex: isDragging ? 999 : undefined,
   };
+
+  useEffect(() => {
+    if (!showPosMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowPosMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showPosMenu]);
 
   return (
     <div
@@ -40,25 +55,74 @@ export function DraggablePlayerCard({
         transition-all duration-150 select-none
         ${compact ? "px-1.5 py-1 text-xs" : "px-2 py-1.5 text-sm"}
         ${isDragging ? "shadow-2xl ring-2 ring-emerald-400/60" : ""}
-        cursor-grab active:cursor-grabbing
       `}
-      {...attributes}
-      {...listeners}
     >
-      <GripVertical className="w-3 h-3 text-white/30 shrink-0" />
+      {/* Drag handle */}
+      <div className="cursor-grab active:cursor-grabbing shrink-0" {...attributes} {...listeners}>
+        <GripVertical className="w-3 h-3 text-white/30" />
+      </div>
+
+      {/* Nummer */}
       {player.number && (
         <span className={`font-bold text-white/50 shrink-0 ${compact ? "text-[10px] w-4" : "text-xs w-5"}`}>
           {player.number}
         </span>
       )}
+
+      {/* Namn */}
       <span className="text-white font-medium truncate flex-1 leading-tight">
         {player.name}
       </span>
-      <span className={`text-[9px] font-bold px-1 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position)}`}>
-        {player.position === "Målvakt" ? "MV" :
-         player.position === "Back" ? "B" :
-         player.position === "Forward" ? "F" : "U"}
-      </span>
+
+      {/* Positions-badge – klickbar för att ändra */}
+      <div className="relative shrink-0" ref={menuRef}>
+        <button
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onChangePosition) setShowPosMenu((v) => !v);
+          }}
+          className={`
+            text-[9px] font-bold px-1.5 py-0.5 rounded transition-all
+            ${getPositionBadgeColor(player.position)}
+            ${onChangePosition ? "hover:ring-2 hover:ring-white/40 cursor-pointer" : "cursor-default"}
+          `}
+          title={onChangePosition ? "Klicka för att ändra position" : undefined}
+        >
+          {player.position}
+        </button>
+
+        {/* Positions-dropdown */}
+        {showPosMenu && onChangePosition && (
+          <div className="absolute right-0 top-full mt-1 z-50 bg-gray-900/95 border border-white/20 rounded-lg shadow-2xl overflow-hidden backdrop-blur-md">
+            {ALL_POSITIONS.map((pos) => (
+              <button
+                key={pos}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChangePosition(pos);
+                  setShowPosMenu(false);
+                }}
+                className={`
+                  flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left
+                  hover:bg-white/10 transition-colors
+                  ${player.position === pos ? "bg-white/10" : ""}
+                `}
+              >
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${getPositionBadgeColor(pos)}`}>
+                  {pos}
+                </span>
+                <span className="text-white/70">
+                  {pos === "MV" ? "Målvakt" : pos === "B" ? "Back" : pos === "F" ? "Forward" : pos === "C" ? "Center" : "Övrigt"}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Ta bort-knapp */}
       {onRemove && (
         <button
           onPointerDown={(e) => e.stopPropagation()}
@@ -75,25 +139,16 @@ export function DraggablePlayerCard({
 // Overlay-kort som visas under musen vid drag
 export function PlayerCardOverlay({ player }: { player: Player }) {
   return (
-    <div className={`
-      flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm
-      bg-emerald-900/90 border border-emerald-400/60 backdrop-blur-sm
-      shadow-2xl ring-2 ring-emerald-400/40
-      cursor-grabbing select-none
-    `}>
+    <div className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm bg-emerald-900/90 border border-emerald-400/60 backdrop-blur-sm shadow-2xl ring-2 ring-emerald-400/40 cursor-grabbing select-none">
       <GripVertical className="w-3 h-3 text-emerald-300/50 shrink-0" />
       {player.number && (
         <span className="font-bold text-emerald-300/70 text-xs w-5 shrink-0">
           {player.number}
         </span>
       )}
-      <span className="text-white font-medium truncate">
-        {player.name}
-      </span>
-      <span className={`text-[9px] font-bold px-1 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position)}`}>
-        {player.position === "Målvakt" ? "MV" :
-         player.position === "Back" ? "B" :
-         player.position === "Forward" ? "F" : "U"}
+      <span className="text-white font-medium truncate">{player.name}</span>
+      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position)}`}>
+        {player.position}
       </span>
     </div>
   );

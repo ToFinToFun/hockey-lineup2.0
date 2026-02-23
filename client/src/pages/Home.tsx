@@ -3,7 +3,8 @@
 // - Mörk ishockey-bakgrundsbild
 // - Tre-kolumns layout: Lag A | Spelarlista | Lag B
 // - Drag and drop med @dnd-kit
-// - Glassmorfism-paneler
+// - Backar i par, forwards i trior (LW-C-RW)
+// - Redigerbar position per spelare
 
 import { useState, useCallback } from "react";
 import {
@@ -16,7 +17,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { initialPlayers, type Player } from "@/lib/players";
+import { initialPlayers, type Player, type Position } from "@/lib/players";
 import { PlayerList } from "@/components/PlayerList";
 import { TeamPanel } from "@/components/TeamPanel";
 import { PlayerCardOverlay } from "@/components/PlayerCard";
@@ -99,34 +100,24 @@ export default function Home() {
     [availablePlayers, teamALineup, teamBLineup]
   );
 
-  const setZonePlayers = useCallback(
-    (zone: ZoneKey, players: Player[]) => {
-      switch (zone) {
-        case "player-list":
-          setAvailablePlayers(players);
-          break;
-        case "team-a-goalkeeper":
-          setTeamALineup((prev) => ({ ...prev, goalkeepers: players }));
-          break;
-        case "team-a-defense":
-          setTeamALineup((prev) => ({ ...prev, defense: players }));
-          break;
-        case "team-a-forward":
-          setTeamALineup((prev) => ({ ...prev, forwards: players }));
-          break;
-        case "team-b-goalkeeper":
-          setTeamBLineup((prev) => ({ ...prev, goalkeepers: players }));
-          break;
-        case "team-b-defense":
-          setTeamBLineup((prev) => ({ ...prev, defense: players }));
-          break;
-        case "team-b-forward":
-          setTeamBLineup((prev) => ({ ...prev, forwards: players }));
-          break;
-      }
-    },
-    []
-  );
+  const setZonePlayers = useCallback((zone: ZoneKey, players: Player[]) => {
+    switch (zone) {
+      case "player-list":
+        setAvailablePlayers(players); break;
+      case "team-a-goalkeeper":
+        setTeamALineup((prev) => ({ ...prev, goalkeepers: players })); break;
+      case "team-a-defense":
+        setTeamALineup((prev) => ({ ...prev, defense: players })); break;
+      case "team-a-forward":
+        setTeamALineup((prev) => ({ ...prev, forwards: players })); break;
+      case "team-b-goalkeeper":
+        setTeamBLineup((prev) => ({ ...prev, goalkeepers: players })); break;
+      case "team-b-defense":
+        setTeamBLineup((prev) => ({ ...prev, defense: players })); break;
+      case "team-b-forward":
+        setTeamBLineup((prev) => ({ ...prev, forwards: players })); break;
+    }
+  }, []);
 
   const handleDragStart = (event: DragStartEvent) => {
     const player = event.active.data.current?.player as Player;
@@ -157,14 +148,9 @@ export default function Home() {
     if (!player) return;
 
     // Ta bort från källa
-    setZonePlayers(
-      sourceZone,
-      sourcePlayers.filter((p) => p.id !== playerId)
-    );
-
+    setZonePlayers(sourceZone, sourcePlayers.filter((p) => p.id !== playerId));
     // Lägg till i mål
-    const targetPlayers = getZonePlayers(targetZone);
-    setZonePlayers(targetZone, [...targetPlayers, player]);
+    setZonePlayers(targetZone, [...getZonePlayers(targetZone), player]);
   };
 
   const handleRemovePlayer = useCallback(
@@ -173,10 +159,7 @@ export default function Home() {
       const zonePlayers = getZonePlayers(zoneKey);
       const player = zonePlayers.find((p) => p.id === playerId);
       if (!player) return;
-      setZonePlayers(
-        zoneKey,
-        zonePlayers.filter((p) => p.id !== playerId)
-      );
+      setZonePlayers(zoneKey, zonePlayers.filter((p) => p.id !== playerId));
       setAvailablePlayers((prev) => [player, ...prev]);
     },
     [getZonePlayers, setZonePlayers]
@@ -185,6 +168,27 @@ export default function Home() {
   const handleAddPlayer = useCallback((player: Player) => {
     setAvailablePlayers((prev) => [...prev, player]);
   }, []);
+
+  // Ändra position för en spelare oavsett var den befinner sig
+  const handleChangePosition = useCallback(
+    (playerId: string, pos: Position) => {
+      const updateList = (list: Player[]) =>
+        list.map((p) => p.id === playerId ? { ...p, position: pos } : p);
+
+      setAvailablePlayers((prev) => updateList(prev));
+      setTeamALineup((prev) => ({
+        goalkeepers: updateList(prev.goalkeepers),
+        defense: updateList(prev.defense),
+        forwards: updateList(prev.forwards),
+      }));
+      setTeamBLineup((prev) => ({
+        goalkeepers: updateList(prev.goalkeepers),
+        defense: updateList(prev.defense),
+        forwards: updateList(prev.forwards),
+      }));
+    },
+    []
+  );
 
   return (
     <DndContext
@@ -203,7 +207,7 @@ export default function Home() {
           backgroundRepeat: "no-repeat",
         }}
       >
-        {/* Mörkt overlay för läsbarhet */}
+        {/* Mörkt overlay */}
         <div className="absolute inset-0 bg-black/45 pointer-events-none" />
 
         {/* Innehåll */}
@@ -223,23 +227,20 @@ export default function Home() {
                   A-lag Herrar · Formations-verktyg
                 </p>
               </div>
-              <div className="hidden md:flex items-center gap-4 text-xs text-white/30">
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
-                  Målvakt
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />
-                  Back
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
-                  Forward
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-slate-400 inline-block" />
-                  Utespelare
-                </span>
+              <div className="hidden md:flex items-center gap-3 text-xs text-white/40">
+                {[
+                  { color: "bg-amber-400", label: "MV – Målvakt" },
+                  { color: "bg-blue-400", label: "B – Back" },
+                  { color: "bg-emerald-400", label: "F – Forward" },
+                  { color: "bg-purple-400", label: "C – Center" },
+                  { color: "bg-slate-400", label: "Ö – Övrigt" },
+                ].map(({ color, label }) => (
+                  <span key={label} className="flex items-center gap-1">
+                    <span className={`w-2 h-2 rounded-full ${color} inline-block`} />
+                    {label}
+                  </span>
+                ))}
+                <span className="text-white/20 ml-1 text-[10px] italic">Klicka på positions-badge för att ändra</span>
               </div>
             </div>
           </header>
@@ -260,6 +261,7 @@ export default function Home() {
                   teamName={teamAName}
                   lineup={teamALineup}
                   onRemovePlayer={handleRemovePlayer}
+                  onChangePosition={handleChangePosition}
                   onRenameTeam={setTeamAName}
                 />
 
@@ -267,6 +269,7 @@ export default function Home() {
                 <PlayerList
                   players={availablePlayers}
                   onAddPlayer={handleAddPlayer}
+                  onChangePosition={handleChangePosition}
                 />
 
                 {/* Lag B */}
@@ -275,6 +278,7 @@ export default function Home() {
                   teamName={teamBName}
                   lineup={teamBLineup}
                   onRemovePlayer={handleRemovePlayer}
+                  onChangePosition={handleChangePosition}
                   onRenameTeam={setTeamBName}
                 />
               </div>
