@@ -18,6 +18,7 @@ interface TeamPanelProps {
   onRemovePlayer: (slotId: string) => void;
   onChangePosition: (playerId: string, pos: Position) => void;
   onRenameTeam: (name: string) => void;
+  isWhite?: boolean;
 }
 
 const sectionStyles = {
@@ -86,12 +87,12 @@ export function TeamPanel({
   onRemovePlayer,
   onChangePosition,
   onRenameTeam,
+  isWhite = false,
 }: TeamPanelProps) {
-  const isGreen = teamId === "team-a"; // Lag A = GRÖNA, Lag B = VITA
-  const logo = isGreen ? LOGO_GREEN : LOGO_WHITE;
-  const accentColor = isGreen ? "text-emerald-400" : "text-slate-200";
-  const borderAccent = isGreen ? "border-emerald-400/20" : "border-slate-300/20";
-  const shadowColor = isGreen ? "shadow-emerald-900/20" : "shadow-slate-400/10";
+  const logo = isWhite ? LOGO_WHITE : LOGO_GREEN;
+  const accentColor = isWhite ? "text-slate-200" : "text-emerald-400";
+  const borderAccent = isWhite ? "border-slate-300/20" : "border-emerald-400/20";
+  const shadowColor = isWhite ? "shadow-slate-400/10" : "shadow-emerald-900/20";
 
   const goalkeeperSlots = slots.filter((s) => s.type === "goalkeeper");
   const defenseSlots = slots.filter((s) => s.type === "defense");

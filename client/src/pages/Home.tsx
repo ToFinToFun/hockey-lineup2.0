@@ -36,8 +36,8 @@ const ALL_SLOT_IDS = new Set([
 
 export default function Home() {
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>(initialPlayers);
-  const [teamAName, setTeamAName] = useState("GRÖNA");
-  const [teamBName, setTeamBName] = useState("VITA");
+  const [teamAName, setTeamAName] = useState("VITA");
+  const [teamBName, setTeamBName] = useState("GRÖNA");
 
   // lineup: slotId -> Player
   const [lineup, setLineup] = useState<Record<string, Player>>({});
@@ -243,7 +243,7 @@ export default function Home() {
                   height: "calc(100vh - 90px)",
                 }}
               >
-                {/* Lag A */}
+                {/* Lag A (VITA) – vänster */}
                 <TeamPanel
                   teamId="team-a"
                   teamName={teamAName}
@@ -252,6 +252,7 @@ export default function Home() {
                   onRemovePlayer={handleRemoveFromSlot}
                   onChangePosition={handleChangePosition}
                   onRenameTeam={setTeamAName}
+                  isWhite
                 />
 
                 {/* Spelarlista (mitten) */}
@@ -262,7 +263,7 @@ export default function Home() {
                   onChangeTeamColor={handleChangeTeamColor}
                 />
 
-                {/* Lag B */}
+                {/* Lag B (GRÖNA) – höger */}
                 <TeamPanel
                   teamId="team-b"
                   teamName={teamBName}
@@ -271,6 +272,7 @@ export default function Home() {
                   onRemovePlayer={handleRemoveFromSlot}
                   onChangePosition={handleChangePosition}
                   onRenameTeam={setTeamBName}
+                  isWhite={false}
                 />
               </div>
             </div>
