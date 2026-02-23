@@ -1,9 +1,9 @@
 // Hockey Lineup App – PlayerList
-// Mittenpanel med spelarlista, sökfunktion, positions-redigering och lag-tillhörighet
+// Mittenpanel med spelarlista, sökfunktion, positions- och lag-filter
 
 import { useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
-import { DraggablePlayerCard } from "./PlayerCard";
+import { DraggablePlayerCard, TeamColorIndicator } from "./PlayerCard";
 import type { Player, Position, TeamColor } from "@/lib/players";
 import { ALL_POSITIONS, POSITION_LABELS } from "@/lib/players";
 import { Search, UserPlus, X } from "lucide-react";
@@ -16,9 +16,10 @@ interface PlayerListProps {
   onChangeTeamColor: (playerId: string, color: TeamColor) => void;
 }
 
-type FilterValue = Position | "Alla";
+type PosFilter = Position | "Alla";
+type TeamFilter = TeamColor | "Alla";
 
-const positionFilters: { label: string; value: FilterValue }[] = [
+const positionFilters: { label: string; value: PosFilter }[] = [
   { label: "Alla", value: "Alla" },
   { label: "MV", value: "MV" },
   { label: "B", value: "B" },
@@ -27,9 +28,17 @@ const positionFilters: { label: string; value: FilterValue }[] = [
   { label: "IB", value: "IB" },
 ];
 
+const teamFilters: { label: string; value: TeamFilter; color: TeamColor }[] = [
+  { label: "Alla", value: "Alla", color: null },
+  { label: "Vita", value: "white", color: "white" },
+  { label: "Gröna", value: "green", color: "green" },
+  { label: "Inget lag", value: null, color: null },
+];
+
 export function PlayerList({ players, onAddPlayer, onChangePosition, onChangeTeamColor }: PlayerListProps) {
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<FilterValue>("Alla");
+  const [posFilter, setPosFilter] = useState<PosFilter>("Alla");
+  const [teamFilter, setTeamFilter] = useState<TeamFilter>("Alla");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState("");
   const [newNumber, setNewNumber] = useState("");
@@ -41,8 +50,11 @@ export function PlayerList({ players, onAddPlayer, onChangePosition, onChangeTea
     const matchesSearch =
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.number.includes(search);
-    const matchesFilter = filter === "Alla" || p.position === filter;
-    return matchesSearch && matchesFilter;
+    const matchesPos = posFilter === "Alla" || p.position === posFilter;
+    const matchesTeam =
+      teamFilter === "Alla" ||
+      (teamFilter === null ? (p.teamColor ?? null) === null : (p.teamColor ?? null) === teamFilter);
+    return matchesSearch && matchesPos && matchesTeam;
   });
 
   const handleAddPlayer = () => {
@@ -99,19 +111,45 @@ export function PlayerList({ players, onAddPlayer, onChangePosition, onChangeTea
         </div>
 
         {/* Positionsfilter */}
-        <div className="flex gap-1">
+        <div className="flex gap-1 mb-1.5">
           {positionFilters.map((f) => (
             <button
               key={f.value}
-              onClick={() => setFilter(f.value)}
+              onClick={() => setPosFilter(f.value)}
               className={`
                 flex-1 text-[10px] font-bold py-1 rounded transition-all
-                ${filter === f.value
+                ${posFilter === f.value
                   ? "bg-emerald-500/30 text-emerald-300 border border-emerald-400/50"
                   : "bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60"
                 }
               `}
             >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Lag-filter */}
+        <div className="flex gap-1">
+          {teamFilters.map((f) => (
+            <button
+              key={String(f.value)}
+              onClick={() => setTeamFilter(f.value)}
+              className={`
+                flex-1 flex items-center justify-center gap-1 text-[10px] font-bold py-1 rounded transition-all
+                ${teamFilter === f.value
+                  ? f.value === "white"
+                    ? "bg-slate-300/20 text-slate-200 border border-slate-300/50"
+                    : f.value === "green"
+                    ? "bg-emerald-500/30 text-emerald-300 border border-emerald-400/50"
+                    : "bg-white/15 text-white border border-white/30"
+                  : "bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60"
+                }
+              `}
+            >
+              {f.color !== null && (
+                <TeamColorIndicator teamColor={f.color} size={12} />
+              )}
               {f.label}
             </button>
           ))}
