@@ -191,7 +191,13 @@ export function ExportModal({
       const a = document.createElement("a");
       a.href = url;
       a.download = `stalstadens-lineup-${new Date().toISOString().slice(0, 10)}.png`;
+      a.style.display = "none";
+      document.body.appendChild(a);
       a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
     } catch (e) {
       console.error("Export failed", e);
     } finally {

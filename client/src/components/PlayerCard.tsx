@@ -18,6 +18,7 @@ interface PlayerCardProps {
   onChangePosition?: (pos: Position) => void;
   onChangeTeamColor?: (color: TeamColor) => void;
   compact?: boolean;
+  hideExtras?: boolean; // Dölj position/lag även i icke-compact (används i export)
 }
 
 export function DraggablePlayerCard({
@@ -26,6 +27,7 @@ export function DraggablePlayerCard({
   onChangePosition,
   onChangeTeamColor,
   compact = false,
+  hideExtras = false,
 }: PlayerCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: player.id, data: { player } });
@@ -65,15 +67,29 @@ export function DraggablePlayerCard({
         {player.name}
       </span>
 
-      {/* Nummer – dölj i compact-läge för att ge plats åt namn */}
-      {player.number && !compact && (
+      {/* Nummer – dölj i compact-läge och hideExtras */}
+      {player.number && !compact && !hideExtras && (
         <span className="font-bold text-white/50 shrink-0 text-xs w-5">
           {player.number}
         </span>
       )}
 
-      {/* Lag-markering – dölj i compact-läge */}
-      {!compact && onChangeTeamColor ? (
+      {/* Lag-markering i compact-läge – liten logotyp utan klick */}
+      {compact && !hideExtras && player.teamColor && (
+        <div className="shrink-0">
+          <TeamColorIndicator teamColor={player.teamColor} size={12} />
+        </div>
+      )}
+
+      {/* Positions-badge i compact-läge – liten, ej klickbar */}
+      {compact && !hideExtras && (
+        <span className={`text-[8px] font-bold px-1 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position)}`}>
+          {player.position}
+        </span>
+      )}
+
+      {/* Lag-markering – dölj i compact-läge (visas separat ovan) */}
+      {!compact && !hideExtras && onChangeTeamColor ? (
         <>
           <button
             ref={teamBtnRef}
@@ -114,14 +130,14 @@ export function DraggablePlayerCard({
             ))}
           </PortalDropdown>
         </>
-      ) : !compact && (
+      ) : !compact && !hideExtras && (
         <div className="shrink-0">
           <TeamColorIndicator teamColor={player.teamColor ?? null} size={16} />
         </div>
       )}
 
-      {/* Positions-badge – dölj i compact-läge */}
-      {!compact && <>
+      {/* Positions-badge – dölj i compact-läge och hideExtras */}
+      {!compact && !hideExtras && <>
         <button
           ref={posBtnRef}
           onPointerDown={(e) => e.stopPropagation()}
