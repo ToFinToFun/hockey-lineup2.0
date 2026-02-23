@@ -39,7 +39,7 @@ export function createTeamSlots(teamId: string): Slot[] {
     slots.push({
       id: `${teamId}-def-${pair}-1`,
       label: `Back ${back1}`,
-      shortLabel: `B${back1}`,
+      shortLabel: "B",
       groupLabel: `Backpar ${pair}`,
       type: "defense",
       role: "def",
@@ -47,7 +47,7 @@ export function createTeamSlots(teamId: string): Slot[] {
     slots.push({
       id: `${teamId}-def-${pair}-2`,
       label: `Back ${back2}`,
-      shortLabel: `B${back2}`,
+      shortLabel: "B",
       groupLabel: `Backpar ${pair}`,
       type: "defense",
       role: "def",
