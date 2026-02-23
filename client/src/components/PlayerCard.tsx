@@ -65,15 +65,15 @@ export function DraggablePlayerCard({
         {player.name}
       </span>
 
-      {/* Nummer */}
-      {player.number && (
-        <span className={`font-bold text-white/50 shrink-0 ${compact ? "text-[10px] w-4" : "text-xs w-5"}`}>
+      {/* Nummer – dölj i compact-läge för att ge plats åt namn */}
+      {player.number && !compact && (
+        <span className="font-bold text-white/50 shrink-0 text-xs w-5">
           {player.number}
         </span>
       )}
 
-      {/* Lag-markering */}
-      {onChangeTeamColor ? (
+      {/* Lag-markering – dölj i compact-läge */}
+      {!compact && onChangeTeamColor ? (
         <>
           <button
             ref={teamBtnRef}
@@ -114,14 +114,14 @@ export function DraggablePlayerCard({
             ))}
           </PortalDropdown>
         </>
-      ) : (
+      ) : !compact && (
         <div className="shrink-0">
           <TeamColorIndicator teamColor={player.teamColor ?? null} size={16} />
         </div>
       )}
 
-      {/* Positions-badge */}
-      <>
+      {/* Positions-badge – dölj i compact-läge */}
+      {!compact && <>
         <button
           ref={posBtnRef}
           onPointerDown={(e) => e.stopPropagation()}
@@ -168,7 +168,7 @@ export function DraggablePlayerCard({
             ))}
           </PortalDropdown>
         )}
-      </>
+      </>}
 
       {/* Ta bort-knapp */}
       {onRemove && (
