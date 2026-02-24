@@ -1,6 +1,6 @@
 [build]
   command   = "pnpm install && pnpm build"
-  publish   = "dist"
+  publish   = "dist/public"
 
 [[redirects]]
   from   = "/*"

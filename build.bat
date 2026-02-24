@@ -69,9 +69,9 @@ echo  ================================================
 echo   BUILD COMPLETE!
 echo  ================================================
 echo.
-echo  The "dist" folder is now ready inside this folder.
-echo  Drag that "dist" folder onto Netlify to deploy.
+echo    The "dist\public" folder is now ready inside this folder.
+echo    Drag that "dist\public" folder onto Netlify to deploy.
 echo.
 echo  Press any key to open the project folder...
 pause >nul
-explorer .
+explorer dist\public

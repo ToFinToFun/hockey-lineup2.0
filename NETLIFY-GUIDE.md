@@ -33,7 +33,7 @@ The build process converts the source code into a simple folder of files that an
 3. Run: `chmod +x build.sh && ./build.sh`
 4. Wait until you see **BUILD COMPLETE**
 
-When the build finishes, a new folder called **`dist`** appears inside the project folder. That folder contains your entire app.
+When the build finishes, a new folder called **`dist/public`** appears inside the project folder. That folder contains your entire app.
 
 ---
 
@@ -42,7 +42,7 @@ When the build finishes, a new folder called **`dist`** appears inside the proje
 1. Go to [app.netlify.com](https://app.netlify.com) and log in
 2. On your dashboard, scroll down to the section that says **"Want to deploy a new site without connecting to Git?"**
 3. You will see a large drop zone that says **"Drag and drop your site output folder here"**
-4. Drag the **`dist`** folder from your computer directly onto that drop zone
+4. Drag the **`dist/public`** folder from your computer directly onto that drop zone
 5. Netlify uploads and deploys your app in about 30 seconds
 6. You get a live URL like `https://random-name-123.netlify.app` — your app is online!
 
@@ -56,7 +56,7 @@ Whenever you make changes and want to update the live site:
 
 1. Run `build.bat` (Windows) or `./build.sh` (Mac/Linux) again
 2. Go to your site on [app.netlify.com](https://app.netlify.com)
-3. Go to **Deploys** tab → drag the new `dist` folder onto the deploy drop zone
+3. Go to **Deploys** tab → drag the new `dist/public` folder onto the deploy drop zone
 
 ---
 
@@ -72,5 +72,5 @@ If you export the project to GitHub (Manus → Settings → GitHub), you can con
 |---------|----------|
 | `node` or `pnpm` not found | Install Node.js from [nodejs.org](https://nodejs.org) and restart your terminal |
 | Build fails with errors | Make sure you are inside the project folder before running the script |
-| App loads but shows blank page | Make sure you dragged the `dist` **folder**, not the files inside it |
+| App loads but shows blank page | Make sure you dragged the `dist/public` **folder**, not the files inside it |
 | Images not loading | The app loads images from a CDN — make sure you have internet access |
