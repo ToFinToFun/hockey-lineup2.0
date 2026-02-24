@@ -1,12 +1,11 @@
-// Hockey Lineup App – PlayerList
-// Mittenpanel med spelarlista, sökfunktion, positions- och lag-filter
+// Mittenpanel med spelarlista, sökfunktion, positions- och lag-filter, sortering
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard, TeamColorIndicator } from "./PlayerCard";
 import type { Player, Position, TeamColor } from "@/lib/players";
 import { ALL_POSITIONS, POSITION_LABELS } from "@/lib/players";
-import { Search, UserPlus, X, Trash2 } from "lucide-react";
+import { Search, UserPlus, X, Trash2, ArrowUpDown } from "lucide-react";
 import { nanoid } from "nanoid";
 import { createPortal } from "react-dom";
 
@@ -21,6 +20,8 @@ interface PlayerListProps {
 
 type PosFilter = Position | "Alla";
 type TeamFilter = TeamColor | "Alla";
+type SortKey = "name" | "number" | "position";
+type SortDir = "asc" | "desc";
 
 const positionFilters: { label: string; value: PosFilter }[] = [
   { label: "Alla", value: "Alla" },
@@ -38,10 +39,31 @@ const teamFilters: { label: string; value: TeamFilter; color: TeamColor }[] = [
   { label: "Inget lag", value: null, color: null },
 ];
 
+const POSITION_ORDER: Record<string, number> = { MV: 0, B: 1, C: 2, F: 3, IB: 4 };
+
+function sortPlayers(players: Player[], key: SortKey, dir: SortDir): Player[] {
+  return [...players].sort((a, b) => {
+    let cmp = 0;
+    if (key === "name") {
+      cmp = a.name.localeCompare(b.name, "sv");
+    } else if (key === "number") {
+      const na = parseInt(a.number || "9999");
+      const nb = parseInt(b.number || "9999");
+      cmp = na - nb;
+    } else if (key === "position") {
+      cmp = (POSITION_ORDER[a.position] ?? 99) - (POSITION_ORDER[b.position] ?? 99);
+      if (cmp === 0) cmp = a.name.localeCompare(b.name, "sv");
+    }
+    return dir === "asc" ? cmp : -cmp;
+  });
+}
+
 export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber }: PlayerListProps) {
   const [search, setSearch] = useState("");
   const [posFilter, setPosFilter] = useState<PosFilter>("Alla");
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("Alla");
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState("");
   const [newNumber, setNewNumber] = useState("");
@@ -49,6 +71,15 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; player: Player } | null>(null);
 
   const { setNodeRef, isOver } = useDroppable({ id: "player-list" });
+
+  const handleSortClick = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
 
   const filtered = players.filter((p) => {
     const matchesSearch =
@@ -60,6 +91,8 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
       (teamFilter === null ? (p.teamColor ?? null) === null : (p.teamColor ?? null) === teamFilter);
     return matchesSearch && matchesPos && matchesTeam;
   });
+
+  const sorted = sortPlayers(filtered, sortKey, sortDir);
 
   const handleAddPlayer = () => {
     if (!newName.trim()) return;
@@ -75,6 +108,25 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
     setNewPosition("IB");
     setShowAddForm(false);
   };
+
+  const SortBtn = ({ k, label }: { k: SortKey; label: string }) => (
+    <button
+      onClick={() => handleSortClick(k)}
+      className={`
+        flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded transition-all
+        ${sortKey === k
+          ? "bg-emerald-500/25 text-emerald-300 border border-emerald-400/40"
+          : "bg-white/5 text-white/35 border border-white/10 hover:text-white/60 hover:bg-white/10"
+        }
+      `}
+    >
+      {label}
+      <ArrowUpDown className={`w-2.5 h-2.5 ${sortKey === k ? "opacity-100" : "opacity-40"}`} />
+      {sortKey === k && (
+        <span className="text-[8px] opacity-70">{sortDir === "asc" ? "↑" : "↓"}</span>
+      )}
+    </button>
+  );
 
   return (
     <div
@@ -134,7 +186,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
         </div>
 
         {/* Lag-filter */}
-        <div className="flex gap-1">
+        <div className="flex gap-1 mb-2">
           {teamFilters.map((f) => (
             <button
               key={String(f.value)}
@@ -158,16 +210,26 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
             </button>
           ))}
         </div>
+
+        {/* Sortering */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-white/30 text-[9px] uppercase tracking-wider shrink-0">Sortera:</span>
+          <div className="flex gap-1">
+            <SortBtn k="name" label="Namn" />
+            <SortBtn k="number" label="Nr" />
+            <SortBtn k="position" label="Pos" />
+          </div>
+        </div>
       </div>
 
       {/* Spelarlista */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1 min-h-0" style={{ overscrollBehavior: "contain" }}>
-        {filtered.length === 0 ? (
+        {sorted.length === 0 ? (
           <div className="text-center text-white/30 text-xs italic py-8">
             Inga spelare hittades
           </div>
         ) : (
-          filtered.map((player) => (
+          sorted.map((player) => (
             <div
               key={player.id}
               onContextMenu={(e) => {

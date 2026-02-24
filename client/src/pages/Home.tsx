@@ -24,6 +24,8 @@ import { ExportModal } from "@/components/ExportModal";
 import { saveStateToFirebase, subscribeToFirebase, type AppState } from "@/lib/firebase";
 import { Download, Wifi, WifiOff } from "lucide-react";
 
+type MobileTab = "vita" | "trupp" | "grona";
+
 const BG_URL =
   "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/gLOHFxhFzgQgHeKl.jpg";
 
@@ -286,6 +288,8 @@ export default function Home() {
     });
   }, []);
 
+  const [mobileTab, setMobileTab] = useState<MobileTab>("trupp");
+
   const teamALineup: Record<string, Player> = {};
   const teamBLineup: Record<string, Player> = {};
   for (const [slotId, player] of Object.entries(lineup)) {
@@ -374,17 +378,82 @@ export default function Home() {
             </div>
           </header>
 
-          {/* Tre-kolumns layout */}
-          <main className="flex-1 px-2 md:px-4 pb-4 min-h-0" ref={exportRef}>
-            <div className="h-full">
-              <div
-                className="grid gap-2 md:gap-3 h-full"
-                style={{
-                  gridTemplateColumns: "minmax(520px, 1fr) minmax(230px, 260px) minmax(520px, 1fr)",
-                  height: "calc(100vh - 90px)",
-                }}
+          {/* Mobilflikar – syns bara på smala skärmar */}
+          <div className="md:hidden flex gap-0 px-2 pb-2 shrink-0">
+            {([
+              { key: "vita" as MobileTab, label: teamAName, color: "border-slate-300/60 text-slate-200" },
+              { key: "trupp" as MobileTab, label: "Trupp", color: "border-emerald-400/60 text-emerald-300" },
+              { key: "grona" as MobileTab, label: teamBName, color: "border-emerald-500/60 text-emerald-400" },
+            ]).map(({ key, label, color }) => (
+              <button
+                key={key}
+                onClick={() => setMobileTab(key)}
+                className={`
+                  flex-1 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all
+                  ${mobileTab === key
+                    ? `${color} bg-white/5`
+                    : "border-transparent text-white/30 hover:text-white/50"}
+                `}
+                style={{ fontFamily: "'Oswald', sans-serif" }}
               >
-                {/* Lag A (VITA) – vänster */}
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Desktop: Tre-kolumns layout */}
+          <main className="flex-1 px-2 md:px-4 pb-4 min-h-0" ref={exportRef}>
+            {/* Desktop grid */}
+            <div
+              className="hidden md:grid gap-2 md:gap-3 h-full"
+              style={{
+                gridTemplateColumns: "minmax(520px, 1fr) minmax(230px, 260px) minmax(520px, 1fr)",
+                height: "calc(100vh - 90px)",
+              }}
+            >
+              {/* Lag A (VITA) – vänster */}
+              <TeamPanel
+                teamId="team-a"
+                teamName={teamAName}
+                slots={TEAM_A_SLOTS}
+                lineup={teamALineup}
+                onRemovePlayer={handleRemoveFromSlot}
+                onChangePosition={handleChangePosition}
+                onRenameTeam={setTeamAName}
+                onClearTeam={() => handleClearTeam("team-a-")}
+                isWhite
+              />
+
+              {/* Spelarlista (mitten) */}
+              <PlayerList
+                players={availablePlayers}
+                onAddPlayer={handleAddPlayer}
+                onDeletePlayer={handleDeletePlayer}
+                onChangePosition={handleChangePosition}
+                onChangeTeamColor={handleChangeTeamColor}
+                onChangeNumber={handleChangeNumber}
+              />
+
+              {/* Lag B (GRÖNA) – höger */}
+              <TeamPanel
+                teamId="team-b"
+                teamName={teamBName}
+                slots={TEAM_B_SLOTS}
+                lineup={teamBLineup}
+                onRemovePlayer={handleRemoveFromSlot}
+                onChangePosition={handleChangePosition}
+                onRenameTeam={setTeamBName}
+                onClearTeam={() => handleClearTeam("team-b-")}
+                isWhite={false}
+              />
+            </div>
+
+            {/* Mobilvy – en flik i taget */}
+            <div
+              className="md:hidden h-full"
+              style={{ height: "calc(100vh - 130px)" }}
+            >
+              {mobileTab === "vita" && (
                 <TeamPanel
                   teamId="team-a"
                   teamName={teamAName}
@@ -396,8 +465,8 @@ export default function Home() {
                   onClearTeam={() => handleClearTeam("team-a-")}
                   isWhite
                 />
-
-                {/* Spelarlista (mitten) */}
+              )}
+              {mobileTab === "trupp" && (
                 <PlayerList
                   players={availablePlayers}
                   onAddPlayer={handleAddPlayer}
@@ -406,8 +475,8 @@ export default function Home() {
                   onChangeTeamColor={handleChangeTeamColor}
                   onChangeNumber={handleChangeNumber}
                 />
-
-                {/* Lag B (GRÖNA) – höger */}
+              )}
+              {mobileTab === "grona" && (
                 <TeamPanel
                   teamId="team-b"
                   teamName={teamBName}
@@ -419,7 +488,7 @@ export default function Home() {
                   onClearTeam={() => handleClearTeam("team-b-")}
                   isWhite={false}
                 />
-              </div>
+              )}
             </div>
           </main>
         </div>
