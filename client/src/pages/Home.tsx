@@ -1,8 +1,8 @@
 // Hockey Lineup App – Home
 // Design: Industrial Ice Arena
-// - localStorage-sparning av alla ändringar
-// - Ta bort spelare från listan
-// - Export av uppställning (bild för sociala medier + A4-format)
+// - Firebase Realtime Database synkronisering (alla användare ser samma data)
+// - localStorage som fallback om Firebase är offline
+// - Ta bort spelare, export av uppställning
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import {
@@ -21,7 +21,8 @@ import { PlayerList } from "@/components/PlayerList";
 import { TeamPanel } from "@/components/TeamPanel";
 import { PlayerCardOverlay } from "@/components/PlayerCard";
 import { ExportModal } from "@/components/ExportModal";
-import { Download } from "lucide-react";
+import { saveStateToFirebase, subscribeToFirebase, type AppState } from "@/lib/firebase";
+import { Download, Wifi, WifiOff } from "lucide-react";
 
 const BG_URL =
   "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/gLOHFxhFzgQgHeKl.jpg";
@@ -48,7 +49,7 @@ interface SavedState {
   teamBName: string;
 }
 
-function loadState(): SavedState | null {
+function loadLocalState(): SavedState | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
@@ -58,7 +59,7 @@ function loadState(): SavedState | null {
   }
 }
 
-function saveState(state: SavedState) {
+function saveLocalState(state: SavedState) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
@@ -67,22 +68,70 @@ function saveState(state: SavedState) {
 }
 
 export default function Home() {
-  const saved = loadState();
+  const local = loadLocalState();
 
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>(
-    saved?.availablePlayers ?? initialPlayers
+    local?.availablePlayers ?? initialPlayers
   );
-  const [teamAName, setTeamAName] = useState(saved?.teamAName ?? "VITA");
-  const [teamBName, setTeamBName] = useState(saved?.teamBName ?? "GRÖNA");
-  const [lineup, setLineup] = useState<Record<string, Player>>(saved?.lineup ?? {});
+  const [teamAName, setTeamAName] = useState(local?.teamAName ?? "VITA");
+  const [teamBName, setTeamBName] = useState(local?.teamBName ?? "GRÖNA");
+  const [lineup, setLineup] = useState<Record<string, Player>>(local?.lineup ?? {});
   const [activePlayer, setActivePlayer] = useState<Player | null>(null);
   const [showExport, setShowExport] = useState(false);
+  const [firebaseConnected, setFirebaseConnected] = useState<boolean | null>(null);
+
+  // Prevent writing back to Firebase when we just received an update from it
+  const isReceivingFromFirebase = useRef(false);
+  // Track if we've received the initial Firebase state
+  const hasReceivedInitial = useRef(false);
 
   const exportRef = useRef<HTMLDivElement>(null);
 
-  // Spara till localStorage vid varje ändring
+  // Subscribe to Firebase on mount
   useEffect(() => {
-    saveState({ availablePlayers, lineup, teamAName, teamBName });
+    const unsubscribe = subscribeToFirebase((state: AppState | null) => {
+      setFirebaseConnected(true);
+      if (state) {
+        isReceivingFromFirebase.current = true;
+        setAvailablePlayers(state.players ?? initialPlayers);
+        setLineup(state.lineup ?? {});
+        setTeamAName(state.teamAName ?? "VITA");
+        setTeamBName(state.teamBName ?? "GRÖNA");
+        // Allow re-renders to settle before re-enabling writes
+        setTimeout(() => {
+          isReceivingFromFirebase.current = false;
+        }, 100);
+      } else if (!hasReceivedInitial.current) {
+        // No data in Firebase yet — push our local state up
+        const localState = loadLocalState();
+        if (localState) {
+          saveStateToFirebase({
+            players: localState.availablePlayers,
+            lineup: localState.lineup,
+            teamAName: localState.teamAName,
+            teamBName: localState.teamBName,
+          });
+        }
+      }
+      hasReceivedInitial.current = true;
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // Save to both Firebase and localStorage on every state change
+  useEffect(() => {
+    if (isReceivingFromFirebase.current) return;
+    if (!hasReceivedInitial.current) return;
+
+    const state: SavedState = { availablePlayers, lineup, teamAName, teamBName };
+    saveLocalState(state);
+    saveStateToFirebase({
+      players: availablePlayers,
+      lineup,
+      teamAName,
+      teamBName,
+    });
   }, [availablePlayers, lineup, teamAName, teamBName]);
 
   const sensors = useSensors(
@@ -170,10 +219,8 @@ export default function Home() {
     setAvailablePlayers((prev) => [...prev, player]);
   }, []);
 
-  // Ta bort spelare permanent
   const handleDeletePlayer = useCallback((playerId: string) => {
     setAvailablePlayers((prev) => prev.filter((p) => p.id !== playerId));
-    // Om spelaren sitter i ett slot, ta bort den därifrån också
     setLineup((prev) => {
       const next = { ...prev };
       for (const [slotId, p] of Object.entries(next)) {
@@ -250,6 +297,23 @@ export default function Home() {
                 </p>
               </div>
               <div className="flex items-center gap-3">
+                {/* Firebase sync status */}
+                <div className="flex items-center gap-1.5">
+                  {firebaseConnected === null ? (
+                    <span className="text-white/30 text-[10px] uppercase tracking-wider">Ansluter...</span>
+                  ) : firebaseConnected ? (
+                    <>
+                      <Wifi className="w-3 h-3 text-emerald-400" />
+                      <span className="text-emerald-400/70 text-[10px] uppercase tracking-wider">Live</span>
+                    </>
+                  ) : (
+                    <>
+                      <WifiOff className="w-3 h-3 text-red-400" />
+                      <span className="text-red-400/70 text-[10px] uppercase tracking-wider">Offline</span>
+                    </>
+                  )}
+                </div>
+
                 <div className="hidden md:flex items-center gap-3 text-xs text-white/40">
                   {[
                     { color: "bg-amber-400", label: "MV" },
