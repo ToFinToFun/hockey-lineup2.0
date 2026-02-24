@@ -18,6 +18,7 @@ interface TeamPanelProps {
   onRemovePlayer: (slotId: string) => void;
   onChangePosition: (playerId: string, pos: Position) => void;
   onRenameTeam: (name: string) => void;
+  onClearTeam: () => void;
   isWhite?: boolean;
 }
 
@@ -87,6 +88,7 @@ export function TeamPanel({
   onRemovePlayer,
   onChangePosition,
   onRenameTeam,
+  onClearTeam,
   isWhite = false,
 }: TeamPanelProps) {
   const logo = isWhite ? LOGO_WHITE : LOGO_GREEN;
@@ -137,7 +139,20 @@ export function TeamPanel({
             maxLength={30}
           />
         </div>
-        <span className="text-white/30 text-xs shrink-0">{filledCount}/{totalSlots}</span>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-white/30 text-xs">{filledCount}/{totalSlots}</span>
+          {filledCount > 0 && (
+            <button
+              onClick={() => {
+                if (window.confirm(`Rensa alla spelare från ${teamName}?`)) onClearTeam();
+              }}
+              className="text-[10px] font-bold px-2 py-0.5 rounded border border-red-400/30 text-red-400/70 hover:text-red-400 hover:border-red-400/60 hover:bg-red-400/10 transition-all uppercase tracking-wider"
+              title="Rensa alla spelare från laget"
+            >
+              Rensa
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Scrollbar slots */}

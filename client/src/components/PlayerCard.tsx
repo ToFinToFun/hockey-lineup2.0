@@ -134,6 +134,11 @@ export function DraggablePlayerCard({
         </span>
       )}
 
+      {/* Spelar-nr i compact-läge */}
+      {compact && !hideExtras && player.number && (
+        <span className="text-[9px] font-bold text-white/40 shrink-0">#{player.number}</span>
+      )}
+
       {/* Lag-cirkel + position i compact-läge – lag först, sedan position */}
       {compact && !hideExtras && (
         <div className="flex items-center gap-1 shrink-0">

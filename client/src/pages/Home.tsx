@@ -254,6 +254,21 @@ export default function Home() {
     });
   }, []);
 
+  const handleClearTeam = useCallback((teamPrefix: string) => {
+    const removedPlayers: Player[] = [];
+    setLineup((prev) => {
+      const next = { ...prev };
+      for (const [slotId, player] of Object.entries(next)) {
+        if (slotId.startsWith(teamPrefix)) {
+          removedPlayers.push(player);
+          delete next[slotId];
+        }
+      }
+      return next;
+    });
+    setAvailablePlayers((prev) => [...removedPlayers, ...prev]);
+  }, []);
+
   const handleChangeNumber = useCallback((playerId: string, number: string) => {
     const update = (p: Player) => p.id === playerId ? { ...p, number } : p;
     setAvailablePlayers((prev) => prev.map(update));
@@ -373,6 +388,7 @@ export default function Home() {
                   onRemovePlayer={handleRemoveFromSlot}
                   onChangePosition={handleChangePosition}
                   onRenameTeam={setTeamAName}
+                  onClearTeam={() => handleClearTeam("team-a-")}
                   isWhite
                 />
 
@@ -395,6 +411,7 @@ export default function Home() {
                   onRemovePlayer={handleRemoveFromSlot}
                   onChangePosition={handleChangePosition}
                   onRenameTeam={setTeamBName}
+                  onClearTeam={() => handleClearTeam("team-b-")}
                   isWhite={false}
                 />
               </div>
