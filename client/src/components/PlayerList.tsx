@@ -16,6 +16,7 @@ interface PlayerListProps {
   onDeletePlayer: (playerId: string) => void;
   onChangePosition: (playerId: string, pos: Position) => void;
   onChangeTeamColor: (playerId: string, color: TeamColor) => void;
+  onChangeNumber: (playerId: string, number: string) => void;
 }
 
 type PosFilter = Position | "Alla";
@@ -37,7 +38,7 @@ const teamFilters: { label: string; value: TeamFilter; color: TeamColor }[] = [
   { label: "Inget lag", value: null, color: null },
 ];
 
-export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor }: PlayerListProps) {
+export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber }: PlayerListProps) {
   const [search, setSearch] = useState("");
   const [posFilter, setPosFilter] = useState<PosFilter>("Alla");
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("Alla");
@@ -46,6 +47,8 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
   const [newNumber, setNewNumber] = useState("");
   const [newPosition, setNewPosition] = useState<Position>("IB");
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; player: Player } | null>(null);
+  const [editingNumberId, setEditingNumberId] = useState<string | null>(null);
+  const [editingNumberValue, setEditingNumberValue] = useState("");
 
   const { setNodeRef, isOver } = useDroppable({ id: "player-list" });
 
@@ -173,12 +176,51 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                 e.preventDefault();
                 setContextMenu({ x: e.clientX, y: e.clientY, player });
               }}
+              className="flex items-center gap-1"
             >
-              <DraggablePlayerCard
-                player={player}
-                onChangePosition={(pos) => onChangePosition(player.id, pos)}
-                onChangeTeamColor={(color) => onChangeTeamColor(player.id, color)}
-              />
+              {/* Spelar-nr – klicka för att redigera */}
+              {editingNumberId === player.id ? (
+                <input
+                  type="text"
+                  value={editingNumberValue}
+                  autoFocus
+                  maxLength={3}
+                  onChange={(e) => setEditingNumberValue(e.target.value.replace(/\D/g, ""))}
+                  onBlur={() => {
+                    onChangeNumber(player.id, editingNumberValue);
+                    setEditingNumberId(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === "Escape") {
+                      if (e.key === "Enter") onChangeNumber(player.id, editingNumberValue);
+                      setEditingNumberId(null);
+                    }
+                  }}
+                  className="w-8 bg-white/10 border border-emerald-400/50 rounded px-1 py-0.5 text-xs text-white text-center outline-none shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <button
+                  title="Klicka för att redigera spelar-nr"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingNumberId(player.id);
+                    setEditingNumberValue(player.number ?? "");
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className="w-8 text-center text-xs font-bold text-white/50 hover:text-emerald-300 hover:bg-white/10 rounded px-1 py-0.5 transition-all shrink-0 border border-transparent hover:border-emerald-400/30"
+                >
+                  {player.number ? `#${player.number}` : <span className="text-white/20">—</span>}
+                </button>
+              )}
+              <div className="flex-1 min-w-0">
+                <DraggablePlayerCard
+                  player={player}
+                  onChangePosition={(pos) => onChangePosition(player.id, pos)}
+                  onChangeTeamColor={(color) => onChangeTeamColor(player.id, color)}
+                />
+              </div>
             </div>
           ))
         )}

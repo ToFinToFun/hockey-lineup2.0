@@ -254,6 +254,18 @@ export default function Home() {
     });
   }, []);
 
+  const handleChangeNumber = useCallback((playerId: string, number: string) => {
+    const update = (p: Player) => p.id === playerId ? { ...p, number } : p;
+    setAvailablePlayers((prev) => prev.map(update));
+    setLineup((prev) => {
+      const next = { ...prev };
+      for (const [slotId, p] of Object.entries(next)) {
+        if (p.id === playerId) next[slotId] = update(p);
+      }
+      return next;
+    });
+  }, []);
+
   const teamALineup: Record<string, Player> = {};
   const teamBLineup: Record<string, Player> = {};
   for (const [slotId, player] of Object.entries(lineup)) {
@@ -371,6 +383,7 @@ export default function Home() {
                   onDeletePlayer={handleDeletePlayer}
                   onChangePosition={handleChangePosition}
                   onChangeTeamColor={handleChangeTeamColor}
+                  onChangeNumber={handleChangeNumber}
                 />
 
                 {/* Lag B (GRÖNA) – höger */}
