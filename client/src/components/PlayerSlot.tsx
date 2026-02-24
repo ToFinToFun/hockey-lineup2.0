@@ -29,15 +29,16 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition }: PlayerS
   return (
     <div
       ref={setNodeRef}
+      style={{ touchAction: "none" }}
       className={`
-        flex items-center gap-2 rounded-md border transition-all duration-150 min-h-[32px] overflow-visible
+        flex items-center gap-2 rounded-md border transition-all duration-150 min-h-[36px] overflow-visible
         ${isOver && !player
           ? `${colors.bg} border-white/50 shadow-md ring-1 ring-white/30`
           : isOver && player
           ? "bg-white/5 border-white/40 ring-1 ring-white/20"
           : `${colors.bg} ${colors.border}`
         }
-        px-2 py-1
+        px-2 py-1.5
       `}
     >
       {/* Roll-badge */}

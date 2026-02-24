@@ -52,7 +52,7 @@ export function DraggablePlayerCard({
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{ ...style, touchAction: "none" }}
       className={`
         group relative flex items-center gap-1.5 rounded-md
         bg-white/10 border border-white/20 backdrop-blur-sm
@@ -61,9 +61,11 @@ export function DraggablePlayerCard({
         ${compact ? "px-1.5 py-1 text-xs" : "px-2 py-1.5 text-sm"}
         ${isDragging ? "shadow-2xl ring-2 ring-emerald-400/60" : ""}
       `}
+      {...attributes}
+      {...listeners}
     >
-      {/* Drag handle */}
-      <div className="cursor-grab active:cursor-grabbing shrink-0" {...attributes} {...listeners}>
+      {/* Drag handle – visas på desktop, hela kortet är draggable på touch */}
+      <div className="cursor-grab active:cursor-grabbing shrink-0 pointer-events-none">
         <GripVertical className="w-3 h-3 text-white/30" />
       </div>
 

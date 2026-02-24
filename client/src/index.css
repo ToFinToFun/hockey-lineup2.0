@@ -140,3 +140,30 @@ select option {
   background-color: #0d1a14;
   color: white;
 }
+
+/* Touch optimizations for drag and drop */
+/* Prevent text selection during drag on touch devices */
+[data-draggable="true"],
+[role="button"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Prevent page scroll when dragging over drop zones */
+.dnd-scroll-lock {
+  overflow: hidden;
+  touch-action: none;
+}
+
+/* Larger touch targets on mobile */
+@media (max-width: 768px) {
+  /* Make player cards taller for easier touch */
+  .player-card-touch {
+    min-height: 44px;
+  }
+  
+  /* Prevent callout on long press */
+  * {
+    -webkit-touch-callout: none;
+  }
+}

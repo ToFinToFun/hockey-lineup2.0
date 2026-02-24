@@ -135,8 +135,13 @@ export default function Home() {
   }, [availablePlayers, lineup, teamAName, teamBName]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 150,      // 150ms long-press to start drag
+        tolerance: 8,    // allow 8px movement before cancelling
+      },
+    })
   );
 
   const findPlayerSlot = useCallback(
