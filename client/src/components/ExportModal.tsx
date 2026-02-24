@@ -66,14 +66,15 @@ function drawTeamBlock(
   ctx.fillText(teamName.toUpperCase(), x, curY + 20);
   curY += 34;
 
-  // Sections
-  const goalkeeperSlots = slots.filter((s) => s.type === "goalkeeper");
-  const defenseSlots = slots.filter((s) => s.type === "defense");
-  const forwardSlots = slots.filter((s) => s.type === "forward");
-  const defenseGroups = groupSlots(defenseSlots);
-  const forwardGroups = groupSlots(forwardSlots);
+  // Sections – only include slots that have a player assigned
+  const goalkeeperSlots = slots.filter((s) => s.type === "goalkeeper" && lineup[s.id]);
+  const defenseSlots = slots.filter((s) => s.type === "defense" && lineup[s.id]);
+  const forwardSlots = slots.filter((s) => s.type === "forward" && lineup[s.id]);
+  const defenseGroups = groupSlots(defenseSlots).filter((g) => g.slots.length > 0);
+  const forwardGroups = groupSlots(forwardSlots).filter((g) => g.slots.length > 0);
 
-  const drawSection = (label: string, labelColor: string, drawContent: () => void) => {
+  const drawSection = (label: string, labelColor: string, slots: unknown[], drawContent: () => void) => {
+    if (slots.length === 0) return; // skip empty sections
     ctx.font = "bold 9px 'Arial', sans-serif";
     ctx.fillStyle = labelColor;
     ctx.letterSpacing = "2px";
@@ -117,12 +118,12 @@ function drawTeamBlock(
   };
 
   // Goalkeepers
-  drawSection("Målvakter", "#f59e0b", () => {
+  drawSection("Målvakter", "#f59e0b", goalkeeperSlots, () => {
     goalkeeperSlots.forEach((slot) => drawSlotRow(slot, lineup[slot.id] ?? null, x, width));
   });
 
   // Defense groups in 2-column grid
-  drawSection("Backar", "#60a5fa", () => {
+  drawSection("Backar", "#60a5fa", defenseSlots, () => {
     const colW = (width - 6) / 2;
     const startY = curY;
     defenseGroups.forEach((group, i) => {
@@ -153,7 +154,7 @@ function drawTeamBlock(
   });
 
   // Forward groups in 2-column grid
-  drawSection("Forwards", "#34d399", () => {
+  drawSection("Forwards", "#34d399", forwardSlots, () => {
     const colW = (width - 6) / 2;
     const startY = curY;
     forwardGroups.forEach((group, i) => {
