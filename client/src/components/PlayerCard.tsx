@@ -17,6 +17,7 @@ interface PlayerCardProps {
   onRemove?: () => void;
   onChangePosition?: (pos: Position) => void;
   onChangeTeamColor?: (color: TeamColor) => void;
+  onChangeNumber?: (number: string) => void;
   compact?: boolean;
   hideExtras?: boolean; // Dölj position/lag även i icke-compact (används i export)
 }
@@ -26,6 +27,7 @@ export function DraggablePlayerCard({
   onRemove,
   onChangePosition,
   onChangeTeamColor,
+  onChangeNumber,
   compact = false,
   hideExtras = false,
 }: PlayerCardProps) {
@@ -34,9 +36,12 @@ export function DraggablePlayerCard({
 
   const [showPosMenu, setShowPosMenu] = useState(false);
   const [showTeamMenu, setShowTeamMenu] = useState(false);
+  const [showNrInput, setShowNrInput] = useState(false);
+  const [nrValue, setNrValue] = useState("");
 
   const posBtnRef = useRef<HTMLButtonElement>(null);
   const teamBtnRef = useRef<HTMLButtonElement>(null);
+  const nrBtnRef = useRef<HTMLButtonElement>(null);
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -67,10 +72,65 @@ export function DraggablePlayerCard({
         {player.name}
       </span>
 
-      {/* Nummer – dölj i compact-läge och hideExtras */}
-      {player.number && !compact && !hideExtras && (
-        <span className="font-bold text-white/50 shrink-0 text-xs w-5">
-          {player.number}
+      {/* Nummer-badge – klickbar för att redigera, dölj i compact och hideExtras */}
+      {!compact && !hideExtras && onChangeNumber && (
+        <>
+          <button
+            ref={nrBtnRef}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              setNrValue(player.number ?? "");
+              setShowNrInput((v) => !v);
+              setShowPosMenu(false);
+              setShowTeamMenu(false);
+            }}
+            className="font-bold text-white/50 hover:text-emerald-300 hover:bg-white/10 shrink-0 text-xs px-1.5 py-0.5 rounded border border-transparent hover:border-emerald-400/30 transition-all min-w-[28px] text-center"
+            title="Klicka för att redigera spelar-nr"
+          >
+            {player.number ? `#${player.number}` : <span className="text-white/20 text-[9px]">#—</span>}
+          </button>
+          <PortalDropdown
+            anchorRef={nrBtnRef}
+            open={showNrInput}
+            onClose={() => setShowNrInput(false)}
+          >
+            <div className="px-3 py-2 flex items-center gap-2" onPointerDown={(e) => e.stopPropagation()}>
+              <span className="text-white/50 text-xs">#</span>
+              <input
+                type="text"
+                value={nrValue}
+                autoFocus
+                maxLength={3}
+                placeholder="Nr"
+                onChange={(e) => setNrValue(e.target.value.replace(/\D/g, ""))}
+                onKeyDown={(e) => {
+                  e.stopPropagation();
+                  if (e.key === "Enter") {
+                    onChangeNumber(nrValue);
+                    setShowNrInput(false);
+                  } else if (e.key === "Escape") {
+                    setShowNrInput(false);
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-14 bg-white/10 border border-emerald-400/40 rounded px-2 py-1 text-xs text-white text-center outline-none focus:border-emerald-400"
+              />
+              <button
+                onClick={(e) => { e.stopPropagation(); onChangeNumber(nrValue); setShowNrInput(false); }}
+                onPointerDown={(e) => e.stopPropagation()}
+                className="text-xs font-bold text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded hover:bg-white/10 transition-colors whitespace-nowrap"
+              >
+                Spara
+              </button>
+            </div>
+          </PortalDropdown>
+        </>
+      )}
+      {/* Nummer – visa i compact-läge utan redigering */}
+      {player.number && !compact && !hideExtras && !onChangeNumber && (
+        <span className="font-bold text-white/50 shrink-0 text-xs">
+          #{player.number}
         </span>
       )}
 
