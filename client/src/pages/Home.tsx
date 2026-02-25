@@ -623,13 +623,12 @@ export default function Home() {
             ))}
           </div>
 
-          <main className="flex-1 px-2 md:px-4 pb-4 min-h-0" ref={exportRef}>
+          <main className="px-2 md:px-4 pb-8" ref={exportRef}>
             {/* Desktop grid */}
             <div
-              className="hidden md:grid gap-2 md:gap-3 h-full"
+              className="hidden md:grid gap-2 md:gap-3"
               style={{
-                gridTemplateColumns: "minmax(520px, 1fr) 300px minmax(520px, 1fr)",
-                height: "calc(100vh - 90px)",
+                gridTemplateColumns: "minmax(0, 1fr) 300px minmax(0, 1fr)",
               }}
             >
               {/* Lag A (VITA) – vänster */}
@@ -646,8 +645,8 @@ export default function Home() {
               />
 
               {/* Spelarlista (mitten) */}
-              <div className="flex flex-col gap-2 h-full min-h-0">
-                <div className="flex-1 min-h-0">
+              <div className="flex flex-col gap-2">
+                <div>
                   <PlayerList
                     players={availablePlayers}
                     onAddPlayer={handleAddPlayer}
@@ -681,10 +680,7 @@ export default function Home() {
             </div>
 
             {/* Mobilvy – en flik i taget */}
-            <div
-              className="md:hidden h-full"
-              style={{ height: "calc(100vh - 130px)" }}
-            >
+            <div className="md:hidden">
               {mobileTab === "vita" && (
                 <TeamPanel
                   teamId="team-a"
