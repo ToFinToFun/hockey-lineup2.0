@@ -2,7 +2,8 @@
 // Design: Industrial Ice Arena
 // - Firebase Realtime Database synkronisering (alla användare ser samma data)
 // - localStorage som fallback om Firebase är offline
-// - Ta bort spelare, export av uppställning
+// - Ångra-funktion (Ctrl+Z + knapp i header)
+// - In-app bekräftelsedialog för Rensa
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import {
@@ -21,8 +22,9 @@ import { PlayerList } from "@/components/PlayerList";
 import { TeamPanel } from "@/components/TeamPanel";
 import { PlayerCardOverlay } from "@/components/PlayerCard";
 import { ExportModal } from "@/components/ExportModal";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { saveStateToFirebase, subscribeToFirebase, type AppState } from "@/lib/firebase";
-import { Download, Wifi, WifiOff } from "lucide-react";
+import { Download, Wifi, WifiOff, Undo2 } from "lucide-react";
 
 type MobileTab = "vita" | "trupp" | "grona";
 
@@ -33,6 +35,7 @@ const LOGO_GREEN = "https://files.manuscdn.com/user_upload_by_module/session_fil
 const LOGO_WHITE = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/OmjlmGnLDLTblNdj.png";
 
 const STORAGE_KEY = "stalstadens-lineup-v2";
+const MAX_UNDO = 30; // max antal steg i ångra-historiken
 
 // Alla slots för respektive lag (skapas en gång, ändras ej)
 const TEAM_A_SLOTS = createTeamSlots("team-a");
@@ -49,6 +52,12 @@ interface SavedState {
   lineup: Record<string, Player>;
   teamAName: string;
   teamBName: string;
+}
+
+// En snapshot av det relevanta state som kan ångras
+interface UndoSnapshot {
+  availablePlayers: Player[];
+  lineup: Record<string, Player>;
 }
 
 function loadLocalState(): SavedState | null {
@@ -78,12 +87,25 @@ export default function Home() {
   const [teamAName, setTeamAName] = useState(local?.teamAName ?? "VITA");
   const [teamBName, setTeamBName] = useState(local?.teamBName ?? "GRÖNA");
   const [lineup, setLineup] = useState<Record<string, Player>>(local?.lineup ?? {});
-  // Ref som alltid pekar på senaste lineup-värdet (används i handleClearTeam)
+
+  // Ref som alltid pekar på senaste lineup-värdet (undviker stale closure)
   const lineupRef = useRef<Record<string, Player>>(local?.lineup ?? {});
   useEffect(() => { lineupRef.current = lineup; }, [lineup]);
+
+  // Ref för availablePlayers (undviker stale closure i undo)
+  const availablePlayersRef = useRef<Player[]>(local?.availablePlayers ?? initialPlayers);
+  useEffect(() => { availablePlayersRef.current = availablePlayers; }, [availablePlayers]);
+
   const [activePlayer, setActivePlayer] = useState<Player | null>(null);
   const [showExport, setShowExport] = useState(false);
   const [firebaseConnected, setFirebaseConnected] = useState<boolean | null>(null);
+
+  // Ångra-historik
+  const [undoStack, setUndoStack] = useState<UndoSnapshot[]>([]);
+  const skipNextUndoSnapshot = useRef(false); // hoppa över snapshot vid ångra-återställning
+
+  // Bekräftelsedialog för Rensa
+  const [confirmClear, setConfirmClear] = useState<{ teamPrefix: string; teamName: string } | null>(null);
 
   // Prevent writing back to Firebase when we just received an update from it
   const isReceivingFromFirebase = useRef(false);
@@ -98,6 +120,7 @@ export default function Home() {
       setFirebaseConnected(true);
       if (state) {
         isReceivingFromFirebase.current = true;
+        skipNextUndoSnapshot.current = true; // Firebase-uppdateringar ska inte läggas i undo-stacken
         setAvailablePlayers(state.players ?? initialPlayers);
         setLineup(state.lineup ?? {});
         setTeamAName(state.teamAName ?? "VITA");
@@ -138,6 +161,50 @@ export default function Home() {
       teamBName,
     });
   }, [availablePlayers, lineup, teamAName, teamBName]);
+
+  // Spara en snapshot i undo-stacken
+  const pushUndo = useCallback(() => {
+    if (skipNextUndoSnapshot.current) {
+      skipNextUndoSnapshot.current = false;
+      return;
+    }
+    const snapshot: UndoSnapshot = {
+      availablePlayers: availablePlayersRef.current,
+      lineup: lineupRef.current,
+    };
+    setUndoStack((prev) => {
+      const next = [...prev, snapshot];
+      return next.length > MAX_UNDO ? next.slice(next.length - MAX_UNDO) : next;
+    });
+  }, []);
+
+  // Återställ senaste snapshot
+  const handleUndo = useCallback(() => {
+    setUndoStack((prev) => {
+      if (prev.length === 0) return prev;
+      const snapshot = prev[prev.length - 1];
+      isReceivingFromFirebase.current = true;
+      skipNextUndoSnapshot.current = true;
+      setAvailablePlayers(snapshot.availablePlayers);
+      setLineup(snapshot.lineup);
+      setTimeout(() => {
+        isReceivingFromFirebase.current = false;
+      }, 200);
+      return prev.slice(0, prev.length - 1);
+    });
+  }, []);
+
+  // Ctrl+Z / Cmd+Z tangentbordsgenväg
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [handleUndo]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -182,6 +249,8 @@ export default function Home() {
         : availablePlayers.find((p) => p.id === playerId);
     if (!player) return;
 
+    pushUndo(); // spara snapshot innan drag-ändringen
+
     if (targetId === "player-list") {
       if (!sourceSlot) return;
       setLineup((prev) => {
@@ -217,19 +286,21 @@ export default function Home() {
   const handleRemoveFromSlot = useCallback((slotId: string) => {
     const player = lineup[slotId];
     if (!player) return;
+    pushUndo();
     setLineup((prev) => {
       const next = { ...prev };
       delete next[slotId];
       return next;
     });
     setAvailablePlayers((prev) => [player, ...prev]);
-  }, [lineup]);
+  }, [lineup, pushUndo]);
 
   const handleAddPlayer = useCallback((player: Player) => {
     setAvailablePlayers((prev) => [...prev, player]);
   }, []);
 
   const handleDeletePlayer = useCallback((playerId: string) => {
+    pushUndo();
     setAvailablePlayers((prev) => prev.filter((p) => p.id !== playerId));
     setLineup((prev) => {
       const next = { ...prev };
@@ -238,7 +309,7 @@ export default function Home() {
       }
       return next;
     });
-  }, []);
+  }, [pushUndo]);
 
   const handleChangeTeamColor = useCallback((playerId: string, color: TeamColor) => {
     const update = (p: Player) => p.id === playerId ? { ...p, teamColor: color } : p;
@@ -264,9 +335,19 @@ export default function Home() {
     });
   }, []);
 
-  const handleClearTeam = useCallback((teamPrefix: string) => {
+  // Öppna bekräftelsedialog för Rensa
+  const handleRequestClearTeam = useCallback((teamPrefix: string, teamName: string) => {
+    setConfirmClear({ teamPrefix, teamName });
+  }, []);
+
+  // Utför Rensa efter bekräftelse
+  const handleConfirmClearTeam = useCallback(() => {
+    if (!confirmClear) return;
+    setConfirmClear(null);
+
+    const { teamPrefix } = confirmClear;
+
     // Blockera inkommande Firebase-uppdateringar under operationen
-    // så att synken inte skriver över våra ändringar
     isReceivingFromFirebase.current = true;
 
     const currentLineup = lineupRef.current;
@@ -280,8 +361,9 @@ export default function Home() {
       }
     }
 
-    setLineup(newLineup);
     if (removedPlayers.length > 0) {
+      pushUndo(); // spara snapshot innan rensning
+      setLineup(newLineup);
       setAvailablePlayers((prev) => [...removedPlayers, ...prev]);
     }
 
@@ -289,7 +371,7 @@ export default function Home() {
     setTimeout(() => {
       isReceivingFromFirebase.current = false;
     }, 200);
-  }, [isReceivingFromFirebase]);
+  }, [confirmClear, pushUndo]);
 
   const handleChangeNumber = useCallback((playerId: string, number: string) => {
     const update = (p: Player) => p.id === playerId ? { ...p, number } : p;
@@ -351,7 +433,7 @@ export default function Home() {
                   A-lag Herrar · Formations-verktyg
                 </p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 md:gap-3">
                 {/* Firebase sync status */}
                 <div className="flex items-center gap-1.5">
                   {firebaseConnected === null ? (
@@ -385,13 +467,28 @@ export default function Home() {
                     Dra spelare till en plats · Klicka badge för att ändra position
                   </span>
                 </div>
+
+                {/* Ångra-knapp */}
+                <button
+                  onClick={handleUndo}
+                  disabled={undoStack.length === 0}
+                  title="Ångra senaste åtgärd (Ctrl+Z)"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/15 text-white/50 text-xs font-bold hover:bg-white/10 hover:text-white/80 disabled:opacity-30 disabled:cursor-not-allowed transition-all uppercase tracking-wider"
+                >
+                  <Undo2 className="w-3.5 h-3.5" />
+                  <span className="hidden md:inline">Ångra</span>
+                  {undoStack.length > 0 && (
+                    <span className="text-[9px] text-white/30">({undoStack.length})</span>
+                  )}
+                </button>
+
                 {/* Export-knapp */}
                 <button
                   onClick={() => setShowExport(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-bold hover:bg-emerald-500/30 transition-all uppercase tracking-wider"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  Exportera
+                  <span className="hidden md:inline">Exportera</span>
                 </button>
               </div>
             </div>
@@ -420,7 +517,6 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Desktop: Tre-kolumns layout */}
           <main className="flex-1 px-2 md:px-4 pb-4 min-h-0" ref={exportRef}>
             {/* Desktop grid */}
             <div
@@ -439,7 +535,7 @@ export default function Home() {
                 onRemovePlayer={handleRemoveFromSlot}
                 onChangePosition={handleChangePosition}
                 onRenameTeam={setTeamAName}
-                onClearTeam={() => handleClearTeam("team-a-")}
+                onClearTeam={() => handleRequestClearTeam("team-a-", teamAName)}
                 isWhite
               />
 
@@ -462,7 +558,7 @@ export default function Home() {
                 onRemovePlayer={handleRemoveFromSlot}
                 onChangePosition={handleChangePosition}
                 onRenameTeam={setTeamBName}
-                onClearTeam={() => handleClearTeam("team-b-")}
+                onClearTeam={() => handleRequestClearTeam("team-b-", teamBName)}
                 isWhite={false}
               />
             </div>
@@ -481,7 +577,7 @@ export default function Home() {
                   onRemovePlayer={handleRemoveFromSlot}
                   onChangePosition={handleChangePosition}
                   onRenameTeam={setTeamAName}
-                  onClearTeam={() => handleClearTeam("team-a-")}
+                  onClearTeam={() => handleRequestClearTeam("team-a-", teamAName)}
                   isWhite
                 />
               )}
@@ -504,7 +600,7 @@ export default function Home() {
                   onRemovePlayer={handleRemoveFromSlot}
                   onChangePosition={handleChangePosition}
                   onRenameTeam={setTeamBName}
-                  onClearTeam={() => handleClearTeam("team-b-")}
+                  onClearTeam={() => handleRequestClearTeam("team-b-", teamBName)}
                   isWhite={false}
                 />
               )}
@@ -531,6 +627,19 @@ export default function Home() {
           logoGreen={LOGO_GREEN}
           logoWhite={LOGO_WHITE}
           bgUrl={BG_URL}
+        />
+      )}
+
+      {/* Bekräftelsedialog för Rensa */}
+      {confirmClear && (
+        <ConfirmDialog
+          title="Rensa lag"
+          message={`Vill du flytta tillbaka alla spelare från ${confirmClear.teamName} till spelartruppen?`}
+          confirmLabel="Rensa"
+          cancelLabel="Avbryt"
+          danger
+          onConfirm={handleConfirmClearTeam}
+          onCancel={() => setConfirmClear(null)}
         />
       )}
     </DndContext>
