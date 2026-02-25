@@ -13,7 +13,7 @@ import {
   TouchSensor,
   useSensor,
   useSensors,
-  closestCenter,
+  closestCorners,
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
@@ -501,7 +501,7 @@ export default function Home() {
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={closestCorners}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >

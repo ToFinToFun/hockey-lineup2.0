@@ -48,11 +48,10 @@ export function DraggablePlayerCard({
   const nrBtnRef = useRef<HTMLButtonElement>(null);
   const nameBtnRef = useRef<HTMLButtonElement>(null);
 
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.4 : 1,
-    zIndex: isDragging ? 999 : undefined,
-  };
+  // Under drag: göm originalet helt (DragOverlay hanterar all visuell feedback)
+  const style = isDragging
+    ? { opacity: 0, pointerEvents: "none" as const }
+    : {};
 
   return (
     <div
