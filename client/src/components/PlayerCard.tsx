@@ -74,6 +74,11 @@ export function DraggablePlayerCard({
         {player.name}
       </span>
 
+      {/* Spelar-nr i compact-läge – efter namn */}
+      {compact && !hideExtras && player.number && (
+        <span className="text-[9px] font-bold text-white/40 shrink-0">#{player.number}</span>
+      )}
+
       {/* Nummer-badge – klickbar för att redigera, dölj i compact och hideExtras */}
       {!compact && !hideExtras && onChangeNumber && (
         <>
@@ -129,16 +134,11 @@ export function DraggablePlayerCard({
           </PortalDropdown>
         </>
       )}
-      {/* Nummer – visa i compact-läge utan redigering */}
+      {/* Nummer – visa utan redigering (ej compact, ej hideExtras) */}
       {player.number && !compact && !hideExtras && !onChangeNumber && (
         <span className="font-bold text-white/50 shrink-0 text-xs">
           #{player.number}
         </span>
-      )}
-
-      {/* Spelar-nr i compact-läge */}
-      {compact && !hideExtras && player.number && (
-        <span className="text-[9px] font-bold text-white/40 shrink-0">#{player.number}</span>
       )}
 
       {/* Lag-cirkel + position i compact-läge – lag först, sedan position */}
@@ -295,12 +295,12 @@ export function PlayerCardOverlay({ player }: { player: Player }) {
     <div className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm bg-emerald-900/90 border border-emerald-400/60 backdrop-blur-sm shadow-2xl ring-2 ring-emerald-400/40 cursor-grabbing select-none">
       <GripVertical className="w-3 h-3 text-emerald-300/50 shrink-0" />
       <TeamColorIndicator teamColor={player.teamColor ?? null} size={14} />
+      <span className="text-white font-medium truncate">{player.name}</span>
       {player.number && (
         <span className="font-bold text-emerald-300/70 text-xs w-5 shrink-0">
           {player.number}
         </span>
       )}
-      <span className="text-white font-medium truncate">{player.name}</span>
       <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position)}`}>
         {player.position}
       </span>
