@@ -515,6 +515,7 @@ export default function Home() {
       sensors={sensors}
       collisionDetection={pointerWithinOrClosest}
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+      autoScroll={false}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >

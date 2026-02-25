@@ -227,8 +227,8 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
         </div>
       </div>
 
-      {/* Spelarlista */}
-      <div className="p-2 space-y-1">
+      {/* Spelarlista – scrollbar med fast höjd */}
+      <div className="overflow-y-auto p-2 space-y-1" style={{ maxHeight: "calc(100vh - 280px)", overscrollBehavior: "contain" }}>
         {sorted.length === 0 ? (
           <div className="text-center text-white/30 text-xs italic py-8">
             Inga spelare hittades
