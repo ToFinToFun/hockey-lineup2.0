@@ -29,7 +29,7 @@ import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { saveStateToFirebase, subscribeToFirebase, saveLineupToFirebase, type AppState, type SavedLineup } from "@/lib/firebase";
 import { Download, Wifi, WifiOff, Share2, Check } from "lucide-react";
 import { createPortal } from "react-dom"; // används av PlayerList context-meny
-// @dnd-kit/modifiers installerat men ej använt just nu
+import { snapCenterToCursor } from "@dnd-kit/modifiers";
 
 type MobileTab = "vita" | "trupp" | "grona";
 
@@ -732,7 +732,7 @@ export default function Home() {
         </div>
 
         {/* Drag overlay – inuti DndContext, position:fixed så den alltid syns över allt */}
-        <DragOverlay style={{ zIndex: 99999, pointerEvents: "none" }}>
+        <DragOverlay style={{ zIndex: 99999, pointerEvents: "none" }} modifiers={[snapCenterToCursor]}>
           {activePlayer ? <PlayerCardOverlay player={activePlayer} /> : null}
         </DragOverlay>
       </div>
