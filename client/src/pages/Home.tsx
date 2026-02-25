@@ -816,8 +816,18 @@ export default function Home() {
             </div>
 
             {/* Mobilvy – alla flikar renderas alltid (för dnd-kit droppables), men inaktiva döljs */}
-            <div className="md:hidden">
-              <div style={{ display: mobileTab === "vita" ? "block" : "none" }}>
+            {/* Vi använder visibility:hidden + position:absolute istället för display:none */}
+            {/* så att dnd-kit kan mäta droppables korrekt även för inaktiva flikar */}
+            <div className="md:hidden" style={{ position: "relative" }}>
+              <div
+                style={{
+                  visibility: mobileTab === "vita" ? "visible" : "hidden",
+                  position: mobileTab === "vita" ? "relative" : "absolute",
+                  top: 0, left: 0, right: 0,
+                  pointerEvents: mobileTab === "vita" ? "auto" : "none",
+                  zIndex: mobileTab === "vita" ? 1 : 0,
+                }}
+              >
                 <TeamPanel
                   teamId="team-a"
                   teamName={teamAName}
@@ -830,7 +840,15 @@ export default function Home() {
                   isWhite
                 />
               </div>
-              <div style={{ display: mobileTab === "trupp" ? "block" : "none" }}>
+              <div
+                style={{
+                  visibility: mobileTab === "trupp" ? "visible" : "hidden",
+                  position: mobileTab === "trupp" ? "relative" : "absolute",
+                  top: 0, left: 0, right: 0,
+                  pointerEvents: mobileTab === "trupp" ? "auto" : "none",
+                  zIndex: mobileTab === "trupp" ? 1 : 0,
+                }}
+              >
                 <div className="flex flex-col gap-2 h-full min-h-0">
                   <div className="flex-1 min-h-0">
                     <PlayerList
@@ -852,7 +870,15 @@ export default function Home() {
                   />
                 </div>
               </div>
-              <div style={{ display: mobileTab === "grona" ? "block" : "none" }}>
+              <div
+                style={{
+                  visibility: mobileTab === "grona" ? "visible" : "hidden",
+                  position: mobileTab === "grona" ? "relative" : "absolute",
+                  top: 0, left: 0, right: 0,
+                  pointerEvents: mobileTab === "grona" ? "auto" : "none",
+                  zIndex: mobileTab === "grona" ? 1 : 0,
+                }}
+              >
                 <TeamPanel
                   teamId="team-b"
                   teamName={teamBName}

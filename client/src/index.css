@@ -169,9 +169,10 @@ select option {
 }
 
 /* Hold-timer progress animation for long-press delete */
+/* r=14 → circumference = 2 * PI * 14 = 87.96 */
 @keyframes holdProgress {
   from {
-    stroke-dashoffset: 113.097; /* 2 * PI * 18 */
+    stroke-dashoffset: 87.96;
   }
   to {
     stroke-dashoffset: 0;
