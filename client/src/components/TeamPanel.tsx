@@ -155,8 +155,8 @@ export function TeamPanel({
         </div>
       </div>
 
-      {/* Scrollbar slots */}
-      <div className="flex-1 overflow-y-auto overflow-x-visible min-h-0 p-2 space-y-2">
+      {/* Slots – scrollar med sidan (ingen intern scrollbar) */}
+      <div className="p-2 space-y-2">
 
         {/* Målvakter – en per rad på mobil, sida vid sida på desktop */}
         <Section label="Målvakter" type="goalkeeper">

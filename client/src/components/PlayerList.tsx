@@ -269,16 +269,10 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
           sorted.map((player) => (
             <div
               key={player.id}
-              className="relative"
               onContextMenu={(e) => {
                 e.preventDefault();
                 setContextMenu({ x: e.clientX, y: e.clientY, player });
               }}
-              onPointerDown={(e) => handleLongPressStart(e, player)}
-              onPointerUp={handleLongPressEnd}
-              onPointerMove={handleLongPressMove}
-              onPointerCancel={handleLongPressEnd}
-              onPointerLeave={handleLongPressEnd}
             >
               <DraggablePlayerCard
                 player={player}
@@ -287,30 +281,12 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                 onChangeNumber={(nr) => onChangeNumber(player.id, nr)}
                 onChangeName={(name) => onChangeName(player.id, name)}
                 onChangeCaptainRole={(role) => onChangeCaptainRole(player.id, role)}
+                onLongPress={(e) => handleLongPressStart(e, player)}
+                onLongPressEnd={handleLongPressEnd}
+                onLongPressMove={handleLongPressMove}
+                isHolding={holdingPlayerId === player.id}
+                holdDuration={LONG_PRESS_DURATION}
               />
-              {/* Visuell hold-timer overlay */}
-              {holdingPlayerId === player.id && (
-                <div className="absolute inset-0 rounded-lg pointer-events-none flex items-center justify-center z-10"
-                  style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)' }}
-                >
-                  <svg width="44" height="44" viewBox="0 0 44 44" style={{ transform: 'rotate(-90deg)' }}>
-                    <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(239,68,68,0.15)" strokeWidth="3" />
-                    <circle
-                      cx="22" cy="22" r="18"
-                      fill="none"
-                      stroke="rgb(239,68,68)"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeDasharray={`${2 * Math.PI * 18}`}
-                      strokeDashoffset={`${2 * Math.PI * 18}`}
-                      style={{
-                        animation: `holdProgress ${LONG_PRESS_DURATION}ms linear forwards`,
-                      }}
-                    />
-                  </svg>
-                  <span className="absolute text-[10px] font-bold text-red-400" style={{ fontFamily: "'Oswald', sans-serif" }}>HÅLL</span>
-                </div>
-              )}
             </div>
           ))
         )}
