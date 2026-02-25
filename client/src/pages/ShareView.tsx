@@ -39,23 +39,22 @@ function formatDate(ts: number): string {
   });
 }
 
-// Positionsbaserade färger för vänsterkant och bakgrundston
-function getPositionRowStyle(position: string): { border: string; bg: string } {
-  switch (position) {
-    case "MV":  return { border: "border-l-2 border-l-amber-400/70",   bg: "bg-amber-500/8" };
-    case "B":   return { border: "border-l-2 border-l-blue-400/70",    bg: "bg-blue-500/8" };
-    case "C":   return { border: "border-l-2 border-l-purple-400/70",  bg: "bg-purple-500/8" };
-    case "F":   return { border: "border-l-2 border-l-emerald-400/70", bg: "bg-emerald-500/8" };
-    case "LW":  return { border: "border-l-2 border-l-emerald-400/70", bg: "bg-emerald-500/8" };
-    case "RW":  return { border: "border-l-2 border-l-emerald-400/70", bg: "bg-emerald-500/8" };
-    case "IB":  return { border: "border-l-2 border-l-white/20",       bg: "bg-white/5" };
-    default:    return { border: "border-l-2 border-l-white/15",       bg: "bg-white/4" };
+// Positionsfärg baserat på slot-shortLabel (spelarens roll i uppställningen)
+function getSlotRowStyle(shortLabel: string): { border: string; bg: string; badgeColor: string } {
+  switch (shortLabel) {
+    case "MV":
+    case "RES": return { border: "border-l-2 border-l-amber-400/70",   bg: "bg-amber-500/8",   badgeColor: "bg-amber-500/25 text-amber-300" };
+    case "B":   return { border: "border-l-2 border-l-blue-400/70",    bg: "bg-blue-500/8",    badgeColor: "bg-blue-500/25 text-blue-300" };
+    case "C":   return { border: "border-l-2 border-l-purple-400/70",  bg: "bg-purple-500/8",  badgeColor: "bg-purple-500/25 text-purple-300" };
+    case "LW":
+    case "RW":  return { border: "border-l-2 border-l-emerald-400/70", bg: "bg-emerald-500/8", badgeColor: "bg-emerald-500/25 text-emerald-300" };
+    default:    return { border: "border-l-2 border-l-white/15",       bg: "bg-white/4",       badgeColor: "bg-white/10 text-white/50" };
   }
 }
 
 // En enskild slot-rad i den skrivskyddade vyn
-function SlotRow({ player, label }: { player: Player | undefined; label: string }) {
-  const rowStyle = player ? getPositionRowStyle(player.position) : null;
+function SlotRow({ player, label, shortLabel }: { player: Player | undefined; label: string; shortLabel: string }) {
+  const rowStyle = player ? getSlotRowStyle(shortLabel) : null;
   return (
     <div
       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors border border-white/8 ${
@@ -64,10 +63,8 @@ function SlotRow({ player, label }: { player: Player | undefined; label: string 
     >
       {player ? (
         <>
-          <span
-            className={`text-[9px] font-black px-1.5 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position)}`}
-          >
-            {player.position}
+          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded shrink-0 ${rowStyle?.badgeColor ?? ""}`}>
+            {shortLabel}
           </span>
           <span className="text-white/90 font-semibold truncate flex-1">
             {player.name}
@@ -123,6 +120,7 @@ function TeamSection({
                 key={slot.id}
                 player={lineup[slot.id]}
                 label={slot.label}
+                shortLabel={slot.shortLabel}
               />
             ))}
           </div>
