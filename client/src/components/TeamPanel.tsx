@@ -118,7 +118,7 @@ export function TeamPanel({
   return (
     <div className={`
       flex flex-col rounded-xl border backdrop-blur-md
-      bg-black/25 ${borderAccent} h-full overflow-hidden
+      bg-black/25 ${borderAccent} h-full overflow-y-auto
       ${shadowColor} shadow-xl
     `}>
       {/* Lagnamn-header med logotyp */}

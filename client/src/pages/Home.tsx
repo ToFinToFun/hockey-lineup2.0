@@ -13,6 +13,7 @@ import {
   TouchSensor,
   useSensor,
   useSensors,
+  closestCenter,
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
@@ -26,6 +27,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { saveStateToFirebase, subscribeToFirebase, saveLineupToFirebase, type AppState, type SavedLineup } from "@/lib/firebase";
 import { Download, Wifi, WifiOff, Share2, Check } from "lucide-react";
+import { createPortal } from "react-dom";
 
 type MobileTab = "vita" | "trupp" | "grona";
 
@@ -499,6 +501,7 @@ export default function Home() {
   return (
     <DndContext
       sensors={sensors}
+      collisionDetection={closestCenter}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
@@ -731,10 +734,13 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Drag overlay */}
-      <DragOverlay>
-        {activePlayer ? <PlayerCardOverlay player={activePlayer} /> : null}
-      </DragOverlay>
+      {/* Drag overlay – portaled to body to avoid stacking context issues */}
+      {createPortal(
+        <DragOverlay zIndex={99999}>
+          {activePlayer ? <PlayerCardOverlay player={activePlayer} /> : null}
+        </DragOverlay>,
+        document.body
+      )}
 
       {/* Export-modal */}
       {showExport && (
