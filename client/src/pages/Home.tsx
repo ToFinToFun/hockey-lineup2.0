@@ -78,6 +78,9 @@ export default function Home() {
   const [teamAName, setTeamAName] = useState(local?.teamAName ?? "VITA");
   const [teamBName, setTeamBName] = useState(local?.teamBName ?? "GRÖNA");
   const [lineup, setLineup] = useState<Record<string, Player>>(local?.lineup ?? {});
+  // Ref som alltid pekar på senaste lineup-värdet (används i handleClearTeam)
+  const lineupRef = useRef<Record<string, Player>>(local?.lineup ?? {});
+  useEffect(() => { lineupRef.current = lineup; }, [lineup]);
   const [activePlayer, setActivePlayer] = useState<Player | null>(null);
   const [showExport, setShowExport] = useState(false);
   const [firebaseConnected, setFirebaseConnected] = useState<boolean | null>(null);
@@ -262,23 +265,31 @@ export default function Home() {
   }, []);
 
   const handleClearTeam = useCallback((teamPrefix: string) => {
-    // Läs ut spelarna ur lineup direkt (synkront) innan vi uppdaterar state
-    setLineup((prev) => {
-      const next = { ...prev };
-      const removedPlayers: Player[] = [];
-      for (const [slotId, player] of Object.entries(next)) {
-        if (slotId.startsWith(teamPrefix)) {
-          removedPlayers.push(player);
-          delete next[slotId];
-        }
+    // Blockera inkommande Firebase-uppdateringar under operationen
+    // så att synken inte skriver över våra ändringar
+    isReceivingFromFirebase.current = true;
+
+    const currentLineup = lineupRef.current;
+    const removedPlayers: Player[] = [];
+    const newLineup: Record<string, Player> = {};
+    for (const [slotId, player] of Object.entries(currentLineup)) {
+      if (slotId.startsWith(teamPrefix)) {
+        removedPlayers.push(player);
+      } else {
+        newLineup[slotId] = player;
       }
-      // Lägg tillbaka spelarna i truppen inom samma render-cykel
-      if (removedPlayers.length > 0) {
-        setAvailablePlayers((prevPlayers) => [...removedPlayers, ...prevPlayers]);
-      }
-      return next;
-    });
-  }, []);
+    }
+
+    setLineup(newLineup);
+    if (removedPlayers.length > 0) {
+      setAvailablePlayers((prev) => [...removedPlayers, ...prev]);
+    }
+
+    // Återaktivera Firebase-synk efter att React hunnit rendera
+    setTimeout(() => {
+      isReceivingFromFirebase.current = false;
+    }, 200);
+  }, [isReceivingFromFirebase]);
 
   const handleChangeNumber = useCallback((playerId: string, number: string) => {
     const update = (p: Player) => p.id === playerId ? { ...p, number } : p;
