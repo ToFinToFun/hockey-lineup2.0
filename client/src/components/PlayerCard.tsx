@@ -69,15 +69,12 @@ export function DraggablePlayerCard({
         <GripVertical className="w-3 h-3 text-white/30" />
       </div>
 
-      {/* Namn */}
+      {/* Namn + nr inline i compact-läge */}
       <span className="text-white font-medium truncate flex-1 leading-tight">
-        {player.name}
+        {player.name}{compact && !hideExtras && player.number ? (
+          <span className="text-white/40 font-normal ml-1"> #{player.number}</span>
+        ) : null}
       </span>
-
-      {/* Spelar-nr i compact-läge – efter namn */}
-      {compact && !hideExtras && player.number && (
-        <span className="text-[9px] font-bold text-white/40 shrink-0">#{player.number}</span>
-      )}
 
       {/* Nummer-badge – klickbar för att redigera, dölj i compact och hideExtras */}
       {!compact && !hideExtras && onChangeNumber && (

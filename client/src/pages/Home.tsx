@@ -297,6 +297,10 @@ export default function Home() {
     else if (slotId.startsWith("team-b-")) teamBLineup[slotId] = player;
   }
 
+  const teamACount = Object.keys(teamALineup).length;
+  const teamBCount = Object.keys(teamBLineup).length;
+  const totalSlots = TEAM_A_SLOTS.length; // same for both teams
+
   return (
     <DndContext
       sensors={sensors}
@@ -381,9 +385,9 @@ export default function Home() {
           {/* Mobilflikar – syns bara på smala skärmar */}
           <div className="md:hidden flex gap-0 px-2 pb-2 shrink-0">
             {([
-              { key: "vita" as MobileTab, label: teamAName, color: "border-slate-300/60 text-slate-200" },
+              { key: "vita" as MobileTab, label: `${teamAName} (${teamACount}/${totalSlots})`, color: "border-slate-300/60 text-slate-200" },
               { key: "trupp" as MobileTab, label: "Trupp", color: "border-emerald-400/60 text-emerald-300" },
-              { key: "grona" as MobileTab, label: teamBName, color: "border-emerald-500/60 text-emerald-400" },
+              { key: "grona" as MobileTab, label: `${teamBName} (${teamBCount}/${totalSlots})`, color: "border-emerald-500/60 text-emerald-400" },
             ]).map(({ key, label, color }) => (
               <button
                 key={key}

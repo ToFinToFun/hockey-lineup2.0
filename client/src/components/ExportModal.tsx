@@ -200,6 +200,28 @@ export function ExportModal({
   const [exporting, setExporting] = useState(false);
   const [rendered, setRendered] = useState(false);
 
+  // Calculate dynamic height based on placed players
+  const calcTeamHeight = (slots: Slot[], lineup: Record<string, Player>): number => {
+    const gkSlots = slots.filter((s) => s.type === 'goalkeeper' && lineup[s.id]);
+    const defSlots = slots.filter((s) => s.type === 'defense' && lineup[s.id]);
+    const fwdSlots = slots.filter((s) => s.type === 'forward' && lineup[s.id]);
+    const defGroups = groupSlots(defSlots).filter((g) => g.slots.length > 0);
+    const fwdGroups = groupSlots(fwdSlots).filter((g) => g.slots.length > 0);
+    let h = 34; // team name
+    if (gkSlots.length > 0) h += 16 + gkSlots.length * 22 + 6;
+    if (defSlots.length > 0) {
+      const rows = Math.ceil(defGroups.length / 2);
+      const slotsPerGroup = defGroups[0]?.slots.length ?? 2;
+      h += 16 + rows * (slotsPerGroup * 22 + 22) + 6;
+    }
+    if (fwdSlots.length > 0) {
+      const rows = Math.ceil(fwdGroups.length / 2);
+      const slotsPerGroup = fwdGroups[0]?.slots.length ?? 3;
+      h += 16 + rows * (slotsPerGroup * 22 + 22) + 6;
+    }
+    return h;
+  };
+
   const renderCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -207,7 +229,11 @@ export function ExportModal({
     if (!ctx) return;
 
     const W = 960;
-    const H = 700;
+    // Dynamic height: header (88px) + max of both teams + footer (30px)
+    const teamAH = calcTeamHeight(teamASlots, teamALineup);
+    const teamBH = calcTeamHeight(teamBSlots, teamBLineup);
+    const contentH = Math.max(teamAH, teamBH);
+    const H = Math.max(200, 88 + contentH + 30);
     canvas.width = W * 2;
     canvas.height = H * 2;
     canvas.style.width = `${W}px`;
