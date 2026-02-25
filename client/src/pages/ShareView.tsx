@@ -39,14 +39,27 @@ function formatDate(ts: number): string {
   });
 }
 
+// Positionsbaserade färger för vänsterkant och bakgrundston
+function getPositionRowStyle(position: string): { border: string; bg: string } {
+  switch (position) {
+    case "MV":  return { border: "border-l-2 border-l-amber-400/70",   bg: "bg-amber-500/8" };
+    case "B":   return { border: "border-l-2 border-l-blue-400/70",    bg: "bg-blue-500/8" };
+    case "C":   return { border: "border-l-2 border-l-purple-400/70",  bg: "bg-purple-500/8" };
+    case "F":   return { border: "border-l-2 border-l-emerald-400/70", bg: "bg-emerald-500/8" };
+    case "LW":  return { border: "border-l-2 border-l-emerald-400/70", bg: "bg-emerald-500/8" };
+    case "RW":  return { border: "border-l-2 border-l-emerald-400/70", bg: "bg-emerald-500/8" };
+    case "IB":  return { border: "border-l-2 border-l-white/20",       bg: "bg-white/5" };
+    default:    return { border: "border-l-2 border-l-white/15",       bg: "bg-white/4" };
+  }
+}
+
 // En enskild slot-rad i den skrivskyddade vyn
 function SlotRow({ player, label }: { player: Player | undefined; label: string }) {
+  const rowStyle = player ? getPositionRowStyle(player.position) : null;
   return (
     <div
-      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors ${
-        player
-          ? "bg-white/8 border border-white/10"
-          : "bg-white/3 border border-white/5"
+      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors border border-white/8 ${
+        rowStyle ? `${rowStyle.border} ${rowStyle.bg}` : "bg-white/3 border-white/5"
       }`}
     >
       {player ? (
@@ -56,10 +69,10 @@ function SlotRow({ player, label }: { player: Player | undefined; label: string 
           >
             {player.position}
           </span>
-          <span className="text-white/85 font-semibold truncate flex-1">
+          <span className="text-white/90 font-semibold truncate flex-1">
             {player.name}
             {player.number && (
-              <span className="text-white/40 font-normal ml-1">#{player.number}</span>
+              <span className="text-white/45 font-normal ml-1.5">#{player.number}</span>
             )}
           </span>
         </>
