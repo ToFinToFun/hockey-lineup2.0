@@ -18,6 +18,7 @@ import {
   MeasuringStrategy,
   type DragEndEvent,
   type DragStartEvent,
+  type DragMoveEvent,
   type CollisionDetection,
 } from "@dnd-kit/core";
 import { initialPlayers, type Player, type Position, type TeamColor } from "@/lib/players";
@@ -493,6 +494,62 @@ export default function Home() {
   }, []);
 
   const [mobileTab, setMobileTab] = useState<MobileTab>("trupp");
+  const [dragHoverTab, setDragHoverTab] = useState<MobileTab | null>(null);
+  const tabHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastHoveredTabRef = useRef<MobileTab | null>(null);
+
+  // Automatiskt flikbyte vid drag: håll spelaren över en flik-knapp i 600ms
+  const handleDragMove = useCallback((event: DragMoveEvent) => {
+    // Använd touch/pointer-koordinater från dnd-kit aktivator
+    const activatorEvent = event.activatorEvent as TouchEvent | PointerEvent | MouseEvent;
+    let clientX = 0;
+    let clientY = 0;
+    if ("touches" in activatorEvent && activatorEvent.touches.length > 0) {
+      // För touch: använd delta + startposition
+      const touch = (event.active.rect.current.translated);
+      if (touch) {
+        clientX = touch.left + touch.width / 2;
+        clientY = touch.top + touch.height / 2;
+      }
+    } else {
+      // För pointer/mus: använd overlay-kortets mittpunkt
+      const rect = event.active.rect.current.translated;
+      if (rect) {
+        clientX = rect.left + rect.width / 2;
+        clientY = rect.top + rect.height / 2;
+      }
+    }
+
+    if (clientX === 0 && clientY === 0) return;
+
+    // Kolla om positionen överlappas med en flik-knapp
+    const tabButtons = document.querySelectorAll<HTMLElement>("[data-mobile-tab]");
+    let hoveredTab: MobileTab | null = null;
+    tabButtons.forEach((btn) => {
+      const rect = btn.getBoundingClientRect();
+      if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
+        hoveredTab = btn.dataset.mobileTab as MobileTab;
+      }
+    });
+
+    if (hoveredTab && hoveredTab !== lastHoveredTabRef.current) {
+      lastHoveredTabRef.current = hoveredTab;
+      setDragHoverTab(hoveredTab);
+      if (tabHoverTimerRef.current) clearTimeout(tabHoverTimerRef.current);
+      const tabToSwitch = hoveredTab;
+      tabHoverTimerRef.current = setTimeout(() => {
+        setMobileTab(tabToSwitch);
+        setDragHoverTab(null);
+      }, 600);
+    } else if (!hoveredTab) {
+      lastHoveredTabRef.current = null;
+      setDragHoverTab(null);
+      if (tabHoverTimerRef.current) {
+        clearTimeout(tabHoverTimerRef.current);
+        tabHoverTimerRef.current = null;
+      }
+    }
+  }, []);
 
   const teamALineup: Record<string, Player> = {};
   const teamBLineup: Record<string, Player> = {};
@@ -520,7 +577,17 @@ export default function Home() {
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
       autoScroll={false}
       onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
+      onDragMove={handleDragMove}
+      onDragEnd={(e) => {
+        // Rensa flik-hover-timer vid drag-slut
+        if (tabHoverTimerRef.current) {
+          clearTimeout(tabHoverTimerRef.current);
+          tabHoverTimerRef.current = null;
+        }
+        lastHoveredTabRef.current = null;
+        setDragHoverTab(null);
+        handleDragEnd(e);
+      }}
     >
       {/* Bakgrundsbild */}
       <div
@@ -622,11 +689,14 @@ export default function Home() {
             ]).map(({ key, label, color }) => (
               <button
                 key={key}
+                data-mobile-tab={key}
                 onClick={() => setMobileTab(key)}
                 className={`
                   flex-1 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all
                   ${mobileTab === key
                     ? `${color} bg-white/5`
+                    : dragHoverTab === key
+                    ? `${color} bg-white/10 scale-105 animate-pulse`
                     : "border-transparent text-white/30 hover:text-white/50"}
                 `}
                 style={{ fontFamily: "'Oswald', sans-serif" }}
@@ -692,9 +762,9 @@ export default function Home() {
               />
             </div>
 
-            {/* Mobilvy – en flik i taget */}
+            {/* Mobilvy – alla flikar renderas alltid (för dnd-kit droppables), men inaktiva döljs */}
             <div className="md:hidden">
-              {mobileTab === "vita" && (
+              <div style={{ display: mobileTab === "vita" ? "block" : "none" }}>
                 <TeamPanel
                   teamId="team-a"
                   teamName={teamAName}
@@ -706,8 +776,8 @@ export default function Home() {
                   onClearTeam={() => handleRequestClearTeam("team-a-", teamAName)}
                   isWhite
                 />
-              )}
-              {mobileTab === "trupp" && (
+              </div>
+              <div style={{ display: mobileTab === "trupp" ? "block" : "none" }}>
                 <div className="flex flex-col gap-2 h-full min-h-0">
                   <div className="flex-1 min-h-0">
                     <PlayerList
@@ -727,8 +797,8 @@ export default function Home() {
                     onLoadLineup={handleLoadLineup}
                   />
                 </div>
-              )}
-              {mobileTab === "grona" && (
+              </div>
+              <div style={{ display: mobileTab === "grona" ? "block" : "none" }}>
                 <TeamPanel
                   teamId="team-b"
                   teamName={teamBName}
@@ -740,7 +810,7 @@ export default function Home() {
                   onClearTeam={() => handleRequestClearTeam("team-b-", teamBName)}
                   isWhite={false}
                 />
-              )}
+              </div>
             </div>
           </main>
         </div>
