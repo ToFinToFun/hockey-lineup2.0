@@ -72,7 +72,16 @@ function loadLocalState(): SavedState | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as SavedState;
+    const parsed = JSON.parse(raw) as SavedState;
+    // Sanitera lineup: ta bort ogiltiga slot-IDs från äldre versioner
+    if (parsed.lineup) {
+      const sanitized: Record<string, Player> = {};
+      for (const [slotId, player] of Object.entries(parsed.lineup)) {
+        if (ALL_SLOT_IDS.has(slotId)) sanitized[slotId] = player;
+      }
+      parsed.lineup = sanitized;
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -177,8 +186,18 @@ export default function Home() {
           ? [...firebasePlayers, ...missingPlayers]
           : firebasePlayers;
 
+        // Filtrera bort ogiltiga slot-IDs (t.ex. från äldre versioner av appen)
+        // som kan ha sparat spelare i slot-IDs som inte längre existerar
+        const rawLineup = state.lineup ?? {};
+        const sanitizedLineup: Record<string, Player> = {};
+        for (const [slotId, player] of Object.entries(rawLineup)) {
+          if (ALL_SLOT_IDS.has(slotId)) {
+            sanitizedLineup[slotId] = player;
+          }
+        }
+
         setAvailablePlayers(mergedPlayers);
-        setLineup(state.lineup ?? {});
+        setLineup(sanitizedLineup);
         setTeamAName(state.teamAName ?? "VITA");
         setTeamBName(state.teamBName ?? "GRÖNA");
         // Allow re-renders to settle before re-enabling writes
@@ -189,9 +208,17 @@ export default function Home() {
         // No data in Firebase yet — push our local state up
         const localState = loadLocalState();
         if (localState) {
+          // Sanitera localStorage-lineup också innan vi skriver till Firebase
+          const rawLocalLineup = localState.lineup ?? {};
+          const sanitizedLocalLineup: Record<string, Player> = {};
+          for (const [slotId, player] of Object.entries(rawLocalLineup)) {
+            if (ALL_SLOT_IDS.has(slotId)) {
+              sanitizedLocalLineup[slotId] = player;
+            }
+          }
           saveStateToFirebase({
             players: localState.availablePlayers,
-            lineup: localState.lineup,
+            lineup: sanitizedLocalLineup,
             teamAName: localState.teamAName,
             teamBName: localState.teamBName,
           });
