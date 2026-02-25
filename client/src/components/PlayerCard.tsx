@@ -354,7 +354,7 @@ export function TeamColorIndicator({ teamColor, size = 16 }: { teamColor: TeamCo
 // Overlay-kort som visas under musen vid drag
 export function PlayerCardOverlay({ player }: { player: Player }) {
   return (
-    <div className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm bg-emerald-900/90 border border-emerald-400/60 backdrop-blur-sm shadow-2xl ring-2 ring-emerald-400/40 cursor-grabbing select-none">
+    <div className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm bg-emerald-900 border border-emerald-400 shadow-2xl ring-2 ring-emerald-400/60 cursor-grabbing select-none" style={{ minWidth: 160, maxWidth: 240 }}>
       <GripVertical className="w-3 h-3 text-emerald-300/50 shrink-0" />
       <TeamColorIndicator teamColor={player.teamColor ?? null} size={14} />
       <span className="text-white font-medium truncate">{player.name}</span>

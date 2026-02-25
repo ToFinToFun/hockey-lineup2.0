@@ -28,8 +28,8 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { saveStateToFirebase, subscribeToFirebase, saveLineupToFirebase, type AppState, type SavedLineup } from "@/lib/firebase";
 import { Download, Wifi, WifiOff, Share2, Check } from "lucide-react";
-import { createPortal } from "react-dom";
-import { snapCenterToCursor } from "@dnd-kit/modifiers";
+import { createPortal } from "react-dom"; // används av PlayerList context-meny
+// @dnd-kit/modifiers installerat men ej använt just nu
 
 type MobileTab = "vita" | "trupp" | "grona";
 
@@ -515,13 +515,12 @@ export default function Home() {
           backgroundImage: `url(${BG_URL})`,
           backgroundSize: "cover",
           backgroundPosition: "center top",
-          backgroundAttachment: "fixed",
           backgroundRepeat: "no-repeat",
         }}
       >
         <div className="absolute inset-0 bg-black/45 pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col min-h-screen">
+        <div className="relative flex flex-col min-h-screen">
           {/* Header */}
           <header className="px-4 pt-4 pb-2 shrink-0">
             <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -731,15 +730,12 @@ export default function Home() {
             </div>
           </main>
         </div>
-      </div>
 
-      {/* Drag overlay – portaled to body, snapCenterToCursor för korrekt scroll-offset */}
-      {createPortal(
-        <DragOverlay zIndex={99999} modifiers={[snapCenterToCursor]}>
+        {/* Drag overlay – inuti DndContext, position:fixed så den alltid syns över allt */}
+        <DragOverlay style={{ zIndex: 99999, pointerEvents: "none" }}>
           {activePlayer ? <PlayerCardOverlay player={activePlayer} /> : null}
-        </DragOverlay>,
-        document.body
-      )}
+        </DragOverlay>
+      </div>
 
       {/* Export-modal */}
       {showExport && (
