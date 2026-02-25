@@ -23,7 +23,8 @@ import { TeamPanel } from "@/components/TeamPanel";
 import { PlayerCardOverlay } from "@/components/PlayerCard";
 import { ExportModal } from "@/components/ExportModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { saveStateToFirebase, subscribeToFirebase, type AppState } from "@/lib/firebase";
+import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
+import { saveStateToFirebase, subscribeToFirebase, type AppState, type SavedLineup } from "@/lib/firebase";
 import { Download, Wifi, WifiOff, Undo2 } from "lucide-react";
 
 type MobileTab = "vita" | "trupp" | "grona";
@@ -121,7 +122,20 @@ export default function Home() {
       if (state) {
         isReceivingFromFirebase.current = true;
         skipNextUndoSnapshot.current = true; // Firebase-uppdateringar ska inte läggas i undo-stacken
-        setAvailablePlayers(state.players ?? initialPlayers);
+
+        // Merge: se till att alla spelare från initialPlayers alltid finns i truppen
+        // (Firebase kan ha en äldre lista som saknar nyare spelare)
+        const firebasePlayers: Player[] = state.players ?? [];
+        const firebaseIds = new Set(firebasePlayers.map((p) => p.id));
+        const lineupIds = new Set(Object.values(state.lineup ?? {}).map((p) => p.id));
+        const missingPlayers = initialPlayers.filter(
+          (p) => !firebaseIds.has(p.id) && !lineupIds.has(p.id)
+        );
+        const mergedPlayers = missingPlayers.length > 0
+          ? [...firebasePlayers, ...missingPlayers]
+          : firebasePlayers;
+
+        setAvailablePlayers(mergedPlayers);
         setLineup(state.lineup ?? {});
         setTeamAName(state.teamAName ?? "VITA");
         setTeamBName(state.teamBName ?? "GRÖNA");
@@ -373,6 +387,35 @@ export default function Home() {
     }, 200);
   }, [confirmClear, pushUndo]);
 
+  // Ladda en sparad uppställning
+  const handleLoadLineup = useCallback((saved: SavedLineup) => {
+    isReceivingFromFirebase.current = true;
+    pushUndo();
+
+    // Bygg ny spelartrupp: alla spelare som inte är i den sparade lineup
+    const savedLineupIds = new Set(Object.values(saved.lineup).map((p) => p.id));
+    const allKnownPlayers = [
+      ...availablePlayersRef.current,
+      ...Object.values(lineupRef.current),
+    ];
+    const seen = new Set<string>();
+    const allUnique = allKnownPlayers.filter((p) => {
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+    const newAvailable = allUnique.filter((p) => !savedLineupIds.has(p.id));
+
+    setLineup(saved.lineup);
+    setAvailablePlayers(newAvailable);
+    setTeamAName(saved.teamAName);
+    setTeamBName(saved.teamBName);
+
+    setTimeout(() => {
+      isReceivingFromFirebase.current = false;
+    }, 200);
+  }, [pushUndo]);
+
   const handleChangeNumber = useCallback((playerId: string, number: string) => {
     const update = (p: Player) => p.id === playerId ? { ...p, number } : p;
     setAvailablePlayers((prev) => prev.map(update));
@@ -540,14 +583,24 @@ export default function Home() {
               />
 
               {/* Spelarlista (mitten) */}
-              <PlayerList
-                players={availablePlayers}
-                onAddPlayer={handleAddPlayer}
-                onDeletePlayer={handleDeletePlayer}
-                onChangePosition={handleChangePosition}
-                onChangeTeamColor={handleChangeTeamColor}
-                onChangeNumber={handleChangeNumber}
-              />
+              <div className="flex flex-col gap-2 h-full min-h-0">
+                <div className="flex-1 min-h-0">
+                  <PlayerList
+                    players={availablePlayers}
+                    onAddPlayer={handleAddPlayer}
+                    onDeletePlayer={handleDeletePlayer}
+                    onChangePosition={handleChangePosition}
+                    onChangeTeamColor={handleChangeTeamColor}
+                    onChangeNumber={handleChangeNumber}
+                  />
+                </div>
+                <SavedLineupsPanel
+                  teamAName={teamAName}
+                  teamBName={teamBName}
+                  lineup={lineup}
+                  onLoadLineup={handleLoadLineup}
+                />
+              </div>
 
               {/* Lag B (GRÖNA) – höger */}
               <TeamPanel
@@ -582,14 +635,24 @@ export default function Home() {
                 />
               )}
               {mobileTab === "trupp" && (
-                <PlayerList
-                  players={availablePlayers}
-                  onAddPlayer={handleAddPlayer}
-                  onDeletePlayer={handleDeletePlayer}
-                  onChangePosition={handleChangePosition}
-                  onChangeTeamColor={handleChangeTeamColor}
-                  onChangeNumber={handleChangeNumber}
-                />
+                <div className="flex flex-col gap-2 h-full min-h-0">
+                  <div className="flex-1 min-h-0">
+                    <PlayerList
+                      players={availablePlayers}
+                      onAddPlayer={handleAddPlayer}
+                      onDeletePlayer={handleDeletePlayer}
+                      onChangePosition={handleChangePosition}
+                      onChangeTeamColor={handleChangeTeamColor}
+                      onChangeNumber={handleChangeNumber}
+                    />
+                  </div>
+                  <SavedLineupsPanel
+                    teamAName={teamAName}
+                    teamBName={teamBName}
+                    lineup={lineup}
+                    onLoadLineup={handleLoadLineup}
+                  />
+                </div>
               )}
               {mobileTab === "grona" && (
                 <TeamPanel

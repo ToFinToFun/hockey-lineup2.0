@@ -6,8 +6,11 @@ import {
   getDatabase,
   ref,
   set,
+  get,
   onValue,
   off,
+  push,
+  remove,
   type DatabaseReference,
 } from "firebase/database";
 import type { Player } from "./players";
@@ -31,6 +34,15 @@ export type AppState = {
   lineup: Record<string, Player>;
   teamAName: string;
   teamBName: string;
+};
+
+export type SavedLineup = {
+  id: string;          // Firebase push-key
+  name: string;        // Användarens namn, t.ex. "Hemmaplan 5-3-2"
+  savedAt: number;     // Unix timestamp (ms)
+  teamAName: string;
+  teamBName: string;
+  lineup: Record<string, Player>;
 };
 
 // Write the full app state to Firebase
@@ -64,4 +76,60 @@ export function subscribeToFirebase(
 
   // Return unsubscribe function
   return () => off(stateRef);
+}
+
+// ─── Sparade uppställningar ───────────────────────────────────────────────────
+
+// Spara en ny uppställning under /savedLineups/{pushKey}
+export async function saveLineupToFirebase(
+  name: string,
+  teamAName: string,
+  teamBName: string,
+  lineup: Record<string, Player>
+): Promise<string> {
+  const listRef = ref(db, "savedLineups");
+  const newRef = await push(listRef, {
+    name,
+    savedAt: Date.now(),
+    teamAName,
+    teamBName,
+    lineup,
+  });
+  return newRef.key!;
+}
+
+// Hämta alla sparade uppställningar (engångshämtning)
+export async function fetchSavedLineups(): Promise<SavedLineup[]> {
+  const listRef = ref(db, "savedLineups");
+  const snapshot = await get(listRef);
+  if (!snapshot.exists()) return [];
+  const raw = snapshot.val() as Record<string, Omit<SavedLineup, "id">>;
+  return Object.entries(raw)
+    .map(([id, data]) => ({ id, ...data }))
+    .sort((a, b) => b.savedAt - a.savedAt); // nyaste först
+}
+
+// Prenumerera på sparade uppställningar i realtid
+export function subscribeSavedLineups(
+  callback: (lineups: SavedLineup[]) => void
+): () => void {
+  const listRef: DatabaseReference = ref(db, "savedLineups");
+  onValue(listRef, (snapshot) => {
+    if (!snapshot.exists()) {
+      callback([]);
+      return;
+    }
+    const raw = snapshot.val() as Record<string, Omit<SavedLineup, "id">>;
+    const list = Object.entries(raw)
+      .map(([id, data]) => ({ id, ...data }))
+      .sort((a, b) => b.savedAt - a.savedAt);
+    callback(list);
+  });
+  return () => off(listRef);
+}
+
+// Ta bort en sparad uppställning
+export async function deleteLineupFromFirebase(id: string): Promise<void> {
+  const itemRef = ref(db, `savedLineups/${id}`);
+  await remove(itemRef);
 }
