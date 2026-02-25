@@ -22,6 +22,7 @@ import {
   type CollisionDetection,
 } from "@dnd-kit/core";
 import { initialPlayers, type Player, type Position, type TeamColor, type CaptainRole } from "@/lib/players";
+import { useIsMobile } from "@/hooks/useMobile";
 import { createTeamSlots } from "@/lib/lineup";
 import { PlayerList } from "@/components/PlayerList";
 import { TeamPanel } from "@/components/TeamPanel";
@@ -290,11 +291,13 @@ export default function Home() {
     return () => window.removeEventListener("keydown", handler);
   }, [handleUndo]);
 
+  const isMobile = useIsMobile();
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 150,      // 150ms long-press to start drag
+        delay: 200,      // 200ms long-press to start drag
         tolerance: 8,    // allow 8px movement before cancelling
       },
     })
@@ -313,10 +316,13 @@ export default function Home() {
   const handleDragStart = (event: DragStartEvent) => {
     const player = event.active.data.current?.player as Player;
     setActivePlayer(player || null);
+    // Lås scrollning under drag på mobil
+    document.body.classList.add("dnd-scroll-lock");
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     setActivePlayer(null);
+    document.body.classList.remove("dnd-scroll-lock");
     const { active, over } = event;
     if (!over) return;
 
@@ -601,25 +607,12 @@ export default function Home() {
   const teamBCount = Object.keys(teamBLineup).length;
   const totalSlots = TEAM_A_SLOTS.length; // same for both teams
 
-  // Filtrera bort droppables med noll-storlek (dolda med display:none i mobilvy)
-  const filterVisibleDroppables = (args: Parameters<CollisionDetection>[0]): Parameters<CollisionDetection>[0] => ({
-    ...args,
-    droppableContainers: args.droppableContainers.filter((container) => {
-      const rect = container.rect.current;
-      if (!rect) return false;
-      // Ignorera droppables med noll-storlek (dolda element)
-      return rect.width > 0 && rect.height > 0;
-    }),
-  });
-
-  // Muspekar-baserad collision detection: träffar det slot musen befinner sig i,
-  // faller tillbaka till closestCenter om musen inte är inuti något slot.
-  // Filtrerar bort dolda slots (display:none) som har noll-storlek.
+  // Kollisionsdetektion: pointerWithin först, sedan closestCenter som fallback.
+  // Eftersom vi nu bara renderar EN layout (åt gången) behövs ingen filtrering.
   const pointerWithinOrClosest: CollisionDetection = (args) => {
-    const visibleArgs = filterVisibleDroppables(args);
-    const pointerCollisions = pointerWithin(visibleArgs);
+    const pointerCollisions = pointerWithin(args);
     if (pointerCollisions.length > 0) return pointerCollisions;
-    return closestCenter(visibleArgs);
+    return closestCenter(args);
   };
 
   return (
@@ -627,7 +620,7 @@ export default function Home() {
       sensors={sensors}
       collisionDetection={pointerWithinOrClosest}
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
-      autoScroll={false}
+      autoScroll={{ enabled: true, threshold: { x: 0.15, y: 0.15 } }}
       onDragStart={handleDragStart}
       onDragMove={handleDragMove}
       onDragEnd={(e) => {
@@ -638,6 +631,7 @@ export default function Home() {
         }
         lastHoveredTabRef.current = null;
         setDragHoverTab(null);
+        document.body.classList.remove("dnd-scroll-lock");
         handleDragEnd(e);
       }}
     >
@@ -759,75 +753,17 @@ export default function Home() {
           </div>
 
           <main className="px-2 md:px-4 pb-8" ref={exportRef}>
-            {/* Desktop grid */}
-            <div
-              className="hidden md:grid gap-2 md:gap-3"
-              style={{
-                gridTemplateColumns: "minmax(0, 1fr) 300px minmax(0, 1fr)",
-              }}
-            >
-              {/* Lag A (VITA) – vänster */}
-              <TeamPanel
-                teamId="team-a"
-                teamName={teamAName}
-                slots={TEAM_A_SLOTS}
-                lineup={teamALineup}
-                onRemovePlayer={handleRemoveFromSlot}
-                onChangePosition={handleChangePosition}
-                onRenameTeam={setTeamAName}
-                onClearTeam={() => handleRequestClearTeam("team-a-", teamAName)}
-                isWhite
-              />
-
-              {/* Spelarlista (mitten) */}
-              <div className="flex flex-col gap-2">
-                <div>
-                  <PlayerList
-                    players={availablePlayers}
-                    onAddPlayer={handleAddPlayer}
-                    onDeletePlayer={handleDeletePlayer}
-                    onChangePosition={handleChangePosition}
-                    onChangeTeamColor={handleChangeTeamColor}
-                    onChangeNumber={handleChangeNumber}
-                    onChangeName={handleChangeName}
-                    onChangeCaptainRole={handleChangeCaptainRole}
-                  />
-                </div>
-                <SavedLineupsPanel
-                  teamAName={teamAName}
-                  teamBName={teamBName}
-                  lineup={lineup}
-                  onLoadLineup={handleLoadLineup}
-                />
-              </div>
-
-              {/* Lag B (GRÖNA) – höger */}
-              <TeamPanel
-                teamId="team-b"
-                teamName={teamBName}
-                slots={TEAM_B_SLOTS}
-                lineup={teamBLineup}
-                onRemovePlayer={handleRemoveFromSlot}
-                onChangePosition={handleChangePosition}
-                onRenameTeam={setTeamBName}
-                onClearTeam={() => handleRequestClearTeam("team-b-", teamBName)}
-                isWhite={false}
-              />
-            </div>
-
-            {/* Mobilvy – alla flikar renderas alltid (för dnd-kit droppables), men inaktiva döljs */}
-            {/* Vi använder visibility:hidden + position:absolute istället för display:none */}
-            {/* så att dnd-kit kan mäta droppables korrekt även för inaktiva flikar */}
-            <div className="md:hidden" style={{ position: "relative" }}>
+            {/* Villkorlig rendering: ANTINGEN desktop ELLER mobil – aldrig båda */}
+            {/* Detta eliminerar dubbla droppables som förvirrar dnd-kit */}
+            {!isMobile ? (
+              /* Desktop grid */
               <div
+                className="grid gap-2 md:gap-3"
                 style={{
-                  visibility: mobileTab === "vita" ? "visible" : "hidden",
-                  position: mobileTab === "vita" ? "relative" : "absolute",
-                  top: 0, left: 0, right: 0,
-                  pointerEvents: mobileTab === "vita" ? "auto" : "none",
-                  zIndex: mobileTab === "vita" ? 1 : 0,
+                  gridTemplateColumns: "minmax(0, 1fr) 300px minmax(0, 1fr)",
                 }}
               >
+                {/* Lag A (VITA) – vänster */}
                 <TeamPanel
                   teamId="team-a"
                   teamName={teamAName}
@@ -839,18 +775,10 @@ export default function Home() {
                   onClearTeam={() => handleRequestClearTeam("team-a-", teamAName)}
                   isWhite
                 />
-              </div>
-              <div
-                style={{
-                  visibility: mobileTab === "trupp" ? "visible" : "hidden",
-                  position: mobileTab === "trupp" ? "relative" : "absolute",
-                  top: 0, left: 0, right: 0,
-                  pointerEvents: mobileTab === "trupp" ? "auto" : "none",
-                  zIndex: mobileTab === "trupp" ? 1 : 0,
-                }}
-              >
-                <div className="flex flex-col gap-2 h-full min-h-0">
-                  <div className="flex-1 min-h-0">
+
+                {/* Spelarlista (mitten) */}
+                <div className="flex flex-col gap-2">
+                  <div>
                     <PlayerList
                       players={availablePlayers}
                       onAddPlayer={handleAddPlayer}
@@ -869,16 +797,8 @@ export default function Home() {
                     onLoadLineup={handleLoadLineup}
                   />
                 </div>
-              </div>
-              <div
-                style={{
-                  visibility: mobileTab === "grona" ? "visible" : "hidden",
-                  position: mobileTab === "grona" ? "relative" : "absolute",
-                  top: 0, left: 0, right: 0,
-                  pointerEvents: mobileTab === "grona" ? "auto" : "none",
-                  zIndex: mobileTab === "grona" ? 1 : 0,
-                }}
-              >
+
+                {/* Lag B (GRÖNA) – höger */}
                 <TeamPanel
                   teamId="team-b"
                   teamName={teamBName}
@@ -891,7 +811,57 @@ export default function Home() {
                   isWhite={false}
                 />
               </div>
-            </div>
+            ) : (
+              /* Mobilvy – bara den aktiva fliken renderas */
+              <div>
+                {mobileTab === "vita" && (
+                  <TeamPanel
+                    teamId="team-a"
+                    teamName={teamAName}
+                    slots={TEAM_A_SLOTS}
+                    lineup={teamALineup}
+                    onRemovePlayer={handleRemoveFromSlot}
+                    onChangePosition={handleChangePosition}
+                    onRenameTeam={setTeamAName}
+                    onClearTeam={() => handleRequestClearTeam("team-a-", teamAName)}
+                    isWhite
+                  />
+                )}
+                {mobileTab === "trupp" && (
+                  <div className="flex flex-col gap-2">
+                    <PlayerList
+                      players={availablePlayers}
+                      onAddPlayer={handleAddPlayer}
+                      onDeletePlayer={handleDeletePlayer}
+                      onChangePosition={handleChangePosition}
+                      onChangeTeamColor={handleChangeTeamColor}
+                      onChangeNumber={handleChangeNumber}
+                      onChangeName={handleChangeName}
+                      onChangeCaptainRole={handleChangeCaptainRole}
+                    />
+                    <SavedLineupsPanel
+                      teamAName={teamAName}
+                      teamBName={teamBName}
+                      lineup={lineup}
+                      onLoadLineup={handleLoadLineup}
+                    />
+                  </div>
+                )}
+                {mobileTab === "grona" && (
+                  <TeamPanel
+                    teamId="team-b"
+                    teamName={teamBName}
+                    slots={TEAM_B_SLOTS}
+                    lineup={teamBLineup}
+                    onRemovePlayer={handleRemoveFromSlot}
+                    onChangePosition={handleChangePosition}
+                    onRenameTeam={setTeamBName}
+                    onClearTeam={() => handleRequestClearTeam("team-b-", teamBName)}
+                    isWhite={false}
+                  />
+                )}
+              </div>
+            )}
           </main>
         </div>
 
