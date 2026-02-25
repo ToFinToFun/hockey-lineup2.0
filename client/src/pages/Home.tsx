@@ -24,8 +24,8 @@ import { PlayerCardOverlay } from "@/components/PlayerCard";
 import { ExportModal } from "@/components/ExportModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
-import { saveStateToFirebase, subscribeToFirebase, type AppState, type SavedLineup } from "@/lib/firebase";
-import { Download, Wifi, WifiOff, Undo2 } from "lucide-react";
+import { saveStateToFirebase, subscribeToFirebase, saveLineupToFirebase, type AppState, type SavedLineup } from "@/lib/firebase";
+import { Download, Wifi, WifiOff, Share2, Check } from "lucide-react";
 
 type MobileTab = "vita" | "trupp" | "grona";
 
@@ -100,6 +100,25 @@ export default function Home() {
   const [activePlayer, setActivePlayer] = useState<Player | null>(null);
   const [showExport, setShowExport] = useState(false);
   const [firebaseConnected, setFirebaseConnected] = useState<boolean | null>(null);
+  const [shareState, setShareState] = useState<"idle" | "saving" | "copied">("idle");
+
+  const handleShare = useCallback(async () => {
+    setShareState("saving");
+    try {
+      const id = await saveLineupToFirebase(
+        `Delad ${new Date().toLocaleDateString("sv-SE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`,
+        teamAName,
+        teamBName,
+        lineup
+      );
+      const url = `${window.location.origin}/lineup/${id}`;
+      await navigator.clipboard.writeText(url).catch(() => {});
+      setShareState("copied");
+      setTimeout(() => setShareState("idle"), 2500);
+    } catch {
+      setShareState("idle");
+    }
+  }, [teamAName, teamBName, lineup]);
 
   // IDs för medvetet borttagna spelare – hindrar merge från att lägga tillbaka dem
   const [deletedPlayerIds, setDeletedPlayerIds] = useState<Set<string>>(new Set());
@@ -547,18 +566,20 @@ export default function Home() {
                   </span>
                 </div>
 
-                {/* Ångra-knapp */}
+                {/* Dela-knapp */}
                 <button
-                  onClick={handleUndo}
-                  disabled={undoStack.length === 0}
-                  title="Ångra senaste åtgärd (Ctrl+Z)"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/15 text-white/50 text-xs font-bold hover:bg-white/10 hover:text-white/80 disabled:opacity-30 disabled:cursor-not-allowed transition-all uppercase tracking-wider"
+                  onClick={handleShare}
+                  disabled={shareState === "saving"}
+                  title="Dela skrivskyddad länk till aktuell uppställning"
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all uppercase tracking-wider ${
+                    shareState === "copied"
+                      ? "bg-emerald-500/30 border border-emerald-400/60 text-emerald-200"
+                      : "bg-white/5 border border-white/15 text-white/60 hover:bg-white/10 hover:text-white/90 disabled:opacity-50"
+                  }`}
                 >
-                  <Undo2 className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Ångra</span>
-                  {undoStack.length > 0 && (
-                    <span className="text-[9px] text-white/30">({undoStack.length})</span>
-                  )}
+                  {shareState === "copied"
+                    ? <><Check className="w-3.5 h-3.5" /><span className="hidden md:inline">Kopierad!</span></>
+                    : <><Share2 className="w-3.5 h-3.5" /><span className="hidden md:inline">Dela</span></>}
                 </button>
 
                 {/* Export-knapp */}
