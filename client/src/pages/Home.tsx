@@ -13,10 +13,12 @@ import {
   TouchSensor,
   useSensor,
   useSensors,
-  closestCorners,
+  pointerWithin,
+  closestCenter,
   MeasuringStrategy,
   type DragEndEvent,
   type DragStartEvent,
+  type CollisionDetection,
 } from "@dnd-kit/core";
 import { initialPlayers, type Player, type Position, type TeamColor } from "@/lib/players";
 import { createTeamSlots } from "@/lib/lineup";
@@ -500,10 +502,18 @@ export default function Home() {
   const teamBCount = Object.keys(teamBLineup).length;
   const totalSlots = TEAM_A_SLOTS.length; // same for both teams
 
+  // Muspekar-baserad collision detection: träffar det slot musen befinner sig i,
+  // faller tillbaka till closestCenter om musen inte är inuti något slot.
+  const pointerWithinOrClosest: CollisionDetection = (args) => {
+    const pointerCollisions = pointerWithin(args);
+    if (pointerCollisions.length > 0) return pointerCollisions;
+    return closestCenter(args);
+  };
+
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={pointerWithinOrClosest}
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
