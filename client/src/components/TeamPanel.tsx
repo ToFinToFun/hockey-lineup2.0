@@ -158,20 +158,21 @@ export function TeamPanel({
       {/* Scrollbar slots */}
       <div className="flex-1 overflow-y-auto overflow-x-visible min-h-0 p-2 space-y-2">
 
-        {/* Målvakter */}
+        {/* Målvakter – MV och RES på samma rad */}
         <Section label="Målvakter" type="goalkeeper">
-          <div className="space-y-1">
+          <div className="flex gap-1.5">
             {goalkeeperSlots.map((slot) => (
-              <PlayerSlot
-                key={slot.id}
-                slot={slot}
-                player={lineup[slot.id] ?? null}
-                onRemove={() => onRemovePlayer(slot.id)}
-                onChangePosition={(pos) => {
-                  const p = lineup[slot.id];
-                  if (p) onChangePosition(p.id, pos);
-                }}
-              />
+              <div key={slot.id} className="flex-1 min-w-0">
+                <PlayerSlot
+                  slot={slot}
+                  player={lineup[slot.id] ?? null}
+                  onRemove={() => onRemovePlayer(slot.id)}
+                  onChangePosition={(pos) => {
+                    const p = lineup[slot.id];
+                    if (p) onChangePosition(p.id, pos);
+                  }}
+                />
+              </div>
             ))}
           </div>
         </Section>

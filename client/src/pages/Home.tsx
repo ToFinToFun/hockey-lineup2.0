@@ -411,7 +411,7 @@ export default function Home() {
             <div
               className="hidden md:grid gap-2 md:gap-3 h-full"
               style={{
-                gridTemplateColumns: "minmax(520px, 1fr) minmax(230px, 260px) minmax(520px, 1fr)",
+                gridTemplateColumns: "minmax(520px, 1fr) 300px minmax(520px, 1fr)",
                 height: "calc(100vh - 90px)",
               }}
             >
