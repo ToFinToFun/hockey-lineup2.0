@@ -7,7 +7,7 @@ import { get, ref, getDatabase } from "firebase/database";
 import { createTeamSlots, groupSlots } from "@/lib/lineup";
 import type { Player } from "@/lib/players";
 import { getPositionBadgeColor } from "@/lib/players";
-import { ArrowLeft, Clock, Users } from "lucide-react";
+import { Clock, Users } from "lucide-react";
 
 const BG_URL =
   "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/gLOHFxhFzgQgHeKl.jpg";
@@ -96,20 +96,25 @@ function TeamSection({
       >
         {title}
       </h3>
-      {groups.map(({ groupLabel, slots: groupSlotList }) => (
-        <div key={groupLabel} className="space-y-1">
-          <p className="text-white/30 text-[9px] uppercase tracking-wider pl-1">
-            {groupLabel}
-          </p>
-          {groupSlotList.map((slot) => (
-            <SlotRow
-              key={slot.id}
-              player={lineup[slot.id]}
-              label={slot.label}
-            />
-          ))}
-        </div>
-      ))}
+      {groups.map(({ groupLabel, slots: groupSlotList }) => {
+        // Visa bara grupper som har minst en placerad spelare
+        const filledSlots = groupSlotList.filter((s) => lineup[s.id]);
+        if (filledSlots.length === 0) return null;
+        return (
+          <div key={groupLabel} className="space-y-1">
+            <p className="text-white/30 text-[9px] uppercase tracking-wider pl-1">
+              {groupLabel}
+            </p>
+            {filledSlots.map((slot) => (
+              <SlotRow
+                key={slot.id}
+                player={lineup[slot.id]}
+                label={slot.label}
+              />
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -222,13 +227,6 @@ export default function ShareView() {
         <header className="px-4 pt-4 pb-3 border-b border-white/10 backdrop-blur-sm bg-black/20">
           <div className="max-w-5xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Link href="/">
-                <button className="flex items-center gap-1.5 text-white/40 hover:text-white/70 transition-colors text-xs">
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Tillbaka till appen</span>
-                </button>
-              </Link>
-              <div className="w-px h-4 bg-white/15" />
               <div>
                 <h1
                   className="text-xl font-black text-white tracking-widest uppercase"

@@ -40,9 +40,11 @@ async function loadImage(src: string): Promise<HTMLImageElement> {
       img.src = blobUrl;
     });
   } catch {
-    // Fallback: direct load without crossOrigin (canvas may be tainted but we try)
+    // Fallback: load with crossOrigin=anonymous to avoid tainting canvas
+    // If the server doesn't send CORS headers this will fail, but we reject cleanly
     return new Promise<HTMLImageElement>((resolve, reject) => {
       const img = new Image();
+      img.crossOrigin = "anonymous";
       img.onload = () => resolve(img);
       img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
       img.src = src;
@@ -298,17 +300,15 @@ export function ExportModal({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Load logos in parallel – fall back gracefully if they fail
+    // Load logos in parallel – fall back gracefully if individual images fail
     let imgWhite: HTMLImageElement | null = null;
     let imgGreen: HTMLImageElement | null = null;
-    try {
-      [imgWhite, imgGreen] = await Promise.all([
-        loadImage(logoWhite),
-        loadImage(logoGreen),
-      ]);
-    } catch {
-      // logos failed to load – will use fallback solid colour circles
-    }
+    const [resWhite, resGreen] = await Promise.allSettled([
+      loadImage(logoWhite),
+      loadImage(logoGreen),
+    ]);
+    if (resWhite.status === "fulfilled") imgWhite = resWhite.value;
+    if (resGreen.status === "fulfilled") imgGreen = resGreen.value;
 
     const W = 960;
     // Dynamic height: header (88px) + max of both teams + footer (30px)
@@ -395,24 +395,54 @@ export function ExportModal({
     const canvas = canvasRef.current;
     if (!canvas) return;
     setExporting(true);
+
+    const doDownload = (href: string, filename: string) => {
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        setExporting(false);
+      }, 200);
+    };
+
+    const filename = `stalstadens-lineup-${new Date().toISOString().slice(0, 10)}.png`;
+
+    // Try toBlob first (better quality), fall back to toDataURL if canvas is tainted
     try {
       canvas.toBlob((blob) => {
-        if (!blob) { setExporting(false); return; }
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `stalstadens-lineup-${new Date().toISOString().slice(0, 10)}.png`;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          setExporting(false);
-        }, 200);
+        try {
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            doDownload(url, filename);
+            setTimeout(() => URL.revokeObjectURL(url), 500);
+          } else {
+            // toBlob returned null – fall back to toDataURL
+            const dataUrl = canvas.toDataURL("image/png");
+            doDownload(dataUrl, filename);
+          }
+        } catch {
+          // SecurityError (tainted canvas) – try toDataURL
+          try {
+            const dataUrl = canvas.toDataURL("image/png");
+            doDownload(dataUrl, filename);
+          } catch (e3) {
+            console.error("Export fallback failed", e3);
+            setExporting(false);
+          }
+        }
       }, "image/png");
     } catch (e) {
-      console.error("Export failed", e);
-      setExporting(false);
+      // toBlob threw synchronously (tainted canvas) – try toDataURL
+      try {
+        const dataUrl = canvas.toDataURL("image/png");
+        doDownload(dataUrl, filename);
+      } catch (e2) {
+        console.error("Export failed", e, e2);
+        setExporting(false);
+      }
     }
   };
 
