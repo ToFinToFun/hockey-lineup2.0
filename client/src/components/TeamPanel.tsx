@@ -158,9 +158,9 @@ export function TeamPanel({
       {/* Scrollbar slots */}
       <div className="flex-1 overflow-y-auto overflow-x-visible min-h-0 p-2 space-y-2">
 
-        {/* Målvakter – MV och RES på samma rad */}
+        {/* Målvakter – en per rad på mobil, sida vid sida på desktop */}
         <Section label="Målvakter" type="goalkeeper">
-          <div className="flex gap-1.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
             {goalkeeperSlots.map((slot) => (
               <div key={slot.id} className="flex-1 min-w-0">
                 <PlayerSlot
@@ -177,11 +177,11 @@ export function TeamPanel({
           </div>
         </Section>
 
-        {/* Backar – 2 par per rad */}
+        {/* Backar – 1 par per rad på mobil, 2 par per rad på desktop */}
         <Section label="Backar" type="defense">
           <div className="space-y-1.5">
             {defenseRows.map((row, rowIdx) => (
-              <div key={rowIdx} className="grid grid-cols-2 gap-1.5">
+              <div key={rowIdx} className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {row.map((group) => (
                   <GroupCard
                     key={group.groupLabel}
@@ -197,11 +197,11 @@ export function TeamPanel({
           </div>
         </Section>
 
-        {/* Forwards – 2 kedjor per rad */}
+        {/* Forwards – 1 kedja per rad på mobil, 2 kedjor per rad på desktop */}
         <Section label="Forwards" type="forward">
           <div className="space-y-1.5">
             {forwardRows.map((row, rowIdx) => (
-              <div key={rowIdx} className="grid grid-cols-2 gap-1.5">
+              <div key={rowIdx} className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {row.map((group) => (
                   <GroupCard
                     key={group.groupLabel}
