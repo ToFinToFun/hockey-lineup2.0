@@ -73,14 +73,17 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; player: Player } | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressActive = useRef(false);
+  const [holdingPlayerId, setHoldingPlayerId] = useState<string | null>(null);
 
-  const LONG_PRESS_DURATION = 1500; // 1.5 sekunder för att ta bort spelare
+  const LONG_PRESS_DURATION = 3000; // 3 sekunder för att ta bort spelare
 
   const handleLongPressStart = (e: React.PointerEvent, player: Player) => {
     if (e.pointerType === "mouse") return; // Musen använder contextMenu istället
     longPressActive.current = false;
+    setHoldingPlayerId(player.id);
     longPressTimer.current = setTimeout(() => {
       longPressActive.current = true;
+      setHoldingPlayerId(null);
       setContextMenu({ x: e.clientX, y: e.clientY, player });
     }, LONG_PRESS_DURATION);
   };
@@ -90,10 +93,11 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
+    setHoldingPlayerId(null);
   };
 
-  const handleLongPressMove = (e: React.PointerEvent) => {
-    // Avbryt long-press om användaren rör sig mer än 10px (drag-rörelse)
+  const handleLongPressMove = () => {
+    // Avbryt long-press om användaren rör sig (drag-rörelse)
     if (longPressTimer.current) {
       handleLongPressEnd();
     }
@@ -265,6 +269,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
           sorted.map((player) => (
             <div
               key={player.id}
+              className="relative"
               onContextMenu={(e) => {
                 e.preventDefault();
                 setContextMenu({ x: e.clientX, y: e.clientY, player });
@@ -283,6 +288,29 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                 onChangeName={(name) => onChangeName(player.id, name)}
                 onChangeCaptainRole={(role) => onChangeCaptainRole(player.id, role)}
               />
+              {/* Visuell hold-timer overlay */}
+              {holdingPlayerId === player.id && (
+                <div className="absolute inset-0 rounded-lg pointer-events-none flex items-center justify-center z-10"
+                  style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)' }}
+                >
+                  <svg width="44" height="44" viewBox="0 0 44 44" style={{ transform: 'rotate(-90deg)' }}>
+                    <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(239,68,68,0.15)" strokeWidth="3" />
+                    <circle
+                      cx="22" cy="22" r="18"
+                      fill="none"
+                      stroke="rgb(239,68,68)"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeDasharray={`${2 * Math.PI * 18}`}
+                      strokeDashoffset={`${2 * Math.PI * 18}`}
+                      style={{
+                        animation: `holdProgress ${LONG_PRESS_DURATION}ms linear forwards`,
+                      }}
+                    />
+                  </svg>
+                  <span className="absolute text-[10px] font-bold text-red-400" style={{ fontFamily: "'Oswald', sans-serif" }}>HÅLL</span>
+                </div>
+              )}
             </div>
           ))
         )}

@@ -167,3 +167,13 @@ select option {
     -webkit-touch-callout: none;
   }
 }
+
+/* Hold-timer progress animation for long-press delete */
+@keyframes holdProgress {
+  from {
+    stroke-dashoffset: 113.097; /* 2 * PI * 18 */
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
