@@ -6,6 +6,7 @@ import { X, Download } from "lucide-react";
 import type { Player } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
 import { groupSlots } from "@/lib/lineup";
+import { LOGO_GREEN_B64, LOGO_WHITE_B64 } from "@/lib/logoBase64";
 
 interface ExportModalProps {
   onClose: () => void;
@@ -301,11 +302,12 @@ export function ExportModal({
     if (!ctx) return;
 
     // Load logos in parallel – fall back gracefully if individual images fail
+    // Load logos from embedded base64 (no CORS issues)
     let imgWhite: HTMLImageElement | null = null;
     let imgGreen: HTMLImageElement | null = null;
     const [resWhite, resGreen] = await Promise.allSettled([
-      loadImage(logoWhite),
-      loadImage(logoGreen),
+      loadImage(LOGO_WHITE_B64),
+      loadImage(LOGO_GREEN_B64),
     ]);
     if (resWhite.status === "fulfilled") imgWhite = resWhite.value;
     if (resGreen.status === "fulfilled") imgGreen = resGreen.value;
