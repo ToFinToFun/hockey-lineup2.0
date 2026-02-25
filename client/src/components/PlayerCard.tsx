@@ -20,6 +20,11 @@ interface PlayerCardProps {
   onChangeNumber?: (number: string) => void;
   onChangeName?: (name: string) => void;
   onChangeCaptainRole?: (role: CaptainRole) => void;
+  onLongPress?: (e: React.PointerEvent) => void;
+  onLongPressEnd?: () => void;
+  onLongPressMove?: () => void;
+  isHolding?: boolean;
+  holdDuration?: number;
   compact?: boolean;
   hideExtras?: boolean; // Dölj position/lag även i icke-compact (används i export)
 }
@@ -32,6 +37,11 @@ export function DraggablePlayerCard({
   onChangeNumber,
   onChangeName,
   onChangeCaptainRole,
+  onLongPress,
+  onLongPressEnd,
+  onLongPressMove,
+  isHolding = false,
+  holdDuration = 3000,
   compact = false,
   hideExtras = false,
 }: PlayerCardProps) {
@@ -57,6 +67,22 @@ export function DraggablePlayerCard({
     ? { opacity: 0, pointerEvents: "none" as const }
     : {};
 
+  const handlePointerDown = (e: React.PointerEvent) => {
+    // Anropa dnd-kit listeners
+    if (listeners?.onPointerDown) listeners.onPointerDown(e);
+    // Starta long-press timer (endast touch)
+    if (e.pointerType !== "mouse" && onLongPress) onLongPress(e);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (listeners?.onPointerUp) (listeners as Record<string, (e: React.PointerEvent) => void>).onPointerUp?.(e);
+    if (onLongPressEnd) onLongPressEnd();
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (onLongPressMove) onLongPressMove();
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -68,10 +94,37 @@ export function DraggablePlayerCard({
         transition-all duration-150 select-none
         ${compact ? "px-1.5 py-1 text-xs" : "px-2 py-1.5 text-sm"}
         ${isDragging ? "shadow-2xl ring-2 ring-emerald-400/60" : ""}
+        ${isHolding ? "ring-1 ring-red-400/60" : ""}
       `}
       {...attributes}
       {...listeners}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerMove={handlePointerMove}
+      onPointerCancel={handlePointerUp}
+      onPointerLeave={handlePointerUp}
     >
+      {/* Visuell hold-timer overlay */}
+      {isHolding && (
+        <div className="absolute inset-0 rounded-md pointer-events-none flex items-center justify-center z-10"
+          style={{ background: 'rgba(239,68,68,0.10)' }}
+        >
+          <svg width="36" height="36" viewBox="0 0 36 36" style={{ transform: 'rotate(-90deg)' }}>
+            <circle cx="18" cy="18" r="14" fill="none" stroke="rgba(239,68,68,0.2)" strokeWidth="2.5" />
+            <circle
+              cx="18" cy="18" r="14"
+              fill="none"
+              stroke="rgb(239,68,68)"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeDasharray="87.96"
+              strokeDashoffset="87.96"
+              style={{ animation: `holdProgress ${holdDuration}ms linear forwards` }}
+            />
+          </svg>
+          <span className="absolute text-[9px] font-black text-red-400 tracking-wide">HÅLL</span>
+        </div>
+      )}
       {/* Drag handle – visas på desktop, hela kortet är draggable på touch */}
       <div className="cursor-grab active:cursor-grabbing shrink-0 pointer-events-none">
         <GripVertical className="w-3 h-3 text-white/30" />
