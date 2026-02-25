@@ -182,7 +182,7 @@ function drawTeamBlock(
     ctx.fillStyle = player ? "#ffffff" : "rgba(255,255,255,0.25)";
     ctx.letterSpacing = "0px";
     const nameText = player
-      ? (player.number ? `#${player.number}  ${player.name}` : player.name)
+      ? (player.number ? `${player.name}  #${player.number}` : player.name)
       : "—";
     ctx.fillText(nameText, rowX + badgeW + 10, curY + 14);
 
