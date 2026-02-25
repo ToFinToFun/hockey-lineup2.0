@@ -14,6 +14,7 @@ import {
   useSensor,
   useSensors,
   closestCorners,
+  MeasuringStrategy,
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
@@ -28,6 +29,7 @@ import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { saveStateToFirebase, subscribeToFirebase, saveLineupToFirebase, type AppState, type SavedLineup } from "@/lib/firebase";
 import { Download, Wifi, WifiOff, Share2, Check } from "lucide-react";
 import { createPortal } from "react-dom";
+import { snapCenterToCursor } from "@dnd-kit/modifiers";
 
 type MobileTab = "vita" | "trupp" | "grona";
 
@@ -502,6 +504,7 @@ export default function Home() {
     <DndContext
       sensors={sensors}
       collisionDetection={closestCorners}
+      measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
@@ -734,9 +737,9 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Drag overlay – portaled to body to avoid stacking context issues */}
+      {/* Drag overlay – portaled to body, snapCenterToCursor för korrekt scroll-offset */}
       {createPortal(
-        <DragOverlay zIndex={99999}>
+        <DragOverlay zIndex={99999} modifiers={[snapCenterToCursor]}>
           {activePlayer ? <PlayerCardOverlay player={activePlayer} /> : null}
         </DragOverlay>,
         document.body
