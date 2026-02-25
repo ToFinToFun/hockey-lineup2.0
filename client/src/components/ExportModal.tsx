@@ -1,7 +1,7 @@
 // ExportModal – Exportera uppställning som bild
 // Använder ren Canvas API för att rita uppställningen – fungerar i alla miljöer utan CORS-problem
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { X, Download } from "lucide-react";
 import type { Player } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
@@ -25,6 +25,31 @@ function getToday(): string {
   return d.toLocaleDateString("sv-SE", { year: "numeric", month: "long", day: "numeric" });
 }
 
+// Load an image via fetch → blob URL to avoid canvas CORS taint issues
+async function loadImage(src: string): Promise<HTMLImageElement> {
+  // Try fetch first (works even without CORS headers since we use blob URL)
+  try {
+    const resp = await fetch(src);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const blob = await resp.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    return await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => { URL.revokeObjectURL(blobUrl); resolve(img); };
+      img.onerror = () => { URL.revokeObjectURL(blobUrl); reject(new Error("img load failed")); };
+      img.src = blobUrl;
+    });
+  } catch {
+    // Fallback: direct load without crossOrigin (canvas may be tainted but we try)
+    return new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
+      img.src = src;
+    });
+  }
+}
+
 // Draw a rounded rectangle
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
@@ -38,6 +63,42 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.lineTo(x, y + r);
   ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
+}
+
+// Draw a circular clipped image (logo) at cx, cy with given radius
+function drawCircleLogo(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement | null,
+  cx: number,
+  cy: number,
+  radius: number,
+  fallbackColor: string
+) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.closePath();
+
+  if (img) {
+    ctx.clip();
+    // Draw image centered inside the circle
+    const d = radius * 2;
+    ctx.drawImage(img, cx - radius, cy - radius, d, d);
+  } else {
+    // Fallback: solid color circle
+    ctx.fillStyle = fallbackColor;
+    ctx.fill();
+  }
+
+  // Subtle border ring
+  ctx.restore();
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(255,255,255,0.25)";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.restore();
 }
 
 function getRoleColor(role: string): { bg: string; text: string } {
@@ -55,16 +116,25 @@ function drawTeamBlock(
   teamName: string,
   accentColor: string,
   slots: Slot[],
-  lineup: Record<string, Player>
+  lineup: Record<string, Player>,
+  logoImg: HTMLImageElement | null,
+  logoFallbackColor: string
 ): number {
   let curY = y;
 
-  // Team name
+  // Logo circle (40px diameter) + team name on the same row
+  const logoRadius = 20;
+  const logoCx = x + logoRadius;
+  const logoCy = curY + logoRadius;
+  drawCircleLogo(ctx, logoImg, logoCx, logoCy, logoRadius, logoFallbackColor);
+
+  // Team name to the right of the logo
   ctx.font = "bold 20px 'Arial', sans-serif";
   ctx.fillStyle = accentColor;
   ctx.letterSpacing = "2px";
-  ctx.fillText(teamName.toUpperCase(), x, curY + 20);
-  curY += 34;
+  ctx.fillText(teamName.toUpperCase(), x + logoRadius * 2 + 12, curY + logoRadius + 7);
+
+  curY += logoRadius * 2 + 10; // advance past logo row
 
   // Sections – only include slots that have a player assigned
   const goalkeeperSlots = slots.filter((s) => s.type === "goalkeeper" && lineup[s.id]);
@@ -73,8 +143,8 @@ function drawTeamBlock(
   const defenseGroups = groupSlots(defenseSlots).filter((g) => g.slots.length > 0);
   const forwardGroups = groupSlots(forwardSlots).filter((g) => g.slots.length > 0);
 
-  const drawSection = (label: string, labelColor: string, slots: unknown[], drawContent: () => void) => {
-    if (slots.length === 0) return; // skip empty sections
+  const drawSection = (label: string, labelColor: string, slotsArr: unknown[], drawContent: () => void) => {
+    if (slotsArr.length === 0) return; // skip empty sections
     ctx.font = "bold 9px 'Arial', sans-serif";
     ctx.fillStyle = labelColor;
     ctx.letterSpacing = "2px";
@@ -185,6 +255,28 @@ function drawTeamBlock(
   return curY;
 }
 
+// Calculate the total height a team block will occupy (including logo row)
+function calcTeamHeight(slots: Slot[], lineup: Record<string, Player>): number {
+  const gkSlots = slots.filter((s) => s.type === "goalkeeper" && lineup[s.id]);
+  const defSlots = slots.filter((s) => s.type === "defense" && lineup[s.id]);
+  const fwdSlots = slots.filter((s) => s.type === "forward" && lineup[s.id]);
+  const defGroups = groupSlots(defSlots).filter((g) => g.slots.length > 0);
+  const fwdGroups = groupSlots(fwdSlots).filter((g) => g.slots.length > 0);
+  let h = 50; // logo row (40px) + 10px gap
+  if (gkSlots.length > 0) h += 16 + gkSlots.length * 22 + 6;
+  if (defSlots.length > 0) {
+    const rows = Math.ceil(defGroups.length / 2);
+    const slotsPerGroup = defGroups[0]?.slots.length ?? 2;
+    h += 16 + rows * (slotsPerGroup * 22 + 22) + 6;
+  }
+  if (fwdSlots.length > 0) {
+    const rows = Math.ceil(fwdGroups.length / 2);
+    const slotsPerGroup = fwdGroups[0]?.slots.length ?? 3;
+    h += 16 + rows * (slotsPerGroup * 22 + 22) + 6;
+  }
+  return h;
+}
+
 export function ExportModal({
   onClose,
   teamAName,
@@ -200,33 +292,23 @@ export function ExportModal({
   const [exporting, setExporting] = useState(false);
   const [rendered, setRendered] = useState(false);
 
-  // Calculate dynamic height based on placed players
-  const calcTeamHeight = (slots: Slot[], lineup: Record<string, Player>): number => {
-    const gkSlots = slots.filter((s) => s.type === 'goalkeeper' && lineup[s.id]);
-    const defSlots = slots.filter((s) => s.type === 'defense' && lineup[s.id]);
-    const fwdSlots = slots.filter((s) => s.type === 'forward' && lineup[s.id]);
-    const defGroups = groupSlots(defSlots).filter((g) => g.slots.length > 0);
-    const fwdGroups = groupSlots(fwdSlots).filter((g) => g.slots.length > 0);
-    let h = 34; // team name
-    if (gkSlots.length > 0) h += 16 + gkSlots.length * 22 + 6;
-    if (defSlots.length > 0) {
-      const rows = Math.ceil(defGroups.length / 2);
-      const slotsPerGroup = defGroups[0]?.slots.length ?? 2;
-      h += 16 + rows * (slotsPerGroup * 22 + 22) + 6;
-    }
-    if (fwdSlots.length > 0) {
-      const rows = Math.ceil(fwdGroups.length / 2);
-      const slotsPerGroup = fwdGroups[0]?.slots.length ?? 3;
-      h += 16 + rows * (slotsPerGroup * 22 + 22) + 6;
-    }
-    return h;
-  };
-
-  const renderCanvas = () => {
+  const renderCanvas = async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+
+    // Load logos in parallel – fall back gracefully if they fail
+    let imgWhite: HTMLImageElement | null = null;
+    let imgGreen: HTMLImageElement | null = null;
+    try {
+      [imgWhite, imgGreen] = await Promise.all([
+        loadImage(logoWhite),
+        loadImage(logoGreen),
+      ]);
+    } catch {
+      // logos failed to load – will use fallback solid colour circles
+    }
 
     const W = 960;
     // Dynamic height: header (88px) + max of both teams + footer (30px)
@@ -277,7 +359,8 @@ export function ExportModal({
     const colW = (W - 72) / 2;
     const startY = 88;
 
-    drawTeamBlock(ctx, 24, startY, colW, teamAName, "#e2e8f0", teamASlots, teamALineup);
+    // VITA team – white logo
+    drawTeamBlock(ctx, 24, startY, colW, teamAName, "#e2e8f0", teamASlots, teamALineup, imgWhite, "#ffffff");
 
     // Center separator
     ctx.strokeStyle = "rgba(255,255,255,0.07)";
@@ -287,21 +370,26 @@ export function ExportModal({
     ctx.lineTo(W / 2, H - 20);
     ctx.stroke();
 
-    drawTeamBlock(ctx, W / 2 + 24, startY, colW, teamBName, "#34d399", teamBSlots, teamBLineup);
+    // GRÖNA team – green logo
+    drawTeamBlock(ctx, W / 2 + 24, startY, colW, teamBName, "#34d399", teamBSlots, teamBLineup, imgGreen, "#337931");
 
     // Footer
     ctx.font = "9px 'Arial', sans-serif";
     ctx.fillStyle = "rgba(255,255,255,0.2)";
     ctx.letterSpacing = "1px";
+    ctx.textAlign = "center";
     ctx.fillText("STÅLSTADENS SPORTFÖRENING", W / 2, H - 10);
+    ctx.textAlign = "left";
 
     setRendered(true);
   };
 
   // Render on mount
-  useState(() => {
-    setTimeout(renderCanvas, 50);
-  });
+  useEffect(() => {
+    const timer = setTimeout(() => { renderCanvas(); }, 50);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleExport = () => {
     const canvas = canvasRef.current;
@@ -357,6 +445,9 @@ export function ExportModal({
 
         {/* Canvas-förhandsvisning */}
         <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-black/20">
+          {!rendered && (
+            <div className="absolute text-white/30 text-sm">Genererar förhandsvisning…</div>
+          )}
           <canvas
             ref={canvasRef}
             className="rounded-xl shadow-2xl border border-white/10"
