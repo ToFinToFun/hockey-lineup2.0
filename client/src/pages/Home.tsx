@@ -101,6 +101,11 @@ export default function Home() {
   const [showExport, setShowExport] = useState(false);
   const [firebaseConnected, setFirebaseConnected] = useState<boolean | null>(null);
 
+  // IDs för medvetet borttagna spelare – hindrar merge från att lägga tillbaka dem
+  const [deletedPlayerIds, setDeletedPlayerIds] = useState<Set<string>>(new Set());
+  const deletedPlayerIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => { deletedPlayerIdsRef.current = deletedPlayerIds; }, [deletedPlayerIds]);
+
   // Ångra-historik
   const [undoStack, setUndoStack] = useState<UndoSnapshot[]>([]);
   const skipNextUndoSnapshot = useRef(false); // hoppa över snapshot vid ångra-återställning
@@ -125,11 +130,22 @@ export default function Home() {
 
         // Merge: se till att alla spelare från initialPlayers alltid finns i truppen
         // (Firebase kan ha en äldre lista som saknar nyare spelare)
+        // Spelare som medvetet tagits bort (deletedPlayerIds) läggs INTE tillbaka
         const firebasePlayers: Player[] = state.players ?? [];
         const firebaseIds = new Set(firebasePlayers.map((p) => p.id));
         const lineupIds = new Set(Object.values(state.lineup ?? {}).map((p) => p.id));
+        const firebaseDeletedIds = new Set<string>(state.deletedPlayerIds ?? []);
+        // Uppdatera deletedPlayerIds med vad Firebase vet om
+        if (firebaseDeletedIds.size > 0) {
+          setDeletedPlayerIds((prev) => {
+            const merged = new Set(Array.from(prev).concat(Array.from(firebaseDeletedIds)));
+            deletedPlayerIdsRef.current = merged;
+            return merged;
+          });
+        }
+        const allDeletedIds = new Set(Array.from(deletedPlayerIdsRef.current).concat(Array.from(firebaseDeletedIds)));
         const missingPlayers = initialPlayers.filter(
-          (p) => !firebaseIds.has(p.id) && !lineupIds.has(p.id)
+          (p) => !firebaseIds.has(p.id) && !lineupIds.has(p.id) && !allDeletedIds.has(p.id)
         );
         const mergedPlayers = missingPlayers.length > 0
           ? [...firebasePlayers, ...missingPlayers]
@@ -173,8 +189,9 @@ export default function Home() {
       lineup,
       teamAName,
       teamBName,
+      deletedPlayerIds: Array.from(deletedPlayerIds),
     });
-  }, [availablePlayers, lineup, teamAName, teamBName]);
+  }, [availablePlayers, lineup, teamAName, teamBName, deletedPlayerIds]);
 
   // Spara en snapshot i undo-stacken
   const pushUndo = useCallback(() => {
@@ -315,6 +332,13 @@ export default function Home() {
 
   const handleDeletePlayer = useCallback((playerId: string) => {
     pushUndo();
+    // Lägg till i borttagna-listan så merge inte återinför spelaren
+    setDeletedPlayerIds((prev) => {
+      const next = new Set(prev);
+      next.add(playerId);
+      deletedPlayerIdsRef.current = next;
+      return next;
+    });
     setAvailablePlayers((prev) => prev.filter((p) => p.id !== playerId));
     setLineup((prev) => {
       const next = { ...prev };

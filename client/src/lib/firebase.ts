@@ -34,6 +34,7 @@ export type AppState = {
   lineup: Record<string, Player>;
   teamAName: string;
   teamBName: string;
+  deletedPlayerIds?: string[]; // IDs för medvetet borttagna spelare
 };
 
 export type SavedLineup = {
