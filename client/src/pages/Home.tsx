@@ -21,7 +21,7 @@ import {
   type DragMoveEvent,
   type CollisionDetection,
 } from "@dnd-kit/core";
-import { initialPlayers, type Player, type Position, type TeamColor } from "@/lib/players";
+import { initialPlayers, type Player, type Position, type TeamColor, type CaptainRole } from "@/lib/players";
 import { createTeamSlots } from "@/lib/lineup";
 import { PlayerList } from "@/components/PlayerList";
 import { TeamPanel } from "@/components/TeamPanel";
@@ -493,6 +493,18 @@ export default function Home() {
     });
   }, []);
 
+  const handleChangeCaptainRole = useCallback((playerId: string, role: CaptainRole) => {
+    const update = (p: Player) => p.id === playerId ? { ...p, captainRole: role } : p;
+    setAvailablePlayers((prev) => prev.map(update));
+    setLineup((prev) => {
+      const next = { ...prev };
+      for (const [slotId, p] of Object.entries(next)) {
+        if (p.id === playerId) next[slotId] = update(p);
+      }
+      return next;
+    });
+  }, []);
+
   const [mobileTab, setMobileTab] = useState<MobileTab>("trupp");
   const [dragHoverTab, setDragHoverTab] = useState<MobileTab | null>(null);
   const tabHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -738,6 +750,7 @@ export default function Home() {
                     onChangeTeamColor={handleChangeTeamColor}
                     onChangeNumber={handleChangeNumber}
                     onChangeName={handleChangeName}
+                    onChangeCaptainRole={handleChangeCaptainRole}
                   />
                 </div>
                 <SavedLineupsPanel
@@ -788,6 +801,7 @@ export default function Home() {
                       onChangeTeamColor={handleChangeTeamColor}
                       onChangeNumber={handleChangeNumber}
                       onChangeName={handleChangeName}
+                      onChangeCaptainRole={handleChangeCaptainRole}
                     />
                   </div>
                   <SavedLineupsPanel

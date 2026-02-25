@@ -6,7 +6,7 @@ import { useParams, Link } from "wouter";
 import { get, ref, getDatabase } from "firebase/database";
 import { createTeamSlots, groupSlots } from "@/lib/lineup";
 import type { Player } from "@/lib/players";
-import { getPositionBadgeColor } from "@/lib/players";
+import { getPositionBadgeColor, formatPlayerDisplay } from "@/lib/players";
 import { Clock, Users } from "lucide-react";
 
 const BG_URL =
@@ -67,6 +67,11 @@ function SlotRow({ player, label, shortLabel }: { player: Player | undefined; la
             {shortLabel}
           </span>
           <span className="text-white/90 font-semibold truncate flex-1">
+            {player.captainRole && (
+              <span className={`mr-1 font-black ${
+                player.captainRole === "C" ? "text-yellow-300" : "text-sky-300"
+              }`}>{player.captainRole}</span>
+            )}
             {player.name}
             {player.number && (
               <span className="text-white/45 font-normal ml-1.5">#{player.number}</span>

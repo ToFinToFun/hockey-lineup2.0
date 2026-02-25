@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard, TeamColorIndicator } from "./PlayerCard";
-import type { Player, Position, TeamColor } from "@/lib/players";
+import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
 import { ALL_POSITIONS, POSITION_LABELS } from "@/lib/players";
 import { Search, UserPlus, X, Trash2, ArrowUpDown } from "lucide-react";
 import { nanoid } from "nanoid";
@@ -17,6 +17,7 @@ interface PlayerListProps {
   onChangeTeamColor: (playerId: string, color: TeamColor) => void;
   onChangeNumber: (playerId: string, number: string) => void;
   onChangeName: (playerId: string, name: string) => void;
+  onChangeCaptainRole: (playerId: string, role: CaptainRole) => void;
 }
 
 type PosFilter = Position | "Alla";
@@ -59,7 +60,7 @@ function sortPlayers(players: Player[], key: SortKey, dir: SortDir): Player[] {
   });
 }
 
-export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber, onChangeName }: PlayerListProps) {
+export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber, onChangeName, onChangeCaptainRole }: PlayerListProps) {
   const [search, setSearch] = useState("");
   const [posFilter, setPosFilter] = useState<PosFilter>("Alla");
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("Alla");
@@ -248,6 +249,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                 onChangeTeamColor={(color) => onChangeTeamColor(player.id, color)}
                 onChangeNumber={(nr) => onChangeNumber(player.id, nr)}
                 onChangeName={(name) => onChangeName(player.id, name)}
+                onChangeCaptainRole={(role) => onChangeCaptainRole(player.id, role)}
               />
             </div>
           ))

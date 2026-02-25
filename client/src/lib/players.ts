@@ -15,12 +15,22 @@ export const ALL_POSITIONS: Position[] = ["MV", "B", "F", "C", "IB"];
 
 export type TeamColor = "green" | "white" | null;
 
+export type CaptainRole = "C" | "A" | null;
+
 export interface Player {
   id: string;
   number: string;
   name: string;
   position: Position;
   teamColor?: TeamColor;
+  captainRole?: CaptainRole;
+}
+
+/** Formaterar spelarens visningsnamn: "C Jerry Paasovaara #63" eller "Linus Carbin #35" */
+export function formatPlayerDisplay(player: Player): string {
+  const prefix = player.captainRole ? `${player.captainRole} ` : "";
+  const nr = player.number ? ` #${player.number}` : "";
+  return `${prefix}${player.name}${nr}`;
 }
 
 export const initialPlayers: Player[] = [
