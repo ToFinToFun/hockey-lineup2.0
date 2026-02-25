@@ -441,8 +441,11 @@ export default function Home() {
     isReceivingFromFirebase.current = true;
     pushUndo();
 
+    // Guard against malformed saved lineups (lineup may be null/undefined in old entries)
+    const safeLineup: Record<string, Player> = saved.lineup ?? {};
+
     // Bygg ny spelartrupp: alla spelare som inte är i den sparade lineup
-    const savedLineupIds = new Set(Object.values(saved.lineup).map((p) => p.id));
+    const savedLineupIds = new Set(Object.values(safeLineup).map((p) => p.id));
     const allKnownPlayers = [
       ...availablePlayersRef.current,
       ...Object.values(lineupRef.current),
@@ -455,10 +458,10 @@ export default function Home() {
     });
     const newAvailable = allUnique.filter((p) => !savedLineupIds.has(p.id));
 
-    setLineup(saved.lineup);
+    setLineup(safeLineup);
     setAvailablePlayers(newAvailable);
-    setTeamAName(saved.teamAName);
-    setTeamBName(saved.teamBName);
+    setTeamAName(saved.teamAName ?? "");
+    setTeamBName(saved.teamBName ?? "");
 
     setTimeout(() => {
       isReceivingFromFirebase.current = false;

@@ -149,7 +149,7 @@ export function SavedLineupsPanel({
                       </span>
                       <span className="text-white/20 text-[10px]">·</span>
                       <span className="text-white/30 text-[10px]">
-                        {Object.keys(sl.lineup).length} placerade
+                        {Object.keys(sl.lineup ?? {}).length} placerade
                       </span>
                     </div>
                   </div>
