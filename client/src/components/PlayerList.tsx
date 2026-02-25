@@ -1,6 +1,6 @@
 // Mittenpanel med spelarlista, sökfunktion, positions- och lag-filter, sortering
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard, TeamColorIndicator } from "./PlayerCard";
 import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
@@ -71,6 +71,33 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
   const [newNumber, setNewNumber] = useState("");
   const [newPosition, setNewPosition] = useState<Position>("IB");
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; player: Player } | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressActive = useRef(false);
+
+  const LONG_PRESS_DURATION = 1500; // 1.5 sekunder för att ta bort spelare
+
+  const handleLongPressStart = (e: React.PointerEvent, player: Player) => {
+    if (e.pointerType === "mouse") return; // Musen använder contextMenu istället
+    longPressActive.current = false;
+    longPressTimer.current = setTimeout(() => {
+      longPressActive.current = true;
+      setContextMenu({ x: e.clientX, y: e.clientY, player });
+    }, LONG_PRESS_DURATION);
+  };
+
+  const handleLongPressEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const handleLongPressMove = (e: React.PointerEvent) => {
+    // Avbryt long-press om användaren rör sig mer än 10px (drag-rörelse)
+    if (longPressTimer.current) {
+      handleLongPressEnd();
+    }
+  };
 
   const { setNodeRef, isOver } = useDroppable({ id: "player-list" });
 
@@ -242,6 +269,11 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                 e.preventDefault();
                 setContextMenu({ x: e.clientX, y: e.clientY, player });
               }}
+              onPointerDown={(e) => handleLongPressStart(e, player)}
+              onPointerUp={handleLongPressEnd}
+              onPointerMove={handleLongPressMove}
+              onPointerCancel={handleLongPressEnd}
+              onPointerLeave={handleLongPressEnd}
             >
               <DraggablePlayerCard
                 player={player}
