@@ -485,16 +485,18 @@ export function ExportModal({
           </div>
         </div>
 
-        {/* Canvas-förhandsvisning */}
-        <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-black/20">
+        {/* Canvas-förhandsvisning – scrollbar horisontellt på mobil istället för att komprimera */}
+        <div className="flex-1 overflow-auto p-4 bg-black/20">
           {!rendered && (
-            <div className="absolute text-white/30 text-sm">Genererar förhandsvisning…</div>
+            <div className="absolute inset-0 flex items-center justify-center text-white/30 text-sm">Genererar förhandsvisning…</div>
           )}
-          <canvas
-            ref={canvasRef}
-            className="rounded-xl shadow-2xl border border-white/10"
-            style={{ maxWidth: "100%", height: "auto" }}
-          />
+          <div className="inline-block min-w-fit mx-auto">
+            <canvas
+              ref={canvasRef}
+              className="rounded-xl shadow-2xl border border-white/10"
+              style={{ minWidth: "960px", height: "auto" }}
+            />
+          </div>
         </div>
 
         <div className="px-5 py-2 border-t border-white/10 shrink-0">
