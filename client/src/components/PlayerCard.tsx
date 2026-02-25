@@ -101,7 +101,7 @@ export function DraggablePlayerCard({
   return (
     <div
       ref={setNodeRef}
-      style={{ ...style, touchAction: "none" }}  /* touchAction none krävs för dnd-kit draggable */
+      style={{ ...style, touchAction: "pan-y" }}  /* pan-y tillåter vertikal scroll, dnd-kit hanterar drag via delay */
       className={`
         group relative flex items-center gap-1.5 rounded-md
         bg-white/10 border border-white/20 backdrop-blur-sm
