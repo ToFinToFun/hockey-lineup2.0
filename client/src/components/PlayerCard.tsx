@@ -329,21 +329,19 @@ export function DraggablePlayerCard({
 export function TeamColorIndicator({ teamColor, size = 16 }: { teamColor: TeamColor; size?: number }) {
   if (teamColor === "green") {
     return (
-      <img
-        src={LOGO_GREEN}
-        alt="Gröna"
+      <div
         title="Gröna"
-        style={{ width: size, height: size, borderRadius: "50%", flexShrink: 0, objectFit: "cover", border: "1px solid rgba(255,255,255,0.2)" }}
+        style={{ width: size, height: size, flexShrink: 0 }}
+        className="rounded-full bg-emerald-400 border border-emerald-300/60 shrink-0"
       />
     );
   }
   if (teamColor === "white") {
     return (
-      <img
-        src={LOGO_WHITE}
-        alt="Vita"
+      <div
         title="Vita"
-        style={{ width: size, height: size, borderRadius: "50%", flexShrink: 0, objectFit: "cover", border: "1px solid rgba(255,255,255,0.3)" }}
+        style={{ width: size, height: size, flexShrink: 0 }}
+        className="rounded-full bg-white border border-white/60 shrink-0"
       />
     );
   }
