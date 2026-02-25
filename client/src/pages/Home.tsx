@@ -262,18 +262,22 @@ export default function Home() {
   }, []);
 
   const handleClearTeam = useCallback((teamPrefix: string) => {
-    const removedPlayers: Player[] = [];
+    // Läs ut spelarna ur lineup direkt (synkront) innan vi uppdaterar state
     setLineup((prev) => {
       const next = { ...prev };
+      const removedPlayers: Player[] = [];
       for (const [slotId, player] of Object.entries(next)) {
         if (slotId.startsWith(teamPrefix)) {
           removedPlayers.push(player);
           delete next[slotId];
         }
       }
+      // Lägg tillbaka spelarna i truppen inom samma render-cykel
+      if (removedPlayers.length > 0) {
+        setAvailablePlayers((prevPlayers) => [...removedPlayers, ...prevPlayers]);
+      }
       return next;
     });
-    setAvailablePlayers((prev) => [...removedPlayers, ...prev]);
   }, []);
 
   const handleChangeNumber = useCallback((playerId: string, number: string) => {
