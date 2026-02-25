@@ -147,7 +147,11 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
           <h2 className="text-white font-bold text-sm uppercase tracking-widest" style={{ fontFamily: "'Oswald', sans-serif" }}>
             Spelartrupp
           </h2>
-          <span className="text-white/40 text-xs">{players.length} spelare</span>
+          <span className="text-white/40 text-xs">
+            {filtered.length < players.length
+              ? <><span className="text-white/70 font-semibold">{filtered.length}</span> / {players.length} spelare</>
+              : <>{players.length} spelare</>}
+          </span>
         </div>
 
         {/* Sökfält */}
