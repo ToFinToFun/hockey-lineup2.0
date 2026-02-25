@@ -18,6 +18,7 @@ interface PlayerCardProps {
   onChangePosition?: (pos: Position) => void;
   onChangeTeamColor?: (color: TeamColor) => void;
   onChangeNumber?: (number: string) => void;
+  onChangeName?: (name: string) => void;
   compact?: boolean;
   hideExtras?: boolean; // Dölj position/lag även i icke-compact (används i export)
 }
@@ -28,6 +29,7 @@ export function DraggablePlayerCard({
   onChangePosition,
   onChangeTeamColor,
   onChangeNumber,
+  onChangeName,
   compact = false,
   hideExtras = false,
 }: PlayerCardProps) {
@@ -38,10 +40,13 @@ export function DraggablePlayerCard({
   const [showTeamMenu, setShowTeamMenu] = useState(false);
   const [showNrInput, setShowNrInput] = useState(false);
   const [nrValue, setNrValue] = useState("");
+  const [showNameInput, setShowNameInput] = useState(false);
+  const [nameValue, setNameValue] = useState("");
 
   const posBtnRef = useRef<HTMLButtonElement>(null);
   const teamBtnRef = useRef<HTMLButtonElement>(null);
   const nrBtnRef = useRef<HTMLButtonElement>(null);
+  const nameBtnRef = useRef<HTMLButtonElement>(null);
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -69,12 +74,73 @@ export function DraggablePlayerCard({
         <GripVertical className="w-3 h-3 text-white/30" />
       </div>
 
-      {/* Namn + nr inline i compact-läge */}
-      <span className="text-white font-medium truncate flex-1 leading-tight">
-        {player.name}{compact && !hideExtras && player.number ? (
-          <span className="text-white/40 font-normal ml-1"> #{player.number}</span>
-        ) : null}
-      </span>
+      {/* Namn – klickbar för redigering i icke-compact, annars vanlig text */}
+      {!compact && !hideExtras && onChangeName ? (
+        <>
+          <button
+            ref={nameBtnRef}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              setNameValue(player.name);
+              setShowNameInput((v) => !v);
+              setShowPosMenu(false);
+              setShowTeamMenu(false);
+              setShowNrInput(false);
+            }}
+            className="text-white font-medium truncate flex-1 leading-tight text-left hover:text-emerald-200 transition-colors cursor-text"
+            title="Klicka för att redigera namn"
+          >
+            {player.name}
+          </button>
+          <PortalDropdown
+            anchorRef={nameBtnRef}
+            open={showNameInput}
+            onClose={() => setShowNameInput(false)}
+          >
+            <div className="px-3 py-2 flex items-center gap-2" onPointerDown={(e) => e.stopPropagation()}>
+              <input
+                type="text"
+                value={nameValue}
+                autoFocus
+                maxLength={40}
+                placeholder="Spelarens namn"
+                onChange={(e) => setNameValue(e.target.value)}
+                onKeyDown={(e) => {
+                  e.stopPropagation();
+                  if (e.key === "Enter" && nameValue.trim()) {
+                    onChangeName(nameValue.trim());
+                    setShowNameInput(false);
+                  } else if (e.key === "Escape") {
+                    setShowNameInput(false);
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-44 bg-white/10 border border-emerald-400/40 rounded px-2 py-1 text-xs text-white outline-none focus:border-emerald-400"
+              />
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (nameValue.trim()) {
+                    onChangeName(nameValue.trim());
+                    setShowNameInput(false);
+                  }
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+                className="text-xs font-bold text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded hover:bg-white/10 transition-colors whitespace-nowrap"
+              >
+                Spara
+              </button>
+            </div>
+          </PortalDropdown>
+        </>
+      ) : (
+        <span className="text-white font-medium truncate flex-1 leading-tight">
+          {player.name}{compact && !hideExtras && player.number ? (
+            <span className="text-white/40 font-normal ml-1"> #{player.number}</span>
+          ) : null}
+        </span>
+      )}
 
       {/* Nummer-badge – klickbar för att redigera, dölj i compact och hideExtras */}
       {!compact && !hideExtras && onChangeNumber && (

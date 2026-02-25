@@ -428,6 +428,18 @@ export default function Home() {
     });
   }, []);
 
+  const handleChangeName = useCallback((playerId: string, name: string) => {
+    const update = (p: Player) => p.id === playerId ? { ...p, name } : p;
+    setAvailablePlayers((prev) => prev.map(update));
+    setLineup((prev) => {
+      const next = { ...prev };
+      for (const [slotId, p] of Object.entries(next)) {
+        if (p.id === playerId) next[slotId] = update(p);
+      }
+      return next;
+    });
+  }, []);
+
   const [mobileTab, setMobileTab] = useState<MobileTab>("trupp");
 
   const teamALineup: Record<string, Player> = {};
@@ -592,6 +604,7 @@ export default function Home() {
                     onChangePosition={handleChangePosition}
                     onChangeTeamColor={handleChangeTeamColor}
                     onChangeNumber={handleChangeNumber}
+                    onChangeName={handleChangeName}
                   />
                 </div>
                 <SavedLineupsPanel
@@ -644,6 +657,7 @@ export default function Home() {
                       onChangePosition={handleChangePosition}
                       onChangeTeamColor={handleChangeTeamColor}
                       onChangeNumber={handleChangeNumber}
+                      onChangeName={handleChangeName}
                     />
                   </div>
                   <SavedLineupsPanel

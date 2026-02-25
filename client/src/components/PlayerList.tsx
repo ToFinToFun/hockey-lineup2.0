@@ -16,6 +16,7 @@ interface PlayerListProps {
   onChangePosition: (playerId: string, pos: Position) => void;
   onChangeTeamColor: (playerId: string, color: TeamColor) => void;
   onChangeNumber: (playerId: string, number: string) => void;
+  onChangeName: (playerId: string, name: string) => void;
 }
 
 type PosFilter = Position | "Alla";
@@ -58,7 +59,7 @@ function sortPlayers(players: Player[], key: SortKey, dir: SortDir): Player[] {
   });
 }
 
-export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber }: PlayerListProps) {
+export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber, onChangeName }: PlayerListProps) {
   const [search, setSearch] = useState("");
   const [posFilter, setPosFilter] = useState<PosFilter>("Alla");
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("Alla");
@@ -242,6 +243,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                 onChangePosition={(pos) => onChangePosition(player.id, pos)}
                 onChangeTeamColor={(color) => onChangeTeamColor(player.id, color)}
                 onChangeNumber={(nr) => onChangeNumber(player.id, nr)}
+                onChangeName={(name) => onChangeName(player.id, name)}
               />
             </div>
           ))

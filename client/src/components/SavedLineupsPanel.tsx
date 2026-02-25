@@ -2,7 +2,7 @@
 // Design: Industrial Ice Arena – mörk panel med gröna accenter
 
 import { useState, useEffect } from "react";
-import { BookmarkPlus, Trash2, Download, ChevronDown, ChevronUp, Clock } from "lucide-react";
+import { BookmarkPlus, Trash2, Download, ChevronDown, ChevronUp, Clock, Share2, Check } from "lucide-react";
 import {
   saveLineupToFirebase,
   subscribeSavedLineups,
@@ -39,6 +39,18 @@ export function SavedLineupsPanel({
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleShare = (id: string) => {
+    const url = `${window.location.origin}/lineup/${id}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }).catch(() => {
+      // Fallback: öppna i nytt fönster
+      window.open(`/lineup/${id}`, "_blank");
+    });
+  };
 
   useEffect(() => {
     const unsub = subscribeSavedLineups(setSavedLineups);
@@ -141,6 +153,21 @@ export function SavedLineupsPanel({
                       </span>
                     </div>
                   </div>
+
+                  {/* Dela */}
+                  <button
+                    onClick={() => handleShare(sl.id)}
+                    title="Kopiera dela-länk"
+                    className={`p-1.5 rounded-md transition-all ${
+                      copiedId === sl.id
+                        ? "text-emerald-300 bg-emerald-500/20"
+                        : "text-white/30 hover:text-blue-300 hover:bg-blue-500/15"
+                    }`}
+                  >
+                    {copiedId === sl.id
+                      ? <Check className="w-3.5 h-3.5" />
+                      : <Share2 className="w-3.5 h-3.5" />}
+                  </button>
 
                   {/* Ladda */}
                   <button
