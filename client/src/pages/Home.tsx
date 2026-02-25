@@ -601,12 +601,25 @@ export default function Home() {
   const teamBCount = Object.keys(teamBLineup).length;
   const totalSlots = TEAM_A_SLOTS.length; // same for both teams
 
+  // Filtrera bort droppables med noll-storlek (dolda med display:none i mobilvy)
+  const filterVisibleDroppables = (args: Parameters<CollisionDetection>[0]): Parameters<CollisionDetection>[0] => ({
+    ...args,
+    droppableContainers: args.droppableContainers.filter((container) => {
+      const rect = container.rect.current;
+      if (!rect) return false;
+      // Ignorera droppables med noll-storlek (dolda element)
+      return rect.width > 0 && rect.height > 0;
+    }),
+  });
+
   // Muspekar-baserad collision detection: träffar det slot musen befinner sig i,
   // faller tillbaka till closestCenter om musen inte är inuti något slot.
+  // Filtrerar bort dolda slots (display:none) som har noll-storlek.
   const pointerWithinOrClosest: CollisionDetection = (args) => {
-    const pointerCollisions = pointerWithin(args);
+    const visibleArgs = filterVisibleDroppables(args);
+    const pointerCollisions = pointerWithin(visibleArgs);
     if (pointerCollisions.length > 0) return pointerCollisions;
-    return closestCenter(args);
+    return closestCenter(visibleArgs);
   };
 
   return (
