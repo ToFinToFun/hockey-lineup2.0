@@ -4,7 +4,7 @@
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, X } from "lucide-react";
-import type { Player, Position, TeamColor } from "@/lib/players";
+import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
 import { getPositionBadgeColor, ALL_POSITIONS } from "@/lib/players";
 import { useState, useRef } from "react";
 import { PortalDropdown } from "./PortalDropdown";
@@ -19,6 +19,7 @@ interface PlayerCardProps {
   onChangeTeamColor?: (color: TeamColor) => void;
   onChangeNumber?: (number: string) => void;
   onChangeName?: (name: string) => void;
+  onChangeCaptainRole?: (role: CaptainRole) => void;
   compact?: boolean;
   hideExtras?: boolean; // Dölj position/lag även i icke-compact (används i export)
 }
@@ -30,6 +31,7 @@ export function DraggablePlayerCard({
   onChangeTeamColor,
   onChangeNumber,
   onChangeName,
+  onChangeCaptainRole,
   compact = false,
   hideExtras = false,
 }: PlayerCardProps) {
@@ -42,11 +44,13 @@ export function DraggablePlayerCard({
   const [nrValue, setNrValue] = useState("");
   const [showNameInput, setShowNameInput] = useState(false);
   const [nameValue, setNameValue] = useState("");
+  const [showCaptainMenu, setShowCaptainMenu] = useState(false);
 
   const posBtnRef = useRef<HTMLButtonElement>(null);
   const teamBtnRef = useRef<HTMLButtonElement>(null);
   const nrBtnRef = useRef<HTMLButtonElement>(null);
   const nameBtnRef = useRef<HTMLButtonElement>(null);
+  const captainBtnRef = useRef<HTMLButtonElement>(null);
 
   // Under drag: göm originalet helt (DragOverlay hanterar all visuell feedback)
   const style = isDragging
@@ -73,9 +77,76 @@ export function DraggablePlayerCard({
         <GripVertical className="w-3 h-3 text-white/30" />
       </div>
 
+      {/* Captain/AC-badge – visas före namnet i compact-läge */}
+      {compact && !hideExtras && player.captainRole && (
+        <span className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 ${
+          player.captainRole === "C"
+            ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/40"
+            : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
+        }`}>{player.captainRole}</span>
+      )}
+
       {/* Namn – klickbar för redigering i icke-compact, annars vanlig text */}
       {!compact && !hideExtras && onChangeName ? (
         <>
+          {/* Captain-badge klickbar i icke-compact */}
+          {onChangeCaptainRole && (
+            <>
+              <button
+                ref={captainBtnRef}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowCaptainMenu((v) => !v);
+                  setShowPosMenu(false);
+                  setShowTeamMenu(false);
+                  setShowNrInput(false);
+                  setShowNameInput(false);
+                }}
+                className={`text-[9px] font-black px-1.5 py-0.5 rounded shrink-0 border transition-all ${
+                  player.captainRole === "C"
+                    ? "bg-yellow-400/20 text-yellow-300 border-yellow-400/40 hover:bg-yellow-400/30"
+                    : player.captainRole === "A"
+                    ? "bg-orange-400/20 text-orange-300 border-orange-400/40 hover:bg-orange-400/30"
+                    : "bg-white/5 text-white/20 border-white/10 hover:bg-white/10 hover:text-white/40"
+                }`}
+                title="Klicka för att sätta C / A / ingen"
+              >
+                {player.captainRole ?? "C/A"}
+              </button>
+              <PortalDropdown
+                anchorRef={captainBtnRef}
+                open={showCaptainMenu}
+                onClose={() => setShowCaptainMenu(false)}
+              >
+                {([
+                  { value: "C" as CaptainRole, label: "C – Kapten" },
+                  { value: "A" as CaptainRole, label: "A – Assisterande kapten" },
+                  { value: null, label: "Ingen roll" },
+                ] as { value: CaptainRole; label: string }[]).map(({ value, label }) => (
+                  <button
+                    key={String(value)}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onChangeCaptainRole(value);
+                      setShowCaptainMenu(false);
+                    }}
+                    className={`flex items-center gap-2 w-full px-3 py-2 text-xs text-left hover:bg-white/10 transition-colors whitespace-nowrap ${
+                      player.captainRole === value ? "bg-white/10" : ""
+                    }`}
+                  >
+                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${
+                      value === "C" ? "bg-yellow-400/20 text-yellow-300 border-yellow-400/40"
+                      : value === "A" ? "bg-orange-400/20 text-orange-300 border-orange-400/40"
+                      : "bg-white/5 text-white/20 border-white/10"
+                    }`}>{value ?? "—"}</span>
+                    <span className="text-white/80">{label}</span>
+                  </button>
+                ))}
+              </PortalDropdown>
+            </>
+          )}
           <button
             ref={nameBtnRef}
             onPointerDown={(e) => e.stopPropagation()}
@@ -86,6 +157,7 @@ export function DraggablePlayerCard({
               setShowPosMenu(false);
               setShowTeamMenu(false);
               setShowNrInput(false);
+              setShowCaptainMenu(false);
             }}
             className="text-white font-medium truncate flex-1 leading-tight text-left hover:text-emerald-200 transition-colors cursor-text"
             title="Klicka för att redigera namn"
@@ -359,6 +431,13 @@ export function PlayerCardOverlay({ player }: { player: Player }) {
     <div className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm bg-emerald-900 border border-emerald-400 shadow-2xl ring-2 ring-emerald-400/60 cursor-grabbing select-none" style={{ minWidth: 160, maxWidth: 240 }}>
       <GripVertical className="w-3 h-3 text-emerald-300/50 shrink-0" />
       <TeamColorIndicator teamColor={player.teamColor ?? null} size={14} />
+      {player.captainRole && (
+        <span className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 border ${
+          player.captainRole === "C"
+            ? "bg-yellow-400/20 text-yellow-300 border-yellow-400/40"
+            : "bg-orange-400/20 text-orange-300 border-orange-400/40"
+        }`}>{player.captainRole}</span>
+      )}
       <span className="text-white font-medium truncate">{player.name}</span>
       {player.number && (
         <span className="font-bold text-emerald-300/70 text-xs w-5 shrink-0">
