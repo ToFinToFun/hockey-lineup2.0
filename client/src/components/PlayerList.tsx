@@ -1,6 +1,6 @@
 // Mittenpanel med spelarlista, sökfunktion, positions- och lag-filter, sortering
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard, TeamColorIndicator } from "./PlayerCard";
 import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
@@ -71,37 +71,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
   const [newNumber, setNewNumber] = useState("");
   const [newPosition, setNewPosition] = useState<Position>("IB");
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; player: Player } | null>(null);
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const longPressActive = useRef(false);
-  const [holdingPlayerId, setHoldingPlayerId] = useState<string | null>(null);
 
-  const LONG_PRESS_DURATION = 3000; // 3 sekunder för att ta bort spelare
-
-  const handleLongPressStart = (e: React.PointerEvent, player: Player) => {
-    if (e.pointerType === "mouse") return; // Musen använder contextMenu istället
-    longPressActive.current = false;
-    setHoldingPlayerId(player.id);
-    longPressTimer.current = setTimeout(() => {
-      longPressActive.current = true;
-      setHoldingPlayerId(null);
-      setContextMenu({ x: e.clientX, y: e.clientY, player });
-    }, LONG_PRESS_DURATION);
-  };
-
-  const handleLongPressEnd = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-    setHoldingPlayerId(null);
-  };
-
-  const handleLongPressMove = () => {
-    // Avbryt long-press om användaren rör sig (drag-rörelse)
-    if (longPressTimer.current) {
-      handleLongPressEnd();
-    }
-  };
 
   const { setNodeRef, isOver } = useDroppable({ id: "player-list" });
 
@@ -281,11 +251,6 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                 onChangeNumber={(nr) => onChangeNumber(player.id, nr)}
                 onChangeName={(name) => onChangeName(player.id, name)}
                 onChangeCaptainRole={(role) => onChangeCaptainRole(player.id, role)}
-                onLongPress={(e) => handleLongPressStart(e, player)}
-                onLongPressEnd={handleLongPressEnd}
-                onLongPressMove={handleLongPressMove}
-                isHolding={holdingPlayerId === player.id}
-                holdDuration={LONG_PRESS_DURATION}
               />
             </div>
           ))
