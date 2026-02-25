@@ -67,26 +67,41 @@ export function DraggablePlayerCard({
     ? { opacity: 0, pointerEvents: "none" as const }
     : {};
 
+  // Spara startposition för att beräkna rörelse-avstånd
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
+
   const handlePointerDown = (e: React.PointerEvent) => {
     // Anropa dnd-kit listeners
     if (listeners?.onPointerDown) listeners.onPointerDown(e);
     // Starta long-press timer (endast touch)
-    if (e.pointerType !== "mouse" && onLongPress) onLongPress(e);
+    if (e.pointerType !== "mouse" && onLongPress) {
+      pointerStartRef.current = { x: e.clientX, y: e.clientY };
+      onLongPress(e);
+    }
   };
 
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (listeners?.onPointerUp) (listeners as Record<string, (e: React.PointerEvent) => void>).onPointerUp?.(e);
+  const handlePointerUp = () => {
+    pointerStartRef.current = null;
     if (onLongPressEnd) onLongPressEnd();
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (onLongPressMove) onLongPressMove();
+    // Avbryt long-press bara om fingret rört sig mer än 15px (undvik falska avbrott)
+    if (pointerStartRef.current && onLongPressMove) {
+      const dx = e.clientX - pointerStartRef.current.x;
+      const dy = e.clientY - pointerStartRef.current.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 15) {
+        pointerStartRef.current = null;
+        onLongPressMove();
+      }
+    }
   };
 
   return (
     <div
       ref={setNodeRef}
-      style={{ ...style, touchAction: "none" }}
+      style={{ ...style, touchAction: "none" }}  /* touchAction none krävs för dnd-kit draggable */
       className={`
         group relative flex items-center gap-1.5 rounded-md
         bg-white/10 border border-white/20 backdrop-blur-sm
@@ -102,7 +117,6 @@ export function DraggablePlayerCard({
       onPointerUp={handlePointerUp}
       onPointerMove={handlePointerMove}
       onPointerCancel={handlePointerUp}
-      onPointerLeave={handlePointerUp}
     >
       {/* Visuell hold-timer overlay */}
       {isHolding && (
