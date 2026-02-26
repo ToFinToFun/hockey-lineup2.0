@@ -151,6 +151,7 @@ export function TeamPanel({
 
   const filledCount = Object.keys(lineup).length;
   const totalSlots = slots.length;
+  const registeredInTeam = Object.values(lineup).filter((p) => p.isRegistered).length;
 
   return (
     <div className={`
@@ -177,7 +178,7 @@ export function TeamPanel({
           />
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-white/30 text-xs">{filledCount}/{totalSlots}</span>
+          <span className="text-white/30 text-xs">{filledCount}/{registeredInTeam}</span>
           {filledCount > 0 && (
             <button
               onClick={() => {
