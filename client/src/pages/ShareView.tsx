@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "wouter";
 import { get, ref, getDatabase } from "firebase/database";
-import { createTeamSlots, groupSlots } from "@/lib/lineup";
+import { createTeamSlots, groupSlots, MAX_TEAM_CONFIG } from "@/lib/lineup";
 import type { Player } from "@/lib/players";
 import { getPositionBadgeColor, formatPlayerDisplay } from "@/lib/players";
 import { Clock, Users } from "lucide-react";
@@ -16,8 +16,8 @@ const LOGO_GREEN =
 const LOGO_WHITE =
   "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/OmjlmGnLDLTblNdj.png";
 
-const TEAM_A_SLOTS = createTeamSlots("team-a");
-const TEAM_B_SLOTS = createTeamSlots("team-b");
+const TEAM_A_SLOTS = createTeamSlots("team-a", MAX_TEAM_CONFIG);
+const TEAM_B_SLOTS = createTeamSlots("team-b", MAX_TEAM_CONFIG);
 
 interface SavedLineup {
   id: string;
