@@ -18,3 +18,5 @@
 - [x] Felhantering med röd felindikator vid misslyckad hämtning
 - [x] Ändra header till "Anmälda X/Y st" (X = anmälda kvar i truppen, Y = totalt anmälda)
 - [x] Ändra spelarantal i header till "X/Y spelare" (X = kvar i listan, Y = totalt antal spelare)
+- [x] Ta bort "spelare" efter antal och "st" efter anmälda i headern
+- [x] Flytta knappen "Hämta anmälningar (laget.se)" till ovanför Sparade uppställningar
