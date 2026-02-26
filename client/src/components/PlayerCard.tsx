@@ -48,19 +48,11 @@ export function DraggablePlayerCard({
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: player.id, data: { player } });
 
-  const [showPosMenu, setShowPosMenu] = useState(false);
-  const [showTeamMenu, setShowTeamMenu] = useState(false);
-  const [showNrInput, setShowNrInput] = useState(false);
-  const [nrValue, setNrValue] = useState("");
-  const [showNameInput, setShowNameInput] = useState(false);
+  const [showEditPanel, setShowEditPanel] = useState(false);
   const [nameValue, setNameValue] = useState("");
-  const [showCaptainMenu, setShowCaptainMenu] = useState(false);
+  const [nrValue, setNrValue] = useState("");
 
-  const posBtnRef = useRef<HTMLButtonElement>(null);
-  const teamBtnRef = useRef<HTMLButtonElement>(null);
-  const nrBtnRef = useRef<HTMLButtonElement>(null);
-  const nameBtnRef = useRef<HTMLButtonElement>(null);
-  const captainBtnRef = useRef<HTMLButtonElement>(null);
+  const editBtnRef = useRef<HTMLButtonElement>(null);
 
   // Under drag: göm originalet helt (DragOverlay hanterar all visuell feedback)
   const style = isDragging
@@ -148,29 +140,26 @@ export function DraggablePlayerCard({
       {!compact && !hideExtras && onChangeName ? (
         <>
           <button
-            ref={nameBtnRef}
+            ref={editBtnRef}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
               setNameValue(player.name);
-              setShowNameInput((v) => !v);
-              setShowPosMenu(false);
-              setShowTeamMenu(false);
-              setShowNrInput(false);
-              setShowCaptainMenu(false);
+              setNrValue(player.number ?? "");
+              setShowEditPanel((v) => !v);
             }}
             className="text-white font-medium truncate flex-1 leading-tight text-left hover:text-emerald-200 transition-colors cursor-text"
-            title="Klicka för att redigera namn och kaptensroll"
+            title="Klicka för att redigera spelare"
           >
             {player.name}
             {player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
           </button>
           <PortalDropdown
-            anchorRef={nameBtnRef}
-            open={showNameInput}
-            onClose={() => setShowNameInput(false)}
+            anchorRef={editBtnRef}
+            open={showEditPanel}
+            onClose={() => setShowEditPanel(false)}
           >
-            <div className="px-3 py-2 flex flex-col gap-2" onPointerDown={(e) => e.stopPropagation()}>
+            <div className="px-3 py-2.5 flex flex-col gap-2" onPointerDown={(e) => e.stopPropagation()}>
               {/* Namn-fält */}
               <div className="flex items-center gap-2">
                 <input
@@ -184,20 +173,20 @@ export function DraggablePlayerCard({
                     e.stopPropagation();
                     if (e.key === "Enter" && nameValue.trim()) {
                       onChangeName(nameValue.trim());
-                      setShowNameInput(false);
+                      setShowEditPanel(false);
                     } else if (e.key === "Escape") {
-                      setShowNameInput(false);
+                      setShowEditPanel(false);
                     }
                   }}
                   onClick={(e) => e.stopPropagation()}
-                  className="w-44 bg-white/10 border border-emerald-400/40 rounded px-2 py-1 text-xs text-white outline-none focus:border-emerald-400"
+                  className="flex-1 bg-white/10 border border-emerald-400/40 rounded px-2 py-1 text-xs text-white outline-none focus:border-emerald-400"
                 />
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     if (nameValue.trim()) {
                       onChangeName(nameValue.trim());
-                      setShowNameInput(false);
+                      setShowEditPanel(false);
                     }
                   }}
                   onPointerDown={(e) => e.stopPropagation()}
@@ -206,10 +195,35 @@ export function DraggablePlayerCard({
                   Spara
                 </button>
               </div>
+              {/* Nummer-fält */}
+              {onChangeNumber && (
+                <div className="flex items-center gap-2 pt-1 border-t border-white/10">
+                  <span className="text-white/40 text-[10px] w-6">Nr:</span>
+                  <span className="text-white/50 text-xs">#</span>
+                  <input
+                    type="text"
+                    value={nrValue}
+                    maxLength={3}
+                    placeholder="—"
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, "");
+                      setNrValue(v);
+                      onChangeNumber(v);
+                    }}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      if (e.key === "Enter") setShowEditPanel(false);
+                      else if (e.key === "Escape") setShowEditPanel(false);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-14 bg-white/10 border border-emerald-400/40 rounded px-2 py-1 text-xs text-white text-center outline-none focus:border-emerald-400"
+                  />
+                </div>
+              )}
               {/* Kaptensroll-väljare */}
               {onChangeCaptainRole && (
                 <div className="flex items-center gap-1.5 pt-1 border-t border-white/10">
-                  <span className="text-white/40 text-[10px] mr-1">Roll:</span>
+                  <span className="text-white/40 text-[10px] w-6">Roll:</span>
                   {([
                     { value: "C" as CaptainRole, label: "C" },
                     { value: "A" as CaptainRole, label: "A" },
@@ -237,6 +251,57 @@ export function DraggablePlayerCard({
                   ))}
                 </div>
               )}
+              {/* Lag-väljare */}
+              {onChangeTeamColor && (
+                <div className="flex items-center gap-1.5 pt-1 border-t border-white/10">
+                  <span className="text-white/40 text-[10px] w-6">Lag:</span>
+                  {([
+                    { value: "white" as TeamColor, label: "Vita" },
+                    { value: "green" as TeamColor, label: "Gröna" },
+                    { value: null, label: "Inget" },
+                  ] as { value: TeamColor; label: string }[]).map(({ value, label }) => (
+                    <button
+                      key={String(value)}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onChangeTeamColor(value);
+                      }}
+                      className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded border transition-all ${
+                        (player.teamColor ?? null) === value
+                          ? "bg-white/15 text-white/80 border-white/30 ring-1 ring-white/20"
+                          : "bg-white/5 text-white/30 border-white/10 hover:bg-white/10 hover:text-white/50"
+                      }`}
+                    >
+                      <TeamColorIndicator teamColor={value} size={10} />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {/* Position-väljare */}
+              {onChangePosition && (
+                <div className="flex items-center gap-1 pt-1 border-t border-white/10 flex-wrap">
+                  <span className="text-white/40 text-[10px] w-6">Pos:</span>
+                  {ALL_POSITIONS.map((pos) => (
+                    <button
+                      key={pos}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onChangePosition(pos);
+                      }}
+                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded transition-all ${
+                        player.position === pos
+                          ? `${getPositionBadgeColor(pos)} ring-1 ring-white/30`
+                          : "bg-white/5 text-white/30 border border-white/10 hover:bg-white/10 hover:text-white/50"
+                      }`}
+                    >
+                      {pos}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </PortalDropdown>
         </>
@@ -245,68 +310,6 @@ export function DraggablePlayerCard({
           {player.name}{compact && !hideExtras && player.number ? (
             <span className="text-white/40 font-normal ml-1"> #{player.number}</span>
           ) : null}
-        </span>
-      )}
-
-      {/* Nummer-badge – klickbar för att redigera, dölj i compact och hideExtras */}
-      {!compact && !hideExtras && onChangeNumber && (
-        <>
-          <button
-            ref={nrBtnRef}
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-              setNrValue(player.number ?? "");
-              setShowNrInput((v) => !v);
-              setShowPosMenu(false);
-              setShowTeamMenu(false);
-            }}
-            className="font-bold text-white/50 hover:text-emerald-300 hover:bg-white/10 shrink-0 text-xs px-1.5 py-0.5 rounded border border-transparent hover:border-emerald-400/30 transition-all min-w-[28px] text-center"
-            title="Klicka för att redigera spelar-nr"
-          >
-            {player.number ? `#${player.number}` : <span className="text-white/20 text-[9px]">#—</span>}
-          </button>
-          <PortalDropdown
-            anchorRef={nrBtnRef}
-            open={showNrInput}
-            onClose={() => setShowNrInput(false)}
-          >
-            <div className="px-3 py-2 flex items-center gap-2" onPointerDown={(e) => e.stopPropagation()}>
-              <span className="text-white/50 text-xs">#</span>
-              <input
-                type="text"
-                value={nrValue}
-                autoFocus
-                maxLength={3}
-                placeholder="Nr"
-                onChange={(e) => setNrValue(e.target.value.replace(/\D/g, ""))}
-                onKeyDown={(e) => {
-                  e.stopPropagation();
-                  if (e.key === "Enter") {
-                    onChangeNumber(nrValue);
-                    setShowNrInput(false);
-                  } else if (e.key === "Escape") {
-                    setShowNrInput(false);
-                  }
-                }}
-                onClick={(e) => e.stopPropagation()}
-                className="w-14 bg-white/10 border border-emerald-400/40 rounded px-2 py-1 text-xs text-white text-center outline-none focus:border-emerald-400"
-              />
-              <button
-                onClick={(e) => { e.stopPropagation(); onChangeNumber(nrValue); setShowNrInput(false); }}
-                onPointerDown={(e) => e.stopPropagation()}
-                className="text-xs font-bold text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded hover:bg-white/10 transition-colors whitespace-nowrap"
-              >
-                Spara
-              </button>
-            </div>
-          </PortalDropdown>
-        </>
-      )}
-      {/* Nummer – visa utan redigering (ej compact, ej hideExtras) */}
-      {player.number && !compact && !hideExtras && !onChangeNumber && (
-        <span className="font-bold text-white/50 shrink-0 text-xs">
-          #{player.number}
         </span>
       )}
 
@@ -327,7 +330,7 @@ export function DraggablePlayerCard({
         </div>
       )}
 
-      {/* A/C-badge i icke-compact – visas före lagfärg-pricken (ej klickbar, redigeras via namn-dropdown) */}
+      {/* Icke-compact badges (ej klickbara – redigeras via namn-dropdown): A/C, lag, position */}
       {!compact && !hideExtras && player.captainRole && (
         <span className={`text-[9px] font-black px-1.5 py-0.5 rounded shrink-0 border ${
           player.captainRole === "C"
@@ -335,104 +338,16 @@ export function DraggablePlayerCard({
             : "bg-orange-400/20 text-orange-300 border-orange-400/40"
         }`}>{player.captainRole}</span>
       )}
-
-      {/* Lag-markering – dölj i compact-läge (visas separat ovan) */}
-      {!compact && !hideExtras && onChangeTeamColor ? (
-        <>
-          <button
-            ref={teamBtnRef}
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowTeamMenu((v) => !v);
-              setShowPosMenu(false);
-            }}
-            className="w-5 h-5 rounded-full overflow-hidden flex items-center justify-center hover:ring-2 hover:ring-white/40 transition-all shrink-0"
-            title="Klicka för att ändra lag-tillhörighet"
-          >
-            <TeamColorIndicator teamColor={player.teamColor ?? null} size={20} />
-          </button>
-          <PortalDropdown
-            anchorRef={teamBtnRef}
-            open={showTeamMenu}
-            onClose={() => setShowTeamMenu(false)}
-          >
-            {([
-              { value: "green" as TeamColor, label: "Gröna" },
-              { value: "white" as TeamColor, label: "Vita" },
-              { value: null, label: "Inget lag" },
-            ] as { value: TeamColor; label: string }[]).map(({ value, label }) => (
-              <button
-                key={String(value)}
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onChangeTeamColor(value);
-                  setShowTeamMenu(false);
-                }}
-                className={`flex items-center gap-2 w-full px-3 py-2 text-xs text-left hover:bg-white/10 transition-colors whitespace-nowrap ${(player.teamColor ?? null) === value ? "bg-white/10" : ""}`}
-              >
-                <TeamColorIndicator teamColor={value} size={16} />
-                <span className="text-white/80">{label}</span>
-              </button>
-            ))}
-          </PortalDropdown>
-        </>
-      ) : !compact && !hideExtras && (
+      {!compact && !hideExtras && (
         <div className="shrink-0">
           <TeamColorIndicator teamColor={player.teamColor ?? null} size={16} />
         </div>
       )}
-
-      {/* Positions-badge – dölj i compact-läge och hideExtras */}
-      {!compact && !hideExtras && <>
-        <button
-          ref={posBtnRef}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (onChangePosition) {
-              setShowPosMenu((v) => !v);
-              setShowTeamMenu(false);
-            }
-          }}
-          className={`
-            text-[9px] font-bold px-1.5 py-0.5 rounded transition-all shrink-0
-            ${getPositionBadgeColor(player.position)}
-            ${onChangePosition ? "hover:ring-2 hover:ring-white/40 cursor-pointer" : "cursor-default"}
-          `}
-          title={onChangePosition ? "Klicka för att ändra position" : undefined}
-        >
+      {!compact && !hideExtras && (
+        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position)}`}>
           {player.position}
-        </button>
-        {onChangePosition && (
-          <PortalDropdown
-            anchorRef={posBtnRef}
-            open={showPosMenu}
-            onClose={() => setShowPosMenu(false)}
-          >
-            {ALL_POSITIONS.map((pos) => (
-              <button
-                key={pos}
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onChangePosition(pos);
-                  setShowPosMenu(false);
-                }}
-                className={`flex items-center gap-2 w-full px-3 py-2 text-xs text-left hover:bg-white/10 transition-colors ${player.position === pos ? "bg-white/10" : ""}`}
-              >
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${getPositionBadgeColor(pos)}`}>
-                  {pos}
-                </span>
-                <span className="text-white/70">
-                  {pos === "MV" ? "Målvakt" : pos === "B" ? "Back" : pos === "F" ? "Forward" : pos === "C" ? "Center" : "Ice Box"}
-                </span>
-              </button>
-            ))}
-          </PortalDropdown>
-        )}
-      </>}
+        </span>
+      )}
 
       {/* Ta bort-knapp */}
       {onRemove && (
