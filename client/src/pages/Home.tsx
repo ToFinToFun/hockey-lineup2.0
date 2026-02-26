@@ -1,5 +1,6 @@
 // Hockey Lineup App – Home
 // Design: Industrial Ice Arena
+import { useAuth } from "@/_core/hooks/useAuth";
 // - Firebase Realtime Database synkronisering (alla användare ser samma data)
 // - localStorage som fallback om Firebase är offline
 // - Ångra-funktion (Ctrl+Z + knapp i header)
@@ -32,7 +33,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { saveStateToFirebase, subscribeToFirebase, saveLineupToFirebase, type AppState, type SavedLineup } from "@/lib/firebase";
 import { Download, Wifi, WifiOff, Share2, Check } from "lucide-react";
-import { matchRegisteredPlayers } from "@/lib/laget";
+import { matchRegisteredPlayers, fetchAttendanceFromApi } from "@/lib/laget";
 import { createPortal } from "react-dom"; // används av PlayerList context-meny
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 
@@ -605,31 +606,42 @@ export default function Home() {
     });
   }, []);
 
-  // Hämta anmälningar från laget.se och markera matchade spelare
-  const handleBulkRegister = useCallback((): { matched: number; unmatched: string[] } => {
-    const { matchedIds, unmatchedNames } = matchRegisteredPlayers(
-      availablePlayersRef.current,
-      lineupRef.current
-    );
-    const matchedSet = new Set(matchedIds);
+  // Hämta anmälningar från laget.se via backend-API och markera matchade spelare
+  const handleBulkRegister = useCallback(async (): Promise<{ matched: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string }> => {
+    try {
+      const data = await fetchAttendanceFromApi();
 
-    // Först: nollställ alla spelares isRegistered till false
-    // Sedan: markera matchade som true
-    const updatePlayer = (p: Player): Player => ({
-      ...p,
-      isRegistered: matchedSet.has(p.id),
-    });
-
-    setAvailablePlayers((prev) => prev.map(updatePlayer));
-    setLineup((prev) => {
-      const next: Record<string, Player> = {};
-      for (const [slotId, p] of Object.entries(prev)) {
-        next[slotId] = updatePlayer(p);
+      if (data.error) {
+        return { matched: 0, unmatched: [], error: data.error };
       }
-      return next;
-    });
 
-    return { matched: matchedIds.length, unmatched: unmatchedNames };
+      const { matchedIds, unmatchedNames } = matchRegisteredPlayers(
+        data.registeredNames,
+        availablePlayersRef.current,
+        lineupRef.current
+      );
+      const matchedSet = new Set(matchedIds);
+
+      // Först: nollställ alla spelares isRegistered till false
+      // Sedan: markera matchade som true
+      const updatePlayer = (p: Player): Player => ({
+        ...p,
+        isRegistered: matchedSet.has(p.id),
+      });
+
+      setAvailablePlayers((prev) => prev.map(updatePlayer));
+      setLineup((prev) => {
+        const next: Record<string, Player> = {};
+        for (const [slotId, p] of Object.entries(prev)) {
+          next[slotId] = updatePlayer(p);
+        }
+        return next;
+      });
+
+      return { matched: matchedIds.length, unmatched: unmatchedNames, eventTitle: data.eventTitle, eventDate: data.eventDate };
+    } catch (err: any) {
+      return { matched: 0, unmatched: [], error: err.message || "Kunde inte hämta data" };
+    }
   }, []);
 
   const [mobileTab, setMobileTab] = useState<MobileTab>("trupp");

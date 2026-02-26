@@ -1,6 +1,6 @@
 // Mittenpanel med spelarlista, sökfunktion, positions- och lag-filter, sortering
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard, TeamColorIndicator } from "./PlayerCard";
 import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
@@ -19,7 +19,7 @@ interface PlayerListProps {
   onChangeCaptainRole: (playerId: string, role: CaptainRole) => void;
   onChangeRegistered: (playerId: string, isRegistered: boolean) => void;
   onChangeGamesPlayed: (playerId: string, gamesPlayed: number) => void;
-  onBulkRegister?: () => { matched: number; unmatched: string[] };
+  onBulkRegister?: () => Promise<{ matched: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string }>;
 }
 
 type PosFilter = Position | "Alla";
@@ -74,7 +74,8 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
   const [sortKey, setSortKey] = useState<SortKey>("registered");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [showAddForm, setShowAddForm] = useState(false);
-  const [registerResult, setRegisterResult] = useState<{ matched: number; unmatched: string[] } | null>(null);
+  const [registerResult, setRegisterResult] = useState<{ matched: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string } | null>(null);
+  const [isLoadingAttendance, setIsLoadingAttendance] = useState(false);
   const [newName, setNewName] = useState("");
   const [newNumber, setNewNumber] = useState("");
   const [newPosition, setNewPosition] = useState<Position>("IB");
@@ -251,27 +252,66 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
         {onBulkRegister && (
           <div className="mt-2">
             <button
-              onClick={() => {
-                const result = onBulkRegister();
-                setRegisterResult(result);
-                setTimeout(() => setRegisterResult(null), 5000);
+              onClick={async () => {
+                if (isLoadingAttendance) return;
+                setIsLoadingAttendance(true);
+                setRegisterResult(null);
+                try {
+                  const result = await onBulkRegister();
+                  setRegisterResult(result);
+                  if (!result.error) {
+                    setTimeout(() => setRegisterResult(null), 8000);
+                  }
+                } catch {
+                  setRegisterResult({ matched: 0, unmatched: [], error: "Kunde inte hämta data" });
+                } finally {
+                  setIsLoadingAttendance(false);
+                }
               }}
-              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-300 text-[10px] font-bold hover:bg-sky-500/30 transition-all uppercase tracking-wider"
+              disabled={isLoadingAttendance}
+              className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border text-[10px] font-bold transition-all uppercase tracking-wider ${
+                isLoadingAttendance
+                  ? "bg-sky-500/10 border-sky-400/20 text-sky-300/50 cursor-wait"
+                  : "bg-sky-500/20 border-sky-400/40 text-sky-300 hover:bg-sky-500/30"
+              }`}
             >
-              <ClipboardCheck className="w-3.5 h-3.5" />
-              Hämta anmälningar (laget.se)
+              {isLoadingAttendance ? (
+                <>
+                  <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Hämtar från laget.se...
+                </>
+              ) : (
+                <>
+                  <ClipboardCheck className="w-3.5 h-3.5" />
+                  Hämta anmälningar (laget.se)
+                </>
+              )}
             </button>
             {registerResult && (
               <div className={`mt-1.5 text-[10px] px-2 py-1.5 rounded-lg border ${
-                registerResult.unmatched.length === 0
+                registerResult.error
+                  ? "bg-red-500/15 border-red-400/30 text-red-300"
+                  : registerResult.unmatched.length === 0
                   ? "bg-emerald-500/15 border-emerald-400/30 text-emerald-300"
                   : "bg-amber-500/15 border-amber-400/30 text-amber-300"
               }`}>
-                <span className="font-bold">{registerResult.matched}</span> spelare markerade som anmälda
-                {registerResult.unmatched.length > 0 && (
-                  <div className="mt-0.5 text-[9px] opacity-80">
-                    Ej matchade: {registerResult.unmatched.join(", ")}
-                  </div>
+                {registerResult.error ? (
+                  <span>{registerResult.error}</span>
+                ) : (
+                  <>
+                    <span className="font-bold">{registerResult.matched}</span> spelare markerade som anmälda
+                    {registerResult.eventTitle && (
+                      <span className="ml-1 opacity-70">({registerResult.eventTitle}{registerResult.eventDate ? ` · ${registerResult.eventDate}` : ""})</span>
+                    )}
+                    {registerResult.unmatched.length > 0 && (
+                      <div className="mt-0.5 text-[9px] opacity-80">
+                        Ej matchade: {registerResult.unmatched.join(", ")}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}
