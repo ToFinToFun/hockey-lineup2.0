@@ -29,7 +29,7 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition }: PlayerS
   return (
     <div
       ref={setNodeRef}
-      style={{ touchAction: "auto" }}
+      style={{ touchAction: "manipulation" }}
       className={`
         flex items-center gap-2 rounded-md border transition-all duration-150 min-h-[36px] overflow-visible
         ${isOver && !player

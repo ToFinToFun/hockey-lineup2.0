@@ -9,7 +9,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
+  MouseSensor,
   TouchSensor,
   useSensor,
   useSensors,
@@ -31,7 +31,7 @@ import { ExportModal } from "@/components/ExportModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { saveStateToFirebase, subscribeToFirebase, saveLineupToFirebase, type AppState, type SavedLineup } from "@/lib/firebase";
-import { Download, Wifi, WifiOff, Share2, Check, Undo2 } from "lucide-react";
+import { Download, Wifi, WifiOff, Share2, Check } from "lucide-react";
 import { createPortal } from "react-dom"; // används av PlayerList context-meny
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 
@@ -294,11 +294,11 @@ export default function Home() {
   const isMobile = useIsMobile();
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
       activationConstraint: {
         delay: 500,      // 500ms hold to start drag – tydlig avsikt krävs
-        tolerance: 5,    // 5px – fingret måste vara nästan stilla, annars är det scroll
+        tolerance: 8,    // 8px – fingret måste vara nästan stilla, annars är det scroll
       },
     })
   );
@@ -699,21 +699,6 @@ export default function Home() {
                     Dra spelare till en plats · Klicka badge för att ändra position
                   </span>
                 </div>
-
-                {/* Ångra-knapp */}
-                <button
-                  onClick={handleUndo}
-                  disabled={undoStack.length === 0}
-                  title="Ångra senaste ändringen"
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all uppercase tracking-wider ${
-                    undoStack.length === 0
-                      ? "bg-white/5 border border-white/10 text-white/20 cursor-not-allowed"
-                      : "bg-white/5 border border-white/15 text-white/60 hover:bg-white/10 hover:text-white/90"
-                  }`}
-                >
-                  <Undo2 className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Ångra</span>
-                </button>
 
                 {/* Dela-knapp */}
                 <button
