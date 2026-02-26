@@ -3,7 +3,7 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, X } from "lucide-react";
+import { GripVertical, X, Trash2 } from "lucide-react";
 import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
 import { getPositionBadgeColor, ALL_POSITIONS } from "@/lib/players";
 import { useState, useRef } from "react";
@@ -15,6 +15,7 @@ const LOGO_WHITE = "https://files.manuscdn.com/user_upload_by_module/session_fil
 interface PlayerCardProps {
   player: Player;
   onRemove?: () => void;
+  onDelete?: () => void;
   onChangePosition?: (pos: Position) => void;
   onChangeTeamColor?: (color: TeamColor) => void;
   onChangeNumber?: (number: string) => void;
@@ -32,6 +33,7 @@ interface PlayerCardProps {
 export function DraggablePlayerCard({
   player,
   onRemove,
+  onDelete,
   onChangePosition,
   onChangeTeamColor,
   onChangeNumber,
@@ -51,6 +53,7 @@ export function DraggablePlayerCard({
   const [showEditPanel, setShowEditPanel] = useState(false);
   const [nameValue, setNameValue] = useState("");
   const [nrValue, setNrValue] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const editBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -334,6 +337,54 @@ export function DraggablePlayerCard({
                           {label}
                         </button>
                       ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* Ta bort spelare */}
+              {onDelete && (
+                <div className="pt-1.5 border-t border-white/10">
+                  {!confirmDelete ? (
+                    <button
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmDelete(true);
+                      }}
+                      className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-medium text-red-400/70 hover:text-red-400 bg-red-500/5 hover:bg-red-500/15 border border-red-400/20 hover:border-red-400/40 transition-all"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      Ta bort spelare
+                    </button>
+                  ) : (
+                    <div className="flex flex-col gap-1.5">
+                      <p className="text-[10px] text-red-300 text-center font-medium">
+                        Är du säker på att ta bort {player.name}?
+                      </p>
+                      <div className="flex gap-1">
+                        <button
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete();
+                            setShowEditPanel(false);
+                            setConfirmDelete(false);
+                          }}
+                          className="flex-1 py-1.5 rounded text-xs font-bold text-white bg-red-500/30 border border-red-400/50 hover:bg-red-500/50 transition-all"
+                        >
+                          Ja, ta bort
+                        </button>
+                        <button
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmDelete(false);
+                          }}
+                          className="flex-1 py-1.5 rounded text-xs font-medium text-white/50 bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
+                        >
+                          Avbryt
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
