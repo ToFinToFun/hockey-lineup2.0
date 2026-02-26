@@ -178,24 +178,22 @@ function drawTeamBlock(
     ctx.fillText(slot.shortLabel, rowX + 3 + badgeW / 2, curY + 13);
     ctx.textAlign = "left";
 
-    // Player name (with captain prefix)
+    // Player name, then captain badge (A/C) after name+number
     ctx.font = player ? "13px 'Arial', sans-serif" : "italic 11px 'Arial', sans-serif";
     ctx.fillStyle = player ? "#ffffff" : "rgba(255,255,255,0.25)";
     ctx.letterSpacing = "0px";
-    let nameX = rowX + badgeW + 10;
-    if (player?.captainRole) {
-      // Draw C or A badge in a distinct color
-      ctx.font = "bold 13px 'Arial', sans-serif";
-      ctx.fillStyle = player.captainRole === "C" ? "#fde047" : "#7dd3fc";
-      ctx.fillText(player.captainRole, nameX, curY + 14);
-      nameX += 16;
-      ctx.font = "13px 'Arial', sans-serif";
-      ctx.fillStyle = "#ffffff";
-    }
+    const nameX = rowX + badgeW + 10;
     const nameText = player
       ? (player.number ? `${player.name}  #${player.number}` : player.name)
       : "—";
     ctx.fillText(nameText, nameX, curY + 14);
+    if (player?.captainRole) {
+      // Draw C or A badge after name+number
+      const nameWidth = ctx.measureText(nameText).width;
+      ctx.font = "bold 13px 'Arial', sans-serif";
+      ctx.fillStyle = player.captainRole === "C" ? "#fde047" : "#7dd3fc";
+      ctx.fillText(player.captainRole, nameX + nameWidth + 6, curY + 14);
+    }
 
     curY += rowH + 2;
   };
