@@ -580,6 +580,30 @@ export default function Home() {
     });
   }, []);
 
+  const handleChangeRegistered = useCallback((playerId: string, isRegistered: boolean) => {
+    const update = (p: Player) => p.id === playerId ? { ...p, isRegistered } : p;
+    setAvailablePlayers((prev) => prev.map(update));
+    setLineup((prev) => {
+      const next = { ...prev };
+      for (const [slotId, p] of Object.entries(next)) {
+        if (p.id === playerId) next[slotId] = update(p);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleChangeGamesPlayed = useCallback((playerId: string, gamesPlayed: number) => {
+    const update = (p: Player) => p.id === playerId ? { ...p, gamesPlayed } : p;
+    setAvailablePlayers((prev) => prev.map(update));
+    setLineup((prev) => {
+      const next = { ...prev };
+      for (const [slotId, p] of Object.entries(next)) {
+        if (p.id === playerId) next[slotId] = update(p);
+      }
+      return next;
+    });
+  }, []);
+
   const [mobileTab, setMobileTab] = useState<MobileTab>("trupp");
   const [dragHoverTab, setDragHoverTab] = useState<MobileTab | null>(null);
   const tabHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -833,6 +857,8 @@ export default function Home() {
                       onChangeNumber={handleChangeNumber}
                       onChangeName={handleChangeName}
                       onChangeCaptainRole={handleChangeCaptainRole}
+                      onChangeRegistered={handleChangeRegistered}
+                      onChangeGamesPlayed={handleChangeGamesPlayed}
                     />
                   </div>
                   <SavedLineupsPanel
@@ -887,6 +913,8 @@ export default function Home() {
                       onChangeNumber={handleChangeNumber}
                       onChangeName={handleChangeName}
                       onChangeCaptainRole={handleChangeCaptainRole}
+                      onChangeRegistered={handleChangeRegistered}
+                      onChangeGamesPlayed={handleChangeGamesPlayed}
                     />
                     <SavedLineupsPanel
                       teamAName={teamAName}

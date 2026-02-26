@@ -17,6 +17,8 @@ interface PlayerListProps {
   onChangeNumber: (playerId: string, number: string) => void;
   onChangeName: (playerId: string, name: string) => void;
   onChangeCaptainRole: (playerId: string, role: CaptainRole) => void;
+  onChangeRegistered: (playerId: string, isRegistered: boolean) => void;
+  onChangeGamesPlayed: (playerId: string, gamesPlayed: number) => void;
 }
 
 type PosFilter = Position | "Alla";
@@ -59,7 +61,7 @@ function sortPlayers(players: Player[], key: SortKey, dir: SortDir): Player[] {
   });
 }
 
-export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber, onChangeName, onChangeCaptainRole }: PlayerListProps) {
+export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber, onChangeName, onChangeCaptainRole, onChangeRegistered, onChangeGamesPlayed }: PlayerListProps) {
   const [search, setSearch] = useState("");
   const [posFilter, setPosFilter] = useState<PosFilter>("Alla");
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("Alla");
@@ -249,6 +251,8 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                 onChangeNumber={(nr) => onChangeNumber(player.id, nr)}
                 onChangeName={(name) => onChangeName(player.id, name)}
                 onChangeCaptainRole={(role) => onChangeCaptainRole(player.id, role)}
+                onChangeRegistered={(val) => onChangeRegistered(player.id, val)}
+                onChangeGamesPlayed={(val) => onChangeGamesPlayed(player.id, val)}
                 onDelete={() => onDeletePlayer(player.id)}
               />
             </div>

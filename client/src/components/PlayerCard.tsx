@@ -21,6 +21,8 @@ interface PlayerCardProps {
   onChangeNumber?: (number: string) => void;
   onChangeName?: (name: string) => void;
   onChangeCaptainRole?: (role: CaptainRole) => void;
+  onChangeRegistered?: (isRegistered: boolean) => void;
+  onChangeGamesPlayed?: (gamesPlayed: number) => void;
   onLongPress?: (e: React.PointerEvent) => void;
   onLongPressEnd?: () => void;
   onLongPressMove?: () => void;
@@ -39,6 +41,8 @@ export function DraggablePlayerCard({
   onChangeNumber,
   onChangeName,
   onChangeCaptainRole,
+  onChangeRegistered,
+  onChangeGamesPlayed,
   onLongPress,
   onLongPressEnd,
   onLongPressMove,
@@ -133,11 +137,17 @@ export function DraggablePlayerCard({
         </div>
       )}
 
-      {/* Namn + #nr – vanlig text (ej klickbar) */}
+      {/* Namn + #nr + anmäld-indikator */}
       <span className="text-white font-medium truncate flex-1 leading-tight">
         {player.name}
         {!compact && !hideExtras && player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
         {compact && !hideExtras && player.number ? <span className="text-white/40 font-normal ml-1"> #{player.number}</span> : null}
+        {!hideExtras && player.isRegistered && (
+          <span className="ml-1 text-emerald-400 text-[9px]" title="Anmäld">✓</span>
+        )}
+        {!hideExtras && !compact && player.gamesPlayed != null && player.gamesPlayed > 0 && (
+          <span className="ml-1 text-white/30 text-[9px]" title="Matcher spelade">({player.gamesPlayed})</span>
+        )}
       </span>
 
       {/* Captain + Lag-cirkel + position i compact-läge – klickbara för att öppna redigeringspanelen */}
@@ -376,6 +386,49 @@ export function DraggablePlayerCard({
                   )}
                 </div>
               )}
+              {/* Rad 5: Anmäld + Matcher */}
+              <div className="flex items-center gap-3 flex-wrap">
+                {onChangeRegistered && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-white/40 text-[10px]">Anmäld:</span>
+                    <button
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onChangeRegistered(!player.isRegistered);
+                      }}
+                      className={`text-[9px] font-bold px-2.5 py-1 rounded border transition-all ${
+                        player.isRegistered
+                          ? "bg-emerald-400/25 text-emerald-300 border-emerald-400/50 ring-1 ring-emerald-400/30"
+                          : "bg-white/5 text-white/30 border-white/10 hover:bg-white/10 hover:text-white/50"
+                      }`}
+                    >
+                      {player.isRegistered ? "✓ Ja" : "Nej"}
+                    </button>
+                  </div>
+                )}
+                {onChangeGamesPlayed && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-white/40 text-[10px]">Matcher:</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={999}
+                      value={player.gamesPlayed ?? 0}
+                      onChange={(e) => {
+                        const v = Math.max(0, parseInt(e.target.value) || 0);
+                        onChangeGamesPlayed(v);
+                      }}
+                      onKeyDown={(e) => {
+                        e.stopPropagation();
+                        if (e.key === "Enter" || e.key === "Escape") setShowEditPanel(false);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-14 bg-white/10 border border-emerald-400/40 rounded px-2 py-1 text-xs text-white text-center outline-none focus:border-emerald-400"
+                    />
+                  </div>
+                )}
+              </div>
               {/* Ta bort spelare */}
               {onDelete && (
                 <div className="pt-1.5 border-t border-white/10">
