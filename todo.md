@@ -22,3 +22,4 @@
 - [x] Flytta knappen "Hämta anmälningar (laget.se)" till ovanför Sparade uppställningar
 - [x] Flytta Hämta anmälningar-knappen till under Lägg till spelare men ovanför Sparade uppställningar
 - [x] Ändra lagpanelernas header till "Antal spelare i laget / Anmälda spelare" istället för nuvarande format
+- [x] Ändra lagpanel-header till att bara visa antal spelare i laget, t.ex. "11 Spelare"
