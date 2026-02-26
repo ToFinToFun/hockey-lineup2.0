@@ -39,6 +39,17 @@ function formatDate(ts: number): string {
   });
 }
 
+// Formatera rubrik: "Laguppställning Torsdag 26/2"
+function formatHeadingDate(ts: number): string {
+  const d = new Date(ts);
+  const weekday = d.toLocaleDateString("sv-SE", { weekday: "long" });
+  // Stor bokstav på veckodagen
+  const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+  const day = d.getDate();
+  const month = d.getMonth() + 1;
+  return `Laguppställning ${capitalizedWeekday} ${day}/${month}`;
+}
+
 // Positionsfärg baserat på slot-shortLabel (spelarens roll i uppställningen)
 function getSlotRowStyle(shortLabel: string): { border: string; bg: string; badgeColor: string } {
   switch (shortLabel) {
@@ -284,12 +295,12 @@ export default function ShareView() {
                   className="text-2xl font-black text-white tracking-widest uppercase"
                   style={{ fontFamily: "'Oswald', sans-serif" }}
                 >
-                  {savedLineup.name}
+                  {formatHeadingDate(savedLineup.savedAt)}
                 </h2>
                 <div className="flex items-center justify-center gap-4 text-white/35 text-xs">
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    {formatDate(savedLineup.savedAt)}
+                    Delad {formatDate(savedLineup.savedAt)}
                   </span>
                   <span className="flex items-center gap-1">
                     <Users className="w-3 h-3" />
