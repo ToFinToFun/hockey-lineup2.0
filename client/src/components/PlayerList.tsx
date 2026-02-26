@@ -37,7 +37,7 @@ const teamFilters: { label: string; value: TeamFilter; color: TeamColor }[] = [
   { label: "Alla", value: "Alla", color: null },
   { label: "Vita", value: "white", color: "white" },
   { label: "Gröna", value: "green", color: "green" },
-  { label: "Inget lag", value: null, color: null },
+  { label: "Waivers", value: null, color: null },
 ];
 
 const POSITION_ORDER: Record<string, number> = { MV: 0, B: 1, C: 2, F: 3, IB: 4 };
