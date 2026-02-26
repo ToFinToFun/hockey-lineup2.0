@@ -21,6 +21,7 @@ interface PlayerListProps {
   onChangeGamesPlayed: (playerId: string, gamesPlayed: number) => void;
   onBulkRegister?: () => Promise<{ matched: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string }>;
   totalRegistered?: number;
+  totalPlayers?: number;
 }
 
 type PosFilter = Position | "Alla";
@@ -68,7 +69,7 @@ function sortPlayers(players: Player[], key: SortKey, dir: SortDir): Player[] {
   });
 }
 
-export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber, onChangeName, onChangeCaptainRole, onChangeRegistered, onChangeGamesPlayed, onBulkRegister, totalRegistered }: PlayerListProps) {
+export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber, onChangeName, onChangeCaptainRole, onChangeRegistered, onChangeGamesPlayed, onBulkRegister, totalRegistered, totalPlayers }: PlayerListProps) {
   const [search, setSearch] = useState("");
   const [posFilter, setPosFilter] = useState<PosFilter>("Alla");
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("Alla");
@@ -166,9 +167,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
               Spelartrupp
             </h2>
             <span className="text-white/40 text-xs">
-              {filtered.length < players.length
-                ? <><span className="text-white/70 font-semibold">{filtered.length}</span> / {players.length} spelare</>
-                : <>{players.length} spelare</>}
+              {players.length}/{totalPlayers ?? players.length} spelare
             </span>
           </div>
           <span className="text-emerald-400/70 text-xs font-semibold">

@@ -721,6 +721,9 @@ export default function Home() {
     return inList + inLineup;
   }, [availablePlayers, lineup]);
 
+  // Totalt antal spelare (trupp + lineup)
+  const totalPlayers = availablePlayers.length + Object.keys(lineup).length;
+
   // Kollisionsdetektion: pointerWithin först, sedan closestCenter som fallback.
   // Eftersom vi nu bara renderar EN layout (åt gången) behövs ingen filtrering.
   const pointerWithinOrClosest: CollisionDetection = (args) => {
@@ -908,6 +911,7 @@ export default function Home() {
                       onChangeGamesPlayed={handleChangeGamesPlayed}
                       onBulkRegister={handleBulkRegister}
                       totalRegistered={totalRegistered}
+                      totalPlayers={totalPlayers}
                     />
                   </div>
                   <SavedLineupsPanel
@@ -966,6 +970,7 @@ export default function Home() {
                       onChangeGamesPlayed={handleChangeGamesPlayed}
                       onBulkRegister={handleBulkRegister}
                       totalRegistered={totalRegistered}
+                      totalPlayers={totalPlayers}
                     />
                     <SavedLineupsPanel
                       teamAName={teamAName}
