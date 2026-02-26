@@ -2,7 +2,7 @@
 // Använder ren Canvas API för att rita uppställningen – fungerar i alla miljöer utan CORS-problem
 
 import { useRef, useState, useEffect } from "react";
-import { X, Download } from "lucide-react";
+import { X, Download, Share2 } from "lucide-react";
 import type { Player } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
 import { groupSlots } from "@/lib/lineup";
@@ -326,6 +326,7 @@ export function ExportModal({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [exporting, setExporting] = useState(false);
   const [rendered, setRendered] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   const renderCanvas = async () => {
     const canvas = canvasRef.current;
@@ -443,6 +444,44 @@ export function ExportModal({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleShare = async () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    setSharing(true);
+    try {
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!blob) { setSharing(false); return; }
+      const filename = `stalstadens-lineup-${new Date().toISOString().slice(0, 10)}.png`;
+      const file = new File([blob], filename, { type: "image/png" });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          title: "St\u00e5lstadens Lineup",
+          text: `Uppst\u00e4llning ${new Date().toLocaleDateString("sv-SE")}`,
+          files: [file],
+        });
+      } else if (navigator.share) {
+        // Fallback: share without file
+        const url = URL.createObjectURL(blob);
+        await navigator.share({
+          title: "St\u00e5lstadens Lineup",
+          text: `Uppst\u00e4llning ${new Date().toLocaleDateString("sv-SE")}`,
+          url,
+        });
+        URL.revokeObjectURL(url);
+      } else {
+        // No Web Share API – fall back to download
+        handleExport();
+      }
+    } catch (err) {
+      // User cancelled share or error
+      if ((err as Error)?.name !== "AbortError") {
+        console.error("Share failed", err);
+      }
+    } finally {
+      setSharing(false);
+    }
+  };
+
   const handleExport = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -511,6 +550,14 @@ export function ExportModal({
             Exportera uppställning
           </h2>
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleShare}
+              disabled={sharing || !rendered}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-300 text-xs font-bold hover:bg-sky-500/30 disabled:opacity-50 transition-all uppercase tracking-wider"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              {sharing ? "Delar..." : "Dela"}
+            </button>
             <button
               onClick={handleExport}
               disabled={exporting || !rendered}
