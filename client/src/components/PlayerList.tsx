@@ -256,6 +256,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                 onChangeNumber={(nr) => onChangeNumber(player.id, nr)}
                 onChangeName={(name) => onChangeName(player.id, name)}
                 onChangeCaptainRole={(role) => onChangeCaptainRole(player.id, role)}
+                onDelete={() => onDeletePlayer(player.id)}
               />
             </div>
           ))
