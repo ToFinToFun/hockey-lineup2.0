@@ -20,3 +20,4 @@
 - [x] Ändra spelarantal i header till "X/Y spelare" (X = kvar i listan, Y = totalt antal spelare)
 - [x] Ta bort "spelare" efter antal och "st" efter anmälda i headern
 - [x] Flytta knappen "Hämta anmälningar (laget.se)" till ovanför Sparade uppställningar
+- [x] Flytta Hämta anmälningar-knappen till under Lägg till spelare men ovanför Sparade uppställningar
