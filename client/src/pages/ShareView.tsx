@@ -78,14 +78,14 @@ function SlotRow({ player, label, shortLabel }: { player: Player | undefined; la
             {shortLabel}
           </span>
           <span className="text-white/90 font-semibold truncate flex-1">
-            {player.captainRole && (
-              <span className={`mr-1 font-black ${
-                player.captainRole === "C" ? "text-yellow-300" : "text-sky-300"
-              }`}>{player.captainRole}</span>
-            )}
             {player.name}
             {player.number && (
               <span className="text-white/45 font-normal ml-1.5">#{player.number}</span>
+            )}
+            {player.captainRole && (
+              <span className={`ml-1.5 font-black ${
+                player.captainRole === "C" ? "text-yellow-300" : "text-sky-300"
+              }`}>{player.captainRole}</span>
             )}
           </span>
         </>
