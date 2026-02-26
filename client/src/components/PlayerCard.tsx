@@ -195,70 +195,14 @@ export function DraggablePlayerCard({
                   Spara
                 </button>
               </div>
-              {/* Nummer-fält */}
-              {onChangeNumber && (
-                <div className="flex items-center gap-2 pt-1 border-t border-white/10">
-                  <span className="text-white/40 text-[10px] w-6">Nr:</span>
-                  <span className="text-white/50 text-xs">#</span>
-                  <input
-                    type="text"
-                    value={nrValue}
-                    maxLength={3}
-                    placeholder="—"
-                    onChange={(e) => {
-                      const v = e.target.value.replace(/\D/g, "");
-                      setNrValue(v);
-                      onChangeNumber(v);
-                    }}
-                    onKeyDown={(e) => {
-                      e.stopPropagation();
-                      if (e.key === "Enter") setShowEditPanel(false);
-                      else if (e.key === "Escape") setShowEditPanel(false);
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-14 bg-white/10 border border-emerald-400/40 rounded px-2 py-1 text-xs text-white text-center outline-none focus:border-emerald-400"
-                  />
-                </div>
-              )}
-              {/* Kaptensroll-väljare */}
-              {onChangeCaptainRole && (
-                <div className="flex items-center gap-1.5 pt-1 border-t border-white/10">
-                  <span className="text-white/40 text-[10px] w-6">Roll:</span>
-                  {([
-                    { value: "C" as CaptainRole, label: "C" },
-                    { value: "A" as CaptainRole, label: "A" },
-                    { value: null, label: "—" },
-                  ] as { value: CaptainRole; label: string }[]).map(({ value, label }) => (
-                    <button
-                      key={String(value)}
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onChangeCaptainRole(value);
-                      }}
-                      className={`text-[9px] font-black px-2 py-1 rounded border transition-all ${
-                        player.captainRole === value
-                          ? value === "C"
-                            ? "bg-yellow-400/25 text-yellow-300 border-yellow-400/50 ring-1 ring-yellow-400/30"
-                            : value === "A"
-                            ? "bg-orange-400/25 text-orange-300 border-orange-400/50 ring-1 ring-orange-400/30"
-                            : "bg-white/15 text-white/60 border-white/30 ring-1 ring-white/20"
-                          : "bg-white/5 text-white/30 border-white/10 hover:bg-white/10 hover:text-white/50"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {/* Lag-väljare */}
+              {/* Rad 2: Lag-väljare */}
               {onChangeTeamColor && (
                 <div className="flex items-center gap-1.5 pt-1 border-t border-white/10">
                   <span className="text-white/40 text-[10px] w-6">Lag:</span>
                   {([
                     { value: "white" as TeamColor, label: "Vita" },
                     { value: "green" as TeamColor, label: "Gröna" },
-                    { value: null, label: "Inget" },
+                    { value: null, label: "Waivers" },
                   ] as { value: TeamColor; label: string }[]).map(({ value, label }) => (
                     <button
                       key={String(value)}
@@ -279,7 +223,7 @@ export function DraggablePlayerCard({
                   ))}
                 </div>
               )}
-              {/* Position-väljare */}
+              {/* Rad 3: Position-väljare */}
               {onChangePosition && (
                 <div className="flex items-center gap-1 pt-1 border-t border-white/10 flex-wrap">
                   <span className="text-white/40 text-[10px] w-6">Pos:</span>
@@ -300,6 +244,65 @@ export function DraggablePlayerCard({
                       {pos}
                     </button>
                   ))}
+                </div>
+              )}
+              {/* Rad 4: Nr + Roll på samma rad */}
+              {(onChangeNumber || onChangeCaptainRole) && (
+                <div className="flex items-center gap-3 pt-1 border-t border-white/10">
+                  {onChangeNumber && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-white/40 text-[10px]">Nr:</span>
+                      <span className="text-white/50 text-xs">#</span>
+                      <input
+                        type="text"
+                        value={nrValue}
+                        maxLength={3}
+                        placeholder="—"
+                        onChange={(e) => {
+                          const v = e.target.value.replace(/\D/g, "");
+                          setNrValue(v);
+                          onChangeNumber(v);
+                        }}
+                        onKeyDown={(e) => {
+                          e.stopPropagation();
+                          if (e.key === "Enter") setShowEditPanel(false);
+                          else if (e.key === "Escape") setShowEditPanel(false);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-12 bg-white/10 border border-emerald-400/40 rounded px-2 py-1 text-xs text-white text-center outline-none focus:border-emerald-400"
+                      />
+                    </div>
+                  )}
+                  {onChangeCaptainRole && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-white/40 text-[10px]">Roll:</span>
+                      {([
+                        { value: "C" as CaptainRole, label: "C" },
+                        { value: "A" as CaptainRole, label: "A" },
+                        { value: null, label: "—" },
+                      ] as { value: CaptainRole; label: string }[]).map(({ value, label }) => (
+                        <button
+                          key={String(value)}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onChangeCaptainRole(value);
+                          }}
+                          className={`text-[9px] font-black px-2 py-1 rounded border transition-all ${
+                            player.captainRole === value
+                              ? value === "C"
+                                ? "bg-yellow-400/25 text-yellow-300 border-yellow-400/50 ring-1 ring-yellow-400/30"
+                                : value === "A"
+                                ? "bg-orange-400/25 text-orange-300 border-orange-400/50 ring-1 ring-orange-400/30"
+                                : "bg-white/15 text-white/60 border-white/30 ring-1 ring-white/20"
+                              : "bg-white/5 text-white/30 border-white/10 hover:bg-white/10 hover:text-white/50"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
