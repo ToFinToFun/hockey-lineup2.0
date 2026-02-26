@@ -1,5 +1,5 @@
-// Hockey Lineup App – Fasta slots-struktur
-// Varje lag har fasta namngivna platser som alltid visas
+// Hockey Lineup App – Dynamisk slots-struktur
+// Varje lag kan ha 1–2 MV, 1–4 backpar, 1–4 kedjor
 
 export type SlotId = string; // t.ex. "team-a-gk-1", "team-a-def-1-1", "team-a-fwd-1-lw"
 
@@ -12,8 +12,27 @@ export interface Slot {
   role: "gk" | "res-gk" | "def" | "lw" | "c" | "rw";
 }
 
-// Generera alla slots för ett lag
-export function createTeamSlots(teamId: string): Slot[] {
+export interface TeamConfig {
+  goalkeepers: number; // 1–2
+  defensePairs: number; // 1–4
+  forwardLines: number; // 1–4
+}
+
+export const DEFAULT_TEAM_CONFIG: TeamConfig = {
+  goalkeepers: 1,
+  defensePairs: 1,
+  forwardLines: 1,
+};
+
+export const MAX_TEAM_CONFIG: TeamConfig = {
+  goalkeepers: 2,
+  defensePairs: 4,
+  forwardLines: 4,
+};
+
+// Generera slots baserat på konfiguration
+export function createTeamSlots(teamId: string, config?: TeamConfig): Slot[] {
+  const { goalkeepers, defensePairs, forwardLines } = config ?? DEFAULT_TEAM_CONFIG;
   const slots: Slot[] = [];
 
   // Målvakter
@@ -24,16 +43,18 @@ export function createTeamSlots(teamId: string): Slot[] {
     type: "goalkeeper",
     role: "gk",
   });
-  slots.push({
-    id: `${teamId}-gk-2`,
-    label: "Reservmålvakt",
-    shortLabel: "RES",
-    type: "goalkeeper",
-    role: "res-gk",
-  });
+  if (goalkeepers >= 2) {
+    slots.push({
+      id: `${teamId}-gk-2`,
+      label: "Reservmålvakt",
+      shortLabel: "RES",
+      type: "goalkeeper",
+      role: "res-gk",
+    });
+  }
 
-  // Backpar 1–4
-  for (let pair = 1; pair <= 4; pair++) {
+  // Backpar
+  for (let pair = 1; pair <= defensePairs; pair++) {
     const back1 = (pair - 1) * 2 + 1;
     const back2 = back1 + 1;
     slots.push({
@@ -54,9 +75,9 @@ export function createTeamSlots(teamId: string): Slot[] {
     });
   }
 
-  // Kedjor 1–4 (LW, C, RW)
+  // Kedjor (LW, C, RW)
   const chainNames = ["1:a kedjan", "2:a kedjan", "3:e kedjan", "4:e kedjan"];
-  for (let chain = 1; chain <= 4; chain++) {
+  for (let chain = 1; chain <= forwardLines; chain++) {
     slots.push({
       id: `${teamId}-fwd-${chain}-lw`,
       label: "Vänsterforward",

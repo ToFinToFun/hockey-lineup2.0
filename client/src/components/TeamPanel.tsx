@@ -1,11 +1,12 @@
-// Hockey Lineup App – TeamPanel med logotyp-header
+// Hockey Lineup App – TeamPanel med logotyp-header och dynamiska grupper
 // VITA = vit logotyp, GRÖNA = grön logotyp
 
 import { useMemo } from "react";
+import { Plus, Minus } from "lucide-react";
 import { PlayerSlot } from "./PlayerSlot";
 import type { Player, Position } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
-import { groupSlots } from "@/lib/lineup";
+import { groupSlots, MAX_TEAM_CONFIG, type TeamConfig } from "@/lib/lineup";
 
 const LOGO_GREEN = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/yvyuOVwYRSLbWwHt.png";
 const LOGO_WHITE = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/OmjlmGnLDLTblNdj.png";
@@ -20,6 +21,8 @@ interface TeamPanelProps {
   onRenameTeam: (name: string) => void;
   onClearTeam: () => void;
   isWhite?: boolean;
+  config: TeamConfig;
+  onConfigChange: (config: TeamConfig) => void;
 }
 
 const sectionStyles = {
@@ -80,6 +83,45 @@ function GroupCard({
   );
 }
 
+function AddRemoveButtons({
+  count,
+  max,
+  min,
+  onAdd,
+  onRemove,
+  accentClass,
+}: {
+  count: number;
+  max: number;
+  min: number;
+  onAdd: () => void;
+  onRemove: () => void;
+  accentClass: string;
+}) {
+  return (
+    <div className="flex items-center gap-1 ml-auto">
+      {count > min && (
+        <button
+          onClick={onRemove}
+          className={`w-5 h-5 rounded flex items-center justify-center bg-white/5 hover:bg-red-400/20 text-white/40 hover:text-red-400 transition-all border border-white/10 hover:border-red-400/30`}
+          title="Ta bort"
+        >
+          <Minus className="w-3 h-3" />
+        </button>
+      )}
+      {count < max && (
+        <button
+          onClick={onAdd}
+          className={`w-5 h-5 rounded flex items-center justify-center bg-white/5 hover:bg-emerald-400/20 text-white/40 hover:text-emerald-400 transition-all border border-white/10 hover:border-emerald-400/30`}
+          title="Lägg till"
+        >
+          <Plus className="w-3 h-3" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function TeamPanel({
   teamId,
   teamName,
@@ -90,6 +132,8 @@ export function TeamPanel({
   onRenameTeam,
   onClearTeam,
   isWhite = false,
+  config,
+  onConfigChange,
 }: TeamPanelProps) {
   const logo = isWhite ? LOGO_WHITE : LOGO_GREEN;
   const accentColor = isWhite ? "text-slate-200" : "text-emerald-400";
@@ -158,8 +202,21 @@ export function TeamPanel({
       {/* Slots – scrollar med sidan (ingen intern scrollbar) */}
       <div className="p-2 space-y-2">
 
-        {/* Målvakter – en per rad på mobil, sida vid sida på desktop */}
-        <Section label="Målvakter" type="goalkeeper">
+        {/* Målvakter */}
+        <Section
+          label="Målvakter"
+          type="goalkeeper"
+          extra={
+            <AddRemoveButtons
+              count={config.goalkeepers}
+              max={MAX_TEAM_CONFIG.goalkeepers}
+              min={1}
+              onAdd={() => onConfigChange({ ...config, goalkeepers: config.goalkeepers + 1 })}
+              onRemove={() => onConfigChange({ ...config, goalkeepers: config.goalkeepers - 1 })}
+              accentClass="amber"
+            />
+          }
+        >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
             {goalkeeperSlots.map((slot) => (
               <div key={slot.id} className="flex-1 min-w-0">
@@ -177,8 +234,21 @@ export function TeamPanel({
           </div>
         </Section>
 
-        {/* Backar – 1 par per rad på mobil, 2 par per rad på desktop */}
-        <Section label="Backar" type="defense">
+        {/* Backar */}
+        <Section
+          label="Backar"
+          type="defense"
+          extra={
+            <AddRemoveButtons
+              count={config.defensePairs}
+              max={MAX_TEAM_CONFIG.defensePairs}
+              min={1}
+              onAdd={() => onConfigChange({ ...config, defensePairs: config.defensePairs + 1 })}
+              onRemove={() => onConfigChange({ ...config, defensePairs: config.defensePairs - 1 })}
+              accentClass="blue"
+            />
+          }
+        >
           <div className="space-y-1.5">
             {defenseRows.map((row, rowIdx) => (
               <div key={rowIdx} className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
@@ -197,8 +267,21 @@ export function TeamPanel({
           </div>
         </Section>
 
-        {/* Forwards – 1 kedja per rad på mobil, 2 kedjor per rad på desktop */}
-        <Section label="Forwards" type="forward">
+        {/* Forwards */}
+        <Section
+          label="Forwards"
+          type="forward"
+          extra={
+            <AddRemoveButtons
+              count={config.forwardLines}
+              max={MAX_TEAM_CONFIG.forwardLines}
+              min={1}
+              onAdd={() => onConfigChange({ ...config, forwardLines: config.forwardLines + 1 })}
+              onRemove={() => onConfigChange({ ...config, forwardLines: config.forwardLines - 1 })}
+              accentClass="emerald"
+            />
+          }
+        >
           <div className="space-y-1.5">
             {forwardRows.map((row, rowIdx) => (
               <div key={rowIdx} className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
@@ -225,16 +308,21 @@ function Section({
   label,
   type,
   children,
+  extra,
 }: {
   label: string;
   type: "goalkeeper" | "defense" | "forward";
   children: React.ReactNode;
+  extra?: React.ReactNode;
 }) {
   const s = sectionStyles[type];
   return (
     <div className={`rounded-lg border ${s.borderColor} ${s.bgColor} p-2`}>
-      <div className={`text-xs font-bold uppercase tracking-widest mb-2 ${s.headerColor}`}>
-        {label}
+      <div className="flex items-center mb-2">
+        <div className={`text-xs font-bold uppercase tracking-widest ${s.headerColor}`}>
+          {label}
+        </div>
+        {extra}
       </div>
       {children}
     </div>
