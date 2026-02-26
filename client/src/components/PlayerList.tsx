@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard, TeamColorIndicator } from "./PlayerCard";
 import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
-import { ALL_POSITIONS, POSITION_LABELS } from "@/lib/players";
+import { ALL_POSITIONS, POSITION_LABELS, getPositionBadgeColor } from "@/lib/players";
 import { Search, UserPlus, X, Trash2, ArrowUpDown } from "lucide-react";
 import { nanoid } from "nanoid";
 import { createPortal } from "react-dom";
@@ -70,6 +70,8 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
   const [newName, setNewName] = useState("");
   const [newNumber, setNewNumber] = useState("");
   const [newPosition, setNewPosition] = useState<Position>("IB");
+  const [newTeamColor, setNewTeamColor] = useState<TeamColor>(null);
+  const [newCaptainRole, setNewCaptainRole] = useState<CaptainRole>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; player: Player } | null>(null);
 
 
@@ -104,11 +106,14 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
       name: newName.trim(),
       number: newNumber.trim(),
       position: newPosition,
-      teamColor: null,
+      teamColor: newTeamColor,
+      captainRole: newCaptainRole,
     });
     setNewName("");
     setNewNumber("");
     setNewPosition("IB");
+    setNewTeamColor(null);
+    setNewCaptainRole(null);
     setShowAddForm(false);
   };
 
@@ -291,57 +296,126 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
       <div className="p-2 border-t border-white/10">
         {!showAddForm ? (
           <button
-            onClick={() => setShowAddForm(true)}
+            onClick={() => {
+              setShowAddForm(true);
+              setNewName("");
+              setNewNumber("");
+              setNewPosition("IB");
+              setNewTeamColor(null);
+              setNewCaptainRole(null);
+            }}
             className="w-full flex items-center justify-center gap-1.5 py-2 rounded-md bg-white/5 border border-white/10 text-white/50 hover:bg-emerald-500/10 hover:border-emerald-400/30 hover:text-emerald-300 transition-all text-xs font-medium"
           >
             <UserPlus className="w-3.5 h-3.5" />
             Lägg till spelare
           </button>
         ) : (
-          <div className="space-y-1.5">
-            <div className="flex gap-1">
-              <input
-                type="text"
-                value={newNumber}
-                onChange={(e) => setNewNumber(e.target.value)}
-                placeholder="#"
-                className="w-10 bg-white/5 border border-white/10 rounded px-1.5 py-1 text-xs text-white placeholder-white/30 outline-none focus:border-emerald-400/50 text-center"
-                maxLength={3}
-              />
+          <div className="flex flex-col gap-2 bg-white/5 border border-emerald-400/30 rounded-lg p-3">
+            {/* Rad 1: Namn + Spara */}
+            <div className="flex items-center gap-2">
               <input
                 type="text"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                placeholder="Spelarens namn..."
-                className="flex-1 bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white placeholder-white/30 outline-none focus:border-emerald-400/50"
+                placeholder="Spelarens namn"
+                className="flex-1 bg-white/10 border border-emerald-400/40 rounded px-2 py-1 text-xs text-white placeholder-white/30 outline-none focus:border-emerald-400"
                 onKeyDown={(e) => e.key === "Enter" && handleAddPlayer()}
                 autoFocus
               />
-            </div>
-            <select
-              value={newPosition}
-              onChange={(e) => setNewPosition(e.target.value as Position)}
-              className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white outline-none focus:border-emerald-400/50"
-            >
-              {ALL_POSITIONS.map((pos) => (
-                <option key={pos} value={pos}>{pos} – {POSITION_LABELS[pos]}</option>
-              ))}
-            </select>
-            <div className="flex gap-1">
               <button
                 onClick={handleAddPlayer}
                 disabled={!newName.trim()}
-                className="flex-1 py-1.5 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-medium hover:bg-emerald-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                className="text-xs font-bold text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded hover:bg-white/10 transition-colors whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Lägg till
               </button>
-              <button
-                onClick={() => { setShowAddForm(false); setNewName(""); setNewNumber(""); }}
-                className="flex-1 py-1.5 rounded bg-white/5 border border-white/10 text-white/40 text-xs hover:bg-white/10 transition-all"
-              >
-                Avbryt
-              </button>
             </div>
+            {/* Rad 2: Lag */}
+            <div className="flex items-center gap-1.5 pt-1 border-t border-white/10">
+              <span className="text-white/40 text-[10px] w-6">Lag:</span>
+              {([
+                { value: "white" as TeamColor, label: "Vita" },
+                { value: "green" as TeamColor, label: "Gröna" },
+                { value: null, label: "Waivers" },
+              ] as { value: TeamColor; label: string }[]).map(({ value, label }) => (
+                <button
+                  key={String(value)}
+                  onClick={() => setNewTeamColor(value)}
+                  className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded border transition-all ${
+                    (newTeamColor ?? null) === value
+                      ? "bg-white/15 text-white/80 border-white/30 ring-1 ring-white/20"
+                      : "bg-white/5 text-white/30 border-white/10 hover:bg-white/10 hover:text-white/50"
+                  }`}
+                >
+                  <TeamColorIndicator teamColor={value} size={10} />
+                  {label}
+                </button>
+              ))}
+            </div>
+            {/* Rad 3: Position */}
+            <div className="flex items-center gap-1 pt-1 border-t border-white/10 flex-wrap">
+              <span className="text-white/40 text-[10px] w-6">Pos:</span>
+              {ALL_POSITIONS.map((pos) => (
+                <button
+                  key={pos}
+                  onClick={() => setNewPosition(pos)}
+                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded transition-all ${
+                    newPosition === pos
+                      ? `${getPositionBadgeColor(pos)} ring-1 ring-white/30`
+                      : "bg-white/5 text-white/30 border border-white/10 hover:bg-white/10 hover:text-white/50"
+                  }`}
+                >
+                  {pos}
+                </button>
+              ))}
+            </div>
+            {/* Rad 4: Nr + Roll */}
+            <div className="flex items-center gap-3 pt-1 border-t border-white/10">
+              <div className="flex items-center gap-1">
+                <span className="text-white/40 text-[10px]">Nr:</span>
+                <span className="text-white/50 text-xs">#</span>
+                <input
+                  type="text"
+                  value={newNumber}
+                  maxLength={3}
+                  placeholder="—"
+                  onChange={(e) => setNewNumber(e.target.value.replace(/\D/g, ""))}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddPlayer()}
+                  className="w-12 bg-white/10 border border-emerald-400/40 rounded px-2 py-1 text-xs text-white text-center outline-none focus:border-emerald-400"
+                />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-white/40 text-[10px]">Roll:</span>
+                {([
+                  { value: "C" as CaptainRole, label: "C" },
+                  { value: "A" as CaptainRole, label: "A" },
+                  { value: null, label: "—" },
+                ] as { value: CaptainRole; label: string }[]).map(({ value, label }) => (
+                  <button
+                    key={String(value)}
+                    onClick={() => setNewCaptainRole(value)}
+                    className={`text-[9px] font-black px-2 py-1 rounded border transition-all ${
+                      newCaptainRole === value
+                        ? value === "C"
+                          ? "bg-yellow-400/25 text-yellow-300 border-yellow-400/50 ring-1 ring-yellow-400/30"
+                          : value === "A"
+                          ? "bg-orange-400/25 text-orange-300 border-orange-400/50 ring-1 ring-orange-400/30"
+                          : "bg-white/15 text-white/60 border-white/30 ring-1 ring-white/20"
+                        : "bg-white/5 text-white/30 border-white/10 hover:bg-white/10 hover:text-white/50"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Avbryt-knapp */}
+            <button
+              onClick={() => { setShowAddForm(false); setNewName(""); setNewNumber(""); setNewPosition("IB"); setNewTeamColor(null); setNewCaptainRole(null); }}
+              className="w-full py-1 rounded bg-white/5 border border-white/10 text-white/40 text-xs hover:bg-white/10 transition-all"
+            >
+              Avbryt
+            </button>
           </div>
         )}
       </div>
