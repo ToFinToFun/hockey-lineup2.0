@@ -5,9 +5,8 @@ import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard, TeamColorIndicator } from "./PlayerCard";
 import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
 import { ALL_POSITIONS, POSITION_LABELS, getPositionBadgeColor } from "@/lib/players";
-import { Search, UserPlus, X, Trash2, ArrowUpDown } from "lucide-react";
+import { Search, UserPlus, X, ArrowUpDown } from "lucide-react";
 import { nanoid } from "nanoid";
-import { createPortal } from "react-dom";
 
 interface PlayerListProps {
   players: Player[];
@@ -72,7 +71,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
   const [newPosition, setNewPosition] = useState<Position>("IB");
   const [newTeamColor, setNewTeamColor] = useState<TeamColor>(null);
   const [newCaptainRole, setNewCaptainRole] = useState<CaptainRole>(null);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; player: Player } | null>(null);
+
 
 
   const { setNodeRef, isOver } = useDroppable({ id: "player-list" });
@@ -242,13 +241,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
           </div>
         ) : (
           sorted.map((player) => (
-            <div
-              key={player.id}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                setContextMenu({ x: e.clientX, y: e.clientY, player });
-              }}
-            >
+            <div key={player.id}>
               <DraggablePlayerCard
                 player={player}
                 onChangePosition={(pos) => onChangePosition(player.id, pos)}
@@ -263,35 +256,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
         )}
       </div>
 
-      {/* Högerklicks-kontextmeny */}
-      {contextMenu && createPortal(
-        <>
-          <div
-            className="fixed inset-0 z-[99998]"
-            onClick={() => setContextMenu(null)}
-            onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
-          />
-          <div
-            className="fixed z-[99999] bg-gray-900 border border-white/15 rounded-lg shadow-2xl py-1 min-w-[160px]"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
-          >
-            <div className="px-3 py-1.5 border-b border-white/10 mb-1">
-              <p className="text-white/60 text-[10px] truncate max-w-[140px]">{contextMenu.player.name}</p>
-            </div>
-            <button
-              onClick={() => {
-                onDeletePlayer(contextMenu.player.id);
-                setContextMenu(null);
-              }}
-              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-red-400 hover:bg-red-500/15 transition-colors"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Ta bort spelare
-            </button>
-          </div>
-        </>,
-        document.body
-      )}
+
 
       {/* Lägg till spelare */}
       <div className="p-2 border-t border-white/10">
