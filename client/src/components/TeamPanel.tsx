@@ -147,14 +147,7 @@ export function TeamPanel({
   const defenseGroups = useMemo(() => groupSlots(defenseSlots), [defenseSlots]);
   const forwardGroups = useMemo(() => groupSlots(forwardSlots), [forwardSlots]);
 
-  const defenseRows: (typeof defenseGroups)[] = [];
-  for (let i = 0; i < defenseGroups.length; i += 2) {
-    defenseRows.push(defenseGroups.slice(i, i + 2));
-  }
-  const forwardRows: (typeof forwardGroups)[] = [];
-  for (let i = 0; i < forwardGroups.length; i += 2) {
-    forwardRows.push(forwardGroups.slice(i, i + 2));
-  }
+  // Alla grupper renderas vertikalt (under varandra)
 
   const filledCount = Object.keys(lineup).length;
   const totalSlots = slots.length;
@@ -217,19 +210,18 @@ export function TeamPanel({
             />
           }
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+          <div className="space-y-1.5">
             {goalkeeperSlots.map((slot) => (
-              <div key={slot.id} className="flex-1 min-w-0">
-                <PlayerSlot
-                  slot={slot}
-                  player={lineup[slot.id] ?? null}
-                  onRemove={() => onRemovePlayer(slot.id)}
-                  onChangePosition={(pos) => {
-                    const p = lineup[slot.id];
-                    if (p) onChangePosition(p.id, pos);
-                  }}
-                />
-              </div>
+              <PlayerSlot
+                key={slot.id}
+                slot={slot}
+                player={lineup[slot.id] ?? null}
+                onRemove={() => onRemovePlayer(slot.id)}
+                onChangePosition={(pos) => {
+                  const p = lineup[slot.id];
+                  if (p) onChangePosition(p.id, pos);
+                }}
+              />
             ))}
           </div>
         </Section>
@@ -250,19 +242,15 @@ export function TeamPanel({
           }
         >
           <div className="space-y-1.5">
-            {defenseRows.map((row, rowIdx) => (
-              <div key={rowIdx} className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {row.map((group) => (
-                  <GroupCard
-                    key={group.groupLabel}
-                    group={group}
-                    lineup={lineup}
-                    onRemovePlayer={onRemovePlayer}
-                    onChangePosition={onChangePosition}
-                    type="defense"
-                  />
-                ))}
-              </div>
+            {defenseGroups.map((group) => (
+              <GroupCard
+                key={group.groupLabel}
+                group={group}
+                lineup={lineup}
+                onRemovePlayer={onRemovePlayer}
+                onChangePosition={onChangePosition}
+                type="defense"
+              />
             ))}
           </div>
         </Section>
@@ -283,19 +271,15 @@ export function TeamPanel({
           }
         >
           <div className="space-y-1.5">
-            {forwardRows.map((row, rowIdx) => (
-              <div key={rowIdx} className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {row.map((group) => (
-                  <GroupCard
-                    key={group.groupLabel}
-                    group={group}
-                    lineup={lineup}
-                    onRemovePlayer={onRemovePlayer}
-                    onChangePosition={onChangePosition}
-                    type="forward"
-                  />
-                ))}
-              </div>
+            {forwardGroups.map((group) => (
+              <GroupCard
+                key={group.groupLabel}
+                group={group}
+                lineup={lineup}
+                onRemovePlayer={onRemovePlayer}
+                onChangePosition={onChangePosition}
+                type="forward"
+              />
             ))}
           </div>
         </Section>
