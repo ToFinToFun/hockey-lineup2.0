@@ -107,7 +107,6 @@ export function DraggablePlayerCard({
         ${isHolding ? "ring-1 ring-red-400/60" : ""}
       `}
       {...attributes}
-      {...listeners}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerMove={handlePointerMove}
@@ -134,9 +133,12 @@ export function DraggablePlayerCard({
           <span className="absolute text-[9px] font-black text-red-400 tracking-wide">HÅLL</span>
         </div>
       )}
-      {/* Drag handle – visas på desktop, hela kortet är draggable på touch */}
-      <div className="cursor-grab active:cursor-grabbing shrink-0 pointer-events-none">
-        <GripVertical className="w-3 h-3 text-white/30" />
+      {/* Drag handle – tryck och håll här för att dra */}
+      <div
+        className="cursor-grab active:cursor-grabbing shrink-0 touch-none -ml-1 py-1 px-1.5 rounded hover:bg-white/10 active:bg-white/15 transition-colors"
+        {...listeners}
+      >
+        <GripVertical className="w-4 h-4 text-white/40" />
       </div>
 
       {/* Namn + #nr – vanlig text (ej klickbar) */}
