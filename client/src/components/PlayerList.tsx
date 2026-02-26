@@ -5,7 +5,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard, TeamColorIndicator } from "./PlayerCard";
 import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
 import { ALL_POSITIONS, POSITION_LABELS, getPositionBadgeColor } from "@/lib/players";
-import { Search, UserPlus, X, ArrowUpDown } from "lucide-react";
+import { Search, UserPlus, X, ArrowUpDown, ClipboardCheck } from "lucide-react";
 import { nanoid } from "nanoid";
 
 interface PlayerListProps {
@@ -19,6 +19,7 @@ interface PlayerListProps {
   onChangeCaptainRole: (playerId: string, role: CaptainRole) => void;
   onChangeRegistered: (playerId: string, isRegistered: boolean) => void;
   onChangeGamesPlayed: (playerId: string, gamesPlayed: number) => void;
+  onBulkRegister?: () => { matched: number; unmatched: string[] };
 }
 
 type PosFilter = Position | "Alla";
@@ -66,13 +67,14 @@ function sortPlayers(players: Player[], key: SortKey, dir: SortDir): Player[] {
   });
 }
 
-export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber, onChangeName, onChangeCaptainRole, onChangeRegistered, onChangeGamesPlayed }: PlayerListProps) {
+export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber, onChangeName, onChangeCaptainRole, onChangeRegistered, onChangeGamesPlayed, onBulkRegister }: PlayerListProps) {
   const [search, setSearch] = useState("");
   const [posFilter, setPosFilter] = useState<PosFilter>("Alla");
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("Alla");
   const [sortKey, setSortKey] = useState<SortKey>("registered");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [registerResult, setRegisterResult] = useState<{ matched: number; unmatched: string[] } | null>(null);
   const [newName, setNewName] = useState("");
   const [newNumber, setNewNumber] = useState("");
   const [newPosition, setNewPosition] = useState<Position>("IB");
@@ -157,13 +159,18 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
       {/* Header */}
       <div className="p-3 border-b border-white/10">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-white font-bold text-sm uppercase tracking-widest" style={{ fontFamily: "'Oswald', sans-serif" }}>
-            Spelartrupp
-          </h2>
-          <span className="text-white/40 text-xs">
-            {filtered.length < players.length
-              ? <><span className="text-white/70 font-semibold">{filtered.length}</span> / {players.length} spelare</>
-              : <>{players.length} spelare</>}
+          <div className="flex items-center gap-2">
+            <h2 className="text-white font-bold text-sm uppercase tracking-widest" style={{ fontFamily: "'Oswald', sans-serif" }}>
+              Spelartrupp
+            </h2>
+            <span className="text-white/40 text-xs">
+              {filtered.length < players.length
+                ? <><span className="text-white/70 font-semibold">{filtered.length}</span> / {players.length} spelare</>
+                : <>{players.length} spelare</>}
+            </span>
+          </div>
+          <span className="text-emerald-400/70 text-xs font-semibold">
+            Anmälda {players.filter(p => p.isRegistered).length} st
           </span>
         </div>
 
@@ -239,6 +246,37 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
             <SortBtn k="position" label="Pos" />
           </div>
         </div>
+
+        {/* Hämta anmälningar från laget.se */}
+        {onBulkRegister && (
+          <div className="mt-2">
+            <button
+              onClick={() => {
+                const result = onBulkRegister();
+                setRegisterResult(result);
+                setTimeout(() => setRegisterResult(null), 5000);
+              }}
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-300 text-[10px] font-bold hover:bg-sky-500/30 transition-all uppercase tracking-wider"
+            >
+              <ClipboardCheck className="w-3.5 h-3.5" />
+              Hämta anmälningar (laget.se)
+            </button>
+            {registerResult && (
+              <div className={`mt-1.5 text-[10px] px-2 py-1.5 rounded-lg border ${
+                registerResult.unmatched.length === 0
+                  ? "bg-emerald-500/15 border-emerald-400/30 text-emerald-300"
+                  : "bg-amber-500/15 border-amber-400/30 text-amber-300"
+              }`}>
+                <span className="font-bold">{registerResult.matched}</span> spelare markerade som anmälda
+                {registerResult.unmatched.length > 0 && (
+                  <div className="mt-0.5 text-[9px] opacity-80">
+                    Ej matchade: {registerResult.unmatched.join(", ")}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Spelarlista – scrollbar med fast höjd */}
