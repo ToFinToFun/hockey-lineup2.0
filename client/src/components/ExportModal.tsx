@@ -205,16 +205,26 @@ function drawTeamBlock(
     goalkeeperSlots.forEach((slot) => drawSlotRow(slot, lineup[slot.id] ?? null, x, width));
   });
 
-  // Defense groups in 2-column grid
+  // Defense groups in 2-column grid – dynamic height per row
   drawSection("Backar", "#60a5fa", defenseSlots, () => {
     const colW = (width - 6) / 2;
-    const startY = curY;
+    const baseY = curY;
+    // Pre-calculate row Y offsets based on actual group heights
+    const rowHeights: number[] = [];
+    for (let i = 0; i < defenseGroups.length; i += 2) {
+      const leftH = 13 + defenseGroups[i].slots.length * 22;
+      const rightH = (i + 1 < defenseGroups.length) ? 13 + defenseGroups[i + 1].slots.length * 22 : 0;
+      rowHeights.push(Math.max(leftH, rightH) + 4);
+    }
     defenseGroups.forEach((group, i) => {
       const col = i % 2;
-      const row = Math.floor(i / 2);
+      const rowIdx = Math.floor(i / 2);
       const gx = x + col * (colW + 6);
-      const gy = startY + row * (group.slots.length * 22 + 22);
-      const savedY = curY;
+      // Calculate gy from accumulated row heights
+      let gy = baseY;
+      for (let r = 0; r < rowIdx; r++) gy += rowHeights[r];
+
+      // Set curY so drawSlotRow draws at the correct position
       curY = gy;
 
       // Group label
@@ -224,28 +234,35 @@ function drawTeamBlock(
       ctx.fillText(group.groupLabel.toUpperCase(), gx, curY + 8);
       curY += 13;
 
-      group.slots.forEach((slot) => drawSlotRow(slot, lineup[slot.id] ?? null, gx, colW));
-
-      const endY = curY;
-      curY = savedY;
-      if (endY > curY) curY = endY;
+      group.slots.forEach((slot) => {
+        drawSlotRow(slot, lineup[slot.id] ?? null, gx, colW);
+      });
     });
-    // Advance past all groups
-    const rows = Math.ceil(defenseGroups.length / 2);
-    const slotsPerGroup = defenseGroups[0]?.slots.length ?? 2;
-    curY = startY + rows * (slotsPerGroup * 22 + 22);
+    // Advance curY past all rows
+    curY = baseY;
+    for (const rh of rowHeights) curY += rh;
   });
 
-  // Forward groups in 2-column grid
+  // Forward groups in 2-column grid – dynamic height per row
   drawSection("Forwards", "#34d399", forwardSlots, () => {
     const colW = (width - 6) / 2;
-    const startY = curY;
+    const baseY = curY;
+    // Pre-calculate row Y offsets based on actual group heights
+    const rowHeights: number[] = [];
+    for (let i = 0; i < forwardGroups.length; i += 2) {
+      const leftH = 13 + forwardGroups[i].slots.length * 22;
+      const rightH = (i + 1 < forwardGroups.length) ? 13 + forwardGroups[i + 1].slots.length * 22 : 0;
+      rowHeights.push(Math.max(leftH, rightH) + 4);
+    }
     forwardGroups.forEach((group, i) => {
       const col = i % 2;
-      const row = Math.floor(i / 2);
+      const rowIdx = Math.floor(i / 2);
       const gx = x + col * (colW + 6);
-      const gy = startY + row * (group.slots.length * 22 + 22);
-      const savedY = curY;
+      // Calculate gy from accumulated row heights
+      let gy = baseY;
+      for (let r = 0; r < rowIdx; r++) gy += rowHeights[r];
+
+      // Set curY so drawSlotRow draws at the correct position
       curY = gy;
 
       ctx.font = "bold 8px 'Arial', sans-serif";
@@ -254,21 +271,20 @@ function drawTeamBlock(
       ctx.fillText(group.groupLabel.toUpperCase(), gx, curY + 8);
       curY += 13;
 
-      group.slots.forEach((slot) => drawSlotRow(slot, lineup[slot.id] ?? null, gx, colW));
-
-      const endY = curY;
-      curY = savedY;
-      if (endY > curY) curY = endY;
+      group.slots.forEach((slot) => {
+        drawSlotRow(slot, lineup[slot.id] ?? null, gx, colW);
+      });
     });
-    const rows = Math.ceil(forwardGroups.length / 2);
-    const slotsPerGroup = forwardGroups[0]?.slots.length ?? 3;
-    curY = startY + rows * (slotsPerGroup * 22 + 22);
+    // Advance curY past all rows
+    curY = baseY;
+    for (const rh of rowHeights) curY += rh;
   });
 
   return curY;
 }
 
 // Calculate the total height a team block will occupy (including logo row)
+// Uses dynamic per-row height to handle groups with different slot counts
 function calcTeamHeight(slots: Slot[], lineup: Record<string, Player>): number {
   const gkSlots = slots.filter((s) => s.type === "goalkeeper" && lineup[s.id]);
   const defSlots = slots.filter((s) => s.type === "defense" && lineup[s.id]);
@@ -278,14 +294,22 @@ function calcTeamHeight(slots: Slot[], lineup: Record<string, Player>): number {
   let h = 50; // logo row (40px) + 10px gap
   if (gkSlots.length > 0) h += 16 + gkSlots.length * 22 + 6;
   if (defSlots.length > 0) {
-    const rows = Math.ceil(defGroups.length / 2);
-    const slotsPerGroup = defGroups[0]?.slots.length ?? 2;
-    h += 16 + rows * (slotsPerGroup * 22 + 22) + 6;
+    h += 16; // section label
+    for (let i = 0; i < defGroups.length; i += 2) {
+      const leftH = 13 + defGroups[i].slots.length * 22;
+      const rightH = (i + 1 < defGroups.length) ? 13 + defGroups[i + 1].slots.length * 22 : 0;
+      h += Math.max(leftH, rightH) + 4;
+    }
+    h += 6;
   }
   if (fwdSlots.length > 0) {
-    const rows = Math.ceil(fwdGroups.length / 2);
-    const slotsPerGroup = fwdGroups[0]?.slots.length ?? 3;
-    h += 16 + rows * (slotsPerGroup * 22 + 22) + 6;
+    h += 16; // section label
+    for (let i = 0; i < fwdGroups.length; i += 2) {
+      const leftH = 13 + fwdGroups[i].slots.length * 22;
+      const rightH = (i + 1 < fwdGroups.length) ? 13 + fwdGroups[i + 1].slots.length * 22 : 0;
+      h += Math.max(leftH, rightH) + 4;
+    }
+    h += 6;
   }
   return h;
 }
