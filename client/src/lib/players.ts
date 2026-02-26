@@ -24,6 +24,8 @@ export interface Player {
   position: Position;
   teamColor?: TeamColor;
   captainRole?: CaptainRole;
+  isRegistered?: boolean;   // Anmäld till dagens match
+  gamesPlayed?: number;     // Antal matcher spelade
 }
 
 /** Formaterar spelarens visningsnamn: "C Jerry Paasovaara #63" eller "Linus Carbin #35" */
