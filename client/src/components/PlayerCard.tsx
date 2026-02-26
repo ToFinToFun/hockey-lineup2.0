@@ -144,14 +144,7 @@ export function DraggablePlayerCard({
         <GripVertical className="w-3 h-3 text-white/30" />
       </div>
 
-      {/* Captain/AC-badge – visas före namnet i compact-läge */}
-      {compact && !hideExtras && player.captainRole && (
-        <span className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 ${
-          player.captainRole === "C"
-            ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/40"
-            : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
-        }`}>{player.captainRole}</span>
-      )}
+      {/* Captain/AC-badge tas bort här – visas istället före lagfärg/position i compact */}
 
       {/* Namn – klickbar för redigering i icke-compact, annars vanlig text */}
       {!compact && !hideExtras && onChangeName ? (
@@ -342,9 +335,16 @@ export function DraggablePlayerCard({
         </span>
       )}
 
-      {/* Lag-cirkel + position i compact-läge – lag först, sedan position */}
+      {/* Captain + Lag-cirkel + position i compact-läge – A/C först, sedan lag, sedan position */}
       {compact && !hideExtras && (
         <div className="flex items-center gap-1 shrink-0">
+          {player.captainRole && (
+            <span className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 ${
+              player.captainRole === "C"
+                ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/40"
+                : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
+            }`}>{player.captainRole}</span>
+          )}
           <TeamColorIndicator teamColor={player.teamColor ?? null} size={10} />
           <span className={`text-[8px] font-bold px-1 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position)}`}>
             {player.position}
