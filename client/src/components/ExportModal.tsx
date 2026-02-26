@@ -344,11 +344,17 @@ export function ExportModal({
     if (resWhite.status === "fulfilled") imgWhite = resWhite.value;
     if (resGreen.status === "fulfilled") imgGreen = resGreen.value;
 
-    const W = 960;
+    // Determine which teams have players
+    const teamAHasPlayers = Object.keys(teamALineup).length > 0;
+    const teamBHasPlayers = Object.keys(teamBLineup).length > 0;
+    const bothTeams = teamAHasPlayers && teamBHasPlayers;
+    const singleTeam = teamAHasPlayers !== teamBHasPlayers;
+
+    const W = singleTeam ? 540 : 960;
     // Dynamic height: header (88px) + max of both teams + footer (30px)
-    const teamAH = calcTeamHeight(teamASlots, teamALineup);
-    const teamBH = calcTeamHeight(teamBSlots, teamBLineup);
-    const contentH = Math.max(teamAH, teamBH);
+    const teamAH = teamAHasPlayers ? calcTeamHeight(teamASlots, teamALineup) : 0;
+    const teamBH = teamBHasPlayers ? calcTeamHeight(teamBSlots, teamBLineup) : 0;
+    const contentH = bothTeams ? Math.max(teamAH, teamBH) : (teamAH + teamBH);
     const H = Math.max(200, 88 + contentH + 30);
     canvas.width = W * 2;
     canvas.height = H * 2;
@@ -389,23 +395,35 @@ export function ExportModal({
     ctx.lineTo(W - 24, 74);
     ctx.stroke();
 
-    // Draw both teams
-    const colW = (W - 72) / 2;
+    // Draw teams
     const startY = 88;
 
-    // VITA team – white logo
-    drawTeamBlock(ctx, 24, startY, colW, teamAName, "#e2e8f0", teamASlots, teamALineup, imgWhite, "#ffffff");
+    if (bothTeams) {
+      // Two-column layout
+      const colW = (W - 72) / 2;
 
-    // Center separator
-    ctx.strokeStyle = "rgba(255,255,255,0.07)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(W / 2, 82);
-    ctx.lineTo(W / 2, H - 20);
-    ctx.stroke();
+      // VITA team – white logo
+      drawTeamBlock(ctx, 24, startY, colW, teamAName, "#e2e8f0", teamASlots, teamALineup, imgWhite, "#ffffff");
 
-    // GRÖNA team – green logo
-    drawTeamBlock(ctx, W / 2 + 24, startY, colW, teamBName, "#34d399", teamBSlots, teamBLineup, imgGreen, "#337931");
+      // Center separator
+      ctx.strokeStyle = "rgba(255,255,255,0.07)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(W / 2, 82);
+      ctx.lineTo(W / 2, H - 20);
+      ctx.stroke();
+
+      // GRÖNA team – green logo
+      drawTeamBlock(ctx, W / 2 + 24, startY, colW, teamBName, "#34d399", teamBSlots, teamBLineup, imgGreen, "#337931");
+    } else if (teamAHasPlayers) {
+      // Only VITA team
+      const colW = W - 48;
+      drawTeamBlock(ctx, 24, startY, colW, teamAName, "#e2e8f0", teamASlots, teamALineup, imgWhite, "#ffffff");
+    } else if (teamBHasPlayers) {
+      // Only GRÖNA team
+      const colW = W - 48;
+      drawTeamBlock(ctx, 24, startY, colW, teamBName, "#34d399", teamBSlots, teamBLineup, imgGreen, "#337931");
+    }
 
     // Footer
     ctx.font = "9px 'Arial', sans-serif";
@@ -516,7 +534,7 @@ export function ExportModal({
             <canvas
               ref={canvasRef}
               className="rounded-xl shadow-2xl border border-white/10"
-              style={{ minWidth: "960px", height: "auto" }}
+              style={{ minWidth: `${Object.keys(teamALineup).length > 0 && Object.keys(teamBLineup).length > 0 ? 960 : (Object.keys(teamALineup).length > 0 || Object.keys(teamBLineup).length > 0 ? 540 : 960)}px`, height: "auto" }}
             />
           </div>
         </div>
