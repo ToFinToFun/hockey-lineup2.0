@@ -137,14 +137,14 @@ export function DraggablePlayerCard({
         </div>
       )}
 
-      {/* Namn + #nr + anmäld-indikator */}
+      {/* Anmäld-indikator + Namn + #nr */}
+      {!hideExtras && player.isRegistered && (
+        <span className="text-emerald-400 text-[9px] shrink-0" title="Anmäld">✓</span>
+      )}
       <span className="text-white font-medium truncate flex-1 leading-tight">
         {player.name}
         {!compact && !hideExtras && player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
         {compact && !hideExtras && player.number ? <span className="text-white/40 font-normal ml-1"> #{player.number}</span> : null}
-        {!hideExtras && player.isRegistered && (
-          <span className="ml-1 text-emerald-400 text-[9px]" title="Anmäld">✓</span>
-        )}
         {!hideExtras && !compact && player.gamesPlayed != null && player.gamesPlayed > 0 && (
           <span className="ml-1 text-white/30 text-[9px]" title="Matcher spelade">({player.gamesPlayed})</span>
         )}
