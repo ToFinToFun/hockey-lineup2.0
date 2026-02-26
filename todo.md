@@ -24,3 +24,4 @@
 - [x] Ändra lagpanelernas header till "Antal spelare i laget / Anmälda spelare" istället för nuvarande format
 - [x] Ändra lagpanel-header till att bara visa antal spelare i laget, t.ex. "11 Spelare"
 - [x] BUGG: Delad skrivskyddad länk visar bara en målvakt, ett backpar och en kedja per lag istället för alla ifyllda
+- [x] Ändra delad vy: rubrik till "Laguppställning [Veckodag] [dd/mm]", undertitel till "Delad [datum]"
