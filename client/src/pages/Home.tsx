@@ -32,6 +32,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { saveStateToFirebase, subscribeToFirebase, saveLineupToFirebase, type AppState, type SavedLineup } from "@/lib/firebase";
 import { Download, Wifi, WifiOff, Share2, Check } from "lucide-react";
+import { matchRegisteredPlayers } from "@/lib/laget";
 import { createPortal } from "react-dom"; // används av PlayerList context-meny
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 
@@ -604,6 +605,33 @@ export default function Home() {
     });
   }, []);
 
+  // Hämta anmälningar från laget.se och markera matchade spelare
+  const handleBulkRegister = useCallback((): { matched: number; unmatched: string[] } => {
+    const { matchedIds, unmatchedNames } = matchRegisteredPlayers(
+      availablePlayersRef.current,
+      lineupRef.current
+    );
+    const matchedSet = new Set(matchedIds);
+
+    // Först: nollställ alla spelares isRegistered till false
+    // Sedan: markera matchade som true
+    const updatePlayer = (p: Player): Player => ({
+      ...p,
+      isRegistered: matchedSet.has(p.id),
+    });
+
+    setAvailablePlayers((prev) => prev.map(updatePlayer));
+    setLineup((prev) => {
+      const next: Record<string, Player> = {};
+      for (const [slotId, p] of Object.entries(prev)) {
+        next[slotId] = updatePlayer(p);
+      }
+      return next;
+    });
+
+    return { matched: matchedIds.length, unmatched: unmatchedNames };
+  }, []);
+
   const [mobileTab, setMobileTab] = useState<MobileTab>("trupp");
   const [dragHoverTab, setDragHoverTab] = useState<MobileTab | null>(null);
   const tabHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -859,6 +887,7 @@ export default function Home() {
                       onChangeCaptainRole={handleChangeCaptainRole}
                       onChangeRegistered={handleChangeRegistered}
                       onChangeGamesPlayed={handleChangeGamesPlayed}
+                      onBulkRegister={handleBulkRegister}
                     />
                   </div>
                   <SavedLineupsPanel
@@ -915,6 +944,7 @@ export default function Home() {
                       onChangeCaptainRole={handleChangeCaptainRole}
                       onChangeRegistered={handleChangeRegistered}
                       onChangeGamesPlayed={handleChangeGamesPlayed}
+                      onBulkRegister={handleBulkRegister}
                     />
                     <SavedLineupsPanel
                       teamAName={teamAName}
