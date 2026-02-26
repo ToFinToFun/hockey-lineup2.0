@@ -136,7 +136,31 @@ export function DraggablePlayerCard({
         <GripVertical className="w-3 h-3 text-white/30" />
       </div>
 
-      {/* Namn + #nr – klickbar för redigering i icke-compact, annars vanlig text */}
+      {/* Namn + #nr – vanlig text (ej klickbar) */}
+      <span className="text-white font-medium truncate flex-1 leading-tight">
+        {player.name}
+        {!compact && !hideExtras && player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
+        {compact && !hideExtras && player.number ? <span className="text-white/40 font-normal ml-1"> #{player.number}</span> : null}
+      </span>
+
+      {/* Captain + Lag-cirkel + position i compact-läge – A/C först, sedan lag, sedan position */}
+      {compact && !hideExtras && (
+        <div className="flex items-center gap-1 shrink-0">
+          {player.captainRole && (
+            <span className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 ${
+              player.captainRole === "C"
+                ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/40"
+                : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
+            }`}>{player.captainRole}</span>
+          )}
+          <TeamColorIndicator teamColor={player.teamColor ?? null} size={10} />
+          <span className={`text-[8px] font-bold px-1 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position)}`}>
+            {player.position}
+          </span>
+        </div>
+      )}
+
+      {/* Icke-compact badges – klickbara för att öppna redigeringspanelen */}
       {!compact && !hideExtras && onChangeName ? (
         <>
           <button
@@ -148,11 +172,20 @@ export function DraggablePlayerCard({
               setNrValue(player.number ?? "");
               setShowEditPanel((v) => !v);
             }}
-            className="text-white font-medium truncate flex-1 leading-tight text-left hover:text-emerald-200 transition-colors cursor-text"
+            className="flex items-center gap-1 shrink-0 hover:ring-1 hover:ring-emerald-400/40 rounded px-0.5 py-0.5 transition-all cursor-pointer"
             title="Klicka för att redigera spelare"
           >
-            {player.name}
-            {player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
+            {player.captainRole && (
+              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${
+                player.captainRole === "C"
+                  ? "bg-yellow-400/20 text-yellow-300 border-yellow-400/40"
+                  : "bg-orange-400/20 text-orange-300 border-orange-400/40"
+              }`}>{player.captainRole}</span>
+            )}
+            <TeamColorIndicator teamColor={player.teamColor ?? null} size={16} />
+            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${getPositionBadgeColor(player.position)}`}>
+              {player.position}
+            </span>
           </button>
           <PortalDropdown
             anchorRef={editBtnRef}
@@ -160,7 +193,7 @@ export function DraggablePlayerCard({
             onClose={() => setShowEditPanel(false)}
           >
             <div className="px-3 py-2.5 flex flex-col gap-2" onPointerDown={(e) => e.stopPropagation()}>
-              {/* Namn-fält */}
+              {/* Rad 1: Namn-fält */}
               <div className="flex items-center gap-2">
                 <input
                   type="text"
@@ -308,49 +341,21 @@ export function DraggablePlayerCard({
             </div>
           </PortalDropdown>
         </>
-      ) : (
-        <span className="text-white font-medium truncate flex-1 leading-tight">
-          {player.name}{compact && !hideExtras && player.number ? (
-            <span className="text-white/40 font-normal ml-1"> #{player.number}</span>
-          ) : null}
-        </span>
-      )}
-
-      {/* Captain + Lag-cirkel + position i compact-läge – A/C först, sedan lag, sedan position */}
-      {compact && !hideExtras && (
+      ) : !compact && !hideExtras ? (
         <div className="flex items-center gap-1 shrink-0">
           {player.captainRole && (
-            <span className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 ${
+            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${
               player.captainRole === "C"
-                ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/40"
-                : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
+                ? "bg-yellow-400/20 text-yellow-300 border-yellow-400/40"
+                : "bg-orange-400/20 text-orange-300 border-orange-400/40"
             }`}>{player.captainRole}</span>
           )}
-          <TeamColorIndicator teamColor={player.teamColor ?? null} size={10} />
-          <span className={`text-[8px] font-bold px-1 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position)}`}>
+          <TeamColorIndicator teamColor={player.teamColor ?? null} size={16} />
+          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${getPositionBadgeColor(player.position)}`}>
             {player.position}
           </span>
         </div>
-      )}
-
-      {/* Icke-compact badges (ej klickbara – redigeras via namn-dropdown): A/C, lag, position */}
-      {!compact && !hideExtras && player.captainRole && (
-        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded shrink-0 border ${
-          player.captainRole === "C"
-            ? "bg-yellow-400/20 text-yellow-300 border-yellow-400/40"
-            : "bg-orange-400/20 text-orange-300 border-orange-400/40"
-        }`}>{player.captainRole}</span>
-      )}
-      {!compact && !hideExtras && (
-        <div className="shrink-0">
-          <TeamColorIndicator teamColor={player.teamColor ?? null} size={16} />
-        </div>
-      )}
-      {!compact && !hideExtras && (
-        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position)}`}>
-          {player.position}
-        </span>
-      )}
+      ) : null}
 
       {/* Ta bort-knapp */}
       {onRemove && (
