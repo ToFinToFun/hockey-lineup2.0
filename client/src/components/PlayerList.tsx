@@ -23,7 +23,7 @@ interface PlayerListProps {
 
 type PosFilter = Position | "Alla";
 type TeamFilter = TeamColor | "Alla";
-type SortKey = "name" | "number" | "position";
+type SortKey = "registered" | "name" | "number" | "position";
 type SortDir = "asc" | "desc";
 
 const positionFilters: { label: string; value: PosFilter }[] = [
@@ -47,7 +47,12 @@ const POSITION_ORDER: Record<string, number> = { MV: 0, B: 1, C: 2, F: 3, IB: 4 
 function sortPlayers(players: Player[], key: SortKey, dir: SortDir): Player[] {
   return [...players].sort((a, b) => {
     let cmp = 0;
-    if (key === "name") {
+    if (key === "registered") {
+      const ra = a.isRegistered ? 1 : 0;
+      const rb = b.isRegistered ? 1 : 0;
+      cmp = rb - ra; // Anmälda först vid asc
+      if (cmp === 0) cmp = a.name.localeCompare(b.name, "sv");
+    } else if (key === "name") {
       cmp = a.name.localeCompare(b.name, "sv");
     } else if (key === "number") {
       const na = parseInt(a.number || "9999");
@@ -65,7 +70,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
   const [search, setSearch] = useState("");
   const [posFilter, setPosFilter] = useState<PosFilter>("Alla");
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("Alla");
-  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortKey, setSortKey] = useState<SortKey>("registered");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState("");
@@ -228,6 +233,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
         <div className="flex items-center gap-1.5">
           <span className="text-white/30 text-[9px] uppercase tracking-wider shrink-0">Sortera:</span>
           <div className="flex gap-1">
+            <SortBtn k="registered" label="Anmäld" />
             <SortBtn k="name" label="Namn" />
             <SortBtn k="number" label="Nr" />
             <SortBtn k="position" label="Pos" />
