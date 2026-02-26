@@ -297,8 +297,8 @@ export default function Home() {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 250,      // 250ms hold to start drag (ger utrymme för scroll-gester)
-        tolerance: 10,   // allow 10px movement before cancelling
+        delay: 300,      // 300ms hold to start drag (ger mer utrymme för scroll-gester)
+        tolerance: 15,   // allow 15px movement before cancelling – minskar oavsiktlig drag vid scroll
       },
     })
   );
