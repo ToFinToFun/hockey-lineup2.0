@@ -714,6 +714,13 @@ export default function Home() {
   const totalSlotsA = TEAM_A_SLOTS.length;
   const totalSlotsB = TEAM_B_SLOTS.length;
 
+  // Totalt antal anmälda (trupp + lineup)
+  const totalRegistered = useMemo(() => {
+    const inList = availablePlayers.filter(p => p.isRegistered).length;
+    const inLineup = Object.values(lineup).filter(p => p.isRegistered).length;
+    return inList + inLineup;
+  }, [availablePlayers, lineup]);
+
   // Kollisionsdetektion: pointerWithin först, sedan closestCenter som fallback.
   // Eftersom vi nu bara renderar EN layout (åt gången) behövs ingen filtrering.
   const pointerWithinOrClosest: CollisionDetection = (args) => {
@@ -900,6 +907,7 @@ export default function Home() {
                       onChangeRegistered={handleChangeRegistered}
                       onChangeGamesPlayed={handleChangeGamesPlayed}
                       onBulkRegister={handleBulkRegister}
+                      totalRegistered={totalRegistered}
                     />
                   </div>
                   <SavedLineupsPanel
@@ -957,6 +965,7 @@ export default function Home() {
                       onChangeRegistered={handleChangeRegistered}
                       onChangeGamesPlayed={handleChangeGamesPlayed}
                       onBulkRegister={handleBulkRegister}
+                      totalRegistered={totalRegistered}
                     />
                     <SavedLineupsPanel
                       teamAName={teamAName}
