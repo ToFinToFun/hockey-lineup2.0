@@ -3,7 +3,7 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, X, Trash2 } from "lucide-react";
+import { X, Trash2 } from "lucide-react";
 import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
 import { getPositionBadgeColor, ALL_POSITIONS } from "@/lib/players";
 import { useState, useRef } from "react";
@@ -107,6 +107,7 @@ export function DraggablePlayerCard({
         ${isHolding ? "ring-1 ring-red-400/60" : ""}
       `}
       {...attributes}
+      {...listeners}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerMove={handlePointerMove}
@@ -133,13 +134,6 @@ export function DraggablePlayerCard({
           <span className="absolute text-[9px] font-black text-red-400 tracking-wide">HÅLL</span>
         </div>
       )}
-      {/* Drag handle – tryck och håll här för att dra */}
-      <div
-        className="cursor-grab active:cursor-grabbing shrink-0 touch-none -ml-1 py-1 px-1.5 rounded hover:bg-white/10 active:bg-white/15 transition-colors"
-        {...listeners}
-      >
-        <GripVertical className="w-4 h-4 text-white/40" />
-      </div>
 
       {/* Namn + #nr – vanlig text (ej klickbar) */}
       <span className="text-white font-medium truncate flex-1 leading-tight">
@@ -482,7 +476,6 @@ export function TeamColorIndicator({ teamColor, size = 16 }: { teamColor: TeamCo
 export function PlayerCardOverlay({ player }: { player: Player }) {
   return (
     <div className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm bg-emerald-900 border border-emerald-400 shadow-2xl ring-2 ring-emerald-400/60 cursor-grabbing select-none" style={{ minWidth: 160, maxWidth: 240 }}>
-      <GripVertical className="w-3 h-3 text-emerald-300/50 shrink-0" />
       <TeamColorIndicator teamColor={player.teamColor ?? null} size={14} />
       {player.captainRole && (
         <span className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 border ${
