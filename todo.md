@@ -16,3 +16,4 @@
 - [x] Asynkron knapp med laddningsindikator för laget.se-hämtning
 - [x] Visar event-titel och datum i resultmeddelandet
 - [x] Felhantering med röd felindikator vid misslyckad hämtning
+- [x] Ändra header till "Anmälda X/Y st" (X = anmälda kvar i truppen, Y = totalt anmälda)
