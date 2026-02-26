@@ -66,8 +66,6 @@ export function DraggablePlayerCard({
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    // Anropa dnd-kit listeners
-    if (listeners?.onPointerDown) listeners.onPointerDown(e);
     // Starta long-press timer (endast touch)
     if (e.pointerType !== "mouse" && onLongPress) {
       pointerStartRef.current = { x: e.clientX, y: e.clientY };
@@ -96,7 +94,7 @@ export function DraggablePlayerCard({
   return (
     <div
       ref={setNodeRef}
-      style={{ ...style, touchAction: "auto" }}  /* auto = normal scroll, dnd-kit aktiverar drag efter 500ms hold */
+      style={{ ...style, touchAction: "manipulation" }}  /* manipulation = scroll + pinch fungerar, dnd-kit TouchSensor hanterar drag via delay */
       className={`
         group relative flex items-center gap-1.5 rounded-md
         bg-white/10 border border-white/20 backdrop-blur-sm
