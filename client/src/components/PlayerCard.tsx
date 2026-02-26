@@ -144,69 +144,9 @@ export function DraggablePlayerCard({
         <GripVertical className="w-3 h-3 text-white/30" />
       </div>
 
-      {/* Captain/AC-badge tas bort här – visas istället före lagfärg/position i compact */}
-
-      {/* Namn – klickbar för redigering i icke-compact, annars vanlig text */}
+      {/* Namn + #nr – klickbar för redigering i icke-compact, annars vanlig text */}
       {!compact && !hideExtras && onChangeName ? (
         <>
-          {/* Captain-badge klickbar i icke-compact */}
-          {onChangeCaptainRole && (
-            <>
-              <button
-                ref={captainBtnRef}
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowCaptainMenu((v) => !v);
-                  setShowPosMenu(false);
-                  setShowTeamMenu(false);
-                  setShowNrInput(false);
-                  setShowNameInput(false);
-                }}
-                className={`text-[9px] font-black px-1.5 py-0.5 rounded shrink-0 border transition-all ${
-                  player.captainRole === "C"
-                    ? "bg-yellow-400/20 text-yellow-300 border-yellow-400/40 hover:bg-yellow-400/30"
-                    : player.captainRole === "A"
-                    ? "bg-orange-400/20 text-orange-300 border-orange-400/40 hover:bg-orange-400/30"
-                    : "bg-white/5 text-white/20 border-white/10 hover:bg-white/10 hover:text-white/40"
-                }`}
-                title="Klicka för att sätta C / A / ingen"
-              >
-                {player.captainRole ?? "C/A"}
-              </button>
-              <PortalDropdown
-                anchorRef={captainBtnRef}
-                open={showCaptainMenu}
-                onClose={() => setShowCaptainMenu(false)}
-              >
-                {([
-                  { value: "C" as CaptainRole, label: "C – Kapten" },
-                  { value: "A" as CaptainRole, label: "A – Assisterande kapten" },
-                  { value: null, label: "Ingen roll" },
-                ] as { value: CaptainRole; label: string }[]).map(({ value, label }) => (
-                  <button
-                    key={String(value)}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onChangeCaptainRole(value);
-                      setShowCaptainMenu(false);
-                    }}
-                    className={`flex items-center gap-2 w-full px-3 py-2 text-xs text-left hover:bg-white/10 transition-colors whitespace-nowrap ${
-                      player.captainRole === value ? "bg-white/10" : ""
-                    }`}
-                  >
-                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${
-                      value === "C" ? "bg-yellow-400/20 text-yellow-300 border-yellow-400/40"
-                      : value === "A" ? "bg-orange-400/20 text-orange-300 border-orange-400/40"
-                      : "bg-white/5 text-white/20 border-white/10"
-                    }`}>{value ?? "—"}</span>
-                    <span className="text-white/80">{label}</span>
-                  </button>
-                ))}
-              </PortalDropdown>
-            </>
-          )}
           <button
             ref={nameBtnRef}
             onPointerDown={(e) => e.stopPropagation()}
@@ -220,48 +160,83 @@ export function DraggablePlayerCard({
               setShowCaptainMenu(false);
             }}
             className="text-white font-medium truncate flex-1 leading-tight text-left hover:text-emerald-200 transition-colors cursor-text"
-            title="Klicka för att redigera namn"
+            title="Klicka för att redigera namn och kaptensroll"
           >
             {player.name}
+            {player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
           </button>
           <PortalDropdown
             anchorRef={nameBtnRef}
             open={showNameInput}
             onClose={() => setShowNameInput(false)}
           >
-            <div className="px-3 py-2 flex items-center gap-2" onPointerDown={(e) => e.stopPropagation()}>
-              <input
-                type="text"
-                value={nameValue}
-                autoFocus
-                maxLength={40}
-                placeholder="Spelarens namn"
-                onChange={(e) => setNameValue(e.target.value)}
-                onKeyDown={(e) => {
-                  e.stopPropagation();
-                  if (e.key === "Enter" && nameValue.trim()) {
-                    onChangeName(nameValue.trim());
-                    setShowNameInput(false);
-                  } else if (e.key === "Escape") {
-                    setShowNameInput(false);
-                  }
-                }}
-                onClick={(e) => e.stopPropagation()}
-                className="w-44 bg-white/10 border border-emerald-400/40 rounded px-2 py-1 text-xs text-white outline-none focus:border-emerald-400"
-              />
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (nameValue.trim()) {
-                    onChangeName(nameValue.trim());
-                    setShowNameInput(false);
-                  }
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-                className="text-xs font-bold text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded hover:bg-white/10 transition-colors whitespace-nowrap"
-              >
-                Spara
-              </button>
+            <div className="px-3 py-2 flex flex-col gap-2" onPointerDown={(e) => e.stopPropagation()}>
+              {/* Namn-fält */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={nameValue}
+                  autoFocus
+                  maxLength={40}
+                  placeholder="Spelarens namn"
+                  onChange={(e) => setNameValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === "Enter" && nameValue.trim()) {
+                      onChangeName(nameValue.trim());
+                      setShowNameInput(false);
+                    } else if (e.key === "Escape") {
+                      setShowNameInput(false);
+                    }
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-44 bg-white/10 border border-emerald-400/40 rounded px-2 py-1 text-xs text-white outline-none focus:border-emerald-400"
+                />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (nameValue.trim()) {
+                      onChangeName(nameValue.trim());
+                      setShowNameInput(false);
+                    }
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className="text-xs font-bold text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded hover:bg-white/10 transition-colors whitespace-nowrap"
+                >
+                  Spara
+                </button>
+              </div>
+              {/* Kaptensroll-väljare */}
+              {onChangeCaptainRole && (
+                <div className="flex items-center gap-1.5 pt-1 border-t border-white/10">
+                  <span className="text-white/40 text-[10px] mr-1">Roll:</span>
+                  {([
+                    { value: "C" as CaptainRole, label: "C" },
+                    { value: "A" as CaptainRole, label: "A" },
+                    { value: null, label: "—" },
+                  ] as { value: CaptainRole; label: string }[]).map(({ value, label }) => (
+                    <button
+                      key={String(value)}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onChangeCaptainRole(value);
+                      }}
+                      className={`text-[9px] font-black px-2 py-1 rounded border transition-all ${
+                        player.captainRole === value
+                          ? value === "C"
+                            ? "bg-yellow-400/25 text-yellow-300 border-yellow-400/50 ring-1 ring-yellow-400/30"
+                            : value === "A"
+                            ? "bg-orange-400/25 text-orange-300 border-orange-400/50 ring-1 ring-orange-400/30"
+                            : "bg-white/15 text-white/60 border-white/30 ring-1 ring-white/20"
+                          : "bg-white/5 text-white/30 border-white/10 hover:bg-white/10 hover:text-white/50"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </PortalDropdown>
         </>
@@ -350,6 +325,15 @@ export function DraggablePlayerCard({
             {player.position}
           </span>
         </div>
+      )}
+
+      {/* A/C-badge i icke-compact – visas före lagfärg-pricken (ej klickbar, redigeras via namn-dropdown) */}
+      {!compact && !hideExtras && player.captainRole && (
+        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded shrink-0 border ${
+          player.captainRole === "C"
+            ? "bg-yellow-400/20 text-yellow-300 border-yellow-400/40"
+            : "bg-orange-400/20 text-orange-300 border-orange-400/40"
+        }`}>{player.captainRole}</span>
       )}
 
       {/* Lag-markering – dölj i compact-läge (visas separat ovan) */}
