@@ -5,7 +5,7 @@
 // - Ångra-funktion (Ctrl+Z + knapp i header)
 // - In-app bekräftelsedialog för Rensa
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -23,7 +23,7 @@ import {
 } from "@dnd-kit/core";
 import { initialPlayers, type Player, type Position, type TeamColor, type CaptainRole } from "@/lib/players";
 import { useIsMobile } from "@/hooks/useMobile";
-import { createTeamSlots } from "@/lib/lineup";
+import { createTeamSlots, DEFAULT_TEAM_CONFIG, MAX_TEAM_CONFIG, type TeamConfig } from "@/lib/lineup";
 import { PlayerList } from "@/components/PlayerList";
 import { TeamPanel } from "@/components/TeamPanel";
 import { PlayerCardOverlay } from "@/components/PlayerCard";
@@ -46,21 +46,23 @@ const LOGO_WHITE = "https://files.manuscdn.com/user_upload_by_module/session_fil
 const STORAGE_KEY = "stalstadens-lineup-v2";
 const MAX_UNDO = 30; // max antal steg i ångra-historiken
 
-// Alla slots för respektive lag (skapas en gång, ändras ej)
-const TEAM_A_SLOTS = createTeamSlots("team-a");
-const TEAM_B_SLOTS = createTeamSlots("team-b");
+// Generera alla giltiga slot-IDs för en given config (används för sanitering)
+function getAllSlotIds(configA: TeamConfig, configB: TeamConfig): Set<string> {
+  // Generera med MAX config för att acceptera alla möjliga slot-IDs
+  const maxA = createTeamSlots("team-a", MAX_TEAM_CONFIG);
+  const maxB = createTeamSlots("team-b", MAX_TEAM_CONFIG);
+  return new Set([...maxA.map(s => s.id), ...maxB.map(s => s.id)]);
+}
 
-// Alla giltiga slot-IDs
-const ALL_SLOT_IDS = new Set([
-  ...TEAM_A_SLOTS.map((s) => s.id),
-  ...TEAM_B_SLOTS.map((s) => s.id),
-]);
+const ALL_SLOT_IDS = getAllSlotIds(MAX_TEAM_CONFIG, MAX_TEAM_CONFIG);
 
 interface SavedState {
   availablePlayers: Player[];
   lineup: Record<string, Player>;
   teamAName: string;
   teamBName: string;
+  teamAConfig?: TeamConfig;
+  teamBConfig?: TeamConfig;
 }
 
 // En snapshot av det relevanta state som kan ångras
@@ -113,6 +115,40 @@ export default function Home() {
   // Ref för availablePlayers (undviker stale closure i undo)
   const availablePlayersRef = useRef<Player[]>(local?.availablePlayers ?? initialPlayers);
   useEffect(() => { availablePlayersRef.current = availablePlayers; }, [availablePlayers]);
+
+  // Dynamisk lagkonfiguration
+  const [teamAConfig, setTeamAConfig] = useState<TeamConfig>(
+    local?.teamAConfig ?? { ...DEFAULT_TEAM_CONFIG }
+  );
+  const [teamBConfig, setTeamBConfig] = useState<TeamConfig>(
+    local?.teamBConfig ?? { ...DEFAULT_TEAM_CONFIG }
+  );
+
+  // Generera slots dynamiskt baserat på config
+  const TEAM_A_SLOTS = useMemo(() => createTeamSlots("team-a", teamAConfig), [teamAConfig]);
+  const TEAM_B_SLOTS = useMemo(() => createTeamSlots("team-b", teamBConfig), [teamBConfig]);
+
+  // När config minskas: flytta spelare från borttagna slots tillbaka till truppen
+  useEffect(() => {
+    const validSlotIds = new Set([
+      ...TEAM_A_SLOTS.map(s => s.id),
+      ...TEAM_B_SLOTS.map(s => s.id),
+    ]);
+    const currentLineup = lineupRef.current;
+    const orphanedPlayers: Player[] = [];
+    const cleanedLineup: Record<string, Player> = {};
+    for (const [slotId, player] of Object.entries(currentLineup)) {
+      if (validSlotIds.has(slotId)) {
+        cleanedLineup[slotId] = player;
+      } else {
+        orphanedPlayers.push(player);
+      }
+    }
+    if (orphanedPlayers.length > 0) {
+      setLineup(cleanedLineup);
+      setAvailablePlayers(prev => [...orphanedPlayers, ...prev]);
+    }
+  }, [TEAM_A_SLOTS, TEAM_B_SLOTS]);
 
   const [activePlayer, setActivePlayer] = useState<Player | null>(null);
   const [showExport, setShowExport] = useState(false);
@@ -201,6 +237,8 @@ export default function Home() {
         setLineup(sanitizedLineup);
         setTeamAName(state.teamAName ?? "VITA");
         setTeamBName(state.teamBName ?? "GRÖNA");
+        if (state.teamAConfig) setTeamAConfig(state.teamAConfig);
+        if (state.teamBConfig) setTeamBConfig(state.teamBConfig);
         // Allow re-renders to settle before re-enabling writes
         setTimeout(() => {
           isReceivingFromFirebase.current = false;
@@ -236,7 +274,7 @@ export default function Home() {
     if (isReceivingFromFirebase.current) return;
     if (!hasReceivedInitial.current) return;
 
-    const state: SavedState = { availablePlayers, lineup, teamAName, teamBName };
+    const state: SavedState = { availablePlayers, lineup, teamAName, teamBName, teamAConfig, teamBConfig };
     saveLocalState(state);
     saveStateToFirebase({
       players: availablePlayers,
@@ -244,8 +282,10 @@ export default function Home() {
       teamAName,
       teamBName,
       deletedPlayerIds: Array.from(deletedPlayerIds),
+      teamAConfig,
+      teamBConfig,
     });
-  }, [availablePlayers, lineup, teamAName, teamBName, deletedPlayerIds]);
+  }, [availablePlayers, lineup, teamAName, teamBName, deletedPlayerIds, teamAConfig, teamBConfig]);
 
   // Spara en snapshot i undo-stacken
   const pushUndo = useCallback(() => {
@@ -607,7 +647,8 @@ export default function Home() {
 
   const teamACount = Object.keys(teamALineup).length;
   const teamBCount = Object.keys(teamBLineup).length;
-  const totalSlots = TEAM_A_SLOTS.length; // same for both teams
+  const totalSlotsA = TEAM_A_SLOTS.length;
+  const totalSlotsB = TEAM_B_SLOTS.length;
 
   // Kollisionsdetektion: pointerWithin först, sedan closestCenter som fallback.
   // Eftersom vi nu bara renderar EN layout (åt gången) behövs ingen filtrering.
@@ -731,9 +772,9 @@ export default function Home() {
           {/* Mobilflikar – syns bara på smala skärmar */}
           <div className="md:hidden flex gap-0 px-2 pb-2 shrink-0">
             {([
-              { key: "vita" as MobileTab, label: `${teamAName} (${teamACount}/${totalSlots})`, color: "border-slate-300/60 text-slate-200" },
+              { key: "vita" as MobileTab, label: `${teamAName} (${teamACount}/${totalSlotsA})`, color: "border-slate-300/60 text-slate-200" },
               { key: "trupp" as MobileTab, label: "Trupp", color: "border-emerald-400/60 text-emerald-300" },
-              { key: "grona" as MobileTab, label: `${teamBName} (${teamBCount}/${totalSlots})`, color: "border-emerald-500/60 text-emerald-400" },
+              { key: "grona" as MobileTab, label: `${teamBName} (${teamBCount}/${totalSlotsB})`, color: "border-emerald-500/60 text-emerald-400" },
             ]).map(({ key, label, color }) => (
               <button
                 key={key}
@@ -776,6 +817,8 @@ export default function Home() {
                   onRenameTeam={setTeamAName}
                   onClearTeam={() => handleRequestClearTeam("team-a-", teamAName)}
                   isWhite
+                  config={teamAConfig}
+                  onConfigChange={setTeamAConfig}
                 />
 
                 {/* Spelarlista (mitten) */}
@@ -811,6 +854,8 @@ export default function Home() {
                   onRenameTeam={setTeamBName}
                   onClearTeam={() => handleRequestClearTeam("team-b-", teamBName)}
                   isWhite={false}
+                  config={teamBConfig}
+                  onConfigChange={setTeamBConfig}
                 />
               </div>
             ) : (
@@ -827,6 +872,8 @@ export default function Home() {
                     onRenameTeam={setTeamAName}
                     onClearTeam={() => handleRequestClearTeam("team-a-", teamAName)}
                     isWhite
+                    config={teamAConfig}
+                    onConfigChange={setTeamAConfig}
                   />
                 )}
                 {mobileTab === "trupp" && (
@@ -860,6 +907,8 @@ export default function Home() {
                     onRenameTeam={setTeamBName}
                     onClearTeam={() => handleRequestClearTeam("team-b-", teamBName)}
                     isWhite={false}
+                    config={teamBConfig}
+                    onConfigChange={setTeamBConfig}
                   />
                 )}
               </div>

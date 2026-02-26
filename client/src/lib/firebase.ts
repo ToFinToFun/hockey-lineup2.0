@@ -35,6 +35,8 @@ export type AppState = {
   teamAName: string;
   teamBName: string;
   deletedPlayerIds?: string[]; // IDs för medvetet borttagna spelare
+  teamAConfig?: { goalkeepers: number; defensePairs: number; forwardLines: number };
+  teamBConfig?: { goalkeepers: number; defensePairs: number; forwardLines: number };
 };
 
 export type SavedLineup = {
