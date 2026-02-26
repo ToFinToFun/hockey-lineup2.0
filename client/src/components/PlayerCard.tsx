@@ -243,7 +243,6 @@ export function DraggablePlayerCard({
                 <input
                   type="text"
                   value={nameValue}
-                  autoFocus
                   maxLength={40}
                   placeholder="Spelarens namn"
                   onChange={(e) => setNameValue(e.target.value)}
