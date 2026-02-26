@@ -433,7 +433,7 @@ export function DraggablePlayerCard({
         <button
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); onRemove(); }}
-          className="opacity-0 group-hover:opacity-100 transition-opacity ml-0.5 text-white/40 hover:text-red-400 shrink-0"
+          className="ml-0.5 text-red-400 hover:text-red-300 shrink-0 transition-colors"
         >
           <X className="w-3 h-3" />
         </button>
