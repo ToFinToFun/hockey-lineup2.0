@@ -297,8 +297,8 @@ export default function Home() {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 400,      // 400ms hold to start drag – snabba svep hinner röra sig förbi tolerance
-        tolerance: 25,   // 25px rörelse tillråten under delay – avbryter drag vid scroll-gester
+        delay: 500,      // 500ms hold to start drag – tydlig avsikt krävs
+        tolerance: 5,    // 5px – fingret måste vara nästan stilla, annars är det scroll
       },
     })
   );
@@ -316,6 +316,8 @@ export default function Home() {
   const handleDragStart = (event: DragStartEvent) => {
     const player = event.active.data.current?.player as Player;
     setActivePlayer(player || null);
+    // Vibrera för att bekräfta att drag aktiverats
+    if (navigator.vibrate) navigator.vibrate(50);
     // Lås scrollning under drag på mobil
     document.body.classList.add("dnd-scroll-lock");
   };
