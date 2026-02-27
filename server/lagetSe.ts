@@ -23,6 +23,7 @@ export interface AttendanceResult {
   registeredNames: string[];
   totalRegistered: number;
   error?: string;
+  noEvent?: boolean;
 }
 
 /**
@@ -184,20 +185,25 @@ function findNextEventId(html: string): {
     }
   });
 
-  // Prioritera dagens event
-  const todayEvent = eventLinks.find((e) => e.isToday);
-  if (todayEvent) return todayEvent;
-
-  // Annars ta närmaste framtida event
+  // Beräkna dagens och morgondagens datum
   const todayStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  const futureEvents = eventLinks
-    .filter((e) => e.eventDate >= todayStr)
-    .sort((a, b) => a.eventDate.localeCompare(b.eventDate));
-  if (futureEvents.length > 0) return futureEvents[0];
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
 
-  // Fallback: ta det senaste eventet
-  if (eventLinks.length > 0) return eventLinks[eventLinks.length - 1];
+  // Filtrera: bara events idag eller imorgon
+  const relevantEvents = eventLinks
+    .filter((e) => e.eventDate === todayStr || e.eventDate === tomorrowStr)
+    .sort((a, b) => {
+      // Prioritera dagens events före morgondagens
+      if (a.eventDate === todayStr && b.eventDate !== todayStr) return -1;
+      if (b.eventDate === todayStr && a.eventDate !== todayStr) return 1;
+      return 0;
+    });
 
+  if (relevantEvents.length > 0) return relevantEvents[0];
+
+  // Inget event idag eller imorgon
   return null;
 }
 
@@ -263,11 +269,11 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
     const eventInfo = findNextEventId(resp.data);
     if (!eventInfo) {
       return {
-        eventTitle: "Inget event hittat",
+        eventTitle: "",
         eventDate: new Date().toISOString().split("T")[0],
         registeredNames: [],
         totalRegistered: 0,
-        error: "Kunde inte hitta några kommande events på laget.se",
+        noEvent: true,
       };
     }
 

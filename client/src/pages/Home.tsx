@@ -607,12 +607,26 @@ export default function Home() {
   }, []);
 
   // Hämta anmälningar från laget.se via backend-API och markera matchade spelare
-  const handleBulkRegister = useCallback(async (): Promise<{ matched: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string }> => {
+  const handleBulkRegister = useCallback(async (): Promise<{ matched: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string; noEvent?: boolean }> => {
     try {
       const data = await fetchAttendanceFromApi();
 
       if (data.error) {
         return { matched: 0, unmatched: [], error: data.error };
+      }
+
+      if (data.noEvent) {
+        // Inget event idag/imorgon — nollställ alla anmälningar
+        const clearRegistered = (p: Player): Player => ({ ...p, isRegistered: false });
+        setAvailablePlayers((prev) => prev.map(clearRegistered));
+        setLineup((prev) => {
+          const next: Record<string, Player> = {};
+          for (const [slotId, p] of Object.entries(prev)) {
+            next[slotId] = clearRegistered(p);
+          }
+          return next;
+        });
+        return { matched: 0, unmatched: [], noEvent: true };
       }
 
       const { matchedIds, unmatchedNames } = matchRegisteredPlayers(
