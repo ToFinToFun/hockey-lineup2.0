@@ -714,6 +714,10 @@ export default function Home() {
   const totalSlotsA = TEAM_A_SLOTS.length;
   const totalSlotsB = TEAM_B_SLOTS.length;
 
+  // Antal anmälda spelare i varje lag
+  const teamARegistered = Object.values(teamALineup).filter(p => p.isRegistered).length;
+  const teamBRegistered = Object.values(teamBLineup).filter(p => p.isRegistered).length;
+
   // Totalt antal anmälda (trupp + lineup)
   const totalRegistered = useMemo(() => {
     const inList = availablePlayers.filter(p => p.isRegistered).length;
@@ -846,9 +850,9 @@ export default function Home() {
           {/* Mobilflikar – syns bara på smala skärmar */}
           <div className="md:hidden flex gap-0 px-2 pb-2 shrink-0">
             {([
-              { key: "vita" as MobileTab, label: `${teamAName} (${teamACount}/${totalSlotsA})`, color: "border-slate-300/60 text-slate-200" },
+              { key: "vita" as MobileTab, label: `${teamAName} (${teamACount}/${teamARegistered})`, color: "border-slate-300/60 text-slate-200" },
               { key: "trupp" as MobileTab, label: "Trupp", color: "border-emerald-400/60 text-emerald-300" },
-              { key: "grona" as MobileTab, label: `${teamBName} (${teamBCount}/${totalSlotsB})`, color: "border-emerald-500/60 text-emerald-400" },
+              { key: "grona" as MobileTab, label: `${teamBName} (${teamBCount}/${teamBRegistered})`, color: "border-emerald-500/60 text-emerald-400" },
             ]).map(({ key, label, color }) => (
               <button
                 key={key}
