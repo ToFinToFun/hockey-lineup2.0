@@ -26,3 +26,4 @@
 - [x] BUGG: Delad skrivskyddad länk visar bara en målvakt, ett backpar och en kedja per lag istället för alla ifyllda
 - [x] Ändra delad vy: rubrik till "Laguppställning [Veckodag] [dd/mm]", undertitel till "Delad [datum]"
 - [x] Flytta C/A-badges till efter spelarnamn och nummer i delad vy
+- [x] Ändra mobil-flikar till Lagnamn (utplacerade/anmälda) istället för nuvarande format
