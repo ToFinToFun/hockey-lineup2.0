@@ -19,7 +19,7 @@ interface PlayerListProps {
   onChangeCaptainRole: (playerId: string, role: CaptainRole) => void;
   onChangeRegistered: (playerId: string, isRegistered: boolean) => void;
   onChangeGamesPlayed: (playerId: string, gamesPlayed: number) => void;
-  onBulkRegister?: () => Promise<{ matched: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string }>;
+  onBulkRegister?: () => Promise<{ matched: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string; noEvent?: boolean }>;
   totalRegistered?: number;
   totalPlayers?: number;
 }
@@ -76,7 +76,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
   const [sortKey, setSortKey] = useState<SortKey>("registered");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [showAddForm, setShowAddForm] = useState(false);
-  const [registerResult, setRegisterResult] = useState<{ matched: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string } | null>(null);
+  const [registerResult, setRegisterResult] = useState<{ matched: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string; noEvent?: boolean } | null>(null);
   const [isLoadingAttendance, setIsLoadingAttendance] = useState(false);
   const [newName, setNewName] = useState("");
   const [newNumber, setNewNumber] = useState("");
@@ -417,7 +417,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                 const result = await onBulkRegister();
                 setRegisterResult(result);
                 if (!result.error) {
-                  setTimeout(() => setRegisterResult(null), 8000);
+                  setTimeout(() => setRegisterResult(null), result.noEvent ? 6000 : 8000);
                 }
               } catch {
                 setRegisterResult({ matched: 0, unmatched: [], error: "Kunde inte hämta data" });
@@ -451,12 +451,16 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
             <div className={`mt-1.5 text-[10px] px-2 py-1.5 rounded-lg border ${
               registerResult.error
                 ? "bg-red-500/15 border-red-400/30 text-red-300"
+                : registerResult.noEvent
+                ? "bg-slate-500/15 border-slate-400/30 text-slate-300"
                 : registerResult.unmatched.length === 0
                 ? "bg-emerald-500/15 border-emerald-400/30 text-emerald-300"
                 : "bg-amber-500/15 border-amber-400/30 text-amber-300"
             }`}>
               {registerResult.error ? (
                 <span>{registerResult.error}</span>
+              ) : registerResult.noEvent ? (
+                <span>Ingen träning idag eller imorgon — anmälningar nollställda</span>
               ) : (
                 <>
                   <span className="font-bold">{registerResult.matched}</span> spelare markerade som anmälda

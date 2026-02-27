@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { fetchAttendance } from "./lagetSe";
 
 describe("laget.se integration", () => {
-  it("should fetch attendance from laget.se without error", async () => {
+  it("should fetch attendance or report no event without error", async () => {
     const result = await fetchAttendance();
 
     // Log for debugging
@@ -10,25 +10,31 @@ describe("laget.se integration", () => {
     console.log("Date:", result.eventDate);
     console.log("Registered:", result.totalRegistered, "players");
     console.log("Names:", result.registeredNames.join(", "));
+    console.log("noEvent:", result.noEvent);
     if (result.error) console.log("Error:", result.error);
 
     // Should not have a fatal error
     expect(result.error).toBeUndefined();
 
-    // Should have found an event
-    expect(result.eventTitle).toBeTruthy();
-    expect(result.eventDate).toBeTruthy();
+    if (result.noEvent) {
+      // No event today or tomorrow — valid response
+      expect(result.registeredNames).toEqual([]);
+      expect(result.totalRegistered).toBe(0);
+      expect(result.noEvent).toBe(true);
+    } else {
+      // Event found — should have registered players
+      expect(result.eventTitle).toBeTruthy();
+      expect(result.eventDate).toBeTruthy();
+      expect(result.registeredNames.length).toBeGreaterThan(0);
+      expect(result.totalRegistered).toBe(result.registeredNames.length);
 
-    // Should have registered players
-    expect(result.registeredNames.length).toBeGreaterThan(0);
-    expect(result.totalRegistered).toBe(result.registeredNames.length);
-
-    // Names should be strings, not empty
-    for (const name of result.registeredNames) {
-      expect(typeof name).toBe("string");
-      expect(name.length).toBeGreaterThan(1);
-      // Should not contain quotes (smeknamn should be stripped)
-      expect(name).not.toContain('"');
+      // Names should be strings, not empty
+      for (const name of result.registeredNames) {
+        expect(typeof name).toBe("string");
+        expect(name.length).toBeGreaterThan(1);
+        // Should not contain quotes (smeknamn should be stripped)
+        expect(name).not.toContain('"');
+      }
     }
   }, 30000); // 30s timeout for network requests
 

@@ -10,6 +10,7 @@ export interface AttendanceData {
   registeredNames: string[];
   totalRegistered: number;
   error?: string;
+  noEvent?: boolean;
 }
 
 /**
