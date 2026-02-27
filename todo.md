@@ -28,3 +28,4 @@
 - [x] Flytta C/A-badges till efter spelarnamn och nummer i delad vy
 - [x] Ändra mobil-flikar till Lagnamn (utplacerade/anmälda) istället för nuvarande format
 - [x] Hantera scenario när det inte finns någon aktivitet idag på laget.se — nollställ anmälningar
+- [x] Ändra tillbaka så att backend alltid hittar nästa kommande träning (inte begränsat till idag/imorgon)

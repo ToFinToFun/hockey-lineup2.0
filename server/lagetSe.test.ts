@@ -17,15 +17,14 @@ describe("laget.se integration", () => {
     expect(result.error).toBeUndefined();
 
     if (result.noEvent) {
-      // No event today or tomorrow — valid response
+      // No upcoming event — valid response
       expect(result.registeredNames).toEqual([]);
       expect(result.totalRegistered).toBe(0);
       expect(result.noEvent).toBe(true);
     } else {
-      // Event found — should have registered players
+      // Event found — may or may not have registered players yet
       expect(result.eventTitle).toBeTruthy();
       expect(result.eventDate).toBeTruthy();
-      expect(result.registeredNames.length).toBeGreaterThan(0);
       expect(result.totalRegistered).toBe(result.registeredNames.length);
 
       // Names should be strings, not empty
