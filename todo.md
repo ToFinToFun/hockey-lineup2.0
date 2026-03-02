@@ -44,4 +44,4 @@
 - [x] BUGG: Netlify Function hittar bara 1 anmäld spelare istället för 8 (fixad: skrev om extractAttendeesFromModal med split-strategi istället för regex)
 - [x] Visa rött kryss för spelare som svarat "Kommer inte" på laget.se (liknande grön bock för "Kommer")
 - [ ] BUGG: Spelare som svarat "Kommer inte" (t.ex. Jerry Paasovaara) markeras inte med rött kryss - declinedNames returneras tom
-- [ ] BUGG: Netlify hittar inga spelare men Manus-servern fungerar
+- [x] BUGG: Netlify hittar inga spelare men Manus-servern fungerar (fixad: regex hanterar \r\n whitespace i laget.se HTML)

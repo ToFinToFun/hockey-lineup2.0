@@ -312,18 +312,6 @@ export async function handler(event) {
     }
 
     const rsvpHtml = await resp.text();
-    
-    // Debug: logga RSVP HTML-längd och om den innehåller attendingsList
-    const debugInfo = {
-      rsvpHtmlLength: rsvpHtml.length,
-      hasAttendingsList: rsvpHtml.includes('attendingsList__row'),
-      hasIsAttending: rsvpHtml.includes('attendingsList__is-attending'),
-      hasKommer: rsvpHtml.includes('>Kommer<'),
-      hasKommerWithWhitespace: /attendingsList__is-attending[\s\S]*?Kommer/i.test(rsvpHtml),
-      firstRowSample: rsvpHtml.split(/attendingsList__row/)[1]?.substring(0, 300) || 'no rows',
-      sampleHtml: rsvpHtml.substring(0, 500),
-    };
-    
     const { registered, declined } = extractAttendeesFromModal(rsvpHtml);
 
     return {
@@ -335,7 +323,6 @@ export async function handler(event) {
         registeredNames: registered,
         declinedNames: declined,
         totalRegistered: registered.length,
-        _debug: debugInfo,
       }),
     };
   } catch (error) {
