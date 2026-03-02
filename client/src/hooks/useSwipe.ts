@@ -1,19 +1,15 @@
 // Hook för att detektera swipe-gester (vänster/höger)
-// Ignorerar vertikala scrolls och korta swipes
+// Använder native DOM event listeners (inte React synthetic events)
+// för att undvika konflikter med dnd-kit som fångar touch-events
 
-import { useRef, useCallback } from "react";
+import { useRef, useEffect, useCallback } from "react";
 
 interface SwipeOptions {
   onSwipeLeft?: () => void;
   onSwipeRight?: () => void;
   minDistance?: number;    // Minsta horisontella distans (px) för att räknas som swipe
   maxVertical?: number;    // Max vertikal rörelse (px) innan det räknas som scroll
-}
-
-interface SwipeHandlers {
-  onTouchStart: (e: React.TouchEvent) => void;
-  onTouchMove: (e: React.TouchEvent) => void;
-  onTouchEnd: (e: React.TouchEvent) => void;
+  enabled?: boolean;       // Aktivera/inaktivera swipe (t.ex. under drag)
 }
 
 export function useSwipe({
@@ -21,50 +17,72 @@ export function useSwipe({
   onSwipeRight,
   minDistance = 50,
   maxVertical = 80,
-}: SwipeOptions): SwipeHandlers {
+  enabled = true,
+}: SwipeOptions) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const startX = useRef(0);
   const startY = useRef(0);
   const currentX = useRef(0);
   const currentY = useRef(0);
-  const isSwiping = useRef(false);
+  const startTime = useRef(0);
 
-  const onTouchStart = useCallback((e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    startX.current = touch.clientX;
-    startY.current = touch.clientY;
-    currentX.current = touch.clientX;
-    currentY.current = touch.clientY;
-    isSwiping.current = true;
-  }, []);
+  // Stabilisera callbacks med refs så att event listeners inte behöver uppdateras
+  const onSwipeLeftRef = useRef(onSwipeLeft);
+  const onSwipeRightRef = useRef(onSwipeRight);
+  onSwipeLeftRef.current = onSwipeLeft;
+  onSwipeRightRef.current = onSwipeRight;
 
-  const onTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isSwiping.current) return;
-    const touch = e.touches[0];
-    currentX.current = touch.clientX;
-    currentY.current = touch.clientY;
-  }, []);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !enabled) return;
 
-  const onTouchEnd = useCallback((_e: React.TouchEvent) => {
-    if (!isSwiping.current) return;
-    isSwiping.current = false;
+    const handleTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      startX.current = touch.clientX;
+      startY.current = touch.clientY;
+      currentX.current = touch.clientX;
+      currentY.current = touch.clientY;
+      startTime.current = Date.now();
+    };
 
-    const deltaX = currentX.current - startX.current;
-    const deltaY = Math.abs(currentY.current - startY.current);
+    const handleTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      currentX.current = touch.clientX;
+      currentY.current = touch.clientY;
+    };
 
-    // Ignorera om vertikal rörelse är för stor (scroll)
-    if (deltaY > maxVertical) return;
+    const handleTouchEnd = () => {
+      const deltaX = currentX.current - startX.current;
+      const deltaY = Math.abs(currentY.current - startY.current);
+      const elapsed = Date.now() - startTime.current;
 
-    // Ignorera om horisontell rörelse är för kort
-    if (Math.abs(deltaX) < minDistance) return;
+      // Ignorera om vertikal rörelse är för stor (scroll)
+      if (deltaY > maxVertical) return;
 
-    if (deltaX < 0) {
-      // Swipe vänster → nästa flik
-      onSwipeLeft?.();
-    } else {
-      // Swipe höger → föregående flik
-      onSwipeRight?.();
-    }
-  }, [onSwipeLeft, onSwipeRight, minDistance, maxVertical]);
+      // Ignorera om horisontell rörelse är för kort
+      if (Math.abs(deltaX) < minDistance) return;
 
-  return { onTouchStart, onTouchMove, onTouchEnd };
+      // Ignorera om gesten tog för lång tid (troligen drag, inte swipe)
+      if (elapsed > 800) return;
+
+      if (deltaX < 0) {
+        onSwipeLeftRef.current?.();
+      } else {
+        onSwipeRightRef.current?.();
+      }
+    };
+
+    // Använd capture phase för att fånga events FÖRE dnd-kit
+    el.addEventListener("touchstart", handleTouchStart, { passive: true, capture: false });
+    el.addEventListener("touchmove", handleTouchMove, { passive: true, capture: false });
+    el.addEventListener("touchend", handleTouchEnd, { passive: true, capture: false });
+
+    return () => {
+      el.removeEventListener("touchstart", handleTouchStart);
+      el.removeEventListener("touchmove", handleTouchMove);
+      el.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [enabled, minDistance, maxVertical]);
+
+  return containerRef;
 }
