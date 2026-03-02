@@ -658,6 +658,14 @@ export default function Home() {
     }
   }, []);
 
+  // Auto-hämta anmälningar vid sidladdning
+  const autoFetchDone = useRef(false);
+  useEffect(() => {
+    if (autoFetchDone.current) return;
+    autoFetchDone.current = true;
+    handleBulkRegister();
+  }, [handleBulkRegister]);
+
   const [mobileTab, setMobileTab] = useState<MobileTab>("trupp");
   const [dragHoverTab, setDragHoverTab] = useState<MobileTab | null>(null);
   const tabHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

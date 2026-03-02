@@ -1,7 +1,21 @@
 [build]
   command   = "pnpm install && pnpm build"
-  publish   = "dist/public"
+  publish   = "dist/client"
+  functions = "netlify/functions"
 
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Redirect API-anrop till Netlify Function (måste vara före catch-all)
+[[redirects]]
+  from   = "/api/laget-attendance"
+  to     = "/.netlify/functions/laget-attendance"
+  status = 200
+
+# SPA catch-all redirect
 [[redirects]]
   from   = "/*"
   to     = "/index.html"
