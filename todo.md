@@ -45,3 +45,4 @@
 - [x] Visa rött kryss för spelare som svarat "Kommer inte" på laget.se (liknande grön bock för "Kommer")
 - [ ] BUGG: Spelare som svarat "Kommer inte" (t.ex. Jerry Paasovaara) markeras inte med rött kryss - declinedNames returneras tom
 - [x] BUGG: Netlify hittar inga spelare men Manus-servern fungerar (fixad: regex hanterar \r\n whitespace i laget.se HTML)
+- [x] Visa tidsstämpel för senaste synk-tidpunkt i headern (t.ex. "Hämtat 17:09")

@@ -160,6 +160,9 @@ export default function Home() {
   // Event-info från senaste anmälningshämtning
   const [eventInfo, setEventInfo] = useState<{ title: string; date: string } | null>(null);
 
+  // Tidstämpel för senaste synk
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+
   const handleShare = useCallback(async () => {
     setShareState("saving");
     try {
@@ -663,6 +666,10 @@ export default function Home() {
         return next;
       });
 
+      // Sätt tidstämpel för senaste synk
+      const now = new Date();
+      setLastSyncTime(now.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" }));
+
       return { matched: matchedIds.length, unmatched: unmatchedNames, eventTitle: data.eventTitle, eventDate: data.eventDate };
     } catch (err: any) {
       return { matched: 0, unmatched: [], error: err.message || "Kunde inte hämta data" };
@@ -826,6 +833,9 @@ export default function Home() {
                   <p className="flex items-center gap-1.5 text-sky-300/80 text-[11px] mt-0.5 font-medium">
                     <CalendarDays className="w-3 h-3" />
                     {eventInfo.title}{eventInfo.date ? ` · ${eventInfo.date}` : ""}
+                    {lastSyncTime && (
+                      <span className="text-white/30 ml-1.5">· Hämtat {lastSyncTime}</span>
+                    )}
                   </p>
                 )}
               </div>
