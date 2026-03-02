@@ -864,9 +864,9 @@ export default function Home() {
           {/* Mobilflikar – syns bara på smala skärmar */}
           <div className="md:hidden flex gap-0 px-2 pb-2 shrink-0">
             {([
-              { key: "vita" as MobileTab, label: `${teamAName} (${teamACount}/${totalRegistered})`, color: "border-slate-300/60 text-slate-200" },
+              { key: "vita" as MobileTab, label: `${teamAName} (${teamARegistered}/${teamACount})`, color: "border-slate-300/60 text-slate-200" },
               { key: "trupp" as MobileTab, label: "Trupp", color: "border-emerald-400/60 text-emerald-300" },
-              { key: "grona" as MobileTab, label: `${teamBName} (${teamBCount}/${totalRegistered})`, color: "border-emerald-500/60 text-emerald-400" },
+              { key: "grona" as MobileTab, label: `${teamBName} (${teamBRegistered}/${teamBCount})`, color: "border-emerald-500/60 text-emerald-400" },
             ]).map(({ key, label, color }) => (
               <button
                 key={key}

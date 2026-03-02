@@ -30,3 +30,5 @@
 - [x] Hantera scenario när det inte finns någon aktivitet idag på laget.se — nollställ anmälningar
 - [x] Ändra tillbaka så att backend alltid hittar nästa kommande träning (inte begränsat till idag/imorgon)
 - [x] Ändra desktop lagpanel-header till "antal spelare/antal anmälda" som i mobilversionen
+- [x] Desktop lagheader: byt ordning till "anmälda/totalt anmälda spelare" (t.ex. "6/11 anmälda spelare")
+- [x] Mobil lagflikar: byt ordning till anmälda/totalt utan text
