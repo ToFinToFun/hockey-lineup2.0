@@ -195,6 +195,9 @@ export default function Home() {
   // Bekräftelsedialog för Rensa
   const [confirmClear, setConfirmClear] = useState<{ teamPrefix: string; teamName: string } | null>(null);
 
+  // Bekräftelsedialog för Auto-fördela
+  const [confirmAutoDistribute, setConfirmAutoDistribute] = useState(false);
+
   // Prevent writing back to Firebase when we just received an update from it
   const isReceivingFromFirebase = useRef(false);
   // Track if we've received the initial Firebase state
@@ -977,7 +980,7 @@ export default function Home() {
 
                 {/* Auto-fördela-knapp */}
                 <button
-                  onClick={handleAutoDistribute}
+                  onClick={() => setConfirmAutoDistribute(true)}
                   title="Fördela anmälda spelare automatiskt på lagen"
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 text-xs font-bold hover:bg-cyan-500/30 transition-all uppercase tracking-wider"
                 >
@@ -1239,6 +1242,21 @@ export default function Home() {
           danger
           onConfirm={handleConfirmClearTeam}
           onCancel={() => setConfirmClear(null)}
+        />
+      )}
+
+      {/* Bekräftelsedialog för Auto-fördela */}
+      {confirmAutoDistribute && (
+        <ConfirmDialog
+          title="Auto-fördela"
+          message="Vill du fördela alla anmälda spelare automatiskt på lagen? Befintliga laguppställningar rensas först."
+          confirmLabel="Fördela"
+          cancelLabel="Avbryt"
+          onConfirm={() => {
+            setConfirmAutoDistribute(false);
+            handleAutoDistribute();
+          }}
+          onCancel={() => setConfirmAutoDistribute(false)}
         />
       )}
     </DndContext>
