@@ -13,10 +13,23 @@ export interface AttendanceData {
   noEvent?: boolean;
 }
 
+// Cache för anmälningsdata (5 minuter)
+const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minuter
+let cachedData: AttendanceData | null = null;
+let cacheTimestamp: number = 0;
+
 /**
  * Hämta anmälningslistan från backend (som i sin tur skrapar laget.se)
+ * Cachelagrar resultatet i 5 minuter för att minska belastning.
+ * Skicka forceRefresh=true för att tvinga en ny hämtning.
  */
-export async function fetchAttendanceFromApi(): Promise<AttendanceData> {
+export async function fetchAttendanceFromApi(forceRefresh = false): Promise<AttendanceData> {
+  // Returnera cachad data om den fortfarande är giltig
+  const now = Date.now();
+  if (!forceRefresh && cachedData && (now - cacheTimestamp) < CACHE_DURATION_MS) {
+    return cachedData;
+  }
+
   // Försök med tRPC-backend först (Manus hosting)
   // Om det misslyckas, försök med Netlify Function
   try {
@@ -24,7 +37,11 @@ export async function fetchAttendanceFromApi(): Promise<AttendanceData> {
     if (response.ok) {
       const json = await response.json();
       const data = json?.result?.data?.json;
-      if (data) return data as AttendanceData;
+      if (data) {
+        cachedData = data as AttendanceData;
+        cacheTimestamp = now;
+        return cachedData;
+      }
     }
   } catch {
     // tRPC inte tillgänglig, försök med Netlify Function
@@ -39,7 +56,10 @@ export async function fetchAttendanceFromApi(): Promise<AttendanceData> {
   if (!data) {
     throw new Error("Oväntat svar från servern");
   }
-  return data as AttendanceData;
+
+  cachedData = data as AttendanceData;
+  cacheTimestamp = now;
+  return cachedData;
 }
 
 /**
