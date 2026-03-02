@@ -691,8 +691,19 @@ export default function Home() {
     });
   }, [handleBulkRegister]);
 
-  const [mobileTab, setMobileTab] = useState<MobileTab>("trupp");
+  const [mobileTab, setMobileTabRaw] = useState<MobileTab>("trupp");
   const [dragHoverTab, setDragHoverTab] = useState<MobileTab | null>(null);
+
+  // Wrapper med haptic feedback vid flikbyte
+  const setMobileTab = useCallback((valOrFn: MobileTab | ((prev: MobileTab) => MobileTab)) => {
+    setMobileTabRaw((prev) => {
+      const next = typeof valOrFn === "function" ? valOrFn(prev) : valOrFn;
+      if (next !== prev && navigator.vibrate) {
+        navigator.vibrate(10);
+      }
+      return next;
+    });
+  }, []);
 
   // Swipe-gester för mobilflikar
   const TAB_ORDER: MobileTab[] = ["vita", "trupp", "grona"];
