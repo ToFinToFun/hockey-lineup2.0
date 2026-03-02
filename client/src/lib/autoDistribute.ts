@@ -32,10 +32,22 @@ function calculateTeamConfig(
   };
 }
 
+// Fisher-Yates shuffle
+function shuffleArray<T>(arr: T[]): T[] {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 // Huvudfunktion: fördela anmälda spelare
+// shuffle: om true, slumpas neutrala spelares lagfördelning
 export function autoDistribute(
   allPlayers: Player[],
   existingLineup: Record<string, Player>,
+  options?: { shuffle?: boolean },
 ): DistributeResult {
   // Filtrera ut anmälda spelare som är i spelartruppen (inte redan i ett lag)
   const playersInLineup = new Set(Object.values(existingLineup).map(p => p.id));
@@ -77,6 +89,21 @@ export function autoDistribute(
   // Sortera neutrala: MV först, sedan B, sedan F/C, sedan IB
   const positionPriority: Record<string, number> = { goalkeeper: 0, defense: 1, forward: 2, flex: 3 };
   neutralPlayers.sort((a, b) => positionPriority[a.preferredType] - positionPriority[b.preferredType]);
+
+  // Om shuffle är aktivt, slumpa ordningen inom varje positionsgrupp
+  if (options?.shuffle) {
+    const groups: Record<string, typeof neutralPlayers> = {};
+    for (const np of neutralPlayers) {
+      if (!groups[np.preferredType]) groups[np.preferredType] = [];
+      groups[np.preferredType].push(np);
+    }
+    neutralPlayers.length = 0;
+    for (const type of ["goalkeeper", "defense", "forward", "flex"]) {
+      if (groups[type]) {
+        neutralPlayers.push(...shuffleArray(groups[type]));
+      }
+    }
+  }
 
   for (const np of neutralPlayers) {
     // Fördela till laget med färre spelare
