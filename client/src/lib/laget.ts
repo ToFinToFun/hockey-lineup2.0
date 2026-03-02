@@ -32,14 +32,17 @@ export async function fetchAttendanceFromApi(forceRefresh = false): Promise<Atte
 
   // Försök med tRPC-backend först (Manus hosting)
   // Om det misslyckas, försök med Netlify Function
+  let usedTrpc = false;
   try {
     const response = await fetch("/api/trpc/laget.attendance");
-    if (response.ok) {
+    const contentType = response.headers.get("content-type") || "";
+    if (response.ok && contentType.includes("application/json")) {
       const json = await response.json();
       const data = json?.result?.data?.json;
-      if (data) {
+      if (data && data.registeredNames !== undefined) {
         cachedData = data as AttendanceData;
         cacheTimestamp = now;
+        usedTrpc = true;
         return cachedData;
       }
     }
@@ -47,19 +50,27 @@ export async function fetchAttendanceFromApi(forceRefresh = false): Promise<Atte
     // tRPC inte tillgänglig, försök med Netlify Function
   }
 
-  // Fallback: Netlify Function
-  const response = await fetch("/api/laget-attendance");
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-  const data = await response.json();
-  if (!data) {
-    throw new Error("Oväntat svar från servern");
+  // Fallback: Netlify Function (används på Netlify-hosting)
+  if (!usedTrpc) {
+    const response = await fetch("/.netlify/functions/laget-attendance");
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      throw new Error("Oväntat svar (inte JSON) - kontrollera Netlify Function");
+    }
+    const data = await response.json();
+    if (!data) {
+      throw new Error("Oväntat svar från servern");
+    }
+
+    cachedData = data as AttendanceData;
+    cacheTimestamp = now;
+    return cachedData;
   }
 
-  cachedData = data as AttendanceData;
-  cacheTimestamp = now;
-  return cachedData;
+  throw new Error("Kunde inte hämta anmälningsdata");
 }
 
 /**

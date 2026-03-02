@@ -39,3 +39,5 @@
 - [x] Visa event-info (träning/match och datum) i headern efter hämtning
 - [x] Publicera till Netlify (merge main → production)
 - [x] BUGG: Netlify build misslyckas - dist/client finns inte efter build (fixad: publish=dist/public, build:netlify script)
+- [x] BUGG: Event-info i headern visas inte på Netlify-deploy (fixad: _redirects + direkt /.netlify/functions/ URL)
+- [x] BUGG: Laget.se-synk (Hämta anmälningar) fungerar inte på Netlify-deploy (fixad: content-type check + direkt function URL)
