@@ -53,3 +53,4 @@
 - [x] BUGG: Swipe-gester fungerar inte på mobil (fixad: native DOM event listeners via ref istället för React synthetic events)
 - [x] Dra spelare mot skärmkant för att byta flik på mobil (drag-to-edge)
 - [x] Fixa vanlig swipe (utan drag) på mobil - capture-fas event listeners + 400ms tidsgräns
+- [x] Fixa swipe på mobil: document-level capture-fas listeners + touchmove-detektion (350ms, 50px)
