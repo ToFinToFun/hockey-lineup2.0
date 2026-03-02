@@ -771,6 +771,13 @@ export default function Home() {
     return inList + inLineup;
   }, [availablePlayers, lineup]);
 
+  // Totalt antal avböjda (trupp + lineup)
+  const totalDeclined = useMemo(() => {
+    const inList = availablePlayers.filter(p => p.isDeclined).length;
+    const inLineup = Object.values(lineup).filter(p => p.isDeclined).length;
+    return inList + inLineup;
+  }, [availablePlayers, lineup]);
+
   // Totalt antal spelare (trupp + lineup)
   const totalPlayers = availablePlayers.length + Object.keys(lineup).length;
 
@@ -969,10 +976,11 @@ export default function Home() {
                       onChangeRegistered={handleChangeRegistered}
                       onChangeGamesPlayed={handleChangeGamesPlayed}
                       onBulkRegister={handleBulkRegister}
-                      onEventInfoUpdate={setEventInfo}
-                      totalRegistered={totalRegistered}
-                      totalPlayers={totalPlayers}
-                    />
+                       onEventInfoUpdate={setEventInfo}
+                       totalRegistered={totalRegistered}
+                       totalDeclined={totalDeclined}
+                       totalPlayers={totalPlayers}
+                     />
                   </div>
                   <SavedLineupsPanel
                     teamAName={teamAName}
@@ -1029,10 +1037,11 @@ export default function Home() {
                       onChangeRegistered={handleChangeRegistered}
                       onChangeGamesPlayed={handleChangeGamesPlayed}
                       onBulkRegister={handleBulkRegister}
-                      onEventInfoUpdate={setEventInfo}
-                      totalRegistered={totalRegistered}
-                      totalPlayers={totalPlayers}
-                    />
+                       onEventInfoUpdate={setEventInfo}
+                       totalRegistered={totalRegistered}
+                       totalDeclined={totalDeclined}
+                       totalPlayers={totalPlayers}
+                     />
                     <SavedLineupsPanel
                       teamAName={teamAName}
                       teamBName={teamBName}
