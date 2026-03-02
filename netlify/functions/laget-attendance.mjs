@@ -186,20 +186,37 @@ function findNextEventId(html) {
 }
 
 /**
- * Extrahera anmälda namn från RSVP modal HTML
+ * Extrahera anmälda namn från RSVP modal HTML.
+ * 
+ * Strukturen i laget.se RSVP modal:
+ *   <div class="attendingsList__row">
+ *     <div class="attendingsList__cell float--left">Spelarnamn</div>
+ *     <div class="attendingsList__cell--gray float--left">
+ *       <span class="attendingsList__is-attending">Kommer</span>
+ *     </div>
+ *   </div>
+ *
+ * Strategi: Dela HTML i block per attendingsList__row, sedan kolla status och namn.
  */
 function extractAttendeesFromModal(html) {
   const names = [];
 
-  // Matcha rader med status "Kommer"
-  const rowRegex = /attendingsList__row[\s\S]*?<\/div>\s*<\/div>/g;
-  let rowMatch;
-
-  while ((rowMatch = rowRegex.exec(html)) !== null) {
-    const row = rowMatch[0];
-    if (row.includes("Kommer")) {
-      // Hämta namn från första cellen
-      const nameMatch = row.match(/attendingsList__cell float--left[^>]*>([^<]+)</);
+  // Dela HTML vid varje attendingsList__row för att isolera varje rad
+  const parts = html.split(/attendingsList__row/);
+  
+  // Hoppa över första delen (före första raden)
+  for (let i = 1; i < parts.length; i++) {
+    const block = parts[i];
+    
+    // Kolla om blocket innehåller "Kommer" som status (inte "Kommer inte")
+    // attendingsList__is-attending med text "Kommer" indikerar anmäld
+    const hasKommer = /attendingsList__is-attending[^>]*>\s*Kommer\s*</.test(block);
+    // Exkludera "Kommer inte"
+    const hasKommerInte = /Kommer inte/.test(block);
+    
+    if (hasKommer && !hasKommerInte) {
+      // Hämta namn från attendingsList__cell float--left
+      const nameMatch = block.match(/attendingsList__cell[\s"]*float--left[^>]*>([^<]+)/);
       if (nameMatch) {
         const name = nameMatch[1]
           .replace(/"[^"]*"/g, "")
