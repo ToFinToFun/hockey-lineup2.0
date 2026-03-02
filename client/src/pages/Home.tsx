@@ -33,7 +33,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { saveStateToFirebase, subscribeToFirebase, saveLineupToFirebase, type AppState, type SavedLineup } from "@/lib/firebase";
 import { Download, Wifi, WifiOff, Share2, Check, CalendarDays } from "lucide-react";
-import { matchRegisteredPlayers, fetchAttendanceFromApi } from "@/lib/laget";
+import { matchRegisteredPlayers, matchDeclinedPlayers, fetchAttendanceFromApi } from "@/lib/laget";
 import { createPortal } from "react-dom"; // används av PlayerList context-meny
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 
@@ -620,7 +620,7 @@ export default function Home() {
 
       if (data.noEvent) {
         // Inget event idag/imorgon — nollställ alla anmälningar
-        const clearRegistered = (p: Player): Player => ({ ...p, isRegistered: false });
+        const clearRegistered = (p: Player): Player => ({ ...p, isRegistered: false, isDeclined: false });
         setAvailablePlayers((prev) => prev.map(clearRegistered));
         setLineup((prev) => {
           const next: Record<string, Player> = {};
@@ -639,11 +639,19 @@ export default function Home() {
       );
       const matchedSet = new Set(matchedIds);
 
-      // Först: nollställ alla spelares isRegistered till false
-      // Sedan: markera matchade som true
+      // Matcha avböjda spelare
+      const declinedResult = matchDeclinedPlayers(
+        data.declinedNames || [],
+        availablePlayersRef.current,
+        lineupRef.current
+      );
+      const declinedSet = new Set(declinedResult.matchedIds);
+
+      // Uppdatera alla spelares isRegistered och isDeclined
       const updatePlayer = (p: Player): Player => ({
         ...p,
         isRegistered: matchedSet.has(p.id),
+        isDeclined: declinedSet.has(p.id),
       });
 
       setAvailablePlayers((prev) => prev.map(updatePlayer));

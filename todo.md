@@ -42,3 +42,4 @@
 - [x] BUGG: Event-info i headern visas inte på Netlify-deploy (fixad: _redirects + direkt /.netlify/functions/ URL)
 - [x] BUGG: Laget.se-synk (Hämta anmälningar) fungerar inte på Netlify-deploy (fixad: content-type check + direkt function URL)
 - [x] BUGG: Netlify Function hittar bara 1 anmäld spelare istället för 8 (fixad: skrev om extractAttendeesFromModal med split-strategi istället för regex)
+- [x] Visa rött kryss för spelare som svarat "Kommer inte" på laget.se (liknande grön bock för "Kommer")

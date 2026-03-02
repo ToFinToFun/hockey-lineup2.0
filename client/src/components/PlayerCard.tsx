@@ -137,9 +137,12 @@ export function DraggablePlayerCard({
         </div>
       )}
 
-      {/* Anmäld-indikator + Namn + #nr */}
+      {/* Anmäld/Avböjd-indikator + Namn + #nr */}
       {!hideExtras && player.isRegistered && (
-        <span className="text-emerald-400 text-[9px] shrink-0" title="Anmäld">✓</span>
+        <span className="text-emerald-400 text-[9px] shrink-0" title="Anmäld (Kommer)">✓</span>
+      )}
+      {!hideExtras && player.isDeclined && !player.isRegistered && (
+        <span className="text-red-400 text-[9px] shrink-0" title="Avböjd (Kommer inte)">✗</span>
       )}
       <span className="text-white font-medium truncate flex-1 leading-tight">
         {player.name}

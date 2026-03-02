@@ -8,6 +8,7 @@ export interface AttendanceData {
   eventTitle: string;
   eventDate: string;
   registeredNames: string[];
+  declinedNames?: string[];
   totalRegistered: number;
   error?: string;
   noEvent?: boolean;
@@ -131,4 +132,41 @@ export function matchRegisteredPlayers(
   }
 
   return { matchedIds, matchedNames, unmatchedNames };
+}
+
+/**
+ * Matcha avböjda spelare från laget.se mot appens roster.
+ * Returnerar en lista med spelar-IDs som ska markeras med rött kryss.
+ */
+export function matchDeclinedPlayers(
+  declinedNames: string[],
+  allPlayers: Player[],
+  lineupPlayers: Record<string, Player>
+): { matchedIds: string[] } {
+  const allKnown: Player[] = [
+    ...allPlayers,
+    ...Object.values(lineupPlayers),
+  ];
+  const seen = new Set<string>();
+  const unique = allKnown.filter((p) => {
+    if (seen.has(p.id)) return false;
+    seen.add(p.id);
+    return true;
+  });
+
+  const nameMap = new Map<string, Player>();
+  for (const p of unique) {
+    nameMap.set(normalizeName(p.name), p);
+  }
+
+  const matchedIds: string[] = [];
+  for (const name of declinedNames) {
+    const normalized = normalizeName(name);
+    const player = nameMap.get(normalized);
+    if (player) {
+      matchedIds.push(player.id);
+    }
+  }
+
+  return { matchedIds };
 }

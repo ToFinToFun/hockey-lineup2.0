@@ -199,7 +199,8 @@ function findNextEventId(html) {
  * Strategi: Dela HTML i block per attendingsList__row, sedan kolla status och namn.
  */
 function extractAttendeesFromModal(html) {
-  const names = [];
+  const registered = [];
+  const declined = [];
 
   // Dela HTML vid varje attendingsList__row för att isolera varje rad
   const parts = html.split(/attendingsList__row/);
@@ -208,28 +209,28 @@ function extractAttendeesFromModal(html) {
   for (let i = 1; i < parts.length; i++) {
     const block = parts[i];
     
-    // Kolla om blocket innehåller "Kommer" som status (inte "Kommer inte")
-    // attendingsList__is-attending med text "Kommer" indikerar anmäld
+    // Kolla om blocket innehåller "Kommer" som status
     const hasKommer = /attendingsList__is-attending[^>]*>\s*Kommer\s*</.test(block);
-    // Exkludera "Kommer inte"
     const hasKommerInte = /Kommer inte/.test(block);
     
-    if (hasKommer && !hasKommerInte) {
-      // Hämta namn från attendingsList__cell float--left
-      const nameMatch = block.match(/attendingsList__cell[\s"]*float--left[^>]*>([^<]+)/);
-      if (nameMatch) {
-        const name = nameMatch[1]
-          .replace(/"[^"]*"/g, "")
-          .replace(/\s+/g, " ")
-          .trim();
-        if (name && name.length > 1 && !names.includes(name)) {
-          names.push(name);
+    // Hämta namn från attendingsList__cell float--left
+    const nameMatch = block.match(/attendingsList__cell[\s"]*float--left[^>]*>([^<]+)/);
+    if (nameMatch) {
+      const name = nameMatch[1]
+        .replace(/"[^"]*"/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (name && name.length > 1) {
+        if (hasKommerInte && !declined.includes(name)) {
+          declined.push(name);
+        } else if (hasKommer && !hasKommerInte && !registered.includes(name)) {
+          registered.push(name);
         }
       }
     }
   }
 
-  return names;
+  return { registered, declined };
 }
 
 /**
@@ -261,6 +262,7 @@ export async function handler(event) {
           eventTitle: "",
           eventDate: "",
           registeredNames: [],
+          declinedNames: [],
           totalRegistered: 0,
           error: "Kunde inte logga in på laget.se. Kontrollera användarnamn och lösenord.",
         }),
@@ -281,6 +283,7 @@ export async function handler(event) {
           eventTitle: "",
           eventDate: new Date().toISOString().split("T")[0],
           registeredNames: [],
+          declinedNames: [],
           totalRegistered: 0,
           noEvent: true,
         }),
@@ -300,6 +303,7 @@ export async function handler(event) {
           eventTitle: eventInfo.eventTitle || "Träning",
           eventDate: eventInfo.eventDate,
           registeredNames: [],
+          declinedNames: [],
           totalRegistered: 0,
           error: `Kunde inte hämta anmälningslistan (HTTP ${resp.status})`,
         }),
@@ -307,7 +311,7 @@ export async function handler(event) {
     }
 
     const rsvpHtml = await resp.text();
-    const names = extractAttendeesFromModal(rsvpHtml);
+    const { registered, declined } = extractAttendeesFromModal(rsvpHtml);
 
     return {
       statusCode: 200,
@@ -315,8 +319,9 @@ export async function handler(event) {
       body: JSON.stringify({
         eventTitle: eventInfo.eventTitle || "Träning",
         eventDate: eventInfo.eventDate,
-        registeredNames: names,
-        totalRegistered: names.length,
+        registeredNames: registered,
+        declinedNames: declined,
+        totalRegistered: registered.length,
       }),
     };
   } catch (error) {
@@ -327,6 +332,7 @@ export async function handler(event) {
         eventTitle: "",
         eventDate: "",
         registeredNames: [],
+        declinedNames: [],
         totalRegistered: 0,
         error: `Fel vid hämtning: ${error.message || "Okänt fel"}`,
       }),
