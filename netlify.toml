@@ -1,6 +1,6 @@
 [build]
-  command   = "pnpm install && pnpm build"
-  publish   = "dist/client"
+  command   = "pnpm install && pnpm run build:netlify"
+  publish   = "dist/public"
   functions = "netlify/functions"
 
 [build.environment]

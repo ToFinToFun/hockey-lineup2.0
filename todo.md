@@ -37,4 +37,5 @@
 - [x] Netlify Function för laget.se-endpointen
 - [x] Caching av anmälningsdata (5 minuter) för att minska belastning på laget.se
 - [x] Visa event-info (träning/match och datum) i headern efter hämtning
-- [ ] Publicera till Netlify (merge main → production)
+- [x] Publicera till Netlify (merge main → production)
+- [x] BUGG: Netlify build misslyckas - dist/client finns inte efter build (fixad: publish=dist/public, build:netlify script)
