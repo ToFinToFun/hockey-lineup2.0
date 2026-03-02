@@ -36,6 +36,7 @@ import { Download, Wifi, WifiOff, Share2, Check, CalendarDays } from "lucide-rea
 import { matchRegisteredPlayers, matchDeclinedPlayers, fetchAttendanceFromApi } from "@/lib/laget";
 import { createPortal } from "react-dom"; // används av PlayerList context-meny
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
+import { useSwipe } from "@/hooks/useSwipe";
 
 type MobileTab = "vita" | "trupp" | "grona";
 
@@ -692,6 +693,25 @@ export default function Home() {
 
   const [mobileTab, setMobileTab] = useState<MobileTab>("trupp");
   const [dragHoverTab, setDragHoverTab] = useState<MobileTab | null>(null);
+
+  // Swipe-gester för mobilflikar
+  const TAB_ORDER: MobileTab[] = ["vita", "trupp", "grona"];
+  const swipeHandlers = useSwipe({
+    onSwipeLeft: () => {
+      setMobileTab((prev) => {
+        const idx = TAB_ORDER.indexOf(prev);
+        return idx < TAB_ORDER.length - 1 ? TAB_ORDER[idx + 1] : prev;
+      });
+    },
+    onSwipeRight: () => {
+      setMobileTab((prev) => {
+        const idx = TAB_ORDER.indexOf(prev);
+        return idx > 0 ? TAB_ORDER[idx - 1] : prev;
+      });
+    },
+    minDistance: 50,
+    maxVertical: 80,
+  });
   const tabHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastHoveredTabRef = useRef<MobileTab | null>(null);
 
@@ -910,29 +930,44 @@ export default function Home() {
           </header>
 
           {/* Mobilflikar – syns bara på smala skärmar */}
-          <div className="md:hidden flex gap-0 px-2 pb-2 shrink-0">
-            {([
-              { key: "vita" as MobileTab, label: `${teamAName} (${teamARegistered}/${teamACount})`, color: "border-slate-300/60 text-slate-200" },
-              { key: "trupp" as MobileTab, label: "Trupp", color: "border-emerald-400/60 text-emerald-300" },
-              { key: "grona" as MobileTab, label: `${teamBName} (${teamBRegistered}/${teamBCount})`, color: "border-emerald-500/60 text-emerald-400" },
-            ]).map(({ key, label, color }) => (
-              <button
-                key={key}
-                data-mobile-tab={key}
-                onClick={() => setMobileTab(key)}
-                className={`
-                  flex-1 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all
-                  ${mobileTab === key
-                    ? `${color} bg-white/5`
-                    : dragHoverTab === key
-                    ? `${color} bg-white/10 scale-105 animate-pulse`
-                    : "border-transparent text-white/30 hover:text-white/50"}
-                `}
-                style={{ fontFamily: "'Oswald', sans-serif" }}
-              >
-                {label}
-              </button>
-            ))}
+          <div className="md:hidden shrink-0">
+            <div className="flex gap-0 px-2">
+              {([
+                { key: "vita" as MobileTab, label: `${teamAName} (${teamARegistered}/${teamACount})`, color: "border-slate-300/60 text-slate-200" },
+                { key: "trupp" as MobileTab, label: "Trupp", color: "border-emerald-400/60 text-emerald-300" },
+                { key: "grona" as MobileTab, label: `${teamBName} (${teamBRegistered}/${teamBCount})`, color: "border-emerald-500/60 text-emerald-400" },
+              ]).map(({ key, label, color }) => (
+                <button
+                  key={key}
+                  data-mobile-tab={key}
+                  onClick={() => setMobileTab(key)}
+                  className={`
+                    flex-1 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all
+                    ${mobileTab === key
+                      ? `${color} bg-white/5`
+                      : dragHoverTab === key
+                      ? `${color} bg-white/10 scale-105 animate-pulse`
+                      : "border-transparent text-white/30 hover:text-white/50"}
+                  `}
+                  style={{ fontFamily: "'Oswald', sans-serif" }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {/* Swipe-indikator (prickar) */}
+            <div className="flex justify-center gap-1.5 py-1.5">
+              {TAB_ORDER.map((tab) => (
+                <div
+                  key={tab}
+                  className={`rounded-full transition-all duration-200 ${
+                    mobileTab === tab
+                      ? "w-4 h-1.5 bg-emerald-400/70"
+                      : "w-1.5 h-1.5 bg-white/20"
+                  }`}
+                />
+              ))}
+            </div>
           </div>
 
           <main className="px-2 md:px-4 pb-8" ref={exportRef}>
@@ -1007,7 +1042,10 @@ export default function Home() {
               </div>
             ) : (
               /* Mobilvy – bara den aktiva fliken renderas */
-              <div>
+              <div
+                {...swipeHandlers}
+                className="touch-pan-y transition-transform duration-200 ease-out"
+              >
                 {mobileTab === "vita" && (
                   <TeamPanel
                     teamId="team-a"
