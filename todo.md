@@ -49,3 +49,4 @@
 - [x] Hämta "Deltar ej" (Kommer inte) från laget.se admin kalender-redigering istället för RSVP-modal
 - [x] Lägg till sorteringsknapp "Avböjda" i spelartruppen (bredvid "Anmälda")
 - [x] Visa antal avböjda i headern, t.ex. "Anmälda 14 · Avböjda 6"
+- [x] Mobiloptimerad vy med swipe-gester mellan Vita/Trupp/Gröna tabs
