@@ -47,3 +47,5 @@
 - [x] BUGG: Netlify hittar inga spelare men Manus-servern fungerar (fixad: regex hanterar \r\n whitespace i laget.se HTML)
 - [x] Visa tidsstämpel för senaste synk-tidpunkt i headern (t.ex. "Hämtat 17:09")
 - [x] Hämta "Deltar ej" (Kommer inte) från laget.se admin kalender-redigering istället för RSVP-modal
+- [x] Lägg till sorteringsknapp "Avböjda" i spelartruppen (bredvid "Anmälda")
+- [x] Visa antal avböjda i headern, t.ex. "Anmälda 14 · Avböjda 6"

@@ -22,12 +22,13 @@ interface PlayerListProps {
   onBulkRegister?: (forceRefresh?: boolean) => Promise<{ matched: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string; noEvent?: boolean }>;
   onEventInfoUpdate?: (info: { title: string; date: string } | null) => void;
   totalRegistered?: number;
+  totalDeclined?: number;
   totalPlayers?: number;
 }
 
 type PosFilter = Position | "Alla";
 type TeamFilter = TeamColor | "Alla";
-type SortKey = "registered" | "name" | "number" | "position";
+type SortKey = "registered" | "declined" | "name" | "number" | "position";
 type SortDir = "asc" | "desc";
 
 const positionFilters: { label: string; value: PosFilter }[] = [
@@ -56,6 +57,11 @@ function sortPlayers(players: Player[], key: SortKey, dir: SortDir): Player[] {
       const rb = b.isRegistered ? 1 : 0;
       cmp = rb - ra; // Anmälda först vid asc
       if (cmp === 0) cmp = a.name.localeCompare(b.name, "sv");
+    } else if (key === "declined") {
+      const da = a.isDeclined ? 1 : 0;
+      const db = b.isDeclined ? 1 : 0;
+      cmp = db - da; // Avböjda först vid asc
+      if (cmp === 0) cmp = a.name.localeCompare(b.name, "sv");
     } else if (key === "name") {
       cmp = a.name.localeCompare(b.name, "sv");
     } else if (key === "number") {
@@ -70,7 +76,7 @@ function sortPlayers(players: Player[], key: SortKey, dir: SortDir): Player[] {
   });
 }
 
-export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber, onChangeName, onChangeCaptainRole, onChangeRegistered, onChangeGamesPlayed, onBulkRegister, onEventInfoUpdate, totalRegistered, totalPlayers }: PlayerListProps) {
+export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber, onChangeName, onChangeCaptainRole, onChangeRegistered, onChangeGamesPlayed, onBulkRegister, onEventInfoUpdate, totalRegistered, totalDeclined, totalPlayers }: PlayerListProps) {
   const [search, setSearch] = useState("");
   const [posFilter, setPosFilter] = useState<PosFilter>("Alla");
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("Alla");
@@ -171,9 +177,16 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
               {players.length}/{totalPlayers ?? players.length}
             </span>
           </div>
-          <span className="text-emerald-400/70 text-xs font-semibold">
-            Anmälda {players.filter(p => p.isRegistered).length}/{totalRegistered ?? players.filter(p => p.isRegistered).length}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-emerald-400/70 text-xs font-semibold">
+              Anmälda {players.filter(p => p.isRegistered).length}/{totalRegistered ?? players.filter(p => p.isRegistered).length}
+            </span>
+            {(totalDeclined ?? players.filter(p => p.isDeclined).length) > 0 && (
+              <span className="text-red-400/70 text-xs font-semibold">
+                Avböjda {players.filter(p => p.isDeclined).length}/{totalDeclined ?? players.filter(p => p.isDeclined).length}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Sökfält */}
@@ -243,6 +256,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
           <span className="text-white/30 text-[9px] uppercase tracking-wider shrink-0">Sortera:</span>
           <div className="flex gap-1">
             <SortBtn k="registered" label="Anmäld" />
+            <SortBtn k="declined" label="Avböjd" />
             <SortBtn k="name" label="Namn" />
             <SortBtn k="number" label="Nr" />
             <SortBtn k="position" label="Pos" />
