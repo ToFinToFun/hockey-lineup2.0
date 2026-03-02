@@ -32,11 +32,12 @@ import { ExportModal } from "@/components/ExportModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { saveStateToFirebase, subscribeToFirebase, saveLineupToFirebase, type AppState, type SavedLineup } from "@/lib/firebase";
-import { Download, Wifi, WifiOff, Share2, Check, CalendarDays } from "lucide-react";
+import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle } from "lucide-react";
 import { matchRegisteredPlayers, matchDeclinedPlayers, fetchAttendanceFromApi } from "@/lib/laget";
 import { createPortal } from "react-dom"; // används av PlayerList context-meny
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { useSwipe } from "@/hooks/useSwipe";
+import { autoDistribute } from "@/lib/autoDistribute";
 
 type MobileTab = "vita" | "trupp" | "grona";
 
@@ -488,6 +489,50 @@ export default function Home() {
     setConfirmClear({ teamPrefix, teamName });
   }, []);
 
+  // Auto-fördela anmälda spelare på lagen
+  const handleAutoDistribute = useCallback(() => {
+    isReceivingFromFirebase.current = true;
+
+    // Rensa befintliga lag först
+    const currentLineup = lineupRef.current;
+    const removedPlayers: Player[] = [];
+    const newLineup: Record<string, Player> = {};
+    for (const [slotId, player] of Object.entries(currentLineup)) {
+      removedPlayers.push(player);
+    }
+
+    // Alla spelare tillbaka i truppen
+    const allPlayers = [...availablePlayersRef.current, ...removedPlayers];
+
+    // Kör auto-fördela
+    const result = autoDistribute(allPlayers, {});
+
+    // Uppdatera configs
+    setTeamAConfig(result.teamAConfig);
+    setTeamBConfig(result.teamBConfig);
+
+    // Uppdatera lineup
+    setLineup(result.lineup);
+
+    // Kvarvarande spelare tillbaka i truppen
+    const placedIds = new Set(Object.values(result.lineup).map(p => p.id));
+    const remaining = allPlayers.filter(p => !placedIds.has(p.id));
+    setAvailablePlayers(remaining);
+
+    // Spara till Firebase
+    setTimeout(() => {
+      isReceivingFromFirebase.current = false;
+      saveStateToFirebase({
+        players: remaining,
+        lineup: result.lineup,
+        teamAName,
+        teamBName,
+        teamAConfig: result.teamAConfig,
+        teamBConfig: result.teamBConfig,
+      });
+    }, 100);
+  }, [teamAName, teamBName]);
+
   // Utför Rensa efter bekräftelse
   const handleConfirmClearTeam = useCallback(() => {
     if (!confirmClear) return;
@@ -929,6 +974,16 @@ export default function Home() {
                     Dra spelare till en plats · Klicka badge för att ändra position
                   </span>
                 </div>
+
+                {/* Auto-fördela-knapp */}
+                <button
+                  onClick={handleAutoDistribute}
+                  title="Fördela anmälda spelare automatiskt på lagen"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 text-xs font-bold hover:bg-cyan-500/30 transition-all uppercase tracking-wider"
+                >
+                  <Shuffle className="w-3.5 h-3.5" />
+                  <span className="hidden md:inline">Auto</span>
+                </button>
 
                 {/* Dela-knapp */}
                 <button
