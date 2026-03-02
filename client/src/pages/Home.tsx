@@ -32,7 +32,7 @@ import { ExportModal } from "@/components/ExportModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { saveStateToFirebase, subscribeToFirebase, saveLineupToFirebase, type AppState, type SavedLineup } from "@/lib/firebase";
-import { Download, Wifi, WifiOff, Share2, Check } from "lucide-react";
+import { Download, Wifi, WifiOff, Share2, Check, CalendarDays } from "lucide-react";
 import { matchRegisteredPlayers, fetchAttendanceFromApi } from "@/lib/laget";
 import { createPortal } from "react-dom"; // används av PlayerList context-meny
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
@@ -156,6 +156,9 @@ export default function Home() {
   const [showExport, setShowExport] = useState(false);
   const [firebaseConnected, setFirebaseConnected] = useState<boolean | null>(null);
   const [shareState, setShareState] = useState<"idle" | "saving" | "copied">("idle");
+
+  // Event-info från senaste anmälningshämtning
+  const [eventInfo, setEventInfo] = useState<{ title: string; date: string } | null>(null);
 
   const handleShare = useCallback(async () => {
     setShareState("saving");
@@ -607,9 +610,9 @@ export default function Home() {
   }, []);
 
   // Hämta anmälningar från laget.se via backend-API och markera matchade spelare
-  const handleBulkRegister = useCallback(async (): Promise<{ matched: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string; noEvent?: boolean }> => {
+  const handleBulkRegister = useCallback(async (forceRefresh = false): Promise<{ matched: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string; noEvent?: boolean }> => {
     try {
-      const data = await fetchAttendanceFromApi();
+      const data = await fetchAttendanceFromApi(forceRefresh);
 
       if (data.error) {
         return { matched: 0, unmatched: [], error: data.error };
@@ -663,7 +666,13 @@ export default function Home() {
   useEffect(() => {
     if (autoFetchDone.current) return;
     autoFetchDone.current = true;
-    handleBulkRegister();
+    handleBulkRegister().then((result) => {
+      if (result.eventTitle) {
+        setEventInfo({ title: result.eventTitle, date: result.eventDate || "" });
+      } else if (result.noEvent) {
+        setEventInfo(null);
+      }
+    });
   }, [handleBulkRegister]);
 
   const [mobileTab, setMobileTab] = useState<MobileTab>("trupp");
@@ -805,6 +814,12 @@ export default function Home() {
                 <p className="text-white/40 text-xs tracking-wider uppercase">
                   A-lag Herrar · Formations-verktyg
                 </p>
+                {eventInfo && (
+                  <p className="flex items-center gap-1.5 text-sky-300/80 text-[11px] mt-0.5 font-medium">
+                    <CalendarDays className="w-3 h-3" />
+                    {eventInfo.title}{eventInfo.date ? ` · ${eventInfo.date}` : ""}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-2 md:gap-3">
                 {/* Firebase sync status */}
@@ -936,6 +951,7 @@ export default function Home() {
                       onChangeRegistered={handleChangeRegistered}
                       onChangeGamesPlayed={handleChangeGamesPlayed}
                       onBulkRegister={handleBulkRegister}
+                      onEventInfoUpdate={setEventInfo}
                       totalRegistered={totalRegistered}
                       totalPlayers={totalPlayers}
                     />
@@ -995,6 +1011,7 @@ export default function Home() {
                       onChangeRegistered={handleChangeRegistered}
                       onChangeGamesPlayed={handleChangeGamesPlayed}
                       onBulkRegister={handleBulkRegister}
+                      onEventInfoUpdate={setEventInfo}
                       totalRegistered={totalRegistered}
                       totalPlayers={totalPlayers}
                     />

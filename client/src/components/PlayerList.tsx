@@ -19,7 +19,8 @@ interface PlayerListProps {
   onChangeCaptainRole: (playerId: string, role: CaptainRole) => void;
   onChangeRegistered: (playerId: string, isRegistered: boolean) => void;
   onChangeGamesPlayed: (playerId: string, gamesPlayed: number) => void;
-  onBulkRegister?: () => Promise<{ matched: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string; noEvent?: boolean }>;
+  onBulkRegister?: (forceRefresh?: boolean) => Promise<{ matched: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string; noEvent?: boolean }>;
+  onEventInfoUpdate?: (info: { title: string; date: string } | null) => void;
   totalRegistered?: number;
   totalPlayers?: number;
 }
@@ -69,7 +70,7 @@ function sortPlayers(players: Player[], key: SortKey, dir: SortDir): Player[] {
   });
 }
 
-export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber, onChangeName, onChangeCaptainRole, onChangeRegistered, onChangeGamesPlayed, onBulkRegister, totalRegistered, totalPlayers }: PlayerListProps) {
+export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber, onChangeName, onChangeCaptainRole, onChangeRegistered, onChangeGamesPlayed, onBulkRegister, onEventInfoUpdate, totalRegistered, totalPlayers }: PlayerListProps) {
   const [search, setSearch] = useState("");
   const [posFilter, setPosFilter] = useState<PosFilter>("Alla");
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("Alla");
@@ -414,8 +415,15 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
               setIsLoadingAttendance(true);
               setRegisterResult(null);
               try {
-                const result = await onBulkRegister();
+                const result = await onBulkRegister(true);
                 setRegisterResult(result);
+                if (onEventInfoUpdate) {
+                  if (result.eventTitle) {
+                    onEventInfoUpdate({ title: result.eventTitle, date: result.eventDate || "" });
+                  } else if (result.noEvent) {
+                    onEventInfoUpdate(null);
+                  }
+                }
                 if (!result.error) {
                   setTimeout(() => setRegisterResult(null), result.noEvent ? 6000 : 8000);
                 }
