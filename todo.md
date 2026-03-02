@@ -32,3 +32,4 @@
 - [x] Ändra desktop lagpanel-header till "antal spelare/antal anmälda" som i mobilversionen
 - [x] Desktop lagheader: byt ordning till "anmälda/totalt anmälda spelare" (t.ex. "6/11 anmälda spelare")
 - [x] Mobil lagflikar: byt ordning till anmälda/totalt utan text
+- [x] Desktop lagheader: ändra till "X anmälda av/Y spelare i laget"
