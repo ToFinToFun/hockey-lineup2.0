@@ -161,6 +161,44 @@ describe("autoDistribute", () => {
     expect(totalPlaced + result.remaining.length).toBe(20);
   });
 
+  it("prioritizes Center players on C-slots", () => {
+    const players: Player[] = [
+      makePlayer("c1", "C"),
+      makePlayer("c2", "C"),
+      makePlayer("f1", "F"),
+      makePlayer("f2", "F"),
+      makePlayer("f3", "F"),
+      makePlayer("f4", "F"),
+    ];
+
+    const result = autoDistribute(players, {});
+
+    // C-players should be on C-slots (role: "c" → slot id contains "-c")
+    for (const [slotId, player] of Object.entries(result.lineup)) {
+      if (slotId.match(/fwd-\d+-c$/)) {
+        // C-slots should have C-players when available
+        expect(player.position).toBe("C");
+      }
+    }
+  });
+
+  it("places F players on wing slots (LW/RW) when centers are available", () => {
+    const players: Player[] = [
+      makePlayer("c1", "C"),
+      makePlayer("f1", "F"),
+      makePlayer("f2", "F"),
+    ];
+
+    const result = autoDistribute(players, {});
+
+    // F-players should prefer LW/RW slots
+    for (const [slotId, player] of Object.entries(result.lineup)) {
+      if (player.position === "F") {
+        expect(slotId).toMatch(/fwd-\d+-(lw|rw)/);
+      }
+    }
+  });
+
   it("does not place non-MV players in goalkeeper slots", () => {
     const players: Player[] = [
       makePlayer("f1", "F"),

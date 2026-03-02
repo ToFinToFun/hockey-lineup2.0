@@ -61,15 +61,16 @@ export function autoDistribute(
 
   // Beräkna hur många spelare vi har per position för varje lag
   // Steg 1: Fördela spelare med lagtillhörighet
-  const teamAPlayers: { player: Player; preferredType: "goalkeeper" | "defense" | "forward" | "flex" }[] = [];
-  const teamBPlayers: { player: Player; preferredType: "goalkeeper" | "defense" | "forward" | "flex" }[] = [];
-  const neutralPlayers: { player: Player; preferredType: "goalkeeper" | "defense" | "forward" | "flex" }[] = [];
+  const teamAPlayers: { player: Player; preferredType: "goalkeeper" | "defense" | "center" | "forward" | "flex" }[] = [];
+  const teamBPlayers: { player: Player; preferredType: "goalkeeper" | "defense" | "center" | "forward" | "flex" }[] = [];
+  const neutralPlayers: { player: Player; preferredType: "goalkeeper" | "defense" | "center" | "forward" | "flex" }[] = [];
 
-  function categorize(player: Player): "goalkeeper" | "defense" | "forward" | "flex" {
+  function categorize(player: Player): "goalkeeper" | "defense" | "center" | "forward" | "flex" {
     switch (player.position) {
       case "MV": return "goalkeeper";
       case "B": return "defense";
-      case "F": case "C": return "forward";
+      case "C": return "center";
+      case "F": return "forward";
       case "IB": return "flex";
     }
   }
@@ -87,7 +88,7 @@ export function autoDistribute(
 
   // Steg 2: Fördela neutrala spelare jämnt
   // Sortera neutrala: MV först, sedan B, sedan F/C, sedan IB
-  const positionPriority: Record<string, number> = { goalkeeper: 0, defense: 1, forward: 2, flex: 3 };
+  const positionPriority: Record<string, number> = { goalkeeper: 0, defense: 1, center: 2, forward: 3, flex: 4 };
   neutralPlayers.sort((a, b) => positionPriority[a.preferredType] - positionPriority[b.preferredType]);
 
   // Om shuffle är aktivt, slumpa ordningen inom varje positionsgrupp
@@ -98,7 +99,7 @@ export function autoDistribute(
       groups[np.preferredType].push(np);
     }
     neutralPlayers.length = 0;
-    for (const type of ["goalkeeper", "defense", "forward", "flex"]) {
+    for (const type of ["goalkeeper", "defense", "center", "forward", "flex"]) {
       if (groups[type]) {
         neutralPlayers.push(...shuffleArray(groups[type]));
       }
@@ -120,7 +121,7 @@ export function autoDistribute(
     for (const p of players) {
       if (p.preferredType === "goalkeeper") gk++;
       else if (p.preferredType === "defense") def++;
-      else if (p.preferredType === "forward") fwd++;
+      else if (p.preferredType === "forward" || p.preferredType === "center") fwd++;
       else {
         // Flex (IB) - räkna som forward för config-beräkning
         fwd++;
@@ -162,12 +163,39 @@ export function autoDistribute(
       placed.add(defPlayers[i].player.id);
     }
 
-    // Fyll forwards
+    // Fyll forwards: Center-spelare på C-slots först, sedan F-spelare på LW/RW
     const fwdSlots = slots.filter(s => s.type === "forward");
-    const fwdPlayers = players.filter(p => p.preferredType === "forward" && !placed.has(p.player.id));
-    for (let i = 0; i < fwdSlots.length && i < fwdPlayers.length; i++) {
-      lineup[fwdSlots[i].id] = fwdPlayers[i].player;
-      placed.add(fwdPlayers[i].player.id);
+    const centerSlots = fwdSlots.filter(s => s.role === "c");
+    const wingSlots = fwdSlots.filter(s => s.role === "lw" || s.role === "rw");
+
+    // Placera C-spelare på C-slots
+    const centerPlayers = players.filter(p => p.preferredType === "center" && !placed.has(p.player.id));
+    for (let i = 0; i < centerSlots.length && i < centerPlayers.length; i++) {
+      lineup[centerSlots[i].id] = centerPlayers[i].player;
+      placed.add(centerPlayers[i].player.id);
+    }
+
+    // Placera F-spelare på LW/RW-slots först
+    const fPlayers = players.filter(p => p.preferredType === "forward" && !placed.has(p.player.id));
+    for (let i = 0; i < wingSlots.length && i < fPlayers.length; i++) {
+      lineup[wingSlots[i].id] = fPlayers[i].player;
+      placed.add(fPlayers[i].player.id);
+    }
+
+    // Kvarvarande F-spelare på tomma C-slots
+    const remainingF = players.filter(p => p.preferredType === "forward" && !placed.has(p.player.id));
+    const emptyCenterSlots = centerSlots.filter(s => !lineup[s.id]);
+    for (let i = 0; i < emptyCenterSlots.length && i < remainingF.length; i++) {
+      lineup[emptyCenterSlots[i].id] = remainingF[i].player;
+      placed.add(remainingF[i].player.id);
+    }
+
+    // Kvarvarande C-spelare på tomma wing-slots
+    const remainingC = players.filter(p => p.preferredType === "center" && !placed.has(p.player.id));
+    const emptyWingSlots = wingSlots.filter(s => !lineup[s.id]);
+    for (let i = 0; i < emptyWingSlots.length && i < remainingC.length; i++) {
+      lineup[emptyWingSlots[i].id] = remainingC[i].player;
+      placed.add(remainingC[i].player.id);
     }
 
     // Fyll IB-spelare i kvarvarande platser (inte målvakt)
@@ -181,8 +209,8 @@ export function autoDistribute(
       placed.add(flexPlayers[i].player.id);
     }
 
-    // Om det finns kvar forwards som inte fick plats i forward-slots, fyll i back-slots
-    const remainingFwd = players.filter(p => p.preferredType === "forward" && !placed.has(p.player.id));
+    // Om det finns kvar forwards/centers som inte fick plats, fyll i back-slots
+    const remainingFwd = players.filter(p => (p.preferredType === "forward" || p.preferredType === "center") && !placed.has(p.player.id));
     const emptyDefSlots = defSlots.filter(s => !lineup[s.id]);
     for (let i = 0; i < emptyDefSlots.length && i < remainingFwd.length; i++) {
       lineup[emptyDefSlots[i].id] = remainingFwd[i].player;
