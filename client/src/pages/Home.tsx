@@ -32,7 +32,7 @@ import { ExportModal } from "@/components/ExportModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { saveStateToFirebase, subscribeToFirebase, saveLineupToFirebase, type AppState, type SavedLineup } from "@/lib/firebase";
-import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle } from "lucide-react";
+import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices } from "lucide-react";
 import { matchRegisteredPlayers, matchDeclinedPlayers, fetchAttendanceFromApi } from "@/lib/laget";
 import { createPortal } from "react-dom"; // används av PlayerList context-meny
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
@@ -493,13 +493,12 @@ export default function Home() {
   }, []);
 
   // Auto-fördela anmälda spelare på lagen
-  const handleAutoDistribute = useCallback(() => {
+  const handleAutoDistribute = useCallback((shuffle = false) => {
     isReceivingFromFirebase.current = true;
 
     // Rensa befintliga lag först
     const currentLineup = lineupRef.current;
     const removedPlayers: Player[] = [];
-    const newLineup: Record<string, Player> = {};
     for (const [slotId, player] of Object.entries(currentLineup)) {
       removedPlayers.push(player);
     }
@@ -507,8 +506,8 @@ export default function Home() {
     // Alla spelare tillbaka i truppen
     const allPlayers = [...availablePlayersRef.current, ...removedPlayers];
 
-    // Kör auto-fördela
-    const result = autoDistribute(allPlayers, {});
+    // Kör auto-fördela (med eller utan shuffle)
+    const result = autoDistribute(allPlayers, {}, { shuffle });
 
     // Uppdatera configs
     setTeamAConfig(result.teamAConfig);
@@ -986,6 +985,16 @@ export default function Home() {
                 >
                   <Shuffle className="w-3.5 h-3.5" />
                   <span className="hidden md:inline">Auto</span>
+                </button>
+
+                {/* Slumpa om-knapp */}
+                <button
+                  onClick={() => handleAutoDistribute(true)}
+                  title="Slumpa om neutrala spelare (utan lagfärg) mellan lagen"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-bold hover:bg-amber-500/30 transition-all uppercase tracking-wider"
+                >
+                  <Dices className="w-3.5 h-3.5" />
+                  <span className="hidden md:inline">Slumpa</span>
                 </button>
 
                 {/* Dela-knapp */}

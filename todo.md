@@ -55,4 +55,4 @@
 - [x] Fixa vanlig swipe (utan drag) på mobil - capture-fas event listeners + 400ms tidsgräns
 - [x] Fixa swipe på mobil: document-level capture-fas listeners + touchmove-detektion (350ms, 50px)
 - [x] Haptic feedback (vibration) vid flikbyte på mobil (swipe, drag-to-edge, tab-klick)- [x] Auto-fördela knapp: fördelar anmälda spelare på lagen (position > lagttillhörighet > jämn fördelning)
-- [x] Bekräftelsedialog innan Auto-fördela körs (liknande Rensa-dialogen)
+- [x] Bekräftelsedialog innan Auto-fördela körs (liknande Rensa-dialogen)- [x] Slumpa om-knapp: omfördelar neutrala spelare (utan lagttillhörighet) slumpmässigt, behåller tillhöriga spelare
