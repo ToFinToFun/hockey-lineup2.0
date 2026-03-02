@@ -10,6 +10,8 @@ describe("laget.se integration", () => {
     console.log("Date:", result.eventDate);
     console.log("Registered:", result.totalRegistered, "players");
     console.log("Names:", result.registeredNames.join(", "));
+    console.log("Declined:", result.declinedNames.length, "players");
+    console.log("Declined names:", result.declinedNames.join(", "));
     console.log("noEvent:", result.noEvent);
     if (result.error) console.log("Error:", result.error);
 
@@ -19,6 +21,7 @@ describe("laget.se integration", () => {
     if (result.noEvent) {
       // No upcoming event — valid response
       expect(result.registeredNames).toEqual([]);
+      expect(result.declinedNames).toEqual([]);
       expect(result.totalRegistered).toBe(0);
       expect(result.noEvent).toBe(true);
     } else {
@@ -43,8 +46,16 @@ describe("laget.se integration", () => {
     expect(result).toHaveProperty("eventTitle");
     expect(result).toHaveProperty("eventDate");
     expect(result).toHaveProperty("registeredNames");
+    expect(result).toHaveProperty("declinedNames");
     expect(result).toHaveProperty("totalRegistered");
     expect(Array.isArray(result.registeredNames)).toBe(true);
+    expect(Array.isArray(result.declinedNames)).toBe(true);
     expect(typeof result.totalRegistered).toBe("number");
+
+    // declinedNames should be strings
+    for (const name of result.declinedNames) {
+      expect(typeof name).toBe("string");
+      expect(name.length).toBeGreaterThan(1);
+    }
   }, 30000);
 });

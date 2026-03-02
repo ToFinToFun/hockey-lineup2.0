@@ -21,6 +21,7 @@ export interface AttendanceResult {
   eventTitle: string;
   eventDate: string;
   registeredNames: string[];
+  declinedNames: string[];
   totalRegistered: number;
   error?: string;
   noEvent?: boolean;
@@ -201,22 +202,22 @@ function findNextEventId(html: string): {
 }
 
 /**
- * Extrahera anmälda namn från RSVP modal HTML.
+ * Extrahera anmälda och avböjda namn från RSVP modal HTML.
  * Strukturen är:
  *   .attendingsList__row
  *     .attendingsList__cell.float--left  → spelarnamn
  *     .attendingsList__cell--gray.float--left
- *       .attendingsList__is-attending → "Kommer"
+ *       .attendingsList__is-attending → "Kommer" eller "Kommer inte"
  */
-function extractAttendeesFromModal(html: string): string[] {
+function extractAttendeesFromModal(html: string): { registered: string[]; declined: string[] } {
   const $ = cheerio.load(html);
-  const names: string[] = [];
+  const registered: string[] = [];
+  const declined: string[] = [];
 
   // Varje rad i anmälningslistan har klassen attendingsList__row
   $(".attendingsList__row").each((_, row) => {
-    // Kolla om denna rad har status "Kommer"
     const status = $(row).find(".attendingsList__is-attending").text().trim();
-    if (status === "Kommer") {
+    if (status === "Kommer" || status === "Kommer inte") {
       // Hämta namnet från den första cellen
       const name = $(row)
         .find(".attendingsList__cell.float--left")
@@ -226,14 +227,18 @@ function extractAttendeesFromModal(html: string): string[] {
       if (name && name.length > 1) {
         // Rensa smeknamn inom citattecken
         const cleaned = name.replace(/"[^"]*"/g, "").replace(/\s+/g, " ").trim();
-        if (cleaned && !names.includes(cleaned)) {
-          names.push(cleaned);
+        if (cleaned) {
+          if (status === "Kommer" && !registered.includes(cleaned)) {
+            registered.push(cleaned);
+          } else if (status === "Kommer inte" && !declined.includes(cleaned)) {
+            declined.push(cleaned);
+          }
         }
       }
     }
   });
 
-  return names;
+  return { registered, declined };
 }
 
 /**
@@ -250,6 +255,7 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
         eventTitle: "",
         eventDate: "",
         registeredNames: [],
+        declinedNames: [],
         totalRegistered: 0,
         error: "Kunde inte logga in på laget.se. Kontrollera användarnamn och lösenord.",
       };
@@ -265,6 +271,7 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
         eventTitle: "",
         eventDate: new Date().toISOString().split("T")[0],
         registeredNames: [],
+        declinedNames: [],
         totalRegistered: 0,
         noEvent: true,
       };
@@ -280,25 +287,28 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
         eventTitle: eventInfo.eventTitle || "Träning",
         eventDate: eventInfo.eventDate,
         registeredNames: [],
+        declinedNames: [],
         totalRegistered: 0,
         error: `Kunde inte hämta anmälningslistan (HTTP ${resp.status})`,
       };
     }
 
-    // Steg 4: Extrahera anmälda namn
-    const names = extractAttendeesFromModal(resp.data);
+    // Steg 4: Extrahera anmälda och avböjda namn
+    const { registered, declined } = extractAttendeesFromModal(resp.data);
 
     return {
       eventTitle: eventInfo.eventTitle || "Träning",
       eventDate: eventInfo.eventDate,
-      registeredNames: names,
-      totalRegistered: names.length,
+      registeredNames: registered,
+      declinedNames: declined,
+      totalRegistered: registered.length,
     };
   } catch (error: any) {
     return {
       eventTitle: "",
       eventDate: "",
       registeredNames: [],
+      declinedNames: [],
       totalRegistered: 0,
       error: `Fel vid hämtning: ${error.message || "Okänt fel"}`,
     };

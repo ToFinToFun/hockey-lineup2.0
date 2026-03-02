@@ -24,7 +24,8 @@ export interface Player {
   position: Position;
   teamColor?: TeamColor;
   captainRole?: CaptainRole;
-  isRegistered?: boolean;   // Anmäld till dagens match
+  isRegistered?: boolean;   // Anmäld till dagens match ("Kommer")
+  isDeclined?: boolean;     // Avböjt dagens match ("Kommer inte")
   gamesPlayed?: number;     // Antal matcher spelade
 }
 
