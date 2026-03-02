@@ -1,32 +1,31 @@
 // Hook för att detektera swipe-gester (vänster/höger)
-// Använder native DOM event listeners (inte React synthetic events)
-// för att undvika konflikter med dnd-kit som fångar touch-events
+// Använder native DOM event listeners i capture-fasen
+// för att fånga events FÖRE dnd-kit
+// Snabba swipes (< 400ms) triggar flikbyte
+// Långsamma gester (> 500ms) lämnas till dnd-kit för drag
 
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect } from "react";
 
 interface SwipeOptions {
   onSwipeLeft?: () => void;
   onSwipeRight?: () => void;
-  minDistance?: number;    // Minsta horisontella distans (px) för att räknas som swipe
-  maxVertical?: number;    // Max vertikal rörelse (px) innan det räknas som scroll
-  enabled?: boolean;       // Aktivera/inaktivera swipe (t.ex. under drag)
+  minDistance?: number;    // Minsta horisontella distans (px)
+  maxVertical?: number;    // Max vertikal rörelse (px)
+  maxDuration?: number;    // Max tid (ms) för att räknas som swipe
+  enabled?: boolean;
 }
 
 export function useSwipe({
   onSwipeLeft,
   onSwipeRight,
-  minDistance = 50,
-  maxVertical = 80,
+  minDistance = 40,
+  maxVertical = 100,
+  maxDuration = 400,
   enabled = true,
 }: SwipeOptions) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const startX = useRef(0);
-  const startY = useRef(0);
-  const currentX = useRef(0);
-  const currentY = useRef(0);
-  const startTime = useRef(0);
 
-  // Stabilisera callbacks med refs så att event listeners inte behöver uppdateras
+  // Stabilisera callbacks med refs
   const onSwipeLeftRef = useRef(onSwipeLeft);
   const onSwipeRightRef = useRef(onSwipeRight);
   onSwipeLeftRef.current = onSwipeLeft;
@@ -36,34 +35,32 @@ export function useSwipe({
     const el = containerRef.current;
     if (!el || !enabled) return;
 
+    let startX = 0;
+    let startY = 0;
+    let startTime = 0;
+    let tracking = false;
+
     const handleTouchStart = (e: TouchEvent) => {
       const touch = e.touches[0];
-      startX.current = touch.clientX;
-      startY.current = touch.clientY;
-      currentX.current = touch.clientX;
-      currentY.current = touch.clientY;
-      startTime.current = Date.now();
+      startX = touch.clientX;
+      startY = touch.clientY;
+      startTime = Date.now();
+      tracking = true;
     };
 
-    const handleTouchMove = (e: TouchEvent) => {
-      const touch = e.touches[0];
-      currentX.current = touch.clientX;
-      currentY.current = touch.clientY;
-    };
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (!tracking) return;
+      tracking = false;
 
-    const handleTouchEnd = () => {
-      const deltaX = currentX.current - startX.current;
-      const deltaY = Math.abs(currentY.current - startY.current);
-      const elapsed = Date.now() - startTime.current;
+      const touch = e.changedTouches[0];
+      const deltaX = touch.clientX - startX;
+      const deltaY = Math.abs(touch.clientY - startY);
+      const elapsed = Date.now() - startTime;
 
-      // Ignorera om vertikal rörelse är för stor (scroll)
+      // Bara snabba, horisontella gester
+      if (elapsed > maxDuration) return;
       if (deltaY > maxVertical) return;
-
-      // Ignorera om horisontell rörelse är för kort
       if (Math.abs(deltaX) < minDistance) return;
-
-      // Ignorera om gesten tog för lång tid (troligen drag, inte swipe)
-      if (elapsed > 800) return;
 
       if (deltaX < 0) {
         onSwipeLeftRef.current?.();
@@ -72,17 +69,15 @@ export function useSwipe({
       }
     };
 
-    // Använd capture phase för att fånga events FÖRE dnd-kit
-    el.addEventListener("touchstart", handleTouchStart, { passive: true, capture: false });
-    el.addEventListener("touchmove", handleTouchMove, { passive: true, capture: false });
-    el.addEventListener("touchend", handleTouchEnd, { passive: true, capture: false });
+    // Capture-fas: fångar events innan de bubblar till dnd-kit
+    el.addEventListener("touchstart", handleTouchStart, { passive: true, capture: true });
+    el.addEventListener("touchend", handleTouchEnd, { passive: true, capture: true });
 
     return () => {
-      el.removeEventListener("touchstart", handleTouchStart);
-      el.removeEventListener("touchmove", handleTouchMove);
-      el.removeEventListener("touchend", handleTouchEnd);
+      el.removeEventListener("touchstart", handleTouchStart, { capture: true });
+      el.removeEventListener("touchend", handleTouchEnd, { capture: true });
     };
-  }, [enabled, minDistance, maxVertical]);
+  }, [enabled, minDistance, maxVertical, maxDuration]);
 
   return containerRef;
 }
