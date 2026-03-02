@@ -210,8 +210,9 @@ function extractAttendeesFromModal(html) {
     const block = parts[i];
     
     // Kolla om blocket innehåller "Kommer" som status
-    const hasKommer = /attendingsList__is-attending[^>]*>\s*Kommer\s*</.test(block);
-    const hasKommerInte = /Kommer inte/.test(block);
+    // Notera: laget.se kan ha \r\n och whitespace runt texten
+    const hasKommerInte = /Kommer\s+inte/i.test(block);
+    const hasKommer = /attendingsList__is-attending[\s\S]*?Kommer/i.test(block);
     
     // Hämta namn från attendingsList__cell float--left
     const nameMatch = block.match(/attendingsList__cell[\s"]*float--left[^>]*>([^<]+)/);
@@ -318,6 +319,8 @@ export async function handler(event) {
       hasAttendingsList: rsvpHtml.includes('attendingsList__row'),
       hasIsAttending: rsvpHtml.includes('attendingsList__is-attending'),
       hasKommer: rsvpHtml.includes('>Kommer<'),
+      hasKommerWithWhitespace: /attendingsList__is-attending[\s\S]*?Kommer/i.test(rsvpHtml),
+      firstRowSample: rsvpHtml.split(/attendingsList__row/)[1]?.substring(0, 300) || 'no rows',
       sampleHtml: rsvpHtml.substring(0, 500),
     };
     
