@@ -17,13 +17,25 @@ export interface AttendanceData {
  * Hämta anmälningslistan från backend (som i sin tur skrapar laget.se)
  */
 export async function fetchAttendanceFromApi(): Promise<AttendanceData> {
-  const response = await fetch("/api/trpc/laget.attendance");
+  // Försök med tRPC-backend först (Manus hosting)
+  // Om det misslyckas, försök med Netlify Function
+  try {
+    const response = await fetch("/api/trpc/laget.attendance");
+    if (response.ok) {
+      const json = await response.json();
+      const data = json?.result?.data?.json;
+      if (data) return data as AttendanceData;
+    }
+  } catch {
+    // tRPC inte tillgänglig, försök med Netlify Function
+  }
+
+  // Fallback: Netlify Function
+  const response = await fetch("/api/laget-attendance");
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`);
   }
-  const json = await response.json();
-  // tRPC returnerar { result: { data: { json: ... } } }
-  const data = json?.result?.data?.json;
+  const data = await response.json();
   if (!data) {
     throw new Error("Oväntat svar från servern");
   }
