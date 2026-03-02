@@ -50,3 +50,4 @@
 - [x] Lägg till sorteringsknapp "Avböjda" i spelartruppen (bredvid "Anmälda")
 - [x] Visa antal avböjda i headern, t.ex. "Anmälda 14 · Avböjda 6"
 - [x] Mobiloptimerad vy med swipe-gester mellan Vita/Trupp/Gröna tabs
+- [x] BUGG: Swipe-gester fungerar inte på mobil (fixad: native DOM event listeners via ref istället för React synthetic events)

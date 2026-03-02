@@ -696,7 +696,7 @@ export default function Home() {
 
   // Swipe-gester för mobilflikar
   const TAB_ORDER: MobileTab[] = ["vita", "trupp", "grona"];
-  const swipeHandlers = useSwipe({
+  const swipeRef = useSwipe({
     onSwipeLeft: () => {
       setMobileTab((prev) => {
         const idx = TAB_ORDER.indexOf(prev);
@@ -1043,7 +1043,7 @@ export default function Home() {
             ) : (
               /* Mobilvy – bara den aktiva fliken renderas */
               <div
-                {...swipeHandlers}
+                ref={swipeRef}
                 className="touch-pan-y transition-transform duration-200 ease-out"
               >
                 {mobileTab === "vita" && (
