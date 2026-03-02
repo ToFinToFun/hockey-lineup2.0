@@ -1,13 +1,14 @@
 /**
- * laget.se scraper – loggar in och hämtar anmälningslistan för nästa/dagens event.
+ * laget.se scraper – loggar in på admin-sidan och hämtar anmälningslistan
+ * för nästa/dagens event via kalender-redigeringssidan.
  *
  * Flöde:
  * 1. GET /Login – hämta CSRF-token och cookies
  * 2. POST /Login – skicka inloggningsformulär
- * 3. Följ redirect-kedjan (/Common/Auth/SetCookie → returnUrl) för att sätta session-cookies
- * 4. GET /Stalstadens – hitta dagens/nästa event via event-länkar (eventId)
- * 5. GET /Common/Rsvp/ModalContent?pk={eventId}&site=Stalstadens – hämta RSVP-popup
- * 6. Parsa .attendingsList__cell med status "Kommer" för att extrahera namn
+ * 3. Följ redirect-kedjan (/Common/Auth/SetCookie → returnUrl)
+ * 4. GET /Stalstadens/Calendar – hitta nästa events Edit-länk (eventId)
+ * 5. GET /Stalstadens/Calendar/Edit/{eventId} – hämta deltagarlistan
+ * 6. Parsa .rsvp-cell med .attendanceIcon.attending / .notAttending
  */
 
 import axios, { type AxiosInstance, type AxiosResponse } from "axios";
@@ -16,6 +17,7 @@ import { ENV } from "./_core/env";
 
 const TEAM_SLUG = "Stalstadens";
 const BASE_URL = "https://www.laget.se";
+const ADMIN_BASE_URL = "https://admin.laget.se";
 
 export interface AttendanceResult {
   eventTitle: string;
@@ -38,7 +40,6 @@ function createClient(): {
   const cookieJar: string[] = [];
 
   const client = axios.create({
-    baseURL: BASE_URL,
     maxRedirects: 0,
     timeout: 30000,
     validateStatus: () => true,
@@ -81,9 +82,13 @@ function createClient(): {
       count < 10
     ) {
       const location = resp.headers.location;
-      const url = location.startsWith("http")
-        ? new URL(location).pathname + new URL(location).search
-        : location;
+      // Handle both absolute and relative URLs, and cross-domain redirects
+      let url: string;
+      if (location.startsWith("http")) {
+        url = location; // Use full URL for cross-domain redirects
+      } else {
+        url = location;
+      }
       resp = await client.get(url);
       count++;
     }
@@ -108,7 +113,7 @@ async function login(
   }
 
   // Steg 1: GET /Login – hämta CSRF-token
-  let resp = await client.get("/Login");
+  let resp = await client.get(`${BASE_URL}/Login`);
   resp = await followRedirects(resp);
 
   const $ = cheerio.load(resp.data);
@@ -124,7 +129,7 @@ async function login(
   formData.append("KeepAlive", "true");
   formData.append("KeepAlive", "false");
 
-  resp = await client.post("/Login", formData.toString(), {
+  resp = await client.post(`${BASE_URL}/Login`, formData.toString(), {
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
       Referer: `${BASE_URL}/Login`,
@@ -144,7 +149,111 @@ async function login(
 }
 
 /**
- * Hitta dagens/nästa event-ID från startsidan
+ * Hitta nästa events Edit-URL från admin-kalendersidan.
+ * Returnerar eventId, eventDate och eventTitle.
+ */
+function findNextEventFromCalendar(html: string): {
+  eventId: string;
+  eventDate: string;
+  eventTitle: string;
+} | null {
+  const $ = cheerio.load(html);
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  interface CalendarEvent {
+    eventId: string;
+    eventDate: string;
+    eventTitle: string;
+  }
+
+  const events: CalendarEvent[] = [];
+
+  // Hitta alla Edit-länkar i kalendern
+  $('a[href*="Calendar/Edit/"]').each((_, el) => {
+    const href = $(el).attr("href") || "";
+    const idMatch = href.match(/Calendar\/Edit\/(\d+)/);
+    if (!idMatch) return;
+
+    const eventId = idMatch[1];
+    const text = $(el).text().trim();
+
+    // Hoppa över "Redigera"-knappar, vi vill ha event-titlar
+    // Men vi behöver hitta datum från raden
+    if (text === "Redigera" || text === "Redigera denna och kommande") return;
+
+    // Texten innehåller datum + typ, t.ex. "2026-02-05 22:00 Träning"
+    const dateMatch = text.match(/(\d{4}-\d{2}-\d{2})\s+\d{2}:\d{2}\s+(.*)/);
+    if (dateMatch) {
+      events.push({
+        eventId,
+        eventDate: dateMatch[1],
+        eventTitle: dateMatch[2].trim(),
+      });
+    }
+  });
+
+  // Hitta även event via "Redigera"-knappar och extrahera datum från tabellraden
+  {
+    const monthMap: Record<string, string> = {
+      jan: "01", feb: "02", mar: "03", apr: "04", maj: "05", jun: "06",
+      jul: "07", aug: "08", sep: "09", okt: "10", nov: "11", dec: "12",
+    };
+
+    // Fallback: Hämta alla Edit-länkar med deras rader
+    $('a[href*="Calendar/Edit/"]').each((_, el) => {
+      const href = $(el).attr("href") || "";
+      const idMatch = href.match(/Calendar\/Edit\/(\d+)/);
+      if (!idMatch) return;
+      
+      const text = $(el).text().trim();
+      if (text !== "Redigera") return;
+
+      const eventId = idMatch[1];
+      
+      // Hoppa över om vi redan har detta event
+      if (events.find(e => e.eventId === eventId)) return;
+      
+      // Hitta parent-rad och extrahera datum
+      const row = $(el).closest("tr");
+      if (!row.length) return;
+
+      const rowText = row.text().trim();
+      // Matcha "3 mar 22:05 - 23:00  Träning"
+      const dateMatch = rowText.match(/(\d{1,2})\s+(jan|feb|mar|apr|maj|jun|jul|aug|sep|okt|nov|dec)\s+(\d{2}:\d{2})/i);
+      if (dateMatch) {
+        const day = dateMatch[1].padStart(2, "0");
+        const monthStr = dateMatch[2].toLowerCase();
+        const month = monthMap[monthStr] || "01";
+        const year = today.getFullYear();
+        const eventDate = `${year}-${month}-${day}`;
+
+        // Hitta eventtyp (Träning/Match)
+        const typeMatch = rowText.match(/(?:Träning|Match|Möte|Cup)/i);
+        const eventTitle = typeMatch ? typeMatch[0] : "Träning";
+
+        events.push({ eventId, eventDate, eventTitle });
+      }
+    });
+  }
+
+  if (events.length === 0) return null;
+
+  // Prioritera dagens event
+  const todayEvent = events.find((e) => e.eventDate === todayStr);
+  if (todayEvent) return todayEvent;
+
+  // Annars ta närmaste framtida event
+  const futureEvents = events
+    .filter((e) => e.eventDate >= todayStr)
+    .sort((a, b) => a.eventDate.localeCompare(b.eventDate));
+  if (futureEvents.length > 0) return futureEvents[0];
+
+  return null;
+}
+
+/**
+ * Hitta event-ID från den publika startsidan (fallback)
  */
 function findNextEventId(html: string): {
   eventId: string;
@@ -186,46 +295,71 @@ function findNextEventId(html: string): {
     }
   });
 
-  // Prioritera dagens event
   const todayStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   const todayEvent = eventLinks.find((e) => e.isToday);
   if (todayEvent) return todayEvent;
 
-  // Annars ta närmaste framtida event
   const futureEvents = eventLinks
     .filter((e) => e.eventDate >= todayStr)
     .sort((a, b) => a.eventDate.localeCompare(b.eventDate));
   if (futureEvents.length > 0) return futureEvents[0];
 
-  // Inget kommande event hittat
   return null;
 }
 
 /**
- * Extrahera anmälda och avböjda namn från RSVP modal HTML.
+ * Extrahera anmälda och avböjda namn från admin-redigeringssidan.
  * Strukturen är:
- *   .attendingsList__row
- *     .attendingsList__cell.float--left  → spelarnamn
- *     .attendingsList__cell--gray.float--left
- *       .attendingsList__is-attending → "Kommer" eller "Kommer inte"
+ *   .rsvp-cell → varje spelarrad
+ *     .listAttendeeDataName → spelarnamn
+ *     .attendanceIcon.attending → "Deltar"
+ *     .attendanceIcon.notAttending → "Deltar ej"
+ */
+function extractAttendeesFromEditPage(html: string): { registered: string[]; declined: string[] } {
+  const $ = cheerio.load(html);
+  const registered: string[] = [];
+  const declined: string[] = [];
+
+  $(".rsvp-cell").each((_, cell) => {
+    const nameEl = $(cell).find(".listAttendeeDataName");
+    const name = nameEl.text().trim();
+    if (!name || name.length < 2 || name === "Namn") return;
+
+    // Rensa smeknamn inom citattecken
+    const cleaned = name.replace(/"[^"]*"/g, "").replace(/\s+/g, " ").trim();
+    if (!cleaned) return;
+
+    const statusEl = $(cell).find(".attendanceIcon");
+    const isAttending = statusEl.hasClass("attending");
+    const isNotAttending = statusEl.hasClass("notAttending");
+
+    if (isAttending && !registered.includes(cleaned)) {
+      registered.push(cleaned);
+    } else if (isNotAttending && !declined.includes(cleaned)) {
+      declined.push(cleaned);
+    }
+  });
+
+  return { registered, declined };
+}
+
+/**
+ * Extrahera anmälda och avböjda namn från RSVP modal HTML (fallback).
  */
 function extractAttendeesFromModal(html: string): { registered: string[]; declined: string[] } {
   const $ = cheerio.load(html);
   const registered: string[] = [];
   const declined: string[] = [];
 
-  // Varje rad i anmälningslistan har klassen attendingsList__row
   $(".attendingsList__row").each((_, row) => {
     const status = $(row).find(".attendingsList__is-attending").text().trim();
     if (status === "Kommer" || status === "Kommer inte") {
-      // Hämta namnet från den första cellen
       const name = $(row)
         .find(".attendingsList__cell.float--left")
         .first()
         .text()
         .trim();
       if (name && name.length > 1) {
-        // Rensa smeknamn inom citattecken
         const cleaned = name.replace(/"[^"]*"/g, "").replace(/\s+/g, " ").trim();
         if (cleaned) {
           if (status === "Kommer" && !registered.includes(cleaned)) {
@@ -242,7 +376,9 @@ function extractAttendeesFromModal(html: string): { registered: string[]; declin
 }
 
 /**
- * Hämta anmälningslistan för dagens/nästa event
+ * Hämta anmälningslistan för dagens/nästa event.
+ * Primärt via admin-redigeringssidan (som har Deltar ej),
+ * med fallback till RSVP-modalen.
  */
 export async function fetchAttendance(): Promise<AttendanceResult> {
   const { client, followRedirects } = createClient();
@@ -261,12 +397,48 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
       };
     }
 
-    // Steg 2: Hämta startsidan för att hitta event-ID
-    let resp = await client.get(`/${TEAM_SLUG}`);
+    // Steg 2: Försök hämta via admin-kalendern först
+    let eventInfo: { eventId: string; eventDate: string; eventTitle: string } | null = null;
+
+    try {
+      const calendarResp = await client.get(`${ADMIN_BASE_URL}/${TEAM_SLUG}/Calendar`);
+      const calResp = await followRedirects(calendarResp);
+
+      if (calResp.status === 200 && typeof calResp.data === "string") {
+        eventInfo = findNextEventFromCalendar(calResp.data);
+
+        if (eventInfo) {
+          // Hämta redigeringssidan för att få Deltar/Deltar ej
+          const editResp = await client.get(
+            `${ADMIN_BASE_URL}/${TEAM_SLUG}/Calendar/Edit/${eventInfo.eventId}`
+          );
+          const editPage = await followRedirects(editResp);
+
+          if (editPage.status === 200 && typeof editPage.data === "string") {
+            const { registered, declined } = extractAttendeesFromEditPage(editPage.data);
+
+            if (registered.length > 0 || declined.length > 0) {
+              return {
+                eventTitle: eventInfo.eventTitle || "Träning",
+                eventDate: eventInfo.eventDate,
+                registeredNames: registered,
+                declinedNames: declined,
+                totalRegistered: registered.length,
+              };
+            }
+          }
+        }
+      }
+    } catch (adminError: any) {
+      // Admin-sidan misslyckades, fortsätt med fallback
+    }
+
+    // Steg 3: Fallback – hämta via publika startsidan + RSVP modal
+    let resp = await client.get(`${BASE_URL}/${TEAM_SLUG}`);
     resp = await followRedirects(resp);
 
-    const eventInfo = findNextEventId(resp.data);
-    if (!eventInfo) {
+    const fallbackEventInfo = findNextEventId(resp.data);
+    if (!fallbackEventInfo && !eventInfo) {
       return {
         eventTitle: "",
         eventDate: new Date().toISOString().split("T")[0],
@@ -277,15 +449,16 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
       };
     }
 
-    // Steg 3: Hämta RSVP modal content (anmälningslistan)
-    const rsvpUrl = `/Common/Rsvp/ModalContent?pk=${eventInfo.eventId}&site=${TEAM_SLUG}`;
+    const eid = fallbackEventInfo || eventInfo!;
+
+    const rsvpUrl = `${BASE_URL}/Common/Rsvp/ModalContent?pk=${eid.eventId}&site=${TEAM_SLUG}`;
     resp = await client.get(rsvpUrl);
     resp = await followRedirects(resp);
 
     if (resp.status !== 200) {
       return {
-        eventTitle: eventInfo.eventTitle || "Träning",
-        eventDate: eventInfo.eventDate,
+        eventTitle: eid.eventTitle || "Träning",
+        eventDate: eid.eventDate,
         registeredNames: [],
         declinedNames: [],
         totalRegistered: 0,
@@ -293,12 +466,11 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
       };
     }
 
-    // Steg 4: Extrahera anmälda och avböjda namn
     const { registered, declined } = extractAttendeesFromModal(resp.data);
 
     return {
-      eventTitle: eventInfo.eventTitle || "Träning",
-      eventDate: eventInfo.eventDate,
+      eventTitle: eid.eventTitle || "Träning",
+      eventDate: eid.eventDate,
       registeredNames: registered,
       declinedNames: declined,
       totalRegistered: registered.length,
