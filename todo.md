@@ -29,3 +29,4 @@
 - [x] Ändra mobil-flikar till Lagnamn (utplacerade/anmälda) istället för nuvarande format
 - [x] Hantera scenario när det inte finns någon aktivitet idag på laget.se — nollställ anmälningar
 - [x] Ändra tillbaka så att backend alltid hittar nästa kommande träning (inte begränsat till idag/imorgon)
+- [x] Ändra desktop lagpanel-header till "antal spelare/antal anmälda" som i mobilversionen
