@@ -179,7 +179,7 @@ export function TeamPanel({
           />
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-white/30 text-xs">{registeredInTeam}/{filledCount} anmälda spelare</span>
+          <span className="text-white/30 text-xs">{registeredInTeam} anmälda av {filledCount} spelare i laget</span>
           {filledCount > 0 && (
             <button
               onClick={() => {
