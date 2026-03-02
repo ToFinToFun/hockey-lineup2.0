@@ -739,6 +739,21 @@ export default function Home() {
 
     if (clientX === 0 && clientY === 0) return;
 
+    const screenWidth = window.innerWidth;
+    const EDGE_ZONE = 40; // px från skärmkant
+
+    // Kolla om positionen är vid skärmkanten (drag-to-edge)
+    let edgeTab: MobileTab | null = null;
+    if (clientX <= EDGE_ZONE) {
+      // Vänster kant → föregående flik
+      const idx = TAB_ORDER.indexOf(mobileTab);
+      if (idx > 0) edgeTab = TAB_ORDER[idx - 1];
+    } else if (clientX >= screenWidth - EDGE_ZONE) {
+      // Höger kant → nästa flik
+      const idx = TAB_ORDER.indexOf(mobileTab);
+      if (idx < TAB_ORDER.length - 1) edgeTab = TAB_ORDER[idx + 1];
+    }
+
     // Kolla om positionen överlappas med en flik-knapp
     const tabButtons = document.querySelectorAll<HTMLElement>("[data-mobile-tab]");
     let hoveredTab: MobileTab | null = null;
@@ -749,16 +764,19 @@ export default function Home() {
       }
     });
 
-    if (hoveredTab && hoveredTab !== lastHoveredTabRef.current) {
-      lastHoveredTabRef.current = hoveredTab;
-      setDragHoverTab(hoveredTab);
+    // Prioritera edge-detection, sedan tab-hover
+    const targetTab = edgeTab || hoveredTab;
+
+    if (targetTab && targetTab !== lastHoveredTabRef.current) {
+      lastHoveredTabRef.current = targetTab;
+      setDragHoverTab(targetTab);
       if (tabHoverTimerRef.current) clearTimeout(tabHoverTimerRef.current);
-      const tabToSwitch = hoveredTab;
+      const tabToSwitch = targetTab;
       tabHoverTimerRef.current = setTimeout(() => {
         setMobileTab(tabToSwitch);
         setDragHoverTab(null);
-      }, 600);
-    } else if (!hoveredTab) {
+      }, edgeTab ? 400 : 600); // Snabbare vid skärmkant
+    } else if (!targetTab) {
       lastHoveredTabRef.current = null;
       setDragHoverTab(null);
       if (tabHoverTimerRef.current) {
@@ -766,7 +784,7 @@ export default function Home() {
         tabHoverTimerRef.current = null;
       }
     }
-  }, []);
+  }, [mobileTab]);
 
   const teamALineup: Record<string, Player> = {};
   const teamBLineup: Record<string, Player> = {};
@@ -1044,8 +1062,23 @@ export default function Home() {
               /* Mobilvy – bara den aktiva fliken renderas */
               <div
                 ref={swipeRef}
-                className="touch-pan-y transition-transform duration-200 ease-out"
+                className="relative touch-pan-y transition-transform duration-200 ease-out"
               >
+                {/* Kantindikatorer vid drag – visar att man kan dra åt sidan */}
+                {activePlayer && isMobile && (
+                  <>
+                    {TAB_ORDER.indexOf(mobileTab) > 0 && (
+                      <div className="absolute left-0 top-0 bottom-0 w-8 z-30 pointer-events-none flex items-center justify-center bg-gradient-to-r from-cyan-400/20 to-transparent animate-pulse rounded-l">
+                        <span className="text-white/60 text-lg">❮</span>
+                      </div>
+                    )}
+                    {TAB_ORDER.indexOf(mobileTab) < TAB_ORDER.length - 1 && (
+                      <div className="absolute right-0 top-0 bottom-0 w-8 z-30 pointer-events-none flex items-center justify-center bg-gradient-to-l from-emerald-400/20 to-transparent animate-pulse rounded-r">
+                        <span className="text-white/60 text-lg">❯</span>
+                      </div>
+                    )}
+                  </>
+                )}
                 {mobileTab === "vita" && (
                   <TeamPanel
                     teamId="team-a"
