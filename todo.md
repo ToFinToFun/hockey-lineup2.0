@@ -54,3 +54,4 @@
 - [x] Dra spelare mot skärmkant för att byta flik på mobil (drag-to-edge)
 - [x] Fixa vanlig swipe (utan drag) på mobil - capture-fas event listeners + 400ms tidsgräns
 - [x] Fixa swipe på mobil: document-level capture-fas listeners + touchmove-detektion (350ms, 50px)
+- [x] Haptic feedback (vibration) vid flikbyte på mobil (swipe, drag-to-edge, tab-klick)
