@@ -20,7 +20,9 @@ describe("laget.se integration", () => {
       result.error.includes("socket hang up") ||
       result.error.includes("timeout") ||
       result.error.includes("ECONNREFUSED") ||
-      result.error.includes("ENOTFOUND")
+      result.error.includes("ENOTFOUND") ||
+      result.error.includes("disconnected") ||
+      result.error.includes("TLS")
     );
 
     if (isNetworkError) {
