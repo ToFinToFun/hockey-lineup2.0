@@ -69,3 +69,5 @@
 - [x] Exportera statistik: inkludera statistik-data i PDF/bild-exporten
 - [x] Favorituppställningar: markera sparade uppställningar som favoriter för snabb åtkomst
 - [x] BUGG: Header-knappar går utanför skärmbredden på mobil – behöver wrappa eller radbryt
+- [x] Återställ textetiketter på header-knapparna (Auto, Slumpa, Dela, Exportera etc.)
+- [x] Lägg tillbaka hjälptext: positionsbeskrivningar (MV/B/F/C/IB) och drag-och-släpp-instruktioner
