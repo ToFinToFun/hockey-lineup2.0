@@ -33,7 +33,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { LongPressTooltip } from "@/components/LongPressTooltip";
 import { saveStateToFirebase, subscribeToFirebase, saveLineupToFirebase, type AppState, type SavedLineup } from "@/lib/firebase";
-import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Monitor, Smartphone } from "lucide-react";
+import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp } from "lucide-react";
 import { matchRegisteredPlayers, matchDeclinedPlayers, fetchAttendanceFromApi, updateAttendanceOnLaget } from "@/lib/laget";
 import { createPortal } from "react-dom"; // används av PlayerList context-meny
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
@@ -416,40 +416,7 @@ export default function Home() {
     return () => window.removeEventListener("keydown", handler);
   }, [handleUndo]);
 
-  const autoIsMobile = useIsMobile();
-
-  // Vy-override: "auto" = responsiv, "mobile" = tvinga mobilvy, "desktop" = tvinga datorvy
-  const [viewMode, setViewMode] = useState<"auto" | "mobile" | "desktop">(() => {
-    try {
-      const saved = localStorage.getItem("stalstadens-view-mode");
-      if (saved === "mobile" || saved === "desktop") return saved;
-    } catch {}
-    return "auto";
-  });
-
-  const toggleViewMode = useCallback(() => {
-    setViewMode((prev) => {
-      const next = prev === "auto" ? "mobile" : prev === "mobile" ? "desktop" : "auto";
-      try { localStorage.setItem("stalstadens-view-mode", next); } catch {}
-      return next;
-    });
-  }, []);
-
-  const isMobile = viewMode === "auto" ? autoIsMobile : viewMode === "mobile";
-
-  // Dynamiskt ändra viewport meta-tag för att simulera desktop-läge på mobil
-  // Detta är samma teknik som Chrome's "Begär datorwebbplats" använder
-  useEffect(() => {
-    const meta = document.querySelector('meta[name="viewport"]');
-    if (!meta) return;
-    if (viewMode === 'desktop' && autoIsMobile) {
-      // Ändra viewport till 1024px bred – browsern skalar automatiskt
-      meta.setAttribute('content', 'width=1024');
-    } else {
-      // Återställ till normal mobilvy
-      meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1');
-    }
-  }, [viewMode, autoIsMobile]);
+  const isMobile = useIsMobile();
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
@@ -1171,28 +1138,6 @@ export default function Home() {
                 </button>
                 </LongPressTooltip>
 
-                {/* Vy-toggle: Auto / Mobil / Dator */}
-                <LongPressTooltip label={viewMode === "auto" ? "Vy: Auto" : viewMode === "mobile" ? "Vy: Mobil" : "Vy: Dator"}>
-                <button
-                  onClick={toggleViewMode}
-                  title={viewMode === "auto" ? "Automatisk vy (klicka för att tvinga mobilvy)" : viewMode === "mobile" ? "Mobilvy (klicka för att tvinga datorvy)" : "Datorvy (klicka för automatisk)"}
-                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${
-                    viewMode === "auto"
-                      ? "bg-white/5 border border-white/15 text-white/50 hover:bg-white/10 hover:text-white/80"
-                      : viewMode === "mobile"
-                      ? "bg-orange-500/25 border border-orange-400/50 text-orange-300 hover:bg-orange-500/35"
-                      : "bg-blue-500/25 border border-blue-400/50 text-blue-300 hover:bg-blue-500/35"
-                  }`}
-                >
-                  {viewMode === "auto" ? (
-                    <><Monitor className="w-3.5 h-3.5" /><span>Auto</span></>
-                  ) : viewMode === "mobile" ? (
-                    <><Smartphone className="w-3.5 h-3.5" /><span>Mobil</span></>
-                  ) : (
-                    <><Monitor className="w-3.5 h-3.5" /><span>Dator</span></>
-                  )}
-                </button>
-                </LongPressTooltip>
 
                 {/* Dela-knapp */}
                 <LongPressTooltip label="Dela länk">
