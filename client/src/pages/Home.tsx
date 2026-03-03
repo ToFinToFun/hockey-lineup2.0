@@ -1042,8 +1042,8 @@ export default function Home() {
                       : "bg-white/5 border border-white/10 text-white/20 cursor-not-allowed"
                   }`}
                 >
-                  <Undo2 className="w-4 h-4 lg:w-3 lg:h-3" />
-                  {undoStack.length > 0 && <span className="hidden lg:inline">{undoStack.length}</span>}
+                  <Undo2 className="w-3.5 h-3.5" />
+                  {undoStack.length > 0 && <span>{undoStack.length}</span>}
                 </button>
                 </LongPressTooltip>
 
@@ -1058,8 +1058,8 @@ export default function Home() {
                       : "bg-white/5 border border-white/15 text-white/50 hover:bg-white/10 hover:text-white/80"
                   }`}
                 >
-                  {sideLayout ? <Columns3 className="w-4 h-4 lg:w-3 lg:h-3" /> : <PanelLeft className="w-4 h-4 lg:w-3 lg:h-3" />}
-                  <span className="hidden lg:inline">{sideLayout ? "Standard" : "Sidoläge"}</span>
+                  {sideLayout ? <Columns3 className="w-3.5 h-3.5" /> : <PanelLeft className="w-3.5 h-3.5" />}
+                  <span>{sideLayout ? "Standard" : "Sidoläge"}</span>
                 </button>
                 </LongPressTooltip>
 
@@ -1070,8 +1070,8 @@ export default function Home() {
                   title="Fördela anmälda spelare automatiskt på lagen"
                   className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 text-[10px] font-bold hover:bg-cyan-500/30 transition-all uppercase tracking-wider"
                 >
-                  <Shuffle className="w-4 h-4 lg:w-3 lg:h-3" />
-                  <span className="hidden lg:inline">Auto</span>
+                  <Shuffle className="w-3.5 h-3.5" />
+                  <span>Auto</span>
                 </button>
                 </LongPressTooltip>
 
@@ -1082,8 +1082,8 @@ export default function Home() {
                   title="Slumpa om neutrala spelare (utan lagfärg) mellan lagen"
                   className="flex items-center gap-1 px-2 py-1 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold hover:bg-amber-500/30 transition-all uppercase tracking-wider"
                 >
-                  <Dices className="w-4 h-4 lg:w-3 lg:h-3" />
-                  <span className="hidden lg:inline">Slumpa</span>
+                  <Dices className="w-3.5 h-3.5" />
+                  <span>Slumpa</span>
                 </button>
                 </LongPressTooltip>
 
@@ -1100,8 +1100,8 @@ export default function Home() {
                   }`}
                 >
                   {shareState === "copied"
-                    ? <><Check className="w-4 h-4 lg:w-3 lg:h-3" /><span className="hidden lg:inline">Kopierad!</span></>
-                    : <><Share2 className="w-4 h-4 lg:w-3 lg:h-3" /><span className="hidden lg:inline">Dela</span></>}
+                    ? <><Check className="w-3.5 h-3.5" /><span>Kopierad!</span></>
+                    : <><Share2 className="w-3.5 h-3.5" /><span>Dela</span></>}
                 </button>
                 </LongPressTooltip>
 
@@ -1112,8 +1112,8 @@ export default function Home() {
                   title="Exportera laguppställning"
                   className="flex items-center gap-1 px-2 py-1 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-bold hover:bg-emerald-500/30 transition-all uppercase tracking-wider"
                 >
-                  <Download className="w-4 h-4 lg:w-3 lg:h-3" />
-                  <span className="hidden lg:inline">Exportera</span>
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Exportera</span>
                 </button>
                 </LongPressTooltip>
 
@@ -1128,10 +1128,20 @@ export default function Home() {
                       : "bg-white/5 border border-white/15 text-white/50 hover:bg-white/10 hover:text-white/80"
                   }`}
                 >
-                  <BarChart3 className="w-4 h-4 lg:w-3 lg:h-3" />
-                  {showStats ? <ChevronUp className="w-3 h-3 hidden lg:block" /> : <ChevronDown className="w-3 h-3 hidden lg:block" />}
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  {showStats ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                 </button>
                 </LongPressTooltip>
+              </div>
+              {/* Hjälptext – positioner och instruktioner */}
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-white/35">
+                <span className="flex items-center gap-1"><span className="bg-yellow-500/30 text-yellow-300 px-1 rounded text-[9px] font-bold">MV</span> Målvakt</span>
+                <span className="flex items-center gap-1"><span className="bg-blue-500/30 text-blue-300 px-1 rounded text-[9px] font-bold">B</span> Back</span>
+                <span className="flex items-center gap-1"><span className="bg-red-500/30 text-red-300 px-1 rounded text-[9px] font-bold">F</span> Forward</span>
+                <span className="flex items-center gap-1"><span className="bg-purple-500/30 text-purple-300 px-1 rounded text-[9px] font-bold">C</span> Center</span>
+                <span className="flex items-center gap-1"><span className="bg-teal-500/30 text-teal-300 px-1 rounded text-[9px] font-bold">IB</span> Innebandy</span>
+                <span className="text-white/20">|</span>
+                <span>Dra spelare till en plats · Klicka på badge för att ändra position</span>
               </div>
             </div>
           </header>
