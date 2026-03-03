@@ -815,28 +815,54 @@ export default function Home() {
     }
   }, []);
 
+  // Spåra vilka spelare som synkas just nu
+  const [syncingPlayerIds, setSyncingPlayerIds] = useState<Set<string>>(new Set());
+
   // Synka en spelares status till laget.se och uppdatera lokalt
   const handleSyncToLaget = useCallback(async (playerId: string, playerName: string, status: "Attending" | "NotAttending" | "NotAnswered") => {
-    const result = await updateAttendanceOnLaget(playerName, status);
-    if (!result.success) {
-      alert(`Kunde inte uppdatera ${playerName} på laget.se: ${result.error}`);
-      return;
-    }
-    // Uppdatera lokal status baserat på vad vi satte
-    const isRegistered = status === "Attending";
-    const isDeclined = status === "NotAttending";
-    const update = (p: Player): Player => p.id === playerId ? { ...p, isRegistered, isDeclined } : p;
-    setAvailablePlayers((prev) => prev.map(update));
-    setLineup((prev) => {
-      const next = { ...prev };
-      for (const [slotId, p] of Object.entries(next)) {
-        if (p.id === playerId) next[slotId] = update(p);
+    setSyncingPlayerIds((prev) => new Set(prev).add(playerId));
+    try {
+      const result = await updateAttendanceOnLaget(playerName, status);
+      if (!result.success) {
+        alert(`Kunde inte uppdatera ${playerName} på laget.se: ${result.error}`);
+        return;
       }
-      return next;
-    });
+      // Uppdatera lokal status baserat på vad vi satte
+      const isRegistered = status === "Attending";
+      const isDeclined = status === "NotAttending";
+      const update = (p: Player): Player => p.id === playerId ? { ...p, isRegistered, isDeclined } : p;
+      setAvailablePlayers((prev) => prev.map(update));
+      setLineup((prev) => {
+        const next = { ...prev };
+        for (const [slotId, p] of Object.entries(next)) {
+          if (p.id === playerId) next[slotId] = update(p);
+        }
+        return next;
+      });
+    } finally {
+      setSyncingPlayerIds((prev) => {
+        const next = new Set(prev);
+        next.delete(playerId);
+        return next;
+      });
+    }
     // Hämta om från laget.se för att säkerställa synk
     setTimeout(() => handleBulkRegister(true), 2000);
   }, [handleBulkRegister]);
+
+  // Bulk-ändra status för flera spelare till laget.se
+  const handleBulkSyncToLaget = useCallback(async (playerIds: string[], status: "Attending" | "NotAttending" | "NotAnswered") => {
+    // Hitta spelarnamn för varje ID
+    const allPlayers = [...availablePlayersRef.current, ...Object.values(lineupRef.current)];
+    const playerMap = new Map(allPlayers.map(p => [p.id, p]));
+    
+    // Kör sekventiellt för att inte överbelasta laget.se
+    for (const id of playerIds) {
+      const player = playerMap.get(id);
+      if (!player) continue;
+      await handleSyncToLaget(id, player.name, status);
+    }
+  }, [handleSyncToLaget]);
 
   // Auto-hämta anmälningar vid sidladdning
   const autoFetchDone = useRef(false);
@@ -1367,20 +1393,22 @@ export default function Home() {
                         onChangeName={handleChangeName}
                         onChangeCaptainRole={handleChangeCaptainRole}
                         onChangeRegistered={handleChangeRegistered}
-                        onSyncToLaget={handleSyncToLaget}
-                        onChangeGamesPlayed={handleChangeGamesPlayed}
-                        onBulkRegister={handleBulkRegister}
-                        onEventInfoUpdate={setEventInfo}
-                        totalRegistered={totalRegistered}
-                        totalDeclined={totalDeclined}
-                        totalPlayers={totalPlayers}
-                      />
+                         onSyncToLaget={handleSyncToLaget}
+                         syncingPlayerIds={syncingPlayerIds}
+                         onBulkSyncToLaget={handleBulkSyncToLaget}
+                         onChangeGamesPlayed={handleChangeGamesPlayed}
+                         onBulkRegister={handleBulkRegister}
+                         onEventInfoUpdate={setEventInfo}
+                         totalRegistered={totalRegistered}
+                         totalDeclined={totalDeclined}
+                         totalPlayers={totalPlayers}
+                       />
                     </div>
                     <SavedLineupsPanel
-                      teamAName={teamAName}
-                      teamBName={teamBName}
-                      lineup={lineup}
-                      onLoadLineup={handleLoadLineup}
+                       teamAName={teamAName}
+                       teamBName={teamBName}
+                       lineup={lineup}
+                       onLoadLineup={handleLoadLineup}
                     />
                   </div>
 
@@ -1464,6 +1492,8 @@ export default function Home() {
                         onChangeCaptainRole={handleChangeCaptainRole}
                         onChangeRegistered={handleChangeRegistered}
                         onSyncToLaget={handleSyncToLaget}
+                        syncingPlayerIds={syncingPlayerIds}
+                        onBulkSyncToLaget={handleBulkSyncToLaget}
                         onChangeGamesPlayed={handleChangeGamesPlayed}
                         onBulkRegister={handleBulkRegister}
                         onEventInfoUpdate={setEventInfo}
@@ -1545,6 +1575,8 @@ export default function Home() {
                       onChangeCaptainRole={handleChangeCaptainRole}
                       onChangeRegistered={handleChangeRegistered}
                       onSyncToLaget={handleSyncToLaget}
+                      syncingPlayerIds={syncingPlayerIds}
+                      onBulkSyncToLaget={handleBulkSyncToLaget}
                       onChangeGamesPlayed={handleChangeGamesPlayed}
                       onBulkRegister={handleBulkRegister}
                        onEventInfoUpdate={setEventInfo}

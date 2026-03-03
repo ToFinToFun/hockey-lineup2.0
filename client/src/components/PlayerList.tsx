@@ -5,7 +5,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard, TeamColorIndicator } from "./PlayerCard";
 import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
 import { ALL_POSITIONS, POSITION_LABELS, getPositionBadgeColor } from "@/lib/players";
-import { Search, UserPlus, X, ArrowUpDown, ClipboardCheck } from "lucide-react";
+import { Search, UserPlus, X, ArrowUpDown, ClipboardCheck, CheckSquare, Square, Loader2 } from "lucide-react";
 import { nanoid } from "nanoid";
 
 interface PlayerListProps {
@@ -19,6 +19,8 @@ interface PlayerListProps {
   onChangeCaptainRole: (playerId: string, role: CaptainRole) => void;
   onChangeRegistered: (playerId: string, isRegistered: boolean) => void;
   onSyncToLaget?: (playerId: string, playerName: string, status: "Attending" | "NotAttending" | "NotAnswered") => Promise<void>;
+  syncingPlayerIds?: Set<string>;
+  onBulkSyncToLaget?: (playerIds: string[], status: "Attending" | "NotAttending" | "NotAnswered") => Promise<void>;
   onChangeGamesPlayed: (playerId: string, gamesPlayed: number) => void;
   onBulkRegister?: (forceRefresh?: boolean) => Promise<{ matched: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string; noEvent?: boolean }>;
   onEventInfoUpdate?: (info: { title: string; date: string } | null) => void;
@@ -77,7 +79,10 @@ function sortPlayers(players: Player[], key: SortKey, dir: SortDir): Player[] {
   });
 }
 
-export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber, onChangeName, onChangeCaptainRole, onChangeRegistered, onSyncToLaget, onChangeGamesPlayed, onBulkRegister, onEventInfoUpdate, totalRegistered, totalDeclined, totalPlayers }: PlayerListProps) {
+export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber, onChangeName, onChangeCaptainRole, onChangeRegistered, onSyncToLaget, syncingPlayerIds, onBulkSyncToLaget, onChangeGamesPlayed, onBulkRegister, onEventInfoUpdate, totalRegistered, totalDeclined, totalPlayers }: PlayerListProps) {
+  const [bulkSelectMode, setBulkSelectMode] = useState(false);
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
+  const [isBulkSyncing, setIsBulkSyncing] = useState(false);
   const [search, setSearch] = useState("");
   const [posFilter, setPosFilter] = useState<PosFilter>("Alla");
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("Alla");
@@ -182,7 +187,21 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
             <span className="text-emerald-400/70 text-xs font-semibold">
               Anmälda {players.filter(p => p.isRegistered).length}/{totalRegistered ?? players.filter(p => p.isRegistered).length}
             </span>
-
+            {onBulkSyncToLaget && (
+              <button
+                onClick={() => {
+                  setBulkSelectMode((prev) => !prev);
+                  setSelectedPlayerIds(new Set());
+                }}
+                className={`text-[9px] font-bold px-2 py-1 rounded border transition-all ${
+                  bulkSelectMode
+                    ? "bg-violet-500/25 text-violet-300 border-violet-400/50"
+                    : "bg-white/5 text-white/40 border-white/10 hover:bg-white/10 hover:text-white/60"
+                }`}
+              >
+                {bulkSelectMode ? "Avbryt" : "Bulk"}
+              </button>
+            )}
           </div>
         </div>
 
@@ -262,6 +281,80 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
 
       </div>
 
+      {/* Bulk-åtgärder */}
+      {bulkSelectMode && onBulkSyncToLaget && (
+        <div className="px-3 py-2 border-b border-white/10 bg-violet-500/5">
+          <div className="flex items-center gap-2 mb-1.5">
+            <button
+              onClick={() => {
+                if (selectedPlayerIds.size === sorted.length) {
+                  setSelectedPlayerIds(new Set());
+                } else {
+                  setSelectedPlayerIds(new Set(sorted.map(p => p.id)));
+                }
+              }}
+              className="text-[9px] font-bold px-2 py-0.5 rounded border bg-white/5 text-white/50 border-white/10 hover:bg-white/10 hover:text-white/70 transition-all"
+            >
+              {selectedPlayerIds.size === sorted.length ? "Avmarkera alla" : "Markera alla"}
+            </button>
+            <span className="text-[9px] text-white/40">
+              {selectedPlayerIds.size} valda
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9px] text-white/40">Laget.se:</span>
+            <button
+              disabled={selectedPlayerIds.size === 0 || isBulkSyncing}
+              onClick={async () => {
+                setIsBulkSyncing(true);
+                try {
+                  await onBulkSyncToLaget(Array.from(selectedPlayerIds), "Attending");
+                } finally {
+                  setIsBulkSyncing(false);
+                  setSelectedPlayerIds(new Set());
+                  setBulkSelectMode(false);
+                }
+              }}
+              className="text-[9px] font-bold px-2 py-1 rounded border transition-all bg-emerald-500/15 text-emerald-300 border-emerald-400/40 hover:bg-emerald-500/25 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isBulkSyncing ? <Loader2 className="w-3 h-3 animate-spin" /> : "Alla Deltar"}
+            </button>
+            <button
+              disabled={selectedPlayerIds.size === 0 || isBulkSyncing}
+              onClick={async () => {
+                setIsBulkSyncing(true);
+                try {
+                  await onBulkSyncToLaget(Array.from(selectedPlayerIds), "NotAttending");
+                } finally {
+                  setIsBulkSyncing(false);
+                  setSelectedPlayerIds(new Set());
+                  setBulkSelectMode(false);
+                }
+              }}
+              className="text-[9px] font-bold px-2 py-1 rounded border transition-all bg-red-500/15 text-red-300 border-red-400/40 hover:bg-red-500/25 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isBulkSyncing ? <Loader2 className="w-3 h-3 animate-spin" /> : "Alla Deltar ej"}
+            </button>
+            <button
+              disabled={selectedPlayerIds.size === 0 || isBulkSyncing}
+              onClick={async () => {
+                setIsBulkSyncing(true);
+                try {
+                  await onBulkSyncToLaget(Array.from(selectedPlayerIds), "NotAnswered");
+                } finally {
+                  setIsBulkSyncing(false);
+                  setSelectedPlayerIds(new Set());
+                  setBulkSelectMode(false);
+                }
+              }}
+              className="text-[9px] font-bold px-2 py-1 rounded border transition-all bg-white/5 text-white/40 border-white/10 hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isBulkSyncing ? <Loader2 className="w-3 h-3 animate-spin" /> : "Alla Ej svarat"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Spelarlista – scrollbar med fast höjd */}
       <div className="overflow-y-auto p-2 space-y-1" style={{ maxHeight: "560px", overscrollBehavior: "auto" }}>
         {sorted.length === 0 ? (
@@ -270,19 +363,45 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
           </div>
         ) : (
           sorted.map((player) => (
-            <div key={player.id}>
-              <DraggablePlayerCard
-                player={player}
-                onChangePosition={(pos) => onChangePosition(player.id, pos)}
-                onChangeTeamColor={(color) => onChangeTeamColor(player.id, color)}
-                onChangeNumber={(nr) => onChangeNumber(player.id, nr)}
-                onChangeName={(name) => onChangeName(player.id, name)}
-                onChangeCaptainRole={(role) => onChangeCaptainRole(player.id, role)}
-                onChangeRegistered={(val) => onChangeRegistered(player.id, val)}
-                onSyncToLaget={onSyncToLaget ? (status) => onSyncToLaget(player.id, player.name, status) : undefined}
-                onChangeGamesPlayed={(val) => onChangeGamesPlayed(player.id, val)}
-                onDelete={() => onDeletePlayer(player.id)}
-              />
+            <div key={player.id} className="flex items-center gap-1">
+              {bulkSelectMode && (
+                <button
+                  onClick={() => {
+                    setSelectedPlayerIds((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(player.id)) next.delete(player.id);
+                      else next.add(player.id);
+                      return next;
+                    });
+                  }}
+                  className="shrink-0 p-0.5 text-white/40 hover:text-white/70 transition-colors"
+                >
+                  {selectedPlayerIds.has(player.id) ? (
+                    <CheckSquare className="w-4 h-4 text-violet-400" />
+                  ) : (
+                    <Square className="w-4 h-4" />
+                  )}
+                </button>
+              )}
+              <div className="flex-1 relative">
+                {syncingPlayerIds?.has(player.id) && (
+                  <div className="absolute top-1 right-1 z-10">
+                    <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+                  </div>
+                )}
+                <DraggablePlayerCard
+                  player={player}
+                  onChangePosition={(pos) => onChangePosition(player.id, pos)}
+                  onChangeTeamColor={(color) => onChangeTeamColor(player.id, color)}
+                  onChangeNumber={(nr) => onChangeNumber(player.id, nr)}
+                  onChangeName={(name) => onChangeName(player.id, name)}
+                  onChangeCaptainRole={(role) => onChangeCaptainRole(player.id, role)}
+                  onChangeRegistered={(val) => onChangeRegistered(player.id, val)}
+                  onSyncToLaget={onSyncToLaget ? (status) => onSyncToLaget(player.id, player.name, status) : undefined}
+                  onChangeGamesPlayed={(val) => onChangeGamesPlayed(player.id, val)}
+                  onDelete={() => onDeletePlayer(player.id)}
+                />
+              </div>
             </div>
           ))
         )}

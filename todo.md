@@ -73,3 +73,5 @@
 - [x] Lägg tillbaka hjälptext: positionsbeskrivningar (MV/B/F/C/IB) och drag-och-släpp-instruktioner
 - [x] Knapp för att växla mellan mobil- och datoranpassad vy (override av responsiv layout)
 - [x] Undersök och implementera skrivning till laget.se (ändra spelares deltagarstatus: deltar/deltar inte)
+- [x] Bulk-ändra laget.se-status: markera flera spelare och ändra deras status samtidigt
+- [x] Synk-indikator: visa spinner bredvid spelaren medan statusen uppdateras till laget.se
