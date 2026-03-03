@@ -3,7 +3,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { X, Download, Share2 } from "lucide-react";
-import type { Player } from "@/lib/players";
+import type { Player, Position } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
 import { groupSlots } from "@/lib/lineup";
 import { LOGO_GREEN_B64, LOGO_WHITE_B64 } from "@/lib/logoBase64";
@@ -19,6 +19,7 @@ interface ExportModalProps {
   logoGreen: string;
   logoWhite: string;
   bgUrl: string;
+  allPlayers?: Player[];
 }
 
 function getToday(): string {
@@ -312,6 +313,145 @@ function calcTeamHeight(slots: Slot[], lineup: Record<string, Player>): number {
   return h;
 }
 
+// Draw a statistics summary section on the canvas
+function drawStatsSection(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  allPlayers: Player[],
+  teamALineup: Record<string, Player>,
+  teamBLineup: Record<string, Player>,
+  teamAName: string,
+  teamBName: string
+): number {
+  let curY = y;
+
+  // Section header
+  ctx.font = "bold 10px 'Arial', sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.4)";
+  ctx.letterSpacing = "2px";
+  ctx.fillText("STATISTIK", x, curY + 10);
+  curY += 18;
+
+  // Divider
+  ctx.strokeStyle = "rgba(255,255,255,0.08)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x, curY);
+  ctx.lineTo(x + width, curY);
+  ctx.stroke();
+  curY += 8;
+
+  const regCount = allPlayers.filter(p => p.isRegistered).length;
+  const decCount = allPlayers.filter(p => p.isDeclined).length;
+  const noAnswer = allPlayers.length - regCount - decCount;
+
+  // Overview row
+  const colW = width / 3;
+  ctx.font = "bold 9px 'Arial', sans-serif";
+  ctx.letterSpacing = "1px";
+
+  // Column 1: Spelartrupp
+  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  ctx.fillText("SPELARTRUPP", x, curY + 9);
+  curY += 16;
+
+  const overviewItems = [
+    { label: "Totalt", value: `${allPlayers.length}`, color: "#ffffff" },
+    { label: "Anmälda", value: `${regCount}`, color: "#34d399" },
+    { label: "Avböjda", value: `${decCount}`, color: "#f87171" },
+    { label: "Ej svarat", value: `${noAnswer}`, color: "rgba(255,255,255,0.4)" },
+  ];
+
+  ctx.font = "11px 'Arial', sans-serif";
+  ctx.letterSpacing = "0px";
+  overviewItems.forEach(item => {
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.fillText(item.label, x, curY + 10);
+    ctx.fillStyle = item.color;
+    ctx.font = "bold 11px 'Arial', sans-serif";
+    ctx.fillText(item.value, x + 70, curY + 10);
+    ctx.font = "11px 'Arial', sans-serif";
+    curY += 15;
+  });
+
+  // Column 2: Per position (draw at offset)
+  let posY = y + 18 + 8;
+  const posX = x + colW;
+  ctx.font = "bold 9px 'Arial', sans-serif";
+  ctx.letterSpacing = "1px";
+  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  ctx.fillText("PER POSITION", posX, posY + 9);
+  posY += 16;
+
+  const positions: { pos: string; label: string; color: string }[] = [
+    { pos: "MV", label: "Målvakter", color: "#f59e0b" },
+    { pos: "B", label: "Backar", color: "#60a5fa" },
+    { pos: "F", label: "Forwards", color: "#34d399" },
+    { pos: "C", label: "Center", color: "#a78bfa" },
+    { pos: "IB", label: "Ice Box", color: "rgba(255,255,255,0.3)" },
+  ];
+
+  ctx.font = "11px 'Arial', sans-serif";
+  ctx.letterSpacing = "0px";
+  positions.forEach(({ pos, label, color }) => {
+    const count = allPlayers.filter(p => p.position === pos).length;
+    ctx.fillStyle = color;
+    ctx.fillText(label, posX, posY + 10);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 11px 'Arial', sans-serif";
+    ctx.fillText(`${count}`, posX + 75, posY + 10);
+    ctx.font = "11px 'Arial', sans-serif";
+    posY += 15;
+  });
+
+  // Column 3: Lagfördelning
+  let teamY = y + 18 + 8;
+  const teamX = x + colW * 2;
+  ctx.font = "bold 9px 'Arial', sans-serif";
+  ctx.letterSpacing = "1px";
+  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  ctx.fillText("LAGFÖRDELNING", teamX, teamY + 9);
+  teamY += 16;
+
+  const tAPlayers = Object.values(teamALineup);
+  const tBPlayers = Object.values(teamBLineup);
+
+  // Header row
+  ctx.font = "bold 9px 'Arial', sans-serif";
+  ctx.letterSpacing = "0px";
+  ctx.fillStyle = "#e2e8f0";
+  ctx.fillText(teamAName, teamX + 40, teamY + 10);
+  ctx.fillStyle = "#34d399";
+  ctx.fillText(teamBName, teamX + 90, teamY + 10);
+  teamY += 15;
+
+  ctx.font = "11px 'Arial', sans-serif";
+  ["MV", "B", "F", "C"].forEach(pos => {
+    const posColors: Record<string, string> = { MV: "#f59e0b", B: "#60a5fa", F: "#34d399", C: "#a78bfa" };
+    const tACount = tAPlayers.filter(p => p.position === pos).length;
+    const tBCount = tBPlayers.filter(p => p.position === pos).length;
+    ctx.fillStyle = posColors[pos] || "#ffffff";
+    ctx.fillText(pos, teamX, teamY + 10);
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.fillText(`${tACount}`, teamX + 50, teamY + 10);
+    ctx.fillText(`${tBCount}`, teamX + 100, teamY + 10);
+    teamY += 15;
+  });
+
+  // Totals
+  ctx.font = "bold 11px 'Arial', sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.5)";
+  ctx.fillText("Totalt", teamX, teamY + 10);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(`${tAPlayers.length}`, teamX + 50, teamY + 10);
+  ctx.fillText(`${tBPlayers.length}`, teamX + 100, teamY + 10);
+  teamY += 15;
+
+  return Math.max(curY, posY, teamY);
+}
+
 export function ExportModal({
   onClose,
   teamAName,
@@ -322,6 +462,7 @@ export function ExportModal({
   teamBSlots,
   logoGreen,
   logoWhite,
+  allPlayers = [],
 }: ExportModalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [exporting, setExporting] = useState(false);
@@ -352,11 +493,13 @@ export function ExportModal({
     const singleTeam = teamAHasPlayers !== teamBHasPlayers;
 
     const W = singleTeam ? 540 : 960;
-    // Dynamic height: header (88px) + max of both teams + footer (30px)
+    // Dynamic height: header (88px) + max of both teams + stats section (120px) + footer (30px)
     const teamAH = teamAHasPlayers ? calcTeamHeight(teamASlots, teamALineup) : 0;
     const teamBH = teamBHasPlayers ? calcTeamHeight(teamBSlots, teamBLineup) : 0;
     const contentH = bothTeams ? Math.max(teamAH, teamBH) : (teamAH + teamBH);
-    const H = Math.max(200, 88 + contentH + 30);
+    const hasStats = allPlayers.length > 0;
+    const statsH = hasStats ? 130 : 0;
+    const H = Math.max(200, 88 + contentH + statsH + 30);
     canvas.width = W * 2;
     canvas.height = H * 2;
     canvas.style.width = `${W}px`;
@@ -424,6 +567,12 @@ export function ExportModal({
       // Only GRÖNA team
       const colW = W - 48;
       drawTeamBlock(ctx, 24, startY, colW, teamBName, "#34d399", teamBSlots, teamBLineup, imgGreen, "#337931");
+    }
+
+    // Statistics section
+    if (hasStats) {
+      const statsY = 88 + contentH + 10;
+      drawStatsSection(ctx, 24, statsY, W - 48, allPlayers, teamALineup, teamBLineup, teamAName, teamBName);
     }
 
     // Footer

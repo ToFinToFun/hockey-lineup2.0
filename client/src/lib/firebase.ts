@@ -11,6 +11,7 @@ import {
   off,
   push,
   remove,
+  update,
   type DatabaseReference,
 } from "firebase/database";
 import type { Player } from "./players";
@@ -46,6 +47,7 @@ export type SavedLineup = {
   teamAName: string;
   teamBName: string;
   lineup: Record<string, Player>;
+  favorite?: boolean;  // Markerad som favorit
 };
 
 // Write the full app state to Firebase
@@ -125,10 +127,21 @@ export function subscribeSavedLineups(
     const raw = snapshot.val() as Record<string, Omit<SavedLineup, "id">>;
     const list = Object.entries(raw)
       .map(([id, data]) => ({ id, ...data }))
-      .sort((a, b) => b.savedAt - a.savedAt);
+      .sort((a, b) => {
+        // Favoriter först, sedan nyaste
+        if (a.favorite && !b.favorite) return -1;
+        if (!a.favorite && b.favorite) return 1;
+        return b.savedAt - a.savedAt;
+      });
     callback(list);
   });
   return () => off(listRef);
+}
+
+// Toggla favorit-status på en sparad uppställning
+export async function toggleFavoriteLineup(id: string, currentFavorite: boolean): Promise<void> {
+  const itemRef = ref(db, `savedLineups/${id}`);
+  await update(itemRef, { favorite: !currentFavorite });
 }
 
 // Ta bort en sparad uppställning

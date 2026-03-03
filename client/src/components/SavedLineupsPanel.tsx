@@ -2,11 +2,12 @@
 // Design: Industrial Ice Arena – mörk panel med gröna accenter
 
 import { useState, useEffect } from "react";
-import { BookmarkPlus, Trash2, Download, ChevronDown, ChevronUp, Clock, Share2, Check } from "lucide-react";
+import { BookmarkPlus, Trash2, Download, ChevronDown, ChevronUp, Clock, Share2, Check, Star } from "lucide-react";
 import {
   saveLineupToFirebase,
   subscribeSavedLineups,
   deleteLineupFromFirebase,
+  toggleFavoriteLineup,
   type SavedLineup,
 } from "@/lib/firebase";
 import type { Player } from "@/lib/players";
@@ -153,6 +154,19 @@ export function SavedLineupsPanel({
                       </span>
                     </div>
                   </div>
+
+                  {/* Favorit */}
+                  <button
+                    onClick={() => toggleFavoriteLineup(sl.id, !!sl.favorite)}
+                    title={sl.favorite ? "Ta bort favorit" : "Markera som favorit"}
+                    className={`p-1.5 rounded-md transition-all ${
+                      sl.favorite
+                        ? "text-yellow-400 bg-yellow-500/15"
+                        : "text-white/20 hover:text-yellow-400 hover:bg-yellow-500/10"
+                    }`}
+                  >
+                    <Star className={`w-3.5 h-3.5 ${sl.favorite ? "fill-yellow-400" : ""}`} />
+                  </button>
 
                   {/* Dela */}
                   <button

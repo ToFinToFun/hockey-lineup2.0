@@ -31,6 +31,7 @@ import { PlayerCardOverlay } from "@/components/PlayerCard";
 import { ExportModal } from "@/components/ExportModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
+import { LongPressTooltip } from "@/components/LongPressTooltip";
 import { saveStateToFirebase, subscribeToFirebase, saveLineupToFirebase, type AppState, type SavedLineup } from "@/lib/firebase";
 import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp } from "lucide-react";
 import { matchRegisteredPlayers, matchDeclinedPlayers, fetchAttendanceFromApi } from "@/lib/laget";
@@ -1028,6 +1029,7 @@ export default function Home() {
                 </div>
 
                 {/* Ångra-knapp */}
+                <LongPressTooltip label={`Ångra (${undoStack.length} steg)`}>
                 <button
                   onClick={handleUndo}
                   disabled={undoStack.length === 0}
@@ -1041,8 +1043,10 @@ export default function Home() {
                   <Undo2 className="w-4 h-4 lg:w-3 lg:h-3" />
                   {undoStack.length > 0 && <span className="hidden lg:inline">{undoStack.length}</span>}
                 </button>
+                </LongPressTooltip>
 
                 {/* Layout-toggle-knapp */}
+                <LongPressTooltip label={sideLayout ? "Standard" : "Sidoläge"}>
                 <button
                   onClick={toggleSideLayout}
                   title={sideLayout ? "Standard-layout (Vita | Trupp | Gröna)" : "Sidoläge (Trupp till vänster, lagen bredvid)"}
@@ -1055,8 +1059,10 @@ export default function Home() {
                   {sideLayout ? <Columns3 className="w-4 h-4 lg:w-3 lg:h-3" /> : <PanelLeft className="w-4 h-4 lg:w-3 lg:h-3" />}
                   <span className="hidden lg:inline">{sideLayout ? "Standard" : "Sidoläge"}</span>
                 </button>
+                </LongPressTooltip>
 
                 {/* Auto-fördela-knapp */}
+                <LongPressTooltip label="Autofördela">
                 <button
                   onClick={() => setConfirmAutoDistribute(true)}
                   title="Fördela anmälda spelare automatiskt på lagen"
@@ -1065,8 +1071,10 @@ export default function Home() {
                   <Shuffle className="w-4 h-4 lg:w-3 lg:h-3" />
                   <span className="hidden lg:inline">Auto</span>
                 </button>
+                </LongPressTooltip>
 
                 {/* Slumpa om-knapp */}
+                <LongPressTooltip label="Slumpa">
                 <button
                   onClick={() => handleAutoDistribute(true)}
                   title="Slumpa om neutrala spelare (utan lagfärg) mellan lagen"
@@ -1075,8 +1083,10 @@ export default function Home() {
                   <Dices className="w-4 h-4 lg:w-3 lg:h-3" />
                   <span className="hidden lg:inline">Slumpa</span>
                 </button>
+                </LongPressTooltip>
 
                 {/* Dela-knapp */}
+                <LongPressTooltip label="Dela länk">
                 <button
                   onClick={handleShare}
                   disabled={shareState === "saving"}
@@ -1091,8 +1101,10 @@ export default function Home() {
                     ? <><Check className="w-4 h-4 lg:w-3 lg:h-3" /><span className="hidden lg:inline">Kopierad!</span></>
                     : <><Share2 className="w-4 h-4 lg:w-3 lg:h-3" /><span className="hidden lg:inline">Dela</span></>}
                 </button>
+                </LongPressTooltip>
 
                 {/* Export-knapp */}
+                <LongPressTooltip label="Exportera">
                 <button
                   onClick={() => setShowExport(true)}
                   title="Exportera laguppställning"
@@ -1101,8 +1113,10 @@ export default function Home() {
                   <Download className="w-4 h-4 lg:w-3 lg:h-3" />
                   <span className="hidden lg:inline">Exportera</span>
                 </button>
+                </LongPressTooltip>
 
                 {/* Statistik-knapp */}
+                <LongPressTooltip label="Statistik">
                 <button
                   onClick={() => setShowStats((v) => !v)}
                   title="Visa/dölj statistik"
@@ -1115,6 +1129,7 @@ export default function Home() {
                   <BarChart3 className="w-4 h-4 lg:w-3 lg:h-3" />
                   {showStats ? <ChevronUp className="w-3 h-3 hidden lg:block" /> : <ChevronDown className="w-3 h-3 hidden lg:block" />}
                 </button>
+                </LongPressTooltip>
               </div>
             </div>
           </header>
@@ -1494,17 +1509,18 @@ export default function Home() {
       {/* Export-modal */}
       {showExport && (
         <ExportModal
-          onClose={() => setShowExport(false)}
-          teamAName={teamAName}
-          teamBName={teamBName}
-          teamALineup={teamALineup}
-          teamBLineup={teamBLineup}
-          teamASlots={TEAM_A_SLOTS}
-          teamBSlots={TEAM_B_SLOTS}
-          logoGreen={LOGO_GREEN}
-          logoWhite={LOGO_WHITE}
-          bgUrl={BG_URL}
-        />
+           onClose={() => setShowExport(false)}
+           teamAName={teamAName}
+           teamBName={teamBName}
+           teamALineup={teamALineup}
+           teamBLineup={teamBLineup}
+           teamASlots={TEAM_A_SLOTS}
+           teamBSlots={TEAM_B_SLOTS}
+           logoGreen={LOGO_GREEN}
+           logoWhite={LOGO_WHITE}
+           bgUrl={BG_URL}
+           allPlayers={availablePlayers}
+         />
       )}
 
       {/* Bekräftelsedialog för Rensa */}
