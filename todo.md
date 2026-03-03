@@ -68,3 +68,4 @@
 - [x] Tooltip på mobilknappar: visa knappnamn vid lång tryckning
 - [x] Exportera statistik: inkludera statistik-data i PDF/bild-exporten
 - [x] Favorituppställningar: markera sparade uppställningar som favoriter för snabb åtkomst
+- [x] BUGG: Header-knappar går utanför skärmbredden på mobil – behöver wrappa eller radbryt

@@ -994,20 +994,21 @@ export default function Home() {
         <div className="relative flex flex-col min-h-screen">
           {/* Header */}
           <header className="px-4 pt-4 pb-2 shrink-0">
-            <div className="max-w-7xl mx-auto flex items-center justify-between">
-              <div>
+            <div className="max-w-7xl mx-auto">
+              <div className="flex items-center justify-between">
+              <div className="shrink-0">
                 <h1
-                  className="text-2xl md:text-3xl font-black text-white tracking-widest uppercase"
+                  className="text-xl md:text-3xl font-black text-white tracking-widest uppercase"
                   style={{ fontFamily: "'Oswald', sans-serif" }}
                 >
                   Stålstadens
                   <span className="text-emerald-400 ml-2">Lineup</span>
                 </h1>
-                <p className="text-white/40 text-xs tracking-wider uppercase">
+                <p className="text-white/40 text-[10px] md:text-xs tracking-wider uppercase">
                   A-lag Herrar · Formations-verktyg
                 </p>
                 {eventInfo && (
-                  <p className="flex items-center gap-1.5 text-sky-300/80 text-[11px] mt-0.5 font-medium">
+                  <p className="flex items-center gap-1.5 text-sky-300/80 text-[10px] md:text-[11px] mt-0.5 font-medium">
                     <CalendarDays className="w-3 h-3" />
                     {eventInfo.title}{eventInfo.date ? ` · ${eventInfo.date}` : ""}
                     {lastSyncTime && (
@@ -1016,7 +1017,8 @@ export default function Home() {
                   </p>
                 )}
               </div>
-              <div className="flex items-center gap-1.5 md:gap-2">
+              </div>
+              <div className="flex items-center flex-wrap gap-1 md:gap-1.5 mt-1.5 md:mt-0">
                 {/* Firebase sync status – bara ikon, ingen text */}
                 <div className="flex items-center">
                   {firebaseConnected === null ? (
