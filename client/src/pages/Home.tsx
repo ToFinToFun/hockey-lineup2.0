@@ -1282,8 +1282,8 @@ export default function Home() {
             );
           })()}
 
-          {/* Mobilflikar – syns bara på små skärmar (viewport meta-tag hanterar desktop-läge) */}
-          <div className="shrink-0 md:hidden">
+          {/* Mobilflikar – styrs av isMobile (samma källa som innehållet) */}
+          {isMobile && <div className="shrink-0">
             <div className="flex gap-0 px-2">
               {(sideLayout
                 ? [
@@ -1328,7 +1328,7 @@ export default function Home() {
                 />
               ))}
             </div>
-          </div>
+          </div>}
 
           <main className="px-2 md:px-4 pb-8" ref={exportRef}>
             {/* Villkorlig rendering: ANTINGEN desktop ELLER mobil – aldrig båda */}
