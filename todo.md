@@ -85,3 +85,4 @@
 - [x] Desktop: Gör spelartrupp-kolumnen bredare så spelarnamn får plats
 - [x] Desktop: Gör laguppställnings-kolumnerna smalare och minska mellanrummet
 - [x] Gör Bulk-knappen mindre och med diskretare färg
+- [x] Lägg till favicon med gröna lagets logotyp
