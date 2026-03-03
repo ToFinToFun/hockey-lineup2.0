@@ -65,3 +65,6 @@
 - [x] Expanderbar statistik-panel: spelarfördelning per position, anmälda vs avböjda
 - [x] Ta bort "Avböjda" från spelartrupp-rubriken
 - [x] Lägg till ikoner på mobilvy-knapparna (Auto, Slumpa, etc.) som i webbvyn
+- [x] Tooltip på mobilknappar: visa knappnamn vid lång tryckning
+- [x] Exportera statistik: inkludera statistik-data i PDF/bild-exporten
+- [x] Favorituppställningar: markera sparade uppställningar som favoriter för snabb åtkomst
