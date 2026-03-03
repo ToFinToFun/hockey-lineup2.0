@@ -380,6 +380,185 @@ function extractAttendeesFromModal(html: string): { registered: string[]; declin
  * Primärt via admin-redigeringssidan (som har Deltar ej),
  * med fallback till RSVP-modalen.
  */
+/**
+ * Extrahera userId-mappning från admin-redigeringssidan.
+ * Varje deltagare har en CSS-klass userid-{id} och ett namn i .listAttendeeDataName.
+ */
+function extractUserIdMap(html: string): Map<string, number> {
+  const $ = cheerio.load(html);
+  const map = new Map<string, number>();
+
+  $(".rsvp-cell").each((_, cell) => {
+    const nameEl = $(cell).find(".listAttendeeDataName");
+    const name = nameEl.text().trim();
+    if (!name || name.length < 2 || name === "Namn") return;
+
+    const cleaned = name.replace(/"[^"]*"/g, "").replace(/\s+/g, " ").trim();
+    if (!cleaned) return;
+
+    // Hitta userId från CSS-klass userid-{id}
+    const classes = $(cell).attr("class") || "";
+    const userIdMatch = classes.match(/userid-(\d+)/);
+    if (userIdMatch) {
+      map.set(cleaned, parseInt(userIdMatch[1]));
+    }
+  });
+
+  return map;
+}
+
+export type AttendingStatus = "Attending" | "NotAttending" | "NotAnswered";
+
+export interface UpdateAttendanceResult {
+  success: boolean;
+  error?: string;
+  newStatus?: AttendingStatus;
+}
+
+/**
+ * Ändra en spelares deltagarstatus på laget.se.
+ * Flöde:
+ * 1. Logga in
+ * 2. Hämta admin-kalendern → hitta eventId
+ * 3. Hämta redigeringssidan → hitta userId för spelaren
+ * 4. GET EditAttendee → hämta record-ID och nuvarande data
+ * 5. POST SaveAttendeeInfo → ändra status
+ */
+export async function updateAttendance(
+  playerName: string,
+  newStatus: AttendingStatus,
+  eventIdOverride?: string
+): Promise<UpdateAttendanceResult> {
+  const { client, followRedirects } = createClient();
+
+  try {
+    // Steg 1: Logga in
+    const loggedIn = await login(client, followRedirects);
+    if (!loggedIn) {
+      return { success: false, error: "Kunde inte logga in på laget.se" };
+    }
+
+    // Steg 2: Hitta eventId
+    let eventId = eventIdOverride;
+    if (!eventId) {
+      const calResp = await client.get(`${ADMIN_BASE_URL}/${TEAM_SLUG}/Calendar`);
+      const calPage = await followRedirects(calResp);
+      if (calPage.status !== 200) {
+        return { success: false, error: "Kunde inte ladda kalendern" };
+      }
+      const eventInfo = findNextEventFromCalendar(calPage.data);
+      if (!eventInfo) {
+        return { success: false, error: "Inget event hittades" };
+      }
+      eventId = eventInfo.eventId;
+    }
+
+    // Steg 3: Hämta redigeringssidan → hitta userId
+    const editResp = await client.get(
+      `${ADMIN_BASE_URL}/${TEAM_SLUG}/Calendar/Edit/${eventId}`
+    );
+    const editPage = await followRedirects(editResp);
+    if (editPage.status !== 200) {
+      return { success: false, error: "Kunde inte ladda redigeringssidan" };
+    }
+
+    const userIdMap = extractUserIdMap(editPage.data);
+
+    // Matcha spelarnamn (exakt eller delvis)
+    let userId: number | undefined;
+    const normalizedInput = playerName.replace(/"[^"]*"/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+
+    // Exakt matchning först
+    const entries = Array.from(userIdMap.entries());
+    for (let i = 0; i < entries.length; i++) {
+      const [name, id] = entries[i];
+      if (name.toLowerCase() === normalizedInput) {
+        userId = id;
+        break;
+      }
+    }
+
+    // Delvis matchning som fallback
+    if (!userId) {
+      for (let i = 0; i < entries.length; i++) {
+        const [name, id] = entries[i];
+        if (name.toLowerCase().includes(normalizedInput) || normalizedInput.includes(name.toLowerCase())) {
+          userId = id;
+          break;
+        }
+      }
+    }
+
+    if (!userId) {
+      return { success: false, error: `Kunde inte hitta spelare "${playerName}" på laget.se` };
+    }
+
+    // Steg 4: GET EditAttendee → hämta record-ID
+    const editAttendeeResp = await client.get(
+      `${ADMIN_BASE_URL}/${TEAM_SLUG}/Calendar/EditAttendee?eventId=${eventId}&userId=${userId}`,
+      { headers: { "X-Requested-With": "XMLHttpRequest" } }
+    );
+    const editAttendeePage = await followRedirects(editAttendeeResp);
+
+    if (editAttendeePage.status !== 200) {
+      return { success: false, error: `EditAttendee misslyckades (HTTP ${editAttendeePage.status})` };
+    }
+
+    // Parsa formuläret för att hitta record-ID och andra fält
+    let attendeeData: any;
+    const responseData = editAttendeePage.data;
+    if (typeof responseData === "string") {
+      // HTML-formulär – parsa fälten
+      const $ea = cheerio.load(responseData);
+      attendeeData = {
+        Id: parseInt($ea("input[name='Id'], #Id").val() as string) || 0,
+        UserId: userId,
+        CarSeats: parseInt($ea("input[name='CarSeats'], #CarSeats, select[name='CarSeats']").val() as string) || -1,
+        Comment: ($ea("input[name='Comment'], #Comment, textarea[name='Comment']").val() as string) || "",
+        QuestionResponse: ($ea("input[name='QuestionResponse'], #QuestionResponse").val() as string) || "",
+        EventId: parseInt(eventId),
+        Attending: newStatus,
+        Role: ($ea("input[name='Role'], #Role, select[name='Role']").val() as string) || "4",
+        WillAttendAssembly: false,
+        Attended: ($ea("input[name='Attended'], #Attended, select[name='Attended']").val() as string) || "Neutral",
+      };
+    } else if (typeof responseData === "object") {
+      // JSON-svar
+      attendeeData = {
+        ...responseData,
+        Attending: newStatus,
+      };
+    } else {
+      return { success: false, error: "Oväntat svar från EditAttendee" };
+    }
+
+    if (!attendeeData.Id) {
+      return { success: false, error: "Kunde inte hitta attendee record-ID" };
+    }
+
+    // Steg 5: POST SaveAttendeeInfo
+    const saveResp = await client.post(
+      `${ADMIN_BASE_URL}/${TEAM_SLUG}/Calendar/SaveAttendeeInfo`,
+      JSON.stringify(attendeeData),
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+        },
+      }
+    );
+    const savePage = await followRedirects(saveResp);
+
+    if (savePage.status === 200) {
+      return { success: true, newStatus };
+    } else {
+      return { success: false, error: `SaveAttendeeInfo misslyckades (HTTP ${savePage.status})` };
+    }
+  } catch (error: any) {
+    return { success: false, error: `Fel: ${error.message || "Okänt fel"}` };
+  }
+}
+
 export async function fetchAttendance(): Promise<AttendanceResult> {
   const { client, followRedirects } = createClient();
 

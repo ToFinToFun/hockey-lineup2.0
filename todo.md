@@ -72,3 +72,4 @@
 - [x] Återställ textetiketter på header-knapparna (Auto, Slumpa, Dela, Exportera etc.)
 - [x] Lägg tillbaka hjälptext: positionsbeskrivningar (MV/B/F/C/IB) och drag-och-släpp-instruktioner
 - [x] Knapp för att växla mellan mobil- och datoranpassad vy (override av responsiv layout)
+- [x] Undersök och implementera skrivning till laget.se (ändra spelares deltagarstatus: deltar/deltar inte)
