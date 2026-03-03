@@ -218,7 +218,7 @@ export default function Home() {
   // Justerbar bredd på spelartrupp-kolumnen i sidoläge
   const ROSTER_MIN_W = 200;
   const ROSTER_MAX_W = 500;
-  const ROSTER_DEFAULT_W = 280;
+  const ROSTER_DEFAULT_W = 340;
   const [rosterWidth, setRosterWidth] = useState(() => {
     try {
       const saved = localStorage.getItem("stalstadens-roster-width");
@@ -1384,7 +1384,7 @@ export default function Home() {
                   </div>
 
                   {/* Lagen bredvid varandra */}
-                  <div className="flex-1 grid grid-cols-2 gap-2 md:gap-3 min-w-0">
+                  <div className="flex-1 grid grid-cols-2 gap-1 md:gap-1.5 min-w-0">
                     {/* Lag A (VITA) – vänster */}
                     <TeamPanel
                       teamId="team-a"
@@ -1420,9 +1420,9 @@ export default function Home() {
                 /* Standard-layout: Vita | Trupp | Gröna */
                 <div className="overflow-x-auto">
                 <div
-                  className="grid gap-2 md:gap-3"
+                  className="grid gap-1 md:gap-1.5"
                   style={{
-                    gridTemplateColumns: "minmax(250px, 1fr) 300px minmax(250px, 1fr)",
+                    gridTemplateColumns: "minmax(220px, 1fr) 320px minmax(220px, 1fr)",
                     minWidth: "850px",
                   }}
                 >

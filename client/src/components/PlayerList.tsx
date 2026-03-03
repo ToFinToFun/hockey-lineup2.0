@@ -193,10 +193,10 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                   setBulkSelectMode((prev) => !prev);
                   setSelectedPlayerIds(new Set());
                 }}
-                className={`text-xs font-bold px-3 py-1.5 rounded-md border-2 transition-all shadow-sm ${
+                className={`text-[10px] font-medium px-2 py-1 rounded border transition-all ${
                   bulkSelectMode
-                    ? "bg-violet-500/40 text-violet-100 border-violet-400/80 shadow-violet-500/20"
-                    : "bg-violet-500/20 text-violet-200 border-violet-400/50 hover:bg-violet-500/30 hover:text-violet-100 hover:border-violet-400/70 hover:shadow-violet-500/15"
+                    ? "bg-white/15 text-white/70 border-white/30"
+                    : "bg-white/5 text-white/40 border-white/15 hover:bg-white/10 hover:text-white/60"
                 }`}
               >
                 {bulkSelectMode ? "✖ Avbryt" : "☐ Bulk"}
