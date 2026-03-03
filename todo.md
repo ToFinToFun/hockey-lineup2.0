@@ -71,3 +71,4 @@
 - [x] BUGG: Header-knappar går utanför skärmbredden på mobil – behöver wrappa eller radbryt
 - [x] Återställ textetiketter på header-knapparna (Auto, Slumpa, Dela, Exportera etc.)
 - [x] Lägg tillbaka hjälptext: positionsbeskrivningar (MV/B/F/C/IB) och drag-och-släpp-instruktioner
+- [x] Knapp för att växla mellan mobil- och datoranpassad vy (override av responsiv layout)
