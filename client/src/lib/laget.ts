@@ -170,3 +170,43 @@ export function matchDeclinedPlayers(
 
   return { matchedIds };
 }
+
+/**
+ * Ändra en spelares deltagarstatus på laget.se via backend-API.
+ * Returnerar { success, error?, newStatus? }
+ */
+export async function updateAttendanceOnLaget(
+  playerName: string,
+  status: "Attending" | "NotAttending" | "NotAnswered"
+): Promise<{ success: boolean; error?: string; newStatus?: string }> {
+  try {
+    // tRPC httpBatchLink expects: POST /api/trpc/laget.updateAttendance
+    // Body: {"0":{"json":{...}}}
+    // Response: [{"result":{"data":{"json":{...}}}}]
+    const response = await fetch("/api/trpc/laget.updateAttendance?batch=1", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        "0": { json: { playerName, status } },
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`HTTP ${response.status}: ${text.slice(0, 200)}`);
+    }
+
+    const json = await response.json();
+    // tRPC batch response is an array
+    const result = Array.isArray(json) ? json[0] : json;
+    const data = result?.result?.data?.json;
+    if (data) {
+      return data;
+    }
+    throw new Error("Oväntat svar från servern");
+  } catch (err: any) {
+    console.error("[Laget.se sync error]", err);
+    return { success: false, error: err.message || "Kunde inte uppdatera status" };
+  }
+}

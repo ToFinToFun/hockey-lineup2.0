@@ -22,6 +22,7 @@ interface PlayerCardProps {
   onChangeName?: (name: string) => void;
   onChangeCaptainRole?: (role: CaptainRole) => void;
   onChangeRegistered?: (isRegistered: boolean) => void;
+  onSyncToLaget?: (status: "Attending" | "NotAttending" | "NotAnswered") => Promise<void>;
   onChangeGamesPlayed?: (gamesPlayed: number) => void;
   onLongPress?: (e: React.PointerEvent) => void;
   onLongPressEnd?: () => void;
@@ -42,6 +43,7 @@ export function DraggablePlayerCard({
   onChangeName,
   onChangeCaptainRole,
   onChangeRegistered,
+  onSyncToLaget,
   onChangeGamesPlayed,
   onLongPress,
   onLongPressEnd,
@@ -58,6 +60,7 @@ export function DraggablePlayerCard({
   const [nameValue, setNameValue] = useState("");
   const [nrValue, setNrValue] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [syncingToLaget, setSyncingToLaget] = useState(false);
 
   const editBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -389,7 +392,7 @@ export function DraggablePlayerCard({
                   )}
                 </div>
               )}
-              {/* Rad 5: Anmäld + Matcher */}
+              {/* Rad 5: Anmäld + Synka till laget.se */}
               <div className="flex items-center gap-3 flex-wrap">
                 {onChangeRegistered && (
                   <div className="flex items-center gap-1.5">
@@ -408,6 +411,56 @@ export function DraggablePlayerCard({
                     >
                       {player.isRegistered ? "✓ Ja" : "Nej"}
                     </button>
+                  </div>
+                )}
+                {onSyncToLaget && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-white/40 text-[10px]">Laget.se:</span>
+                    <button
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSyncingToLaget(true);
+                        onSyncToLaget("Attending").finally(() => setSyncingToLaget(false));
+                      }}
+                      disabled={syncingToLaget}
+                      className={`text-[8px] font-bold px-1.5 py-0.5 rounded border transition-all ${
+                        player.isRegistered
+                          ? "bg-emerald-400/25 text-emerald-300 border-emerald-400/50"
+                          : "bg-white/5 text-white/40 border-white/10 hover:bg-emerald-400/15 hover:text-emerald-300 hover:border-emerald-400/40"
+                      }`}
+                    >
+                      Deltar
+                    </button>
+                    <button
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSyncingToLaget(true);
+                        onSyncToLaget("NotAttending").finally(() => setSyncingToLaget(false));
+                      }}
+                      disabled={syncingToLaget}
+                      className={`text-[8px] font-bold px-1.5 py-0.5 rounded border transition-all ${
+                        player.isDeclined
+                          ? "bg-red-400/25 text-red-300 border-red-400/50"
+                          : "bg-white/5 text-white/40 border-white/10 hover:bg-red-400/15 hover:text-red-300 hover:border-red-400/40"
+                      }`}
+                    >
+                      Deltar ej
+                    </button>
+                    <button
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSyncingToLaget(true);
+                        onSyncToLaget("NotAnswered").finally(() => setSyncingToLaget(false));
+                      }}
+                      disabled={syncingToLaget}
+                      className="text-[8px] font-bold px-1.5 py-0.5 rounded border transition-all bg-white/5 text-white/30 border-white/10 hover:bg-white/10 hover:text-white/50"
+                    >
+                      Ej svarat
+                    </button>
+                    {syncingToLaget && <span className="text-[8px] text-amber-300 animate-pulse">Synkar...</span>}
                   </div>
                 )}
                 {onChangeGamesPlayed && (

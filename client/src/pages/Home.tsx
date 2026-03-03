@@ -34,7 +34,7 @@ import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { LongPressTooltip } from "@/components/LongPressTooltip";
 import { saveStateToFirebase, subscribeToFirebase, saveLineupToFirebase, type AppState, type SavedLineup } from "@/lib/firebase";
 import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Monitor, Smartphone } from "lucide-react";
-import { matchRegisteredPlayers, matchDeclinedPlayers, fetchAttendanceFromApi } from "@/lib/laget";
+import { matchRegisteredPlayers, matchDeclinedPlayers, fetchAttendanceFromApi, updateAttendanceOnLaget } from "@/lib/laget";
 import { createPortal } from "react-dom"; // används av PlayerList context-meny
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { useSwipe } from "@/hooks/useSwipe";
@@ -815,6 +815,29 @@ export default function Home() {
     }
   }, []);
 
+  // Synka en spelares status till laget.se och uppdatera lokalt
+  const handleSyncToLaget = useCallback(async (playerId: string, playerName: string, status: "Attending" | "NotAttending" | "NotAnswered") => {
+    const result = await updateAttendanceOnLaget(playerName, status);
+    if (!result.success) {
+      alert(`Kunde inte uppdatera ${playerName} på laget.se: ${result.error}`);
+      return;
+    }
+    // Uppdatera lokal status baserat på vad vi satte
+    const isRegistered = status === "Attending";
+    const isDeclined = status === "NotAttending";
+    const update = (p: Player): Player => p.id === playerId ? { ...p, isRegistered, isDeclined } : p;
+    setAvailablePlayers((prev) => prev.map(update));
+    setLineup((prev) => {
+      const next = { ...prev };
+      for (const [slotId, p] of Object.entries(next)) {
+        if (p.id === playerId) next[slotId] = update(p);
+      }
+      return next;
+    });
+    // Hämta om från laget.se för att säkerställa synk
+    setTimeout(() => handleBulkRegister(true), 2000);
+  }, [handleBulkRegister]);
+
   // Auto-hämta anmälningar vid sidladdning
   const autoFetchDone = useRef(false);
   useEffect(() => {
@@ -1344,6 +1367,7 @@ export default function Home() {
                         onChangeName={handleChangeName}
                         onChangeCaptainRole={handleChangeCaptainRole}
                         onChangeRegistered={handleChangeRegistered}
+                        onSyncToLaget={handleSyncToLaget}
                         onChangeGamesPlayed={handleChangeGamesPlayed}
                         onBulkRegister={handleBulkRegister}
                         onEventInfoUpdate={setEventInfo}
@@ -1439,6 +1463,7 @@ export default function Home() {
                         onChangeName={handleChangeName}
                         onChangeCaptainRole={handleChangeCaptainRole}
                         onChangeRegistered={handleChangeRegistered}
+                        onSyncToLaget={handleSyncToLaget}
                         onChangeGamesPlayed={handleChangeGamesPlayed}
                         onBulkRegister={handleBulkRegister}
                         onEventInfoUpdate={setEventInfo}
@@ -1519,6 +1544,7 @@ export default function Home() {
                       onChangeName={handleChangeName}
                       onChangeCaptainRole={handleChangeCaptainRole}
                       onChangeRegistered={handleChangeRegistered}
+                      onSyncToLaget={handleSyncToLaget}
                       onChangeGamesPlayed={handleChangeGamesPlayed}
                       onBulkRegister={handleBulkRegister}
                        onEventInfoUpdate={setEventInfo}
