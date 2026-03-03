@@ -165,7 +165,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
       ref={setNodeRef}
       className={`
         flex flex-col rounded-xl border backdrop-blur-md
-        bg-black/30 transition-all duration-200
+        bg-black/30 transition-all duration-200 min-w-0 overflow-hidden
         ${isOver
           ? "border-emerald-400/60 bg-emerald-950/20 shadow-lg shadow-emerald-500/10"
           : "border-white/10"
@@ -173,18 +173,18 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
       `}
     >
       {/* Header */}
-      <div className="p-3 border-b border-white/10">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <h2 className="text-white font-bold text-sm uppercase tracking-widest" style={{ fontFamily: "'Oswald', sans-serif" }}>
+      <div className="p-3 border-b border-white/10 min-w-0">
+        <div className="flex items-center justify-between mb-2 flex-wrap gap-y-1 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <h2 className="text-white font-bold text-sm uppercase tracking-widest whitespace-nowrap" style={{ fontFamily: "'Oswald', sans-serif" }}>
               Spelartrupp
             </h2>
-            <span className="text-white/40 text-xs">
+            <span className="text-white/40 text-xs whitespace-nowrap">
               {players.length}/{totalPlayers ?? players.length}
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-emerald-400/70 text-xs font-semibold">
+            <span className="text-emerald-400/70 text-xs font-semibold whitespace-nowrap">
               Anmälda {players.filter(p => p.isRegistered).length}/{totalRegistered ?? players.filter(p => p.isRegistered).length}
             </span>
             {onBulkSyncToLaget && (
@@ -223,7 +223,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
         </div>
 
         {/* Positionsfilter */}
-        <div className="flex gap-1 mb-1.5">
+        <div className="flex gap-1 mb-1.5 min-w-0">
           {positionFilters.map((f) => (
             <button
               key={f.value}
@@ -242,7 +242,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
         </div>
 
         {/* Lag-filter */}
-        <div className="flex gap-1 mb-2">
+        <div className="flex gap-1 mb-2 min-w-0">
           {teamFilters.map((f) => (
             <button
               key={String(f.value)}
@@ -268,9 +268,9 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
         </div>
 
         {/* Sortering */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto">
           <span className="text-white/30 text-[9px] uppercase tracking-wider shrink-0">Sortera:</span>
-          <div className="flex gap-1">
+          <div className="flex gap-1 shrink-0">
             <SortBtn k="registered" label="Anmäld" />
             <SortBtn k="declined" label="Avböjd" />
             <SortBtn k="name" label="Namn" />

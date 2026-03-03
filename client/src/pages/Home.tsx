@@ -1191,7 +1191,7 @@ export default function Home() {
                 <span className="flex items-center gap-1"><span className="bg-blue-500/30 text-blue-300 px-1 rounded text-[9px] font-bold">B</span> Back</span>
                 <span className="flex items-center gap-1"><span className="bg-red-500/30 text-red-300 px-1 rounded text-[9px] font-bold">F</span> Forward</span>
                 <span className="flex items-center gap-1"><span className="bg-purple-500/30 text-purple-300 px-1 rounded text-[9px] font-bold">C</span> Center</span>
-                <span className="flex items-center gap-1"><span className="bg-teal-500/30 text-teal-300 px-1 rounded text-[9px] font-bold">IB</span> Innebandy</span>
+                <span className="flex items-center gap-1"><span className="bg-teal-500/30 text-teal-300 px-1 rounded text-[9px] font-bold">IB</span> IceBox</span>
                 <span className="text-white/20">|</span>
                 <span>Dra spelare till en plats · Klicka på badge för att ändra position</span>
               </div>
@@ -1340,8 +1340,8 @@ export default function Home() {
                 <div className="flex gap-0 overflow-x-auto" style={{ minWidth: 0 }}>
                   {/* Spelarlista (vänster) – justerbar bredd */}
                   <div
-                    className="flex flex-col gap-2 shrink-0 overflow-hidden"
-                    style={{ width: `${rosterWidth}px` }}
+                    className="flex flex-col gap-2 shrink-0 overflow-hidden min-w-0"
+                    style={{ width: `${rosterWidth}px`, maxWidth: '45vw' }}
                   >
                     <div>
                       <PlayerList
