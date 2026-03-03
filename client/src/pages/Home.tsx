@@ -6,7 +6,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 // - Ångra-funktion (Ctrl+Z + knapp i header)
 // - In-app bekräftelsedialog för Rensa
 
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -32,7 +32,7 @@ import { ExportModal } from "@/components/ExportModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { saveStateToFirebase, subscribeToFirebase, saveLineupToFirebase, type AppState, type SavedLineup } from "@/lib/firebase";
-import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3 } from "lucide-react";
+import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp } from "lucide-react";
 import { matchRegisteredPlayers, matchDeclinedPlayers, fetchAttendanceFromApi } from "@/lib/laget";
 import { createPortal } from "react-dom"; // används av PlayerList context-meny
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
@@ -265,6 +265,9 @@ export default function Home() {
     document.addEventListener("touchmove", onMove, { passive: false });
     document.addEventListener("touchend", onEnd);
   }, [rosterWidth]);
+
+  // Statistik-panel toggle
+  const [showStats, setShowStats] = useState(false);
 
   // Prevent writing back to Firebase when we just received an update from it
   const isReceivingFromFirebase = useRef(false);
@@ -1024,6 +1027,21 @@ export default function Home() {
                   )}
                 </div>
 
+                {/* Ångra-knapp */}
+                <button
+                  onClick={handleUndo}
+                  disabled={undoStack.length === 0}
+                  title={`Ångra (Ctrl+Z) – ${undoStack.length} steg`}
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${
+                    undoStack.length > 0
+                      ? "bg-white/10 border border-white/20 text-white/70 hover:bg-white/20 hover:text-white"
+                      : "bg-white/5 border border-white/10 text-white/20 cursor-not-allowed"
+                  }`}
+                >
+                  <Undo2 className="w-4 h-4 lg:w-3 lg:h-3" />
+                  {undoStack.length > 0 && <span className="hidden lg:inline">{undoStack.length}</span>}
+                </button>
+
                 {/* Layout-toggle-knapp */}
                 <button
                   onClick={toggleSideLayout}
@@ -1034,7 +1052,7 @@ export default function Home() {
                       : "bg-white/5 border border-white/15 text-white/50 hover:bg-white/10 hover:text-white/80"
                   }`}
                 >
-                  {sideLayout ? <Columns3 className="w-3 h-3" /> : <PanelLeft className="w-3 h-3" />}
+                  {sideLayout ? <Columns3 className="w-4 h-4 lg:w-3 lg:h-3" /> : <PanelLeft className="w-4 h-4 lg:w-3 lg:h-3" />}
                   <span className="hidden lg:inline">{sideLayout ? "Standard" : "Sidoläge"}</span>
                 </button>
 
@@ -1044,7 +1062,7 @@ export default function Home() {
                   title="Fördela anmälda spelare automatiskt på lagen"
                   className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 text-[10px] font-bold hover:bg-cyan-500/30 transition-all uppercase tracking-wider"
                 >
-                  <Shuffle className="w-3 h-3" />
+                  <Shuffle className="w-4 h-4 lg:w-3 lg:h-3" />
                   <span className="hidden lg:inline">Auto</span>
                 </button>
 
@@ -1054,7 +1072,7 @@ export default function Home() {
                   title="Slumpa om neutrala spelare (utan lagfärg) mellan lagen"
                   className="flex items-center gap-1 px-2 py-1 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold hover:bg-amber-500/30 transition-all uppercase tracking-wider"
                 >
-                  <Dices className="w-3 h-3" />
+                  <Dices className="w-4 h-4 lg:w-3 lg:h-3" />
                   <span className="hidden lg:inline">Slumpa</span>
                 </button>
 
@@ -1070,8 +1088,8 @@ export default function Home() {
                   }`}
                 >
                   {shareState === "copied"
-                    ? <><Check className="w-3 h-3" /><span className="hidden lg:inline">Kopierad!</span></>
-                    : <><Share2 className="w-3 h-3" /><span className="hidden lg:inline">Dela</span></>}
+                    ? <><Check className="w-4 h-4 lg:w-3 lg:h-3" /><span className="hidden lg:inline">Kopierad!</span></>
+                    : <><Share2 className="w-4 h-4 lg:w-3 lg:h-3" /><span className="hidden lg:inline">Dela</span></>}
                 </button>
 
                 {/* Export-knapp */}
@@ -1080,12 +1098,110 @@ export default function Home() {
                   title="Exportera laguppställning"
                   className="flex items-center gap-1 px-2 py-1 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-bold hover:bg-emerald-500/30 transition-all uppercase tracking-wider"
                 >
-                  <Download className="w-3 h-3" />
+                  <Download className="w-4 h-4 lg:w-3 lg:h-3" />
                   <span className="hidden lg:inline">Exportera</span>
+                </button>
+
+                {/* Statistik-knapp */}
+                <button
+                  onClick={() => setShowStats((v) => !v)}
+                  title="Visa/dölj statistik"
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${
+                    showStats
+                      ? "bg-sky-500/30 border border-sky-400/50 text-sky-300"
+                      : "bg-white/5 border border-white/15 text-white/50 hover:bg-white/10 hover:text-white/80"
+                  }`}
+                >
+                  <BarChart3 className="w-4 h-4 lg:w-3 lg:h-3" />
+                  {showStats ? <ChevronUp className="w-3 h-3 hidden lg:block" /> : <ChevronDown className="w-3 h-3 hidden lg:block" />}
                 </button>
               </div>
             </div>
           </header>
+
+          {/* Expanderbar statistik-panel */}
+          {showStats && (() => {
+            const allPlayers = [...availablePlayers, ...Object.values(lineup)];
+            const posCount = (pos: string) => allPlayers.filter(p => p.position === pos).length;
+            const regCount = allPlayers.filter(p => p.isRegistered).length;
+            const decCount = allPlayers.filter(p => p.isDeclined).length;
+            const noAnswer = allPlayers.length - regCount - decCount;
+            const teamAAll = Object.values(lineup).filter((_, i, arr) => {
+              const keys = Object.keys(lineup);
+              return keys[arr.indexOf(_)]?.startsWith("team-a-");
+            });
+            const teamBAll = Object.values(lineup).filter((_, i, arr) => {
+              const keys = Object.keys(lineup);
+              return keys[arr.indexOf(_)]?.startsWith("team-b-");
+            });
+            // Simpler approach: use teamALineup/teamBLineup already computed
+            const tAPlayers = Object.values(teamALineup);
+            const tBPlayers = Object.values(teamBLineup);
+            const tAPosCount = (pos: string) => tAPlayers.filter(p => p.position === pos).length;
+            const tBPosCount = (pos: string) => tBPlayers.filter(p => p.position === pos).length;
+
+            return (
+              <div className="px-4 pb-2 shrink-0">
+                <div className="max-w-7xl mx-auto">
+                  <div className="bg-white/5 border border-white/10 rounded-lg p-3 backdrop-blur-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                      {/* Översikt */}
+                      <div>
+                        <h3 className="text-white/60 font-bold uppercase tracking-wider text-[10px] mb-2">Spelartrupp</h3>
+                        <div className="space-y-1">
+                          <div className="flex justify-between"><span className="text-white/50">Totalt</span><span className="text-white font-semibold">{allPlayers.length}</span></div>
+                          <div className="flex justify-between"><span className="text-emerald-400/70">Anmälda</span><span className="text-emerald-400 font-semibold">{regCount}</span></div>
+                          <div className="flex justify-between"><span className="text-red-400/70">Avböjda</span><span className="text-red-400 font-semibold">{decCount}</span></div>
+                          <div className="flex justify-between"><span className="text-white/30">Ej svarat</span><span className="text-white/40 font-semibold">{noAnswer}</span></div>
+                        </div>
+                      </div>
+
+                      {/* Per position */}
+                      <div>
+                        <h3 className="text-white/60 font-bold uppercase tracking-wider text-[10px] mb-2">Per position</h3>
+                        <div className="space-y-1">
+                          {[
+                            { pos: "MV", label: "Målvakter", color: "text-amber-400" },
+                            { pos: "B", label: "Backar", color: "text-blue-400" },
+                            { pos: "F", label: "Forwards", color: "text-emerald-400" },
+                            { pos: "C", label: "Center", color: "text-purple-400" },
+                            { pos: "IB", label: "Ice Box", color: "text-white/40" },
+                          ].map(({ pos, label, color }) => (
+                            <div key={pos} className="flex justify-between">
+                              <span className={color}>{label}</span>
+                              <span className="text-white font-semibold">{posCount(pos)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Per lag */}
+                      <div>
+                        <h3 className="text-white/60 font-bold uppercase tracking-wider text-[10px] mb-2">Lagfördelning</h3>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                          <span className="text-white/50 font-semibold">{teamAName}</span>
+                          <span className="text-white/50 font-semibold">{teamBName}</span>
+                          {[
+                            { pos: "MV", label: "MV", color: "text-amber-400" },
+                            { pos: "B", label: "B", color: "text-blue-400" },
+                            { pos: "F", label: "F", color: "text-emerald-400" },
+                            { pos: "C", label: "C", color: "text-purple-400" },
+                          ].map(({ pos, label, color }) => (
+                            <React.Fragment key={pos}>
+                              <div className="flex justify-between"><span className={`${color} text-[10px]`}>{label}</span><span className="text-white/70">{tAPosCount(pos)}</span></div>
+                              <div className="flex justify-between"><span className={`${color} text-[10px]`}>{label}</span><span className="text-white/70">{tBPosCount(pos)}</span></div>
+                            </React.Fragment>
+                          ))}
+                          <div className="flex justify-between border-t border-white/10 pt-1 mt-1"><span className="text-white/50">Totalt</span><span className="text-white font-semibold">{teamACount}</span></div>
+                          <div className="flex justify-between border-t border-white/10 pt-1 mt-1"><span className="text-white/50">Totalt</span><span className="text-white font-semibold">{teamBCount}</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Mobilflikar – syns bara på små skärmar */}
           <div className="md:hidden shrink-0">
