@@ -214,6 +214,58 @@ export default function Home() {
     });
   }, []);
 
+  // Justerbar bredd på spelartrupp-kolumnen i sidoläge
+  const ROSTER_MIN_W = 200;
+  const ROSTER_MAX_W = 500;
+  const ROSTER_DEFAULT_W = 280;
+  const [rosterWidth, setRosterWidth] = useState(() => {
+    try {
+      const saved = localStorage.getItem("stalstadens-roster-width");
+      if (saved) {
+        const n = Number(saved);
+        if (n >= ROSTER_MIN_W && n <= ROSTER_MAX_W) return n;
+      }
+    } catch {}
+    return ROSTER_DEFAULT_W;
+  });
+  const isResizingRef = useRef(false);
+  const resizeStartXRef = useRef(0);
+  const resizeStartWRef = useRef(ROSTER_DEFAULT_W);
+
+  const handleResizeStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    isResizingRef.current = true;
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    resizeStartXRef.current = clientX;
+    resizeStartWRef.current = rosterWidth;
+
+    const onMove = (ev: MouseEvent | TouchEvent) => {
+      if (!isResizingRef.current) return;
+      const cx = "touches" in ev ? ev.touches[0].clientX : (ev as MouseEvent).clientX;
+      const delta = cx - resizeStartXRef.current;
+      const newW = Math.min(ROSTER_MAX_W, Math.max(ROSTER_MIN_W, resizeStartWRef.current + delta));
+      setRosterWidth(newW);
+    };
+
+    const onEnd = () => {
+      isResizingRef.current = false;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onEnd);
+      document.removeEventListener("touchmove", onMove);
+      document.removeEventListener("touchend", onEnd);
+      // Spara till localStorage
+      setRosterWidth((w) => {
+        try { localStorage.setItem("stalstadens-roster-width", String(w)); } catch {}
+        return w;
+      });
+    };
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onEnd);
+    document.addEventListener("touchmove", onMove, { passive: false });
+    document.addEventListener("touchend", onEnd);
+  }, [rosterWidth]);
+
   // Prevent writing back to Firebase when we just received an update from it
   const isReceivingFromFirebase = useRef(false);
   // Track if we've received the initial Firebase state
@@ -960,73 +1012,50 @@ export default function Home() {
                   </p>
                 )}
               </div>
-              <div className="flex items-center gap-2 md:gap-3">
-                {/* Firebase sync status */}
-                <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 md:gap-2">
+                {/* Firebase sync status – bara ikon, ingen text */}
+                <div className="flex items-center">
                   {firebaseConnected === null ? (
-                    <span className="text-white/30 text-[10px] uppercase tracking-wider">Ansluter...</span>
+                    <span className="text-white/30 text-[9px]">...</span>
                   ) : firebaseConnected ? (
-                    <>
-                      <Wifi className="w-3 h-3 text-emerald-400" />
-                      <span className="text-emerald-400/70 text-[10px] uppercase tracking-wider">Live</span>
-                    </>
+                    <Wifi className="w-3 h-3 text-emerald-400" />
                   ) : (
-                    <>
-                      <WifiOff className="w-3 h-3 text-red-400" />
-                      <span className="text-red-400/70 text-[10px] uppercase tracking-wider">Offline</span>
-                    </>
+                    <WifiOff className="w-3 h-3 text-red-400" />
                   )}
-                </div>
-
-                <div className="hidden md:flex items-center gap-3 text-xs text-white/40">
-                  {[
-                    { color: "bg-amber-400", label: "MV" },
-                    { color: "bg-blue-400", label: "Back" },
-                    { color: "bg-emerald-400", label: "LW / RW" },
-                    { color: "bg-purple-400", label: "Center" },
-                  ].map(({ color, label }) => (
-                    <span key={label} className="flex items-center gap-1">
-                      <span className={`w-2 h-2 rounded-full ${color} inline-block`} />
-                      {label}
-                    </span>
-                  ))}
-                  <span className="text-white/20 ml-1 text-[10px] italic">
-                    Dra spelare till en plats · Klicka badge för att ändra position
-                  </span>
                 </div>
 
                 {/* Layout-toggle-knapp */}
                 <button
                   onClick={toggleSideLayout}
                   title={sideLayout ? "Standard-layout (Vita | Trupp | Gröna)" : "Sidoläge (Trupp till vänster, lagen bredvid)"}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all uppercase tracking-wider ${
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${
                     sideLayout
                       ? "bg-violet-500/30 border border-violet-400/50 text-violet-300 hover:bg-violet-500/40"
                       : "bg-white/5 border border-white/15 text-white/50 hover:bg-white/10 hover:text-white/80"
                   }`}
                 >
-                  {sideLayout ? <Columns3 className="w-3.5 h-3.5" /> : <PanelLeft className="w-3.5 h-3.5" />}
-                  <span className="hidden md:inline">{sideLayout ? "Standard" : "Sidoläge"}</span>
+                  {sideLayout ? <Columns3 className="w-3 h-3" /> : <PanelLeft className="w-3 h-3" />}
+                  <span className="hidden lg:inline">{sideLayout ? "Standard" : "Sidoläge"}</span>
                 </button>
 
                 {/* Auto-fördela-knapp */}
                 <button
                   onClick={() => setConfirmAutoDistribute(true)}
                   title="Fördela anmälda spelare automatiskt på lagen"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 text-xs font-bold hover:bg-cyan-500/30 transition-all uppercase tracking-wider"
+                  className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 text-[10px] font-bold hover:bg-cyan-500/30 transition-all uppercase tracking-wider"
                 >
-                  <Shuffle className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Auto</span>
+                  <Shuffle className="w-3 h-3" />
+                  <span className="hidden lg:inline">Auto</span>
                 </button>
 
                 {/* Slumpa om-knapp */}
                 <button
                   onClick={() => handleAutoDistribute(true)}
                   title="Slumpa om neutrala spelare (utan lagfärg) mellan lagen"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-bold hover:bg-amber-500/30 transition-all uppercase tracking-wider"
+                  className="flex items-center gap-1 px-2 py-1 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold hover:bg-amber-500/30 transition-all uppercase tracking-wider"
                 >
-                  <Dices className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Slumpa</span>
+                  <Dices className="w-3 h-3" />
+                  <span className="hidden lg:inline">Slumpa</span>
                 </button>
 
                 {/* Dela-knapp */}
@@ -1034,24 +1063,25 @@ export default function Home() {
                   onClick={handleShare}
                   disabled={shareState === "saving"}
                   title="Dela skrivskyddad länk till aktuell uppställning"
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all uppercase tracking-wider ${
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${
                     shareState === "copied"
                       ? "bg-emerald-500/30 border border-emerald-400/60 text-emerald-200"
                       : "bg-white/5 border border-white/15 text-white/60 hover:bg-white/10 hover:text-white/90 disabled:opacity-50"
                   }`}
                 >
                   {shareState === "copied"
-                    ? <><Check className="w-3.5 h-3.5" /><span className="hidden md:inline">Kopierad!</span></>
-                    : <><Share2 className="w-3.5 h-3.5" /><span className="hidden md:inline">Dela</span></>}
+                    ? <><Check className="w-3 h-3" /><span className="hidden lg:inline">Kopierad!</span></>
+                    : <><Share2 className="w-3 h-3" /><span className="hidden lg:inline">Dela</span></>}
                 </button>
 
                 {/* Export-knapp */}
                 <button
                   onClick={() => setShowExport(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-bold hover:bg-emerald-500/30 transition-all uppercase tracking-wider"
+                  title="Exportera laguppställning"
+                  className="flex items-center gap-1 px-2 py-1 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-bold hover:bg-emerald-500/30 transition-all uppercase tracking-wider"
                 >
-                  <Download className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Exportera</span>
+                  <Download className="w-3 h-3" />
+                  <span className="hidden lg:inline">Exportera</span>
                 </button>
               </div>
             </div>
@@ -1111,15 +1141,13 @@ export default function Home() {
             {!isMobile ? (
               /* Desktop layout – standard eller sidoläge */
               sideLayout ? (
-                /* Sidoläge: Trupp till vänster, lagen bredvid varandra */
-                <div
-                  className="grid gap-2 md:gap-3"
-                  style={{
-                    gridTemplateColumns: "280px minmax(0, 1fr) minmax(0, 1fr)",
-                  }}
-                >
-                  {/* Spelarlista (vänster) */}
-                  <div className="flex flex-col gap-2">
+                /* Sidoläge: Trupp till vänster (justerbar bredd), lagen bredvid varandra */
+                <div className="flex gap-0">
+                  {/* Spelarlista (vänster) – justerbar bredd */}
+                  <div
+                    className="flex flex-col gap-2 shrink-0 overflow-hidden"
+                    style={{ width: `${rosterWidth}px` }}
+                  >
                     <div>
                       <PlayerList
                         players={availablePlayers}
@@ -1147,35 +1175,48 @@ export default function Home() {
                     />
                   </div>
 
-                  {/* Lag A (VITA) – mitten */}
-                  <TeamPanel
-                    teamId="team-a"
-                    teamName={teamAName}
-                    slots={TEAM_A_SLOTS}
-                    lineup={teamALineup}
-                    onRemovePlayer={handleRemoveFromSlot}
-                    onChangePosition={handleChangePosition}
-                    onRenameTeam={setTeamAName}
-                    onClearTeam={() => handleRequestClearTeam("team-a-", teamAName)}
-                    isWhite
-                    config={teamAConfig}
-                    onConfigChange={setTeamAConfig}
-                  />
+                  {/* Resize-handtag */}
+                  <div
+                    className="shrink-0 w-2 cursor-col-resize group flex items-center justify-center hover:bg-white/10 active:bg-violet-500/20 transition-colors relative select-none"
+                    onMouseDown={handleResizeStart}
+                    onTouchStart={handleResizeStart}
+                    title="Dra för att ändra bredd"
+                  >
+                    <div className="w-0.5 h-12 rounded-full bg-white/20 group-hover:bg-violet-400/60 group-active:bg-violet-400 transition-colors" />
+                  </div>
 
-                  {/* Lag B (GRÖNA) – höger */}
-                  <TeamPanel
-                    teamId="team-b"
-                    teamName={teamBName}
-                    slots={TEAM_B_SLOTS}
-                    lineup={teamBLineup}
-                    onRemovePlayer={handleRemoveFromSlot}
-                    onChangePosition={handleChangePosition}
-                    onRenameTeam={setTeamBName}
-                    onClearTeam={() => handleRequestClearTeam("team-b-", teamBName)}
-                    isWhite={false}
-                    config={teamBConfig}
-                    onConfigChange={setTeamBConfig}
-                  />
+                  {/* Lagen bredvid varandra */}
+                  <div className="flex-1 grid grid-cols-2 gap-2 md:gap-3 min-w-0">
+                    {/* Lag A (VITA) – vänster */}
+                    <TeamPanel
+                      teamId="team-a"
+                      teamName={teamAName}
+                      slots={TEAM_A_SLOTS}
+                      lineup={teamALineup}
+                      onRemovePlayer={handleRemoveFromSlot}
+                      onChangePosition={handleChangePosition}
+                      onRenameTeam={setTeamAName}
+                      onClearTeam={() => handleRequestClearTeam("team-a-", teamAName)}
+                      isWhite
+                      config={teamAConfig}
+                      onConfigChange={setTeamAConfig}
+                    />
+
+                    {/* Lag B (GRÖNA) – höger */}
+                    <TeamPanel
+                      teamId="team-b"
+                      teamName={teamBName}
+                      slots={TEAM_B_SLOTS}
+                      lineup={teamBLineup}
+                      onRemovePlayer={handleRemoveFromSlot}
+                      onChangePosition={handleChangePosition}
+                      onRenameTeam={setTeamBName}
+                      onClearTeam={() => handleRequestClearTeam("team-b-", teamBName)}
+                      isWhite={false}
+                      config={teamBConfig}
+                      onConfigChange={setTeamBConfig}
+                    />
+                  </div>
                 </div>
               ) : (
                 /* Standard-layout: Vita | Trupp | Gröna */
