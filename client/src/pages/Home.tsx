@@ -32,7 +32,7 @@ import { ExportModal } from "@/components/ExportModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { saveStateToFirebase, subscribeToFirebase, saveLineupToFirebase, type AppState, type SavedLineup } from "@/lib/firebase";
-import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices } from "lucide-react";
+import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3 } from "lucide-react";
 import { matchRegisteredPlayers, matchDeclinedPlayers, fetchAttendanceFromApi } from "@/lib/laget";
 import { createPortal } from "react-dom"; // används av PlayerList context-meny
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
@@ -197,6 +197,22 @@ export default function Home() {
 
   // Bekräftelsedialog för Auto-fördela
   const [confirmAutoDistribute, setConfirmAutoDistribute] = useState(false);
+
+  // Layout-toggle: sidoläge (trupp till vänster, lagen bredvid varandra)
+  const [sideLayout, setSideLayout] = useState(() => {
+    try {
+      return localStorage.getItem("stalstadens-side-layout") === "true";
+    } catch {
+      return false;
+    }
+  });
+  const toggleSideLayout = useCallback(() => {
+    setSideLayout((prev) => {
+      const next = !prev;
+      try { localStorage.setItem("stalstadens-side-layout", String(next)); } catch {}
+      return next;
+    });
+  }, []);
 
   // Prevent writing back to Firebase when we just received an update from it
   const isReceivingFromFirebase = useRef(false);
@@ -753,7 +769,9 @@ export default function Home() {
   }, []);
 
   // Swipe-gester för mobilflikar
-  const TAB_ORDER: MobileTab[] = ["vita", "trupp", "grona"];
+  const TAB_ORDER: MobileTab[] = sideLayout
+    ? ["trupp", "vita", "grona"]
+    : ["vita", "trupp", "grona"];
   const swipeRef = useSwipe({
     onSwipeLeft: () => {
       setMobileTab((prev) => {
@@ -977,6 +995,20 @@ export default function Home() {
                   </span>
                 </div>
 
+                {/* Layout-toggle-knapp */}
+                <button
+                  onClick={toggleSideLayout}
+                  title={sideLayout ? "Standard-layout (Vita | Trupp | Gröna)" : "Sidoläge (Trupp till vänster, lagen bredvid)"}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all uppercase tracking-wider ${
+                    sideLayout
+                      ? "bg-violet-500/30 border border-violet-400/50 text-violet-300 hover:bg-violet-500/40"
+                      : "bg-white/5 border border-white/15 text-white/50 hover:bg-white/10 hover:text-white/80"
+                  }`}
+                >
+                  {sideLayout ? <Columns3 className="w-3.5 h-3.5" /> : <PanelLeft className="w-3.5 h-3.5" />}
+                  <span className="hidden md:inline">{sideLayout ? "Standard" : "Sidoläge"}</span>
+                </button>
+
                 {/* Auto-fördela-knapp */}
                 <button
                   onClick={() => setConfirmAutoDistribute(true)}
@@ -1025,14 +1057,21 @@ export default function Home() {
             </div>
           </header>
 
-          {/* Mobilflikar – syns bara på smala skärmar */}
+          {/* Mobilflikar – syns bara på små skärmar */}
           <div className="md:hidden shrink-0">
             <div className="flex gap-0 px-2">
-              {([
-                { key: "vita" as MobileTab, label: `${teamAName} (${teamARegistered}/${teamACount})`, color: "border-slate-300/60 text-slate-200" },
-                { key: "trupp" as MobileTab, label: "Trupp", color: "border-emerald-400/60 text-emerald-300" },
-                { key: "grona" as MobileTab, label: `${teamBName} (${teamBRegistered}/${teamBCount})`, color: "border-emerald-500/60 text-emerald-400" },
-              ]).map(({ key, label, color }) => (
+              {(sideLayout
+                ? [
+                    { key: "trupp" as MobileTab, label: "Trupp", color: "border-emerald-400/60 text-emerald-300" },
+                    { key: "vita" as MobileTab, label: `${teamAName} (${teamARegistered}/${teamACount})`, color: "border-slate-300/60 text-slate-200" },
+                    { key: "grona" as MobileTab, label: `${teamBName} (${teamBRegistered}/${teamBCount})`, color: "border-emerald-500/60 text-emerald-400" },
+                  ]
+                : [
+                    { key: "vita" as MobileTab, label: `${teamAName} (${teamARegistered}/${teamACount})`, color: "border-slate-300/60 text-slate-200" },
+                    { key: "trupp" as MobileTab, label: "Trupp", color: "border-emerald-400/60 text-emerald-300" },
+                    { key: "grona" as MobileTab, label: `${teamBName} (${teamBRegistered}/${teamBCount})`, color: "border-emerald-500/60 text-emerald-400" },
+                  ]
+              ).map(({ key, label, color }) => (
                 <button
                   key={key}
                   data-mobile-tab={key}
@@ -1053,7 +1092,7 @@ export default function Home() {
             </div>
             {/* Swipe-indikator (prickar) */}
             <div className="flex justify-center gap-1.5 py-1.5">
-              {TAB_ORDER.map((tab) => (
+              {(sideLayout ? ["trupp", "vita", "grona"] as MobileTab[] : TAB_ORDER).map((tab) => (
                 <div
                   key={tab}
                   className={`rounded-full transition-all duration-200 ${
@@ -1070,72 +1109,142 @@ export default function Home() {
             {/* Villkorlig rendering: ANTINGEN desktop ELLER mobil – aldrig båda */}
             {/* Detta eliminerar dubbla droppables som förvirrar dnd-kit */}
             {!isMobile ? (
-              /* Desktop grid */
-              <div
-                className="grid gap-2 md:gap-3"
-                style={{
-                  gridTemplateColumns: "minmax(0, 1fr) 300px minmax(0, 1fr)",
-                }}
-              >
-                {/* Lag A (VITA) – vänster */}
-                <TeamPanel
-                  teamId="team-a"
-                  teamName={teamAName}
-                  slots={TEAM_A_SLOTS}
-                  lineup={teamALineup}
-                  onRemovePlayer={handleRemoveFromSlot}
-                  onChangePosition={handleChangePosition}
-                  onRenameTeam={setTeamAName}
-                  onClearTeam={() => handleRequestClearTeam("team-a-", teamAName)}
-                  isWhite
-                  config={teamAConfig}
-                  onConfigChange={setTeamAConfig}
-                />
-
-                {/* Spelarlista (mitten) */}
-                <div className="flex flex-col gap-2">
-                  <div>
-                    <PlayerList
-                      players={availablePlayers}
-                      onAddPlayer={handleAddPlayer}
-                      onDeletePlayer={handleDeletePlayer}
-                      onChangePosition={handleChangePosition}
-                      onChangeTeamColor={handleChangeTeamColor}
-                      onChangeNumber={handleChangeNumber}
-                      onChangeName={handleChangeName}
-                      onChangeCaptainRole={handleChangeCaptainRole}
-                      onChangeRegistered={handleChangeRegistered}
-                      onChangeGamesPlayed={handleChangeGamesPlayed}
-                      onBulkRegister={handleBulkRegister}
-                       onEventInfoUpdate={setEventInfo}
-                       totalRegistered={totalRegistered}
-                       totalDeclined={totalDeclined}
-                       totalPlayers={totalPlayers}
-                     />
+              /* Desktop layout – standard eller sidoläge */
+              sideLayout ? (
+                /* Sidoläge: Trupp till vänster, lagen bredvid varandra */
+                <div
+                  className="grid gap-2 md:gap-3"
+                  style={{
+                    gridTemplateColumns: "280px minmax(0, 1fr) minmax(0, 1fr)",
+                  }}
+                >
+                  {/* Spelarlista (vänster) */}
+                  <div className="flex flex-col gap-2">
+                    <div>
+                      <PlayerList
+                        players={availablePlayers}
+                        onAddPlayer={handleAddPlayer}
+                        onDeletePlayer={handleDeletePlayer}
+                        onChangePosition={handleChangePosition}
+                        onChangeTeamColor={handleChangeTeamColor}
+                        onChangeNumber={handleChangeNumber}
+                        onChangeName={handleChangeName}
+                        onChangeCaptainRole={handleChangeCaptainRole}
+                        onChangeRegistered={handleChangeRegistered}
+                        onChangeGamesPlayed={handleChangeGamesPlayed}
+                        onBulkRegister={handleBulkRegister}
+                        onEventInfoUpdate={setEventInfo}
+                        totalRegistered={totalRegistered}
+                        totalDeclined={totalDeclined}
+                        totalPlayers={totalPlayers}
+                      />
+                    </div>
+                    <SavedLineupsPanel
+                      teamAName={teamAName}
+                      teamBName={teamBName}
+                      lineup={lineup}
+                      onLoadLineup={handleLoadLineup}
+                    />
                   </div>
-                  <SavedLineupsPanel
-                    teamAName={teamAName}
-                    teamBName={teamBName}
-                    lineup={lineup}
-                    onLoadLineup={handleLoadLineup}
+
+                  {/* Lag A (VITA) – mitten */}
+                  <TeamPanel
+                    teamId="team-a"
+                    teamName={teamAName}
+                    slots={TEAM_A_SLOTS}
+                    lineup={teamALineup}
+                    onRemovePlayer={handleRemoveFromSlot}
+                    onChangePosition={handleChangePosition}
+                    onRenameTeam={setTeamAName}
+                    onClearTeam={() => handleRequestClearTeam("team-a-", teamAName)}
+                    isWhite
+                    config={teamAConfig}
+                    onConfigChange={setTeamAConfig}
+                  />
+
+                  {/* Lag B (GRÖNA) – höger */}
+                  <TeamPanel
+                    teamId="team-b"
+                    teamName={teamBName}
+                    slots={TEAM_B_SLOTS}
+                    lineup={teamBLineup}
+                    onRemovePlayer={handleRemoveFromSlot}
+                    onChangePosition={handleChangePosition}
+                    onRenameTeam={setTeamBName}
+                    onClearTeam={() => handleRequestClearTeam("team-b-", teamBName)}
+                    isWhite={false}
+                    config={teamBConfig}
+                    onConfigChange={setTeamBConfig}
                   />
                 </div>
+              ) : (
+                /* Standard-layout: Vita | Trupp | Gröna */
+                <div
+                  className="grid gap-2 md:gap-3"
+                  style={{
+                    gridTemplateColumns: "minmax(0, 1fr) 300px minmax(0, 1fr)",
+                  }}
+                >
+                  {/* Lag A (VITA) – vänster */}
+                  <TeamPanel
+                    teamId="team-a"
+                    teamName={teamAName}
+                    slots={TEAM_A_SLOTS}
+                    lineup={teamALineup}
+                    onRemovePlayer={handleRemoveFromSlot}
+                    onChangePosition={handleChangePosition}
+                    onRenameTeam={setTeamAName}
+                    onClearTeam={() => handleRequestClearTeam("team-a-", teamAName)}
+                    isWhite
+                    config={teamAConfig}
+                    onConfigChange={setTeamAConfig}
+                  />
 
-                {/* Lag B (GRÖNA) – höger */}
-                <TeamPanel
-                  teamId="team-b"
-                  teamName={teamBName}
-                  slots={TEAM_B_SLOTS}
-                  lineup={teamBLineup}
-                  onRemovePlayer={handleRemoveFromSlot}
-                  onChangePosition={handleChangePosition}
-                  onRenameTeam={setTeamBName}
-                  onClearTeam={() => handleRequestClearTeam("team-b-", teamBName)}
-                  isWhite={false}
-                  config={teamBConfig}
-                  onConfigChange={setTeamBConfig}
-                />
-              </div>
+                  {/* Spelarlista (mitten) */}
+                  <div className="flex flex-col gap-2">
+                    <div>
+                      <PlayerList
+                        players={availablePlayers}
+                        onAddPlayer={handleAddPlayer}
+                        onDeletePlayer={handleDeletePlayer}
+                        onChangePosition={handleChangePosition}
+                        onChangeTeamColor={handleChangeTeamColor}
+                        onChangeNumber={handleChangeNumber}
+                        onChangeName={handleChangeName}
+                        onChangeCaptainRole={handleChangeCaptainRole}
+                        onChangeRegistered={handleChangeRegistered}
+                        onChangeGamesPlayed={handleChangeGamesPlayed}
+                        onBulkRegister={handleBulkRegister}
+                        onEventInfoUpdate={setEventInfo}
+                        totalRegistered={totalRegistered}
+                        totalDeclined={totalDeclined}
+                        totalPlayers={totalPlayers}
+                      />
+                    </div>
+                    <SavedLineupsPanel
+                      teamAName={teamAName}
+                      teamBName={teamBName}
+                      lineup={lineup}
+                      onLoadLineup={handleLoadLineup}
+                    />
+                  </div>
+
+                  {/* Lag B (GRÖNA) – höger */}
+                  <TeamPanel
+                    teamId="team-b"
+                    teamName={teamBName}
+                    slots={TEAM_B_SLOTS}
+                    lineup={teamBLineup}
+                    onRemovePlayer={handleRemoveFromSlot}
+                    onChangePosition={handleChangePosition}
+                    onRenameTeam={setTeamBName}
+                    onClearTeam={() => handleRequestClearTeam("team-b-", teamBName)}
+                    isWhite={false}
+                    config={teamBConfig}
+                    onConfigChange={setTeamBConfig}
+                  />
+                </div>
+              )
             ) : (
               /* Mobilvy – bara den aktiva fliken renderas */
               <div

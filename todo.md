@@ -57,3 +57,4 @@
 - [x] Haptic feedback (vibration) vid flikbyte på mobil (swipe, drag-to-edge, tab-klick)- [x] Auto-fördela knapp: fördelar anmälda spelare på lagen (position > lagttillhörighet > jämn fördelning)
 - [x] Bekräftelsedialog innan Auto-fördela körs (liknande Rensa-dialogen)- [x] Slumpa om-knapp: omfördelar neutrala spelare (utan lagttillhörighet) slumpmässigt, behåller tillhöriga spelare
 - [x] Prioritera Center-spelare (C) på Center-platser i auto-fördelningen
+- [x] Layout toggle: knapp som flyttar spelartruppen till vänster och placerar laguppställningarna bredvid varandra (desktop + mobil)
