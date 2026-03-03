@@ -1055,11 +1055,15 @@ export default function Home() {
           backgroundSize: "cover",
           backgroundPosition: "center top",
           backgroundRepeat: "no-repeat",
+          ...(viewMode === 'desktop' && autoIsMobile ? { overflowX: 'auto' as const, WebkitOverflowScrolling: 'touch' as any } : {}),
         }}
       >
         <div className="absolute inset-0 bg-black/45 pointer-events-none" />
 
-        <div className="relative flex flex-col min-h-screen">
+        <div
+          className="relative flex flex-col min-h-screen"
+          style={viewMode === 'desktop' && autoIsMobile ? { minWidth: '900px', overflowX: 'auto' } : undefined}
+        >
           {/* Header */}
           <header className="px-4 pt-4 pb-2 shrink-0">
             <div className="max-w-7xl mx-auto">
@@ -1321,8 +1325,8 @@ export default function Home() {
             );
           })()}
 
-          {/* Mobilflikar – syns bara på små skärmar */}
-          <div className="md:hidden shrink-0">
+          {/* Mobilflikar – syns bara på små skärmar OCH om vi inte tvingar desktop-vy */}
+          <div className={`shrink-0 ${isMobile ? '' : 'hidden'} md:hidden`}>
             <div className="flex gap-0 px-2">
               {(sideLayout
                 ? [
@@ -1376,7 +1380,7 @@ export default function Home() {
               /* Desktop layout – standard eller sidoläge */
               sideLayout ? (
                 /* Sidoläge: Trupp till vänster (justerbar bredd), lagen bredvid varandra */
-                <div className="flex gap-0">
+                <div className="flex gap-0 overflow-x-auto" style={{ minWidth: 0 }}>
                   {/* Spelarlista (vänster) – justerbar bredd */}
                   <div
                     className="flex flex-col gap-2 shrink-0 overflow-hidden"
@@ -1457,10 +1461,12 @@ export default function Home() {
                 </div>
               ) : (
                 /* Standard-layout: Vita | Trupp | Gröna */
+                <div className="overflow-x-auto">
                 <div
                   className="grid gap-2 md:gap-3"
                   style={{
-                    gridTemplateColumns: "minmax(0, 1fr) 300px minmax(0, 1fr)",
+                    gridTemplateColumns: "minmax(250px, 1fr) 300px minmax(250px, 1fr)",
+                    minWidth: "850px",
                   }}
                 >
                   {/* Lag A (VITA) – vänster */}
@@ -1524,6 +1530,7 @@ export default function Home() {
                     config={teamBConfig}
                     onConfigChange={setTeamBConfig}
                   />
+                </div>
                 </div>
               )
             ) : (

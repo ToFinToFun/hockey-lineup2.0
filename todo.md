@@ -75,3 +75,6 @@
 - [x] Undersök och implementera skrivning till laget.se (ändra spelares deltagarstatus: deltar/deltar inte)
 - [x] Bulk-ändra laget.se-status: markera flera spelare och ändra deras status samtidigt
 - [x] Synk-indikator: visa spinner bredvid spelaren medan statusen uppdateras till laget.se
+- [x] BUGG: Bulk-knappen syns inte på mobil
+- [x] BUGG: Desktop-läge (DATOR) på mobil ger knasig layout på lagkolumnerna
+- [x] BUGG: Desktop-läge via UI-knappen visar fortfarande mobilflikar (Vita/Trupp/Gröna) — blandning av mobil och desktop-element

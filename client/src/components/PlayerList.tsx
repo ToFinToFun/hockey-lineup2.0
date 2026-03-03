@@ -193,13 +193,13 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                   setBulkSelectMode((prev) => !prev);
                   setSelectedPlayerIds(new Set());
                 }}
-                className={`text-[9px] font-bold px-2 py-1 rounded border transition-all ${
+                className={`text-xs font-bold px-3 py-1.5 rounded-md border-2 transition-all shadow-sm ${
                   bulkSelectMode
-                    ? "bg-violet-500/25 text-violet-300 border-violet-400/50"
-                    : "bg-white/5 text-white/40 border-white/10 hover:bg-white/10 hover:text-white/60"
+                    ? "bg-violet-500/40 text-violet-100 border-violet-400/80 shadow-violet-500/20"
+                    : "bg-violet-500/20 text-violet-200 border-violet-400/50 hover:bg-violet-500/30 hover:text-violet-100 hover:border-violet-400/70 hover:shadow-violet-500/15"
                 }`}
               >
-                {bulkSelectMode ? "Avbryt" : "Bulk"}
+                {bulkSelectMode ? "✖ Avbryt" : "☐ Bulk"}
               </button>
             )}
           </div>
@@ -283,8 +283,8 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
 
       {/* Bulk-åtgärder */}
       {bulkSelectMode && onBulkSyncToLaget && (
-        <div className="px-3 py-2 border-b border-white/10 bg-violet-500/5">
-          <div className="flex items-center gap-2 mb-1.5">
+        <div className="px-3 py-2.5 border-b border-violet-400/20 bg-violet-500/10">
+          <div className="flex items-center gap-2 mb-2">
             <button
               onClick={() => {
                 if (selectedPlayerIds.size === sorted.length) {
@@ -293,16 +293,16 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                   setSelectedPlayerIds(new Set(sorted.map(p => p.id)));
                 }
               }}
-              className="text-[9px] font-bold px-2 py-0.5 rounded border bg-white/5 text-white/50 border-white/10 hover:bg-white/10 hover:text-white/70 transition-all"
+              className="text-[11px] font-bold px-2.5 py-1 rounded border bg-white/5 text-white/60 border-white/15 hover:bg-white/10 hover:text-white/80 transition-all"
             >
               {selectedPlayerIds.size === sorted.length ? "Avmarkera alla" : "Markera alla"}
             </button>
-            <span className="text-[9px] text-white/40">
+            <span className="text-[11px] text-white/50 font-medium">
               {selectedPlayerIds.size} valda
             </span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[9px] text-white/40">Laget.se:</span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10px] text-white/50 font-medium">Laget.se:</span>
             <button
               disabled={selectedPlayerIds.size === 0 || isBulkSyncing}
               onClick={async () => {
@@ -315,7 +315,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                   setBulkSelectMode(false);
                 }
               }}
-              className="text-[9px] font-bold px-2 py-1 rounded border transition-all bg-emerald-500/15 text-emerald-300 border-emerald-400/40 hover:bg-emerald-500/25 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="text-[11px] font-bold px-2.5 py-1.5 rounded-md border transition-all bg-emerald-500/20 text-emerald-300 border-emerald-400/50 hover:bg-emerald-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isBulkSyncing ? <Loader2 className="w-3 h-3 animate-spin" /> : "Alla Deltar"}
             </button>
@@ -331,7 +331,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                   setBulkSelectMode(false);
                 }
               }}
-              className="text-[9px] font-bold px-2 py-1 rounded border transition-all bg-red-500/15 text-red-300 border-red-400/40 hover:bg-red-500/25 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="text-[11px] font-bold px-2.5 py-1.5 rounded-md border transition-all bg-red-500/20 text-red-300 border-red-400/50 hover:bg-red-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isBulkSyncing ? <Loader2 className="w-3 h-3 animate-spin" /> : "Alla Deltar ej"}
             </button>
@@ -347,7 +347,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                   setBulkSelectMode(false);
                 }
               }}
-              className="text-[9px] font-bold px-2 py-1 rounded border transition-all bg-white/5 text-white/40 border-white/10 hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="text-[11px] font-bold px-2.5 py-1.5 rounded-md border transition-all bg-white/10 text-white/50 border-white/20 hover:bg-white/15 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isBulkSyncing ? <Loader2 className="w-3 h-3 animate-spin" /> : "Alla Ej svarat"}
             </button>
