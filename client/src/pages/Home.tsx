@@ -892,6 +892,7 @@ export default function Home() {
     },
     minDistance: 50,
     maxVertical: 80,
+    enabled: isMobile, // Bara swipe i mobilvy
   });
   const tabHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastHoveredTabRef = useRef<MobileTab | null>(null);

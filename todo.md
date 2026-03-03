@@ -91,3 +91,7 @@
 - [x] Fixa spelartrupp-layouten i sidoläge på mobil — min-w-0, overflow-hidden, flex-wrap, maxWidth 45vw
 - [x] BUGG: Sidoläge på mobil — fixat med minWidth 850px och borttagen maxWidth-begränsning
 - [x] BUGG: Mobilvy visar alla tre kolumner — fixat: isMobile styr både flikar och innehåll synkront, ingen CSS-mismatch
+- [x] Ändra lagheader-text: "X anmälda av Y spelare i laget" → "X anmälda av Y i laget"
+- [x] Ta bort swipe-gester i desktop-vy (behåll bara i mobilvy)
+- [x] Lägg till PWA manifest för "Lägg till på startskärmen" med snygg ikon
+- [x] Ändra app-namn till "Stålstadens Lineup" (manifest, meta-taggar, title)
