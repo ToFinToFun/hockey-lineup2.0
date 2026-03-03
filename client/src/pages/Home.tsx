@@ -1337,11 +1337,11 @@ export default function Home() {
               /* Desktop layout – standard eller sidoläge */
               sideLayout ? (
                 /* Sidoläge: Trupp till vänster (justerbar bredd), lagen bredvid varandra */
-                <div className="flex gap-0 overflow-x-auto" style={{ minWidth: 0 }}>
+                <div className="flex gap-0 overflow-x-auto" style={{ minWidth: '850px' }}>
                   {/* Spelarlista (vänster) – justerbar bredd */}
                   <div
-                    className="flex flex-col gap-2 shrink-0 overflow-hidden min-w-0"
-                    style={{ width: `${rosterWidth}px`, maxWidth: '45vw' }}
+                    className="flex flex-col gap-2 shrink-0 min-w-0"
+                    style={{ width: `${rosterWidth}px` }}
                   >
                     <div>
                       <PlayerList

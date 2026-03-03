@@ -89,3 +89,4 @@
 - [x] Fixa IB-etiketten i headern: IB betyder IceBox, inte Innebandy
 - [x] Starta om stale TS-watcher för att lösa updateAttendance/AttendingStatus-felen (0 errors)
 - [x] Fixa spelartrupp-layouten i sidoläge på mobil — min-w-0, overflow-hidden, flex-wrap, maxWidth 45vw
+- [x] BUGG: Sidoläge på mobil — fixat med minWidth 850px och borttagen maxWidth-begränsning
