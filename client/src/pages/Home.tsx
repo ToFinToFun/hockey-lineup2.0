@@ -437,6 +437,20 @@ export default function Home() {
 
   const isMobile = viewMode === "auto" ? autoIsMobile : viewMode === "mobile";
 
+  // Dynamiskt ändra viewport meta-tag för att simulera desktop-läge på mobil
+  // Detta är samma teknik som Chrome's "Begär datorwebbplats" använder
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="viewport"]');
+    if (!meta) return;
+    if (viewMode === 'desktop' && autoIsMobile) {
+      // Ändra viewport till 1024px bred – browsern skalar automatiskt
+      meta.setAttribute('content', 'width=1024');
+    } else {
+      // Återställ till normal mobilvy
+      meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1');
+    }
+  }, [viewMode, autoIsMobile]);
+
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
@@ -1055,14 +1069,12 @@ export default function Home() {
           backgroundSize: "cover",
           backgroundPosition: "center top",
           backgroundRepeat: "no-repeat",
-          ...(viewMode === 'desktop' && autoIsMobile ? { overflowX: 'auto' as const, WebkitOverflowScrolling: 'touch' as any } : {}),
         }}
       >
         <div className="absolute inset-0 bg-black/45 pointer-events-none" />
 
         <div
           className="relative flex flex-col min-h-screen"
-          style={viewMode === 'desktop' && autoIsMobile ? { minWidth: '900px', overflowX: 'auto' } : undefined}
         >
           {/* Header */}
           <header className="px-4 pt-4 pb-2 shrink-0">
@@ -1325,8 +1337,8 @@ export default function Home() {
             );
           })()}
 
-          {/* Mobilflikar – syns bara på små skärmar OCH om vi inte tvingar desktop-vy */}
-          <div className={`shrink-0 ${isMobile ? '' : 'hidden'} md:hidden`}>
+          {/* Mobilflikar – syns bara på små skärmar (viewport meta-tag hanterar desktop-läge) */}
+          <div className="shrink-0 md:hidden">
             <div className="flex gap-0 px-2">
               {(sideLayout
                 ? [
