@@ -61,3 +61,7 @@
 - [x] Justerbar bredd på spelartrupp-kolumnen i sidoläge (dragbar resize-handle)
 - [x] PWA manifest: "Stålstadens Formation App" med vita lagets logga som ikon för startskärmsgenväg
 - [x] Header cleanup: ta bort LIVE-text, positionsbeskrivningar, instruktionstext. Gör knappar kompaktare.
+- [x] Synlig Ångra-knapp i headern (istället för bara Ctrl+Z)
+- [x] Expanderbar statistik-panel: spelarfördelning per position, anmälda vs avböjda
+- [x] Ta bort "Avböjda" från spelartrupp-rubriken
+- [x] Lägg till ikoner på mobilvy-knapparna (Auto, Slumpa, etc.) som i webbvyn

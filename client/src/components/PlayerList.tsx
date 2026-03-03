@@ -181,11 +181,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
             <span className="text-emerald-400/70 text-xs font-semibold">
               Anmälda {players.filter(p => p.isRegistered).length}/{totalRegistered ?? players.filter(p => p.isRegistered).length}
             </span>
-            {(totalDeclined ?? players.filter(p => p.isDeclined).length) > 0 && (
-              <span className="text-red-400/70 text-xs font-semibold">
-                Avböjda {players.filter(p => p.isDeclined).length}/{totalDeclined ?? players.filter(p => p.isDeclined).length}
-              </span>
-            )}
+
           </div>
         </div>
 
