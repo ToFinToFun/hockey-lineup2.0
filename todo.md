@@ -78,3 +78,4 @@
 - [x] BUGG: Bulk-knappen syns inte på mobil
 - [x] BUGG: Desktop-läge (DATOR) på mobil ger knasig layout på lagkolumnerna
 - [x] BUGG: Desktop-läge via UI-knappen visar fortfarande mobilflikar (Vita/Trupp/Gröna) — blandning av mobil och desktop-element
+- [x] BUGG: Desktop-läge via UI-knappen fungerar fortfarande inte på riktig mobil — fixat med viewport meta-tag (width=1024)
