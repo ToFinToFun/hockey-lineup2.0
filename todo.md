@@ -82,3 +82,6 @@
 - [x] Ta bort desktop/mobil-knappen och all relaterad logik — återgå till ren responsiv CSS-layout
 - [x] Fixa TS-fel: updateAttendance och AttendingStatus saknas i exporten från lagetSe.ts (var stale tsc watcher)
 - [x] Rensa allt APK/PWA-relaterat — appen körs bara på webben
+- [x] Desktop: Gör spelartrupp-kolumnen bredare så spelarnamn får plats
+- [x] Desktop: Gör laguppställnings-kolumnerna smalare och minska mellanrummet
+- [x] Gör Bulk-knappen mindre och med diskretare färg
