@@ -114,3 +114,4 @@
 - [x] BUGG: laget.se-synk fungerar inte på Netlify — återskapade Netlify Function med både GET (hämta) och POST (uppdatera)
 - [x] BUGG: Kan inte scrolla horisontellt/vertikalt genom att dra spelare mot kanten i desktop-läge
 - [x] BUGG: Touch-drag på mobil i desktop-layout scrollar inte sidan när man når kanten — custom setInterval-scroll (dnd-kit autoScroll trasig med React 18)
+- [x] BUGG: Horisontell auto-scroll fungerar inte vid drag på inzoomad mobil-viewport (vertikal fungerar)

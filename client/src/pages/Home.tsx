@@ -396,7 +396,10 @@ export default function Home() {
     // Vibrera för att bekräfta att drag aktiverats
     if (navigator.vibrate) navigator.vibrate(50);
     // Lås scrollning under drag på mobil (inte desktop – där behövs horisontell scroll)
-    if (isMobile) {
+    // Men INTE när sidan är inzoomad – då behöver vi window.scrollBy för att panna
+    const vv = window.visualViewport;
+    const isZoomed = vv ? vv.scale > 1.05 : false;
+    if (isMobile && !isZoomed) {
       document.body.classList.add("dnd-scroll-lock");
     }
     // Starta custom auto-scroll (fungerar med touch och mus)
@@ -857,6 +860,55 @@ export default function Home() {
   const scrollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pointerPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const isDraggingRef = useRef(false);
+  const zoomSpacerRef = useRef<HTMLDivElement | null>(null);
+
+  // Skapa/ta bort en osynlig spacer som gör dokumentet bredare vid zoom
+  // så att window.scrollBy fungerar horisontellt
+  const ensureZoomSpacer = useCallback(() => {
+    const vv = window.visualViewport;
+    const scale = vv ? vv.scale : 1;
+    if (scale <= 1.05) {
+      // Inte zoomad – ta bort spacer om den finns
+      if (zoomSpacerRef.current) {
+        zoomSpacerRef.current.remove();
+        zoomSpacerRef.current = null;
+      }
+      return;
+    }
+    // Beräkna hur bred spacern behöver vara
+    // Layout viewport * scale ger total yta som behöver vara scrollbar
+    const layoutW = window.innerWidth;
+    const layoutH = document.documentElement.scrollHeight;
+    const neededW = layoutW * scale;
+    const neededH = Math.max(layoutH * scale, window.innerHeight * scale);
+
+    if (!zoomSpacerRef.current) {
+      const spacer = document.createElement('div');
+      spacer.id = 'zoom-drag-spacer';
+      spacer.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: ${neededW}px;
+        height: ${neededH}px;
+        pointer-events: none;
+        visibility: hidden;
+        z-index: -1;
+      `;
+      document.body.appendChild(spacer);
+      zoomSpacerRef.current = spacer;
+    } else {
+      zoomSpacerRef.current.style.width = `${neededW}px`;
+      zoomSpacerRef.current.style.height = `${neededH}px`;
+    }
+  }, []);
+
+  const removeZoomSpacer = useCallback(() => {
+    if (zoomSpacerRef.current) {
+      zoomSpacerRef.current.remove();
+      zoomSpacerRef.current = null;
+    }
+  }, []);
 
   // Auto-scroll: lyssnar på riktiga touch/mouse-events för att få viewport-koordinater
   // och kör scroll via setInterval. Stödjer både normal scroll och zoomad viewport.
@@ -904,8 +956,10 @@ export default function Home() {
     if (scrollDx === 0 && scrollDy === 0) return;
 
     if (isZoomed) {
+      // Uppdatera spacer-storlek (dokumentet kan ha ändrats)
+      ensureZoomSpacer();
       // När sidan är zoomad: använd window.scrollBy för att flytta layout-viewporten
-      // vilket pannar den visuella viewporten över innehållet
+      // Spacern gör dokumentet bredare så horisontell scroll fungerar
       window.scrollBy(scrollDx, scrollDy);
     } else {
       // Normal (ej zoomad): scrolla overflow-container horisontellt + window vertikalt
@@ -927,7 +981,7 @@ export default function Home() {
         window.scrollBy(0, scrollDy);
       }
     }
-  }, []);
+  }, [ensureZoomSpacer]);
 
   // Pointer-tracking via native events (inte dnd-kit events)
   useEffect(() => {
@@ -951,9 +1005,11 @@ export default function Home() {
 
   const startAutoScroll = useCallback(() => {
     isDraggingRef.current = true;
+    // Om sidan är zoomad: skapa spacer för horisontell scroll
+    ensureZoomSpacer();
     if (scrollIntervalRef.current) return;
     scrollIntervalRef.current = setInterval(doAutoScroll, 16); // ~60fps
-  }, [doAutoScroll]);
+  }, [doAutoScroll, ensureZoomSpacer]);
 
   const stopAutoScroll = useCallback(() => {
     isDraggingRef.current = false;
@@ -962,7 +1018,9 @@ export default function Home() {
       scrollIntervalRef.current = null;
     }
     pointerPosRef.current = { x: 0, y: 0 };
-  }, []);
+    // Ta bort zoom-spacer
+    removeZoomSpacer();
+  }, [removeZoomSpacer]);
 
   // Automatiskt flikbyte vid drag: håll spelaren över en flik-knapp i 600ms
   const handleDragMove = useCallback((event: DragMoveEvent) => {
