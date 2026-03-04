@@ -399,6 +399,8 @@ export default function Home() {
     if (isMobile) {
       document.body.classList.add("dnd-scroll-lock");
     }
+    // Starta custom auto-scroll (fungerar med touch och mus)
+    startAutoScroll();
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -852,7 +854,59 @@ export default function Home() {
   const lastHoveredTabRef = useRef<MobileTab | null>(null);
   const sideScrollRef = useRef<HTMLDivElement>(null);
   const stdScrollRef = useRef<HTMLDivElement>(null);
+  const scrollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const dragPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  // Custom auto-scroll: körs via setInterval under hela drag-sessionen
+  // Fungerar med touch och mus, scrollar container horisontellt + window vertikalt
+  const startAutoScroll = useCallback(() => {
+    if (scrollIntervalRef.current) return; // redan igång
+    const SCROLL_EDGE = 100; // px från kant som triggar scroll
+    const SCROLL_SPEED = 8; // px per tick
+
+    scrollIntervalRef.current = setInterval(() => {
+      const { x: clientX, y: clientY } = dragPosRef.current;
+      if (clientX === 0 && clientY === 0) return;
+
+      // Horisontell scroll (aktiv overflow-container)
+      const container = sideScrollRef.current || stdScrollRef.current;
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        const isOverflowing = container.scrollWidth > container.clientWidth;
+        if (isOverflowing) {
+          if (clientX < rect.left + SCROLL_EDGE && container.scrollLeft > 0) {
+            const intensity = 1 - Math.max(0, clientX - rect.left) / SCROLL_EDGE;
+            container.scrollLeft -= SCROLL_SPEED * intensity;
+          } else if (clientX > rect.right - SCROLL_EDGE) {
+            const maxScroll = container.scrollWidth - container.clientWidth;
+            if (container.scrollLeft < maxScroll) {
+              const intensity = 1 - Math.max(0, rect.right - clientX) / SCROLL_EDGE;
+              container.scrollLeft += SCROLL_SPEED * intensity;
+            }
+          }
+        }
+      }
+
+      // Vertikal scroll (window)
+      const viewH = window.innerHeight;
+      const maxScrollY = document.documentElement.scrollHeight - viewH;
+      if (clientY < SCROLL_EDGE && window.scrollY > 0) {
+        const intensity = 1 - Math.max(0, clientY) / SCROLL_EDGE;
+        window.scrollBy(0, -SCROLL_SPEED * intensity);
+      } else if (clientY > viewH - SCROLL_EDGE && window.scrollY < maxScrollY) {
+        const intensity = 1 - Math.max(0, viewH - clientY) / SCROLL_EDGE;
+        window.scrollBy(0, SCROLL_SPEED * intensity);
+      }
+    }, 16); // ~60fps
+  }, []);
+
+  const stopAutoScroll = useCallback(() => {
+    if (scrollIntervalRef.current) {
+      clearInterval(scrollIntervalRef.current);
+      scrollIntervalRef.current = null;
+    }
+    dragPosRef.current = { x: 0, y: 0 };
+  }, []);
 
   // Automatiskt flikbyte vid drag: håll spelaren över en flik-knapp i 600ms
   const handleDragMove = useCallback((event: DragMoveEvent) => {
@@ -878,11 +932,11 @@ export default function Home() {
 
     if (clientX === 0 && clientY === 0) return;
 
+    // Uppdatera position för auto-scroll interval
+    dragPosRef.current = { x: clientX, y: clientY };
+
     const screenWidth = window.innerWidth;
     const EDGE_ZONE = 40; // px från skärmkant
-
-    // dnd-kit:s inbyggda autoScroll hanterar horisontell och vertikal scrollning
-    // automatiskt för alla scrollbara föräldrar (overflow-x-auto, window, etc.)
 
     // Kolla om positionen är vid skärmkanten (drag-to-edge) – mobil flikbyte
     let edgeTab: MobileTab | null = null;
@@ -974,13 +1028,7 @@ export default function Home() {
       sensors={sensors}
       collisionDetection={pointerWithinOrClosest}
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
-      autoScroll={{
-        enabled: true,
-        threshold: { x: 0.1, y: 0.1 },
-        layoutShiftCompensation: true,
-        acceleration: 15,
-        interval: 5,
-      }}
+      autoScroll={false}
       onDragStart={handleDragStart}
       onDragMove={handleDragMove}
       onDragEnd={(e) => {
@@ -992,7 +1040,8 @@ export default function Home() {
         lastHoveredTabRef.current = null;
         setDragHoverTab(null);
         document.body.classList.remove("dnd-scroll-lock");
-
+        // Stoppa custom auto-scroll
+        stopAutoScroll();
         handleDragEnd(e);
       }}
     >
