@@ -855,57 +855,82 @@ export default function Home() {
   const sideScrollRef = useRef<HTMLDivElement>(null);
   const stdScrollRef = useRef<HTMLDivElement>(null);
   const scrollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const dragPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const pointerPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const isDraggingRef = useRef(false);
 
-  // Custom auto-scroll: körs via setInterval under hela drag-sessionen
-  // Fungerar med touch och mus, scrollar container horisontellt + window vertikalt
-  const startAutoScroll = useCallback(() => {
-    if (scrollIntervalRef.current) return; // redan igång
-    const SCROLL_EDGE = 100; // px från kant som triggar scroll
-    const SCROLL_SPEED = 8; // px per tick
+  // Auto-scroll: lyssnar på riktiga touch/mouse-events för att få viewport-koordinater
+  // och kör scroll via setInterval
+  const SCROLL_EDGE = 100;
+  const SCROLL_SPEED = 10;
 
-    scrollIntervalRef.current = setInterval(() => {
-      const { x: clientX, y: clientY } = dragPosRef.current;
-      if (clientX === 0 && clientY === 0) return;
+  const doAutoScroll = useCallback(() => {
+    const { x, y } = pointerPosRef.current;
+    if (x === 0 && y === 0) return;
 
-      // Horisontell scroll (aktiv overflow-container)
-      const container = sideScrollRef.current || stdScrollRef.current;
-      if (container) {
-        const rect = container.getBoundingClientRect();
-        const isOverflowing = container.scrollWidth > container.clientWidth;
-        if (isOverflowing) {
-          if (clientX < rect.left + SCROLL_EDGE && container.scrollLeft > 0) {
-            const intensity = 1 - Math.max(0, clientX - rect.left) / SCROLL_EDGE;
-            container.scrollLeft -= SCROLL_SPEED * intensity;
-          } else if (clientX > rect.right - SCROLL_EDGE) {
-            const maxScroll = container.scrollWidth - container.clientWidth;
-            if (container.scrollLeft < maxScroll) {
-              const intensity = 1 - Math.max(0, rect.right - clientX) / SCROLL_EDGE;
-              container.scrollLeft += SCROLL_SPEED * intensity;
-            }
+    // Horisontell scroll (aktiv overflow-container)
+    const container = sideScrollRef.current || stdScrollRef.current;
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      const isOverflowing = container.scrollWidth > container.clientWidth;
+      if (isOverflowing) {
+        if (x < rect.left + SCROLL_EDGE && container.scrollLeft > 0) {
+          const intensity = 1 - Math.max(0, x - rect.left) / SCROLL_EDGE;
+          container.scrollLeft -= SCROLL_SPEED * intensity;
+        } else if (x > rect.right - SCROLL_EDGE) {
+          const maxScroll = container.scrollWidth - container.clientWidth;
+          if (container.scrollLeft < maxScroll) {
+            const intensity = 1 - Math.max(0, rect.right - x) / SCROLL_EDGE;
+            container.scrollLeft += SCROLL_SPEED * intensity;
           }
         }
       }
+    }
 
-      // Vertikal scroll (window)
-      const viewH = window.innerHeight;
-      const maxScrollY = document.documentElement.scrollHeight - viewH;
-      if (clientY < SCROLL_EDGE && window.scrollY > 0) {
-        const intensity = 1 - Math.max(0, clientY) / SCROLL_EDGE;
-        window.scrollBy(0, -SCROLL_SPEED * intensity);
-      } else if (clientY > viewH - SCROLL_EDGE && window.scrollY < maxScrollY) {
-        const intensity = 1 - Math.max(0, viewH - clientY) / SCROLL_EDGE;
-        window.scrollBy(0, SCROLL_SPEED * intensity);
-      }
-    }, 16); // ~60fps
+    // Vertikal scroll (window)
+    const viewH = window.innerHeight;
+    const maxScrollY = document.documentElement.scrollHeight - viewH;
+    if (y < SCROLL_EDGE && window.scrollY > 0) {
+      const intensity = 1 - Math.max(0, y) / SCROLL_EDGE;
+      window.scrollBy(0, -SCROLL_SPEED * intensity);
+    } else if (y > viewH - SCROLL_EDGE && window.scrollY < maxScrollY) {
+      const intensity = 1 - Math.max(0, viewH - y) / SCROLL_EDGE;
+      window.scrollBy(0, SCROLL_SPEED * intensity);
+    }
   }, []);
 
+  // Pointer-tracking via native events (inte dnd-kit events)
+  useEffect(() => {
+    const onTouchMove = (e: TouchEvent) => {
+      if (!isDraggingRef.current) return;
+      const t = e.touches[0];
+      if (t) pointerPosRef.current = { x: t.clientX, y: t.clientY };
+    };
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDraggingRef.current) return;
+      pointerPosRef.current = { x: e.clientX, y: e.clientY };
+    };
+    // Använd capture phase så vi får events även om dnd-kit stoppar propagation
+    window.addEventListener('touchmove', onTouchMove, { capture: true, passive: true });
+    window.addEventListener('mousemove', onMouseMove, { capture: true, passive: true });
+    return () => {
+      window.removeEventListener('touchmove', onTouchMove, { capture: true } as EventListenerOptions);
+      window.removeEventListener('mousemove', onMouseMove, { capture: true } as EventListenerOptions);
+    };
+  }, []);
+
+  const startAutoScroll = useCallback(() => {
+    isDraggingRef.current = true;
+    if (scrollIntervalRef.current) return;
+    scrollIntervalRef.current = setInterval(doAutoScroll, 16); // ~60fps
+  }, [doAutoScroll]);
+
   const stopAutoScroll = useCallback(() => {
+    isDraggingRef.current = false;
     if (scrollIntervalRef.current) {
       clearInterval(scrollIntervalRef.current);
       scrollIntervalRef.current = null;
     }
-    dragPosRef.current = { x: 0, y: 0 };
+    pointerPosRef.current = { x: 0, y: 0 };
   }, []);
 
   // Automatiskt flikbyte vid drag: håll spelaren över en flik-knapp i 600ms
@@ -931,9 +956,6 @@ export default function Home() {
     }
 
     if (clientX === 0 && clientY === 0) return;
-
-    // Uppdatera position för auto-scroll interval
-    dragPosRef.current = { x: clientX, y: clientY };
 
     const screenWidth = window.innerWidth;
     const EDGE_ZONE = 40; // px från skärmkant
