@@ -95,3 +95,6 @@
 - [x] Ta bort swipe-gester i desktop-vy (behåll bara i mobilvy)
 - [x] Lägg till PWA manifest för "Lägg till på startskärmen" med snygg ikon
 - [x] Ändra app-namn till "Stålstadens Lineup" (manifest, meta-taggar, title)
+- [ ] BUGG: PWA visar fel namn ("Stålstadens Ishockey Formations-App") och ingen ikon vid "Lägg till på startskärmen" i Chrome mobil
+- [ ] Gör appen installerbar som PWA ("Installera app" istället för bara "Lägg till på startskärmen") — kräver service worker
+- [x] Spelartrupp-kolumnen i sidoläge ska vara lika bred som i standardläge (desktop)

@@ -218,7 +218,7 @@ export default function Home() {
   // Justerbar bredd på spelartrupp-kolumnen i sidoläge
   const ROSTER_MIN_W = 200;
   const ROSTER_MAX_W = 500;
-  const ROSTER_DEFAULT_W = 340;
+  const ROSTER_DEFAULT_W = 320;
   const [rosterWidth, setRosterWidth] = useState(() => {
     try {
       const saved = localStorage.getItem("stalstadens-roster-width");
