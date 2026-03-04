@@ -172,13 +172,7 @@ function drawTeamBlock(
   ctx.letterSpacing = "3px";
   ctx.fillText(teamName.toUpperCase(), x + logoR * 2 + 14, curY + logoR + Math.round(6 * s));
 
-  // Player count
-  const playerCount = Object.keys(lineup).filter(k => slots.some(sl => sl.id === k && lineup[k])).length;
-  const registeredCount = Object.values(lineup).filter(p => slots.some(sl => lineup[sl.id] === p) && p.isRegistered).length;
-  ctx.font = `${Math.round(16 * s)}px 'Oswald', sans-serif`;
-  ctx.fillStyle = "rgba(255,255,255,0.4)";
-  ctx.letterSpacing = "1px";
-  ctx.fillText(`${registeredCount} anmälda av ${playerCount} i laget`, x + logoR * 2 + 14, curY + logoR + Math.round(28 * s));
+  // (attendance count removed)
 
   curY += Math.round(LOGO_HEADER_H * s);
 
@@ -417,7 +411,7 @@ export function ExportModal({
 
     // Date subtitle
     ctx.font = "18px 'Oswald', sans-serif";
-    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.fillStyle = "#ffffff";
     ctx.letterSpacing = "3px";
     ctx.fillText(`A-LAG HERRAR  ·  ${getToday().toUpperCase()}`, padding, 86);
 
@@ -478,7 +472,7 @@ export function ExportModal({
 
     // ── Footer ──
     ctx.font = "14px 'Oswald', sans-serif";
-    ctx.fillStyle = "rgba(255,255,255,0.2)";
+    ctx.fillStyle = "#ffffff";
     ctx.letterSpacing = "2px";
     ctx.textAlign = "center";
     ctx.fillText("STÅLSTADENS SPORTFÖRENING", W / 2, H - 12);

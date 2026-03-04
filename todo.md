@@ -107,3 +107,5 @@
 - [x] Byt exportens typsnitt från Arial till Oswald
 - [x] Export: Ta bort tröjnummer från spelarnamn
 - [x] Export: Begränsa spelarnamn till 18 tecken
+- [x] Export: Ta bort "x anmälda av y i laget" från exportbilden
+- [x] Export: Ändra färg på "A-lag herrar datum" och "Stålstadens sportförening" till vit (samma som spelarnamn)
