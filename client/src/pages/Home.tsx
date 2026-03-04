@@ -396,7 +396,7 @@ export default function Home() {
     // Vibrera för att bekräfta att drag aktiverats
     if (navigator.vibrate) navigator.vibrate(50);
     // Lås scrollning under drag på mobil (inte desktop – där behövs horisontell scroll)
-    // Men INTE när sidan är inzoomad – då behöver vi window.scrollBy för att panna
+    // Men INTE när sidan är inzoomad – då behöver vi vertikal scroll för att panna
     const vv = window.visualViewport;
     const isZoomed = vv ? vv.scale > 1.05 : false;
     if (isMobile && !isZoomed) {
@@ -860,53 +860,23 @@ export default function Home() {
   const scrollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pointerPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const isDraggingRef = useRef(false);
-  const zoomSpacerRef = useRef<HTMLDivElement | null>(null);
+  // Ref för CSS transform-baserad horisontell panning vid zoom
+  // window.scrollBy fungerar inte horisontellt vid pinch-zoom (Chrome Android)
+  // eftersom documentElement.scrollWidth == window.innerWidth alltid.
+  // Istället använder vi CSS translateX på content-wrappern.
+  const zoomContentRef = useRef<HTMLDivElement>(null);
+  const zoomTranslateXRef = useRef(0);
 
-  // Skapa/ta bort en osynlig spacer som gör dokumentet bredare vid zoom
-  // så att window.scrollBy fungerar horisontellt
-  const ensureZoomSpacer = useCallback(() => {
-    const vv = window.visualViewport;
-    const scale = vv ? vv.scale : 1;
-    if (scale <= 1.05) {
-      // Inte zoomad – ta bort spacer om den finns
-      if (zoomSpacerRef.current) {
-        zoomSpacerRef.current.remove();
-        zoomSpacerRef.current = null;
-      }
-      return;
-    }
-    // Beräkna hur bred spacern behöver vara
-    // Layout viewport * scale ger total yta som behöver vara scrollbar
-    const layoutW = window.innerWidth;
-    const layoutH = document.documentElement.scrollHeight;
-    const neededW = layoutW * scale;
-    const neededH = Math.max(layoutH * scale, window.innerHeight * scale);
-
-    if (!zoomSpacerRef.current) {
-      const spacer = document.createElement('div');
-      spacer.id = 'zoom-drag-spacer';
-      spacer.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: ${neededW}px;
-        height: ${neededH}px;
-        pointer-events: none;
-        visibility: hidden;
-        z-index: -1;
-      `;
-      document.body.appendChild(spacer);
-      zoomSpacerRef.current = spacer;
-    } else {
-      zoomSpacerRef.current.style.width = `${neededW}px`;
-      zoomSpacerRef.current.style.height = `${neededH}px`;
-    }
+  const applyZoomTranslateX = useCallback((dx: number) => {
+    if (!zoomContentRef.current) return;
+    zoomTranslateXRef.current += dx;
+    zoomContentRef.current.style.transform = `translateX(${zoomTranslateXRef.current}px)`;
   }, []);
 
-  const removeZoomSpacer = useCallback(() => {
-    if (zoomSpacerRef.current) {
-      zoomSpacerRef.current.remove();
-      zoomSpacerRef.current = null;
+  const resetZoomTranslateX = useCallback(() => {
+    zoomTranslateXRef.current = 0;
+    if (zoomContentRef.current) {
+      zoomContentRef.current.style.transform = '';
     }
   }, []);
 
@@ -956,11 +926,16 @@ export default function Home() {
     if (scrollDx === 0 && scrollDy === 0) return;
 
     if (isZoomed) {
-      // Uppdatera spacer-storlek (dokumentet kan ha ändrats)
-      ensureZoomSpacer();
-      // När sidan är zoomad: använd window.scrollBy för att flytta layout-viewporten
-      // Spacern gör dokumentet bredare så horisontell scroll fungerar
-      window.scrollBy(scrollDx, scrollDy);
+      // Vid zoom: vertikal scroll via window.scrollBy (fungerar),
+      // horisontell panning via CSS translateX (window.scrollBy fungerar INTE horisontellt
+      // vid pinch-zoom på Chrome Android – docScrollW == innerW alltid)
+      if (scrollDy !== 0) {
+        window.scrollBy(0, scrollDy);
+      }
+      if (scrollDx !== 0) {
+        // Negativt dx = flytta content åt höger (vi "scrollar" åt vänster)
+        applyZoomTranslateX(-scrollDx);
+      }
     } else {
       // Normal (ej zoomad): scrolla overflow-container horisontellt + window vertikalt
       if (scrollDx !== 0) {
@@ -981,7 +956,7 @@ export default function Home() {
         window.scrollBy(0, scrollDy);
       }
     }
-  }, [ensureZoomSpacer]);
+  }, [applyZoomTranslateX]);
 
   // Pointer-tracking via native events (inte dnd-kit events)
   useEffect(() => {
@@ -1005,11 +980,11 @@ export default function Home() {
 
   const startAutoScroll = useCallback(() => {
     isDraggingRef.current = true;
-    // Om sidan är zoomad: skapa spacer för horisontell scroll
-    ensureZoomSpacer();
+    // Återställ eventuell kvarvarande transform
+    resetZoomTranslateX();
     if (scrollIntervalRef.current) return;
     scrollIntervalRef.current = setInterval(doAutoScroll, 16); // ~60fps
-  }, [doAutoScroll, ensureZoomSpacer]);
+  }, [doAutoScroll, resetZoomTranslateX]);
 
   const stopAutoScroll = useCallback(() => {
     isDraggingRef.current = false;
@@ -1018,9 +993,9 @@ export default function Home() {
       scrollIntervalRef.current = null;
     }
     pointerPosRef.current = { x: 0, y: 0 };
-    // Ta bort zoom-spacer
-    removeZoomSpacer();
-  }, [removeZoomSpacer]);
+    // Återställ CSS transform för horisontell zoom-panning
+    resetZoomTranslateX();
+  }, [resetZoomTranslateX]);
 
   // Automatiskt flikbyte vid drag: håll spelaren över en flik-knapp i 600ms
   const handleDragMove = useCallback((event: DragMoveEvent) => {
@@ -1169,6 +1144,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-black/45 pointer-events-none" />
 
         <div
+          ref={zoomContentRef}
           className="relative flex flex-col min-h-screen"
         >
           {/* Header */}
