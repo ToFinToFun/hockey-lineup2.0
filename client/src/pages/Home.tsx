@@ -852,6 +852,7 @@ export default function Home() {
   const tabHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastHoveredTabRef = useRef<MobileTab | null>(null);
   const sideScrollRef = useRef<HTMLDivElement>(null);
+  const stdScrollRef = useRef<HTMLDivElement>(null);
   const autoScrollRAF = useRef<number | null>(null);
 
   // Automatiskt flikbyte vid drag: håll spelaren över en flik-knapp i 600ms
@@ -897,8 +898,8 @@ export default function Home() {
       let hIntensity = 0;
       let vIntensity = 0;
 
-      // Horisontell scroll (sidoläge-container)
-      const container = sideScrollRef.current;
+      // Horisontell scroll (aktiv overflow-container: sidoläge eller standard)
+      const container = sideScrollRef.current || stdScrollRef.current;
       if (container) {
         const containerRect = container.getBoundingClientRect();
         if (clientX < containerRect.left + SCROLL_EDGE && container.scrollLeft > 0) {
@@ -1430,7 +1431,7 @@ export default function Home() {
                 </div>
               ) : (
                 /* Standard-layout: Vita | Trupp | Gröna */
-                <div className="overflow-x-auto">
+                <div ref={stdScrollRef} className="overflow-x-auto">
                 <div
                   className="grid gap-1 md:gap-1.5"
                   style={{
