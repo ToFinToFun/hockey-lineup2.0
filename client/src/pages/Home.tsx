@@ -859,42 +859,73 @@ export default function Home() {
   const isDraggingRef = useRef(false);
 
   // Auto-scroll: lyssnar på riktiga touch/mouse-events för att få viewport-koordinater
-  // och kör scroll via setInterval
-  const SCROLL_EDGE = 100;
-  const SCROLL_SPEED = 10;
+  // och kör scroll via setInterval. Stödjer både normal scroll och zoomad viewport.
+  const SCROLL_EDGE = 80;
+  const SCROLL_SPEED = 12;
 
   const doAutoScroll = useCallback(() => {
     const { x, y } = pointerPosRef.current;
     if (x === 0 && y === 0) return;
 
-    // Horisontell scroll (aktiv overflow-container)
-    const container = sideScrollRef.current || stdScrollRef.current;
-    if (container) {
-      const rect = container.getBoundingClientRect();
-      const isOverflowing = container.scrollWidth > container.clientWidth;
-      if (isOverflowing) {
-        if (x < rect.left + SCROLL_EDGE && container.scrollLeft > 0) {
-          const intensity = 1 - Math.max(0, x - rect.left) / SCROLL_EDGE;
-          container.scrollLeft -= SCROLL_SPEED * intensity;
-        } else if (x > rect.right - SCROLL_EDGE) {
-          const maxScroll = container.scrollWidth - container.clientWidth;
-          if (container.scrollLeft < maxScroll) {
-            const intensity = 1 - Math.max(0, rect.right - x) / SCROLL_EDGE;
-            container.scrollLeft += SCROLL_SPEED * intensity;
-          }
-        }
-      }
+    // Kolla om sidan är zoomad via visualViewport
+    const vv = window.visualViewport;
+    const scale = vv ? vv.scale : 1;
+    const isZoomed = scale > 1.05;
+
+    // Synlig viewport-storlek (tar hänsyn till zoom)
+    const viewW = vv ? vv.width : window.innerWidth;
+    const viewH = vv ? vv.height : window.innerHeight;
+
+    // Edge-zon anpassad till zoom (mindre zon vid högre zoom)
+    const edgeZone = SCROLL_EDGE / scale;
+    const speed = SCROLL_SPEED * scale; // snabbare scroll vid högre zoom
+
+    let scrollDx = 0;
+    let scrollDy = 0;
+
+    // Horisontell: nära vänster/höger kant av synlig viewport
+    if (x < edgeZone) {
+      const intensity = 1 - Math.max(0, x) / edgeZone;
+      scrollDx = -speed * intensity;
+    } else if (x > viewW - edgeZone) {
+      const intensity = 1 - Math.max(0, viewW - x) / edgeZone;
+      scrollDx = speed * intensity;
     }
 
-    // Vertikal scroll (window)
-    const viewH = window.innerHeight;
-    const maxScrollY = document.documentElement.scrollHeight - viewH;
-    if (y < SCROLL_EDGE && window.scrollY > 0) {
-      const intensity = 1 - Math.max(0, y) / SCROLL_EDGE;
-      window.scrollBy(0, -SCROLL_SPEED * intensity);
-    } else if (y > viewH - SCROLL_EDGE && window.scrollY < maxScrollY) {
-      const intensity = 1 - Math.max(0, viewH - y) / SCROLL_EDGE;
-      window.scrollBy(0, SCROLL_SPEED * intensity);
+    // Vertikal: nära topp/botten av synlig viewport
+    if (y < edgeZone) {
+      const intensity = 1 - Math.max(0, y) / edgeZone;
+      scrollDy = -speed * intensity;
+    } else if (y > viewH - edgeZone) {
+      const intensity = 1 - Math.max(0, viewH - y) / edgeZone;
+      scrollDy = speed * intensity;
+    }
+
+    if (scrollDx === 0 && scrollDy === 0) return;
+
+    if (isZoomed) {
+      // När sidan är zoomad: använd window.scrollBy för att flytta layout-viewporten
+      // vilket pannar den visuella viewporten över innehållet
+      window.scrollBy(scrollDx, scrollDy);
+    } else {
+      // Normal (ej zoomad): scrolla overflow-container horisontellt + window vertikalt
+      if (scrollDx !== 0) {
+        const container = sideScrollRef.current || stdScrollRef.current;
+        if (container) {
+          const isOverflowing = container.scrollWidth > container.clientWidth;
+          if (isOverflowing) {
+            container.scrollLeft += scrollDx;
+          } else {
+            // Om containern inte är scrollbar, scrolla window istället
+            window.scrollBy(scrollDx, 0);
+          }
+        } else {
+          window.scrollBy(scrollDx, 0);
+        }
+      }
+      if (scrollDy !== 0) {
+        window.scrollBy(0, scrollDy);
+      }
     }
   }, []);
 
