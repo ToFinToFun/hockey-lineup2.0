@@ -215,57 +215,8 @@ export default function Home() {
     });
   }, []);
 
-  // Justerbar bredd på spelartrupp-kolumnen i sidoläge
-  const ROSTER_MIN_W = 200;
-  const ROSTER_MAX_W = 500;
-  const ROSTER_DEFAULT_W = 320;
-  const [rosterWidth, setRosterWidth] = useState(() => {
-    try {
-      const saved = localStorage.getItem("stalstadens-roster-width");
-      if (saved) {
-        const n = Number(saved);
-        if (n >= ROSTER_MIN_W && n <= ROSTER_MAX_W) return n;
-      }
-    } catch {}
-    return ROSTER_DEFAULT_W;
-  });
-  const isResizingRef = useRef(false);
-  const resizeStartXRef = useRef(0);
-  const resizeStartWRef = useRef(ROSTER_DEFAULT_W);
-
-  const handleResizeStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    isResizingRef.current = true;
-    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-    resizeStartXRef.current = clientX;
-    resizeStartWRef.current = rosterWidth;
-
-    const onMove = (ev: MouseEvent | TouchEvent) => {
-      if (!isResizingRef.current) return;
-      const cx = "touches" in ev ? ev.touches[0].clientX : (ev as MouseEvent).clientX;
-      const delta = cx - resizeStartXRef.current;
-      const newW = Math.min(ROSTER_MAX_W, Math.max(ROSTER_MIN_W, resizeStartWRef.current + delta));
-      setRosterWidth(newW);
-    };
-
-    const onEnd = () => {
-      isResizingRef.current = false;
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onEnd);
-      document.removeEventListener("touchmove", onMove);
-      document.removeEventListener("touchend", onEnd);
-      // Spara till localStorage
-      setRosterWidth((w) => {
-        try { localStorage.setItem("stalstadens-roster-width", String(w)); } catch {}
-        return w;
-      });
-    };
-
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onEnd);
-    document.addEventListener("touchmove", onMove, { passive: false });
-    document.addEventListener("touchend", onEnd);
-  }, [rosterWidth]);
+  // Fast bredd på spelartrupp-kolumnen i sidoläge (samma som standard-layout)
+  const ROSTER_WIDTH = 320;
 
   // Statistik-panel toggle
   const [showStats, setShowStats] = useState(false);
@@ -1337,12 +1288,12 @@ export default function Home() {
             {!isMobile ? (
               /* Desktop layout – standard eller sidoläge */
               sideLayout ? (
-                /* Sidoläge: Trupp till vänster (justerbar bredd), lagen bredvid varandra */
-                <div className="flex gap-0 overflow-x-auto" style={{ minWidth: '850px' }}>
-                  {/* Spelarlista (vänster) – justerbar bredd */}
+                /* Sidoläge: Trupp till vänster (fast bredd), lagen bredvid varandra */
+                <div className="flex gap-2 overflow-x-auto" style={{ minWidth: '850px' }}>
+                  {/* Spelarlista (vänster) – fast bredd */}
                   <div
                     className="flex flex-col gap-2 shrink-0 min-w-0"
-                    style={{ width: `${rosterWidth}px` }}
+                    style={{ width: `${ROSTER_WIDTH}px` }}
                   >
                     <div>
                       <PlayerList
@@ -1372,16 +1323,6 @@ export default function Home() {
                        lineup={lineup}
                        onLoadLineup={handleLoadLineup}
                     />
-                  </div>
-
-                  {/* Resize-handtag */}
-                  <div
-                    className="shrink-0 w-2 cursor-col-resize group flex items-center justify-center hover:bg-white/10 active:bg-violet-500/20 transition-colors relative select-none"
-                    onMouseDown={handleResizeStart}
-                    onTouchStart={handleResizeStart}
-                    title="Dra för att ändra bredd"
-                  >
-                    <div className="w-0.5 h-12 rounded-full bg-white/20 group-hover:bg-violet-400/60 group-active:bg-violet-400 transition-colors" />
                   </div>
 
                   {/* Lagen bredvid varandra */}
