@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zoom Scroll Debug</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: sans-serif; background: #1a1a2e; color: #eee; padding: 16px; min-height: 200vh; }
+  #info { position: fixed; top: 0; left: 0; right: 0; background: rgba(0,0,0,0.85); color: #0f0; font-size: 11px; padding: 8px; z-index: 9999; font-family: monospace; line-height: 1.4; }
+  .box { width: 80vw; height: 150px; margin: 20px auto; background: #16213e; border: 2px solid #0f3460; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  button { padding: 12px 24px; margin: 8px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; }
+  .btn-scroll { background: #e94560; color: white; }
+  .btn-spacer { background: #0f3460; color: white; }
+  .btn-remove { background: #533483; color: white; }
+  #spacer-indicator { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(233,69,96,0.9); color: white; padding: 8px; text-align: center; font-size: 12px; display: none; z-index: 9999; }
+  #controls { position: fixed; bottom: 40px; left: 0; right: 0; text-align: center; z-index: 9998; }
+</style>
+</head>
+<body>
+<div id="info">Loading...</div>
+
+<div style="margin-top: 80px;">
+  <h2 style="text-align:center; margin-bottom: 20px;">Zoom Scroll Debug</h2>
+  <p style="text-align:center; margin-bottom: 20px;">Pinch-zoom in, then use buttons to test scrollBy</p>
+  
+  <div class="box">Box 1</div>
+  <div class="box">Box 2</div>
+  <div class="box">Box 3</div>
+  <div class="box">Box 4</div>
+  <div class="box">Box 5</div>
+  <div class="box">Box 6</div>
+  <div class="box">Box 7</div>
+  <div class="box">Box 8</div>
+</div>
+
+<div id="controls">
+  <button class="btn-spacer" onclick="addSpacer()">Add Spacer</button>
+  <button class="btn-remove" onclick="removeSpacer()">Remove Spacer</button>
+  <br>
+  <button class="btn-scroll" onclick="scrollRight()">Scroll Right 50px</button>
+  <button class="btn-scroll" onclick="scrollLeft()">Scroll Left 50px</button>
+  <br>
+  <button class="btn-scroll" onclick="scrollDown()">Scroll Down 50px</button>
+  <button class="btn-scroll" onclick="scrollUp()">Scroll Up 50px</button>
+</div>
+
+<div id="spacer-indicator">Spacer active</div>
+
+<script>
+let spacer = null;
+
+function updateInfo() {
+  const vv = window.visualViewport;
+  const scale = vv ? vv.scale : 1;
+  const docW = document.documentElement.scrollWidth;
+  const docH = document.documentElement.scrollHeight;
+  const bodyW = document.body.scrollWidth;
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
+  const maxScrollX = docW - window.innerWidth;
+  const maxScrollY = docH - window.innerHeight;
+  
+  document.getElementById('info').innerHTML = `
+    <b>Scale:</b> ${scale.toFixed(2)} | <b>Zoomed:</b> ${scale > 1.05 ? 'YES' : 'no'}<br>
+    <b>Visual VP:</b> ${vv ? vv.width.toFixed(0) : '?'}x${vv ? vv.height.toFixed(0) : '?'} | <b>Offset:</b> ${vv ? vv.offsetLeft.toFixed(1) : '?'}, ${vv ? vv.offsetTop.toFixed(1) : '?'}<br>
+    <b>Layout VP (innerW/H):</b> ${window.innerWidth}x${window.innerHeight}<br>
+    <b>Doc scroll size:</b> ${docW}x${docH} | <b>Body scroll size:</b> ${bodyW}<br>
+    <b>Scroll pos:</b> ${scrollX.toFixed(1)}, ${scrollY.toFixed(1)} | <b>Max:</b> ${maxScrollX}, ${maxScrollY}<br>
+    <b>Spacer:</b> ${spacer ? 'YES (' + spacer.style.width + ')' : 'none'} | <b>Can scroll H:</b> ${maxScrollX > 0 ? 'YES' : 'NO'}
+  `;
+}
+
+function addSpacer() {
+  if (spacer) spacer.remove();
+  const vv = window.visualViewport;
+  const scale = vv ? vv.scale : 1;
+  const layoutW = window.innerWidth;
+  const neededW = layoutW * scale;
+  const neededH = document.documentElement.scrollHeight;
+  
+  spacer = document.createElement('div');
+  spacer.id = 'zoom-drag-spacer';
+  spacer.style.cssText = `
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: ${neededW}px;
+    height: ${neededH}px;
+    pointer-events: none;
+    visibility: hidden;
+    z-index: -1;
+  `;
+  document.body.appendChild(spacer);
+  document.getElementById('spacer-indicator').style.display = 'block';
+  document.getElementById('spacer-indicator').textContent = `Spacer: ${neededW.toFixed(0)}x${neededH.toFixed(0)}px (scale=${scale.toFixed(2)})`;
+  updateInfo();
+}
+
+function removeSpacer() {
+  if (spacer) {
+    spacer.remove();
+    spacer = null;
+  }
+  document.getElementById('spacer-indicator').style.display = 'none';
+  updateInfo();
+}
+
+function scrollRight() {
+  const before = window.scrollX;
+  window.scrollBy(50, 0);
+  requestAnimationFrame(() => {
+    const after = window.scrollX;
+    console.log(`scrollRight: before=${before}, after=${after}, moved=${after-before}`);
+    updateInfo();
+  });
+}
+
+function scrollLeft() {
+  const before = window.scrollX;
+  window.scrollBy(-50, 0);
+  requestAnimationFrame(() => {
+    const after = window.scrollX;
+    console.log(`scrollLeft: before=${before}, after=${after}, moved=${after-before}`);
+    updateInfo();
+  });
+}
+
+function scrollDown() {
+  const before = window.scrollY;
+  window.scrollBy(0, 50);
+  requestAnimationFrame(() => {
+    const after = window.scrollY;
+    console.log(`scrollDown: before=${before}, after=${after}, moved=${after-before}`);
+    updateInfo();
+  });
+}
+
+function scrollUp() {
+  const before = window.scrollY;
+  window.scrollBy(0, -50);
+  requestAnimationFrame(() => {
+    const after = window.scrollY;
+    console.log(`scrollUp: before=${before}, after=${after}, moved=${after-before}`);
+    updateInfo();
+  });
+}
+
+// Update info on scroll and resize
+setInterval(updateInfo, 200);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', updateInfo);
+  window.visualViewport.addEventListener('scroll', updateInfo);
+}
+window.addEventListener('scroll', updateInfo);
+updateInfo();
+</script>
+</body>
+</html>
