@@ -120,3 +120,5 @@
 - [x] Sänk touch-drag delay från 500ms till 350ms och öka tolerance från 8px till 15px för lättare drag-aktivering
 - [x] Sänk touch-drag delay från 350ms till 250ms
 - [x] BUGG: Horisontell translateX-clamping är för snäv — kan bara gå lite i sidled — åtgärdad med generösare maxPan-beräkning
+- [x] Öka touch tolerance från 15px till 25px så fingret inte tappar spelaren
+- [x] Öka maxPan-faktor för mjukare/generösare sidleds-scroll
