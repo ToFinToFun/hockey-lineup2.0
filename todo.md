@@ -102,3 +102,4 @@
 - [x] Export: Fast bildförhållande 9:5 med komprimerad uppställning i bredd
 - [x] Export: Tydligare text — solid bakgrundsfärg istället för genomskinlig overlay
 - [x] Ta bort manuell kolumnbreddsjustering i sidoläge — fasta bredder för spelartrupp och uppställning
+- [x] Export: Utnyttja hela 1800×1000-ytan bättre med större text och bättre layout
