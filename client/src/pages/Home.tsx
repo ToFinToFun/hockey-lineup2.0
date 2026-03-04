@@ -374,7 +374,7 @@ export default function Home() {
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 350,      // 350ms hold to start drag – snabbare aktivering
+        delay: 250,      // 250ms hold to start drag – snabb aktivering
         tolerance: 15,   // 15px – fingret kan röra sig lite utan att drag avbryts
       },
     })
@@ -869,37 +869,22 @@ export default function Home() {
     if (!zoomContentRef.current) return;
 
     // Begränsa translateX så innehållet inte går utanför sidans gränser.
-    // visualViewport.width = synlig yta, innerWidth = layout-viewport-bredd.
-    // När scale < 1 (Chrome skalar ner sidan) är den synliga ytan större än
-    // layout-viewporten, så det finns "extra" utrymme på sidorna.
-    // Max förflyttning = halva skillnaden mellan layout-bredd och synlig bredd.
+    // Innehållet har en viss bredd (layoutW), och den synliga viewporten (visibleW)
+    // är ofta mindre än layoutW (vid zoom eller nedskalning).
+    // Vi tillåter panning så att hela innehållet kan nås.
     const vv = window.visualViewport;
-    const layoutW = window.innerWidth;
-    const visibleW = vv ? vv.width : layoutW;
-    // Offset från visualViewport visar hur långt viewporten redan är förskjuten
-    const offsetLeft = vv ? vv.offsetLeft : 0;
-
-    // Max translateX i varje riktning:
-    // - Positivt (innehåll flyttas höger) = begränsat så vänsterkanten inte går förbi viewport
-    // - Negativt (innehåll flyttas vänster) = begränsat så högerkanten inte går förbi viewport
-    // Vid scale < 1: maxPan = (visibleW - layoutW) / 2 (innehållet är centrerat)
-    // Vid scale >= 1: maxPan = offsetLeft (hur långt vi kan panna)
     const scale = vv ? vv.scale : 1;
-    let maxRight: number;
-    let maxLeft: number;
-    if (scale < 1) {
-      // Sidan är nedskalad – innehållet är centrerat med marginaler
-      const margin = (visibleW - layoutW * scale) / 2;
-      maxRight = margin / scale;
-      maxLeft = -margin / scale;
-    } else {
-      // Sidan är inzoomad – använd viewport offset
-      maxRight = offsetLeft;
-      maxLeft = -(layoutW - visibleW - offsetLeft);
-    }
+    const layoutW = window.innerWidth;
+    // Bredden på det som faktiskt syns på skärmen (i CSS-pixlar)
+    const visibleW = vv ? vv.width : layoutW;
+    // Hur mycket av innehållet som är dolt på sidorna
+    // = layoutW - visibleW (kan vara 0 eller negativt om allt syns)
+    const hiddenW = Math.max(0, layoutW - visibleW);
+    // Tillåt panning åt båda håll med lite extra marginal (20%)
+    const maxPan = hiddenW > 0 ? hiddenW * 0.6 : layoutW * 0.3;
 
     let newVal = zoomTranslateXRef.current + dx;
-    newVal = Math.min(maxRight, Math.max(maxLeft, newVal));
+    newVal = Math.min(maxPan, Math.max(-maxPan, newVal));
 
     zoomTranslateXRef.current = newVal;
     zoomContentRef.current.style.transform = `translateX(${newVal}px)`;
