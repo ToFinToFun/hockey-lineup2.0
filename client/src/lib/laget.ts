@@ -180,16 +180,35 @@ export async function updateAttendanceOnLaget(
   status: "Attending" | "NotAttending" | "NotAnswered"
 ): Promise<{ success: boolean; error?: string; newStatus?: string }> {
   try {
-    // tRPC httpBatchLink expects: POST /api/trpc/laget.updateAttendance
-    // Body: {"0":{"json":{...}}}
-    // Response: [{"result":{"data":{"json":{...}}}}]
-    const response = await fetch("/api/trpc/laget.updateAttendance?batch=1", {
+    // Försök med tRPC-backend först (Manus hosting)
+    try {
+      const response = await fetch("/api/trpc/laget.updateAttendance?batch=1", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          "0": { json: { playerName, status } },
+        }),
+      });
+
+      const contentType = response.headers.get("content-type") || "";
+      if (response.ok && contentType.includes("application/json")) {
+        const json = await response.json();
+        const result = Array.isArray(json) ? json[0] : json;
+        const data = result?.result?.data?.json;
+        if (data) {
+          return data;
+        }
+      }
+    } catch {
+      // tRPC inte tillgänglig, försök med Netlify Function
+    }
+
+    // Fallback: Netlify Function (POST)
+    const response = await fetch("/.netlify/functions/laget-attendance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        "0": { json: { playerName, status } },
-      }),
+      body: JSON.stringify({ playerName, status }),
     });
 
     if (!response.ok) {
@@ -197,14 +216,8 @@ export async function updateAttendanceOnLaget(
       throw new Error(`HTTP ${response.status}: ${text.slice(0, 200)}`);
     }
 
-    const json = await response.json();
-    // tRPC batch response is an array
-    const result = Array.isArray(json) ? json[0] : json;
-    const data = result?.result?.data?.json;
-    if (data) {
-      return data;
-    }
-    throw new Error("Oväntat svar från servern");
+    const data = await response.json();
+    return data;
   } catch (err: any) {
     console.error("[Laget.se sync error]", err);
     return { success: false, error: err.message || "Kunde inte uppdatera status" };
