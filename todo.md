@@ -98,3 +98,6 @@
 - [ ] BUGG: PWA visar fel namn ("Stålstadens Ishockey Formations-App") och ingen ikon vid "Lägg till på startskärmen" i Chrome mobil
 - [ ] Gör appen installerbar som PWA ("Installera app" istället för bara "Lägg till på startskärmen") — kräver service worker
 - [x] Spelartrupp-kolumnen i sidoläge ska vara lika bred som i standardläge (desktop)
+- [x] Export: Ta bort all bifogad statistik från bildexporten
+- [x] Export: Fast bildförhållande 9:5 med komprimerad uppställning i bredd
+- [x] Export: Tydligare text — solid bakgrundsfärg istället för genomskinlig overlay
