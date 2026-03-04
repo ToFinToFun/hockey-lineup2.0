@@ -880,6 +880,10 @@ export default function Home() {
     }
   }, []);
 
+  // Debug-state för zoom-scroll (temporär – ta bort efter felsökning)
+  const [debugInfo, setDebugInfo] = useState('');
+  const debugCountRef = useRef(0);
+
   // Auto-scroll: lyssnar på riktiga touch/mouse-events för att få viewport-koordinater
   // och kör scroll via setInterval. Stödjer både normal scroll och zoomad viewport.
   const SCROLL_EDGE = 80;
@@ -924,6 +928,12 @@ export default function Home() {
     }
 
     if (scrollDx === 0 && scrollDy === 0) return;
+
+    // Debug: uppdatera var 10:e frame
+    debugCountRef.current++;
+    if (debugCountRef.current % 10 === 0) {
+      setDebugInfo(`s=${scale.toFixed(2)} z=${isZoomed} ptr=${x.toFixed(0)},${y.toFixed(0)} vw=${viewW.toFixed(0)} edge=${edgeZone.toFixed(0)} dx=${scrollDx.toFixed(1)} dy=${scrollDy.toFixed(1)} ref=${!!zoomContentRef.current} tX=${zoomTranslateXRef.current.toFixed(1)}`);
+    }
 
     if (isZoomed) {
       // Vid zoom: vertikal scroll via window.scrollBy (fungerar),
@@ -1142,6 +1152,13 @@ export default function Home() {
         }}
       >
         <div className="absolute inset-0 bg-black/45 pointer-events-none" />
+
+        {/* Debug overlay – temporär */}
+        {debugInfo && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.9)', color: '#0f0', fontSize: '10px', padding: '4px 8px', zIndex: 999999, fontFamily: 'monospace', pointerEvents: 'none', whiteSpace: 'pre-wrap' }}>
+            {debugInfo}
+          </div>
+        )}
 
         <div
           ref={zoomContentRef}
