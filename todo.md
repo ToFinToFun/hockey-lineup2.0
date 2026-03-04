@@ -109,3 +109,5 @@
 - [x] Export: Begränsa spelarnamn till 18 tecken
 - [x] Export: Ta bort "x anmälda av y i laget" från exportbilden
 - [x] Export: Ändra färg på "A-lag herrar datum" och "Stålstadens sportförening" till vit (samma som spelarnamn)
+- [x] Export: Lägg till sponsorlogotyper högerställda i header-raden (samma rad som "Stålstadens Lineup")
+- [x] Export: Minska lagnamnsradens höjd (mindre ikon och text)
