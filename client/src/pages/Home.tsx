@@ -375,7 +375,7 @@ export default function Home() {
     useSensor(TouchSensor, {
       activationConstraint: {
         delay: 250,      // 250ms hold to start drag – snabb aktivering
-        tolerance: 15,   // 15px – fingret kan röra sig lite utan att drag avbryts
+        tolerance: 25,   // 25px – fingret kan röra sig utan att tappa spelaren
       },
     })
   );
@@ -881,7 +881,7 @@ export default function Home() {
     // = layoutW - visibleW (kan vara 0 eller negativt om allt syns)
     const hiddenW = Math.max(0, layoutW - visibleW);
     // Tillåt panning åt båda håll med lite extra marginal (20%)
-    const maxPan = hiddenW > 0 ? hiddenW * 0.6 : layoutW * 0.3;
+    const maxPan = hiddenW > 0 ? hiddenW * 1.0 : layoutW * 0.4;
 
     let newVal = zoomTranslateXRef.current + dx;
     newVal = Math.min(maxPan, Math.max(-maxPan, newVal));
