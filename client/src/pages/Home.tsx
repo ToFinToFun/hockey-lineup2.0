@@ -395,11 +395,9 @@ export default function Home() {
     setActivePlayer(player || null);
     // Vibrera för att bekräfta att drag aktiverats
     if (navigator.vibrate) navigator.vibrate(50);
-    // Lås scrollning under drag på mobil (inte desktop – där behövs horisontell scroll)
-    // Men INTE när sidan är inzoomad – då behöver vi vertikal scroll för att panna
-    const vv = window.visualViewport;
-    const isZoomed = vv ? vv.scale > 1.05 : false;
-    if (isMobile && !isZoomed) {
+    // Lås native scrollning under drag på mobil – vi hanterar all scrollning
+    // (både vertikal och horisontell) via vår egen auto-scroll-loop
+    if (isMobile) {
       document.body.classList.add("dnd-scroll-lock");
     }
     // Starta custom auto-scroll (fungerar med touch och mus)
@@ -893,18 +891,17 @@ export default function Home() {
     const { x, y } = pointerPosRef.current;
     if (x === 0 && y === 0) return;
 
-    // Kolla om sidan är zoomad via visualViewport
+    // Viewport-info (visualViewport ger den synliga ytan, oavsett zoom-nivå)
     const vv = window.visualViewport;
     const scale = vv ? vv.scale : 1;
-    const isZoomed = scale > 1.05;
 
-    // Synlig viewport-storlek (tar hänsyn till zoom)
+    // Synlig viewport-storlek
     const viewW = vv ? vv.width : window.innerWidth;
     const viewH = vv ? vv.height : window.innerHeight;
 
-    // Edge-zon anpassad till zoom (mindre zon vid högre zoom)
-    const edgeZone = SCROLL_EDGE / scale;
-    const speed = SCROLL_SPEED * scale; // snabbare scroll vid högre zoom
+    // Edge-zon och hastighet
+    const edgeZone = SCROLL_EDGE;
+    const speed = SCROLL_SPEED;
 
     let scrollDx = 0;
     let scrollDy = 0;
@@ -932,38 +929,49 @@ export default function Home() {
     // Debug: uppdatera var 10:e frame
     debugCountRef.current++;
     if (debugCountRef.current % 10 === 0) {
-      setDebugInfo(`s=${scale.toFixed(2)} z=${isZoomed} ptr=${x.toFixed(0)},${y.toFixed(0)} vw=${viewW.toFixed(0)} edge=${edgeZone.toFixed(0)} dx=${scrollDx.toFixed(1)} dy=${scrollDy.toFixed(1)} ref=${!!zoomContentRef.current} tX=${zoomTranslateXRef.current.toFixed(1)}`);
+      setDebugInfo(`s=${scale.toFixed(2)} ptr=${x.toFixed(0)},${y.toFixed(0)} vw=${viewW.toFixed(0)} dx=${scrollDx.toFixed(1)} dy=${scrollDy.toFixed(1)} tX=${zoomTranslateXRef.current.toFixed(1)}`);
     }
 
-    if (isZoomed) {
-      // Vid zoom: vertikal scroll via window.scrollBy (fungerar),
-      // horisontell panning via CSS translateX (window.scrollBy fungerar INTE horisontellt
-      // vid pinch-zoom på Chrome Android – docScrollW == innerW alltid)
-      if (scrollDy !== 0) {
-        window.scrollBy(0, scrollDy);
-      }
-      if (scrollDx !== 0) {
-        // Negativt dx = flytta content åt höger (vi "scrollar" åt vänster)
-        applyZoomTranslateX(-scrollDx);
-      }
-    } else {
-      // Normal (ej zoomad): scrolla overflow-container horisontellt + window vertikalt
-      if (scrollDx !== 0) {
-        const container = sideScrollRef.current || stdScrollRef.current;
-        if (container) {
-          const isOverflowing = container.scrollWidth > container.clientWidth;
-          if (isOverflowing) {
-            container.scrollLeft += scrollDx;
-          } else {
-            // Om containern inte är scrollbar, scrolla window istället
-            window.scrollBy(scrollDx, 0);
+    // Vertikal scroll – window.scrollBy fungerar alltid vertikalt
+    if (scrollDy !== 0) {
+      window.scrollBy(0, scrollDy);
+    }
+
+    // Horisontell scroll – prova container-scroll först, sedan window.scrollBy,
+    // och om inget fungerar: använd CSS translateX som fallback
+    if (scrollDx !== 0) {
+      let scrolled = false;
+
+      // 1. Prova overflow-container (sidoläge)
+      const container = sideScrollRef.current || stdScrollRef.current;
+      if (container) {
+        const isOverflowing = container.scrollWidth > container.clientWidth;
+        if (isOverflowing) {
+          const before = container.scrollLeft;
+          container.scrollLeft += scrollDx;
+          if (Math.abs(container.scrollLeft - before) > 0.5) {
+            scrolled = true;
           }
-        } else {
-          window.scrollBy(scrollDx, 0);
         }
       }
-      if (scrollDy !== 0) {
-        window.scrollBy(0, scrollDy);
+
+      // 2. Prova window.scrollBy
+      if (!scrolled) {
+        const canScrollH = document.documentElement.scrollWidth > window.innerWidth;
+        if (canScrollH) {
+          const before = window.scrollX;
+          window.scrollBy(scrollDx, 0);
+          if (Math.abs(window.scrollX - before) > 0.5) {
+            scrolled = true;
+          }
+        }
+      }
+
+      // 3. Fallback: CSS translateX på content-wrappern
+      // Detta fungerar alltid, även vid pinch-zoom på Chrome Android
+      // där documentElement.scrollWidth == window.innerWidth
+      if (!scrolled) {
+        applyZoomTranslateX(-scrollDx);
       }
     }
   }, [applyZoomTranslateX]);
