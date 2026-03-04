@@ -3,52 +3,77 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Zoom Scroll Debug</title>
+<title>Zoom Scroll Debug v2</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: sans-serif; background: #1a1a2e; color: #eee; padding: 16px; min-height: 200vh; }
-  #info { position: fixed; top: 0; left: 0; right: 0; background: rgba(0,0,0,0.85); color: #0f0; font-size: 11px; padding: 8px; z-index: 9999; font-family: monospace; line-height: 1.4; }
-  .box { width: 80vw; height: 150px; margin: 20px auto; background: #16213e; border: 2px solid #0f3460; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
-  button { padding: 12px 24px; margin: 8px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; }
-  .btn-scroll { background: #e94560; color: white; }
-  .btn-spacer { background: #0f3460; color: white; }
-  .btn-remove { background: #533483; color: white; }
-  #spacer-indicator { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(233,69,96,0.9); color: white; padding: 8px; text-align: center; font-size: 12px; display: none; z-index: 9999; }
-  #controls { position: fixed; bottom: 40px; left: 0; right: 0; text-align: center; z-index: 9998; }
+  #info { position: fixed; top: 0; left: 0; right: 0; background: rgba(0,0,0,0.9); color: #0f0; font-size: 10px; padding: 6px; z-index: 9999; font-family: monospace; line-height: 1.3; }
+  .box { width: 80vw; height: 100px; margin: 12px auto; background: #16213e; border: 2px solid #0f3460; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  button { padding: 10px 14px; margin: 4px; font-size: 13px; border-radius: 6px; border: none; cursor: pointer; }
+  .g1 { background: #e94560; color: white; }
+  .g2 { background: #0f3460; color: white; }
+  .g3 { background: #533483; color: white; }
+  .g4 { background: #2d6a4f; color: white; }
+  .g5 { background: #e76f51; color: white; }
+  #log { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.9); color: #ff0; padding: 6px; font-size: 10px; font-family: monospace; max-height: 120px; overflow-y: auto; z-index: 9999; }
+  #controls { margin-top: 80px; margin-bottom: 140px; }
+  .section { margin: 12px 0; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 8px; }
+  .section h3 { font-size: 13px; margin-bottom: 6px; color: #aaa; }
 </style>
 </head>
 <body>
 <div id="info">Loading...</div>
 
-<div style="margin-top: 80px;">
-  <h2 style="text-align:center; margin-bottom: 20px;">Zoom Scroll Debug</h2>
-  <p style="text-align:center; margin-bottom: 20px;">Pinch-zoom in, then use buttons to test scrollBy</p>
-  
+<div id="controls">
+  <h2 style="text-align:center; margin-bottom: 8px; font-size: 18px;">Zoom Scroll Debug v2</h2>
+  <p style="text-align:center; margin-bottom: 12px; font-size: 12px;">Pinch-zoom in, then test each method</p>
+
+  <div class="section">
+    <h3>1. Scroll-knappar</h3>
+    <button class="g1" onclick="doScroll(50,0)">→ Right 50</button>
+    <button class="g1" onclick="doScroll(-50,0)">← Left 50</button>
+    <button class="g1" onclick="doScroll(0,50)">↓ Down 50</button>
+    <button class="g1" onclick="doScroll(0,-50)">↑ Up 50</button>
+  </div>
+
+  <div class="section">
+    <h3>2. Spacer-metoder (tryck en, sedan scroll)</h3>
+    <button class="g2" onclick="method_absoluteDiv()">A: Absolute div</button>
+    <button class="g3" onclick="method_relativeDiv()">B: Relative wide div</button>
+    <button class="g4" onclick="method_bodyMinWidth()">C: body min-width</button>
+    <button class="g5" onclick="method_htmlMinWidth()">D: html min-width</button>
+    <button class="g2" onclick="method_visibleDiv()">E: Visible wide div</button>
+    <button class="g3" onclick="method_overflowVisible()">F: overflow:visible + wide</button>
+    <button class="g4" onclick="method_transformScale()">G: Transform scale body</button>
+    <br>
+    <button class="g1" onclick="clearAll()">❌ Clear all</button>
+  </div>
+
+  <div class="section">
+    <h3>3. Alternativa scroll-metoder</h3>
+    <button class="g5" onclick="scrollViaScrollTo()">scrollTo (abs)</button>
+    <button class="g2" onclick="scrollViaElement()">scrollIntoView</button>
+    <button class="g3" onclick="scrollViaTransform()">CSS transform</button>
+  </div>
+
   <div class="box">Box 1</div>
   <div class="box">Box 2</div>
   <div class="box">Box 3</div>
   <div class="box">Box 4</div>
-  <div class="box">Box 5</div>
+  <div class="box" id="target-box" style="background:#e94560;">Box 5 (target)</div>
   <div class="box">Box 6</div>
-  <div class="box">Box 7</div>
-  <div class="box">Box 8</div>
 </div>
 
-<div id="controls">
-  <button class="btn-spacer" onclick="addSpacer()">Add Spacer</button>
-  <button class="btn-remove" onclick="removeSpacer()">Remove Spacer</button>
-  <br>
-  <button class="btn-scroll" onclick="scrollRight()">Scroll Right 50px</button>
-  <button class="btn-scroll" onclick="scrollLeft()">Scroll Left 50px</button>
-  <br>
-  <button class="btn-scroll" onclick="scrollDown()">Scroll Down 50px</button>
-  <button class="btn-scroll" onclick="scrollUp()">Scroll Up 50px</button>
-</div>
-
-<div id="spacer-indicator">Spacer active</div>
+<div id="log"></div>
 
 <script>
-let spacer = null;
+let spacerEl = null;
+
+function log(msg) {
+  const el = document.getElementById('log');
+  el.textContent = msg + '\n' + el.textContent;
+  if (el.textContent.length > 2000) el.textContent = el.textContent.slice(0, 2000);
+}
 
 function updateInfo() {
   const vv = window.visualViewport;
@@ -56,98 +81,171 @@ function updateInfo() {
   const docW = document.documentElement.scrollWidth;
   const docH = document.documentElement.scrollHeight;
   const bodyW = document.body.scrollWidth;
+  const bodyOW = document.body.offsetWidth;
   const scrollX = window.scrollX;
   const scrollY = window.scrollY;
   const maxScrollX = docW - window.innerWidth;
-  const maxScrollY = docH - window.innerHeight;
   
-  document.getElementById('info').innerHTML = `
-    <b>Scale:</b> ${scale.toFixed(2)} | <b>Zoomed:</b> ${scale > 1.05 ? 'YES' : 'no'}<br>
-    <b>Visual VP:</b> ${vv ? vv.width.toFixed(0) : '?'}x${vv ? vv.height.toFixed(0) : '?'} | <b>Offset:</b> ${vv ? vv.offsetLeft.toFixed(1) : '?'}, ${vv ? vv.offsetTop.toFixed(1) : '?'}<br>
-    <b>Layout VP (innerW/H):</b> ${window.innerWidth}x${window.innerHeight}<br>
-    <b>Doc scroll size:</b> ${docW}x${docH} | <b>Body scroll size:</b> ${bodyW}<br>
-    <b>Scroll pos:</b> ${scrollX.toFixed(1)}, ${scrollY.toFixed(1)} | <b>Max:</b> ${maxScrollX}, ${maxScrollY}<br>
-    <b>Spacer:</b> ${spacer ? 'YES (' + spacer.style.width + ')' : 'none'} | <b>Can scroll H:</b> ${maxScrollX > 0 ? 'YES' : 'NO'}
-  `;
+  document.getElementById('info').innerHTML = 
+    `<b>Scale:</b> ${scale.toFixed(2)} | <b>VV:</b> ${vv?vv.width.toFixed(0):'?'}x${vv?vv.height.toFixed(0):'?'} | <b>Offset:</b> ${vv?vv.offsetLeft.toFixed(1):'?'},${vv?vv.offsetTop.toFixed(1):'?'}<br>` +
+    `<b>innerW:</b> ${window.innerWidth} | <b>docScrollW:</b> ${docW} | <b>bodyScrollW:</b> ${bodyW} | <b>bodyOffsetW:</b> ${bodyOW}<br>` +
+    `<b>scrollX:</b> ${scrollX.toFixed(1)} | <b>maxScrollX:</b> ${maxScrollX} | <b>Can H:</b> ${maxScrollX > 0 ? 'YES ✅' : 'NO ❌'}`;
 }
 
-function addSpacer() {
-  if (spacer) spacer.remove();
+function doScroll(dx, dy) {
+  const bx = window.scrollX, by = window.scrollY;
+  window.scrollBy(dx, dy);
+  requestAnimationFrame(() => {
+    const ax = window.scrollX, ay = window.scrollY;
+    log(`scrollBy(${dx},${dy}): X ${bx.toFixed(1)}→${ax.toFixed(1)} Y ${by.toFixed(1)}→${ay.toFixed(1)}`);
+    updateInfo();
+  });
+}
+
+function clearAll() {
+  if (spacerEl) { spacerEl.remove(); spacerEl = null; }
+  document.body.style.minWidth = '';
+  document.body.style.width = '';
+  document.body.style.overflow = '';
+  document.body.style.transform = '';
+  document.documentElement.style.minWidth = '';
+  document.documentElement.style.overflow = '';
+  document.querySelectorAll('.test-spacer').forEach(el => el.remove());
+  log('Cleared all');
+  updateInfo();
+}
+
+function getNeededWidth() {
   const vv = window.visualViewport;
   const scale = vv ? vv.scale : 1;
-  const layoutW = window.innerWidth;
-  const neededW = layoutW * scale;
-  const neededH = document.documentElement.scrollHeight;
-  
-  spacer = document.createElement('div');
-  spacer.id = 'zoom-drag-spacer';
-  spacer.style.cssText = `
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: ${neededW}px;
-    height: ${neededH}px;
-    pointer-events: none;
-    visibility: hidden;
-    z-index: -1;
-  `;
-  document.body.appendChild(spacer);
-  document.getElementById('spacer-indicator').style.display = 'block';
-  document.getElementById('spacer-indicator').textContent = `Spacer: ${neededW.toFixed(0)}x${neededH.toFixed(0)}px (scale=${scale.toFixed(2)})`;
-  updateInfo();
+  return Math.ceil(window.innerWidth * scale);
 }
 
-function removeSpacer() {
-  if (spacer) {
-    spacer.remove();
-    spacer = null;
+// Method A: Absolute positioned div (original approach)
+function method_absoluteDiv() {
+  clearAll();
+  const w = getNeededWidth();
+  const el = document.createElement('div');
+  el.className = 'test-spacer';
+  el.style.cssText = `position:absolute;top:0;left:0;width:${w}px;height:1px;pointer-events:none;z-index:-1;`;
+  document.body.appendChild(el);
+  spacerEl = el;
+  log(`A: absolute div ${w}px`);
+  requestAnimationFrame(updateInfo);
+}
+
+// Method B: Relative positioned wide div
+function method_relativeDiv() {
+  clearAll();
+  const w = getNeededWidth();
+  const el = document.createElement('div');
+  el.className = 'test-spacer';
+  el.style.cssText = `position:relative;width:${w}px;height:1px;pointer-events:none;`;
+  document.body.appendChild(el);
+  spacerEl = el;
+  log(`B: relative div ${w}px`);
+  requestAnimationFrame(updateInfo);
+}
+
+// Method C: Set body min-width directly
+function method_bodyMinWidth() {
+  clearAll();
+  const w = getNeededWidth();
+  document.body.style.minWidth = w + 'px';
+  log(`C: body min-width ${w}px`);
+  requestAnimationFrame(updateInfo);
+}
+
+// Method D: Set html element min-width
+function method_htmlMinWidth() {
+  clearAll();
+  const w = getNeededWidth();
+  document.documentElement.style.minWidth = w + 'px';
+  log(`D: html min-width ${w}px`);
+  requestAnimationFrame(updateInfo);
+}
+
+// Method E: Visible (not hidden) wide div with content
+function method_visibleDiv() {
+  clearAll();
+  const w = getNeededWidth();
+  const el = document.createElement('div');
+  el.className = 'test-spacer';
+  el.style.cssText = `width:${w}px;height:2px;background:red;opacity:0.3;`;
+  el.textContent = 'spacer';
+  document.body.appendChild(el);
+  spacerEl = el;
+  log(`E: visible div ${w}px`);
+  requestAnimationFrame(updateInfo);
+}
+
+// Method F: Set overflow:visible on body + html + wide child
+function method_overflowVisible() {
+  clearAll();
+  const w = getNeededWidth();
+  document.documentElement.style.overflow = 'visible';
+  document.body.style.overflow = 'visible';
+  const el = document.createElement('div');
+  el.className = 'test-spacer';
+  el.style.cssText = `width:${w}px;height:2px;background:blue;opacity:0.3;`;
+  document.body.appendChild(el);
+  spacerEl = el;
+  log(`F: overflow:visible + div ${w}px`);
+  requestAnimationFrame(updateInfo);
+}
+
+// Method G: Transform scale on body
+function method_transformScale() {
+  clearAll();
+  const vv = window.visualViewport;
+  const scale = vv ? vv.scale : 1;
+  document.body.style.transform = `scaleX(${scale})`;
+  document.body.style.transformOrigin = '0 0';
+  log(`G: transform scaleX(${scale})`);
+  requestAnimationFrame(updateInfo);
+}
+
+// Alternative: scrollTo with absolute position
+function scrollViaScrollTo() {
+  const bx = window.scrollX;
+  window.scrollTo(bx + 50, window.scrollY);
+  requestAnimationFrame(() => {
+    log(`scrollTo: X ${bx.toFixed(1)}→${window.scrollX.toFixed(1)}`);
+    updateInfo();
+  });
+}
+
+// Alternative: scrollIntoView on a hidden element placed to the right
+function scrollViaElement() {
+  let marker = document.getElementById('scroll-marker');
+  if (!marker) {
+    marker = document.createElement('div');
+    marker.id = 'scroll-marker';
+    marker.style.cssText = 'position:absolute;width:1px;height:1px;';
+    document.body.appendChild(marker);
   }
-  document.getElementById('spacer-indicator').style.display = 'none';
+  // Place it 200px to the right of current visual viewport
+  const vv = window.visualViewport;
+  const currentRight = (vv ? vv.offsetLeft + vv.width : window.innerWidth) + window.scrollX;
+  marker.style.left = currentRight + 200 + 'px';
+  marker.style.top = window.scrollY + 100 + 'px';
+  marker.scrollIntoView({ behavior: 'instant', block: 'nearest', inline: 'nearest' });
+  requestAnimationFrame(() => {
+    log(`scrollIntoView: scrollX=${window.scrollX.toFixed(1)}`);
+    updateInfo();
+  });
+}
+
+// Alternative: CSS transform to visually shift content
+let transformOffset = 0;
+function scrollViaTransform() {
+  transformOffset -= 50;
+  document.body.style.transform = `translateX(${transformOffset}px)`;
+  log(`transform: translateX(${transformOffset}px)`);
   updateInfo();
 }
 
-function scrollRight() {
-  const before = window.scrollX;
-  window.scrollBy(50, 0);
-  requestAnimationFrame(() => {
-    const after = window.scrollX;
-    console.log(`scrollRight: before=${before}, after=${after}, moved=${after-before}`);
-    updateInfo();
-  });
-}
-
-function scrollLeft() {
-  const before = window.scrollX;
-  window.scrollBy(-50, 0);
-  requestAnimationFrame(() => {
-    const after = window.scrollX;
-    console.log(`scrollLeft: before=${before}, after=${after}, moved=${after-before}`);
-    updateInfo();
-  });
-}
-
-function scrollDown() {
-  const before = window.scrollY;
-  window.scrollBy(0, 50);
-  requestAnimationFrame(() => {
-    const after = window.scrollY;
-    console.log(`scrollDown: before=${before}, after=${after}, moved=${after-before}`);
-    updateInfo();
-  });
-}
-
-function scrollUp() {
-  const before = window.scrollY;
-  window.scrollBy(0, -50);
-  requestAnimationFrame(() => {
-    const after = window.scrollY;
-    console.log(`scrollUp: before=${before}, after=${after}, moved=${after-before}`);
-    updateInfo();
-  });
-}
-
-// Update info on scroll and resize
-setInterval(updateInfo, 200);
+setInterval(updateInfo, 300);
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', updateInfo);
   window.visualViewport.addEventListener('scroll', updateInfo);
