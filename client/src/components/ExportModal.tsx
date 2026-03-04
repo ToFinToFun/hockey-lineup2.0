@@ -167,7 +167,7 @@ function drawTeamBlock(
   const logoCy = curY + logoR;
   drawCircleLogo(ctx, logoImg, logoCx, logoCy, logoR, logoFallbackColor);
 
-  ctx.font = `bold ${Math.round(32 * s)}px 'Arial', sans-serif`;
+  ctx.font = `bold ${Math.round(32 * s)}px 'Oswald', sans-serif`;
   ctx.fillStyle = accentColor;
   ctx.letterSpacing = "3px";
   ctx.fillText(teamName.toUpperCase(), x + logoR * 2 + 14, curY + logoR + Math.round(6 * s));
@@ -175,7 +175,7 @@ function drawTeamBlock(
   // Player count
   const playerCount = Object.keys(lineup).filter(k => slots.some(sl => sl.id === k && lineup[k])).length;
   const registeredCount = Object.values(lineup).filter(p => slots.some(sl => lineup[sl.id] === p) && p.isRegistered).length;
-  ctx.font = `${Math.round(16 * s)}px 'Arial', sans-serif`;
+  ctx.font = `${Math.round(16 * s)}px 'Oswald', sans-serif`;
   ctx.fillStyle = "rgba(255,255,255,0.4)";
   ctx.letterSpacing = "1px";
   ctx.fillText(`${registeredCount} anmälda av ${playerCount} i laget`, x + logoR * 2 + 14, curY + logoR + Math.round(28 * s));
@@ -198,7 +198,7 @@ function drawTeamBlock(
 
   const drawSectionLabel = (label: string, labelColor: string, hasContent: boolean) => {
     if (!hasContent) return;
-    ctx.font = `bold ${Math.round(FONT_SECTION * s)}px 'Arial', sans-serif`;
+    ctx.font = `bold ${Math.round(FONT_SECTION * s)}px 'Oswald', sans-serif`;
     ctx.fillStyle = labelColor;
     ctx.letterSpacing = "3px";
     ctx.fillText(label.toUpperCase(), x, curY + Math.round(16 * s));
@@ -217,7 +217,7 @@ function drawTeamBlock(
     ctx.fillStyle = bg;
     roundRect(ctx, rowX + 3, curY + 3, badgeW, rowH - 6, Math.round(3 * s));
     ctx.fill();
-    ctx.font = `bold ${Math.round(FONT_BADGE * s)}px 'Arial', sans-serif`;
+    ctx.font = `bold ${Math.round(FONT_BADGE * s)}px 'Oswald', sans-serif`;
     ctx.fillStyle = text;
     ctx.letterSpacing = "0px";
     ctx.textAlign = "center";
@@ -227,7 +227,7 @@ function drawTeamBlock(
     // Player name + number
     const nameX = rowX + badgeW + Math.round(10 * s);
     if (player) {
-      ctx.font = `${Math.round(FONT_PLAYER * s)}px 'Arial', sans-serif`;
+      ctx.font = `${Math.round(FONT_PLAYER * s)}px 'Oswald', sans-serif`;
       ctx.fillStyle = "#ffffff";
       ctx.letterSpacing = "0px";
       const nameText = player.number ? `${player.name}  #${player.number}` : player.name;
@@ -236,12 +236,12 @@ function drawTeamBlock(
       // Captain badge
       if (player.captainRole) {
         const nameWidth = ctx.measureText(nameText).width;
-        ctx.font = `bold ${Math.round(FONT_PLAYER * s)}px 'Arial', sans-serif`;
+        ctx.font = `bold ${Math.round(FONT_PLAYER * s)}px 'Oswald', sans-serif`;
         ctx.fillStyle = player.captainRole === "C" ? "#fde047" : "#7dd3fc";
         ctx.fillText(player.captainRole, nameX + nameWidth + 8, curY + Math.round(22 * s));
       }
     } else {
-      ctx.font = `italic ${Math.round((FONT_PLAYER - 2) * s)}px 'Arial', sans-serif`;
+      ctx.font = `italic ${Math.round((FONT_PLAYER - 2) * s)}px 'Oswald', sans-serif`;
       ctx.fillStyle = "rgba(255,255,255,0.2)";
       ctx.letterSpacing = "0px";
       ctx.fillText("—", nameX, curY + Math.round(22 * s));
@@ -276,7 +276,7 @@ function drawTeamBlock(
       for (let r = 0; r < rowIdx; r++) gy += rowHeights[r];
       curY = gy;
 
-      ctx.font = `bold ${Math.round(FONT_GROUP * s)}px 'Arial', sans-serif`;
+      ctx.font = `bold ${Math.round(FONT_GROUP * s)}px 'Oswald', sans-serif`;
       ctx.fillStyle = "rgba(96,165,250,0.6)";
       ctx.letterSpacing = "2px";
       ctx.fillText(group.groupLabel.toUpperCase(), gx, curY + Math.round(12 * s));
@@ -310,7 +310,7 @@ function drawTeamBlock(
       for (let r = 0; r < rowIdx; r++) gy += rowHeights[r];
       curY = gy;
 
-      ctx.font = `bold ${Math.round(FONT_GROUP * s)}px 'Arial', sans-serif`;
+      ctx.font = `bold ${Math.round(FONT_GROUP * s)}px 'Oswald', sans-serif`;
       ctx.fillStyle = "rgba(52,211,153,0.6)";
       ctx.letterSpacing = "2px";
       ctx.fillText(group.groupLabel.toUpperCase(), gx, curY + Math.round(12 * s));
@@ -347,6 +347,15 @@ export function ExportModal({
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+
+    // Ensure Oswald font is loaded before rendering
+    try {
+      await document.fonts.load("bold 48px 'Oswald'");
+      await document.fonts.load("600 32px 'Oswald'");
+      await document.fonts.load("400 20px 'Oswald'");
+    } catch {
+      // Font may already be loaded or fallback to sans-serif
+    }
 
     // Load logos
     let imgWhite: HTMLImageElement | null = null;
@@ -397,7 +406,7 @@ export function ExportModal({
     ctx.stroke();
 
     // Title
-    ctx.font = "bold 48px 'Arial', sans-serif";
+    ctx.font = "bold 48px 'Oswald', sans-serif";
     ctx.fillStyle = "#ffffff";
     ctx.letterSpacing = "5px";
     ctx.fillText("STÅLSTADENS", padding, 60);
@@ -406,7 +415,7 @@ export function ExportModal({
     ctx.fillText(" LINEUP", padding + titleW, 60);
 
     // Date subtitle
-    ctx.font = "18px 'Arial', sans-serif";
+    ctx.font = "18px 'Oswald', sans-serif";
     ctx.fillStyle = "rgba(255,255,255,0.4)";
     ctx.letterSpacing = "3px";
     ctx.fillText(`A-LAG HERRAR  ·  ${getToday().toUpperCase()}`, padding, 86);
@@ -467,7 +476,7 @@ export function ExportModal({
     }
 
     // ── Footer ──
-    ctx.font = "14px 'Arial', sans-serif";
+    ctx.font = "14px 'Oswald', sans-serif";
     ctx.fillStyle = "rgba(255,255,255,0.2)";
     ctx.letterSpacing = "2px";
     ctx.textAlign = "center";
