@@ -230,7 +230,8 @@ function drawTeamBlock(
       ctx.font = `${Math.round(FONT_PLAYER * s)}px 'Oswald', sans-serif`;
       ctx.fillStyle = "#ffffff";
       ctx.letterSpacing = "0px";
-      const nameText = player.number ? `${player.name}  #${player.number}` : player.name;
+      const truncatedName = player.name.length > 18 ? player.name.slice(0, 18).trimEnd() + "…" : player.name;
+      const nameText = truncatedName;
       ctx.fillText(nameText, nameX, curY + Math.round(22 * s));
 
       // Captain badge

@@ -105,3 +105,5 @@
 - [x] Export: Utnyttja hela 1800×1000-ytan bättre med större text och bättre layout
 - [x] Fixa TS-fel i server/routers.ts (updateAttendance/AttendingStatus import) — var stale watcher, 0 errors bekräftat
 - [x] Byt exportens typsnitt från Arial till Oswald
+- [x] Export: Ta bort tröjnummer från spelarnamn
+- [x] Export: Begränsa spelarnamn till 18 tecken
