@@ -117,3 +117,4 @@
 - [x] BUGG: Horisontell auto-scroll fungerar inte vid drag på inzoomad mobil-viewport (vertikal fungerar)
 - [x] BUGG: Horisontell auto-scroll vid drag på inzoomad mobil fungerar fortfarande inte (spacer-approach räckte inte) — löst med CSS translateX
 - [x] Begränsa horisontell CSS translateX-panning så man inte kan scrolla utanför sidans innehåll
+- [x] Sänk touch-drag delay från 500ms till 350ms och öka tolerance från 8px till 15px för lättare drag-aktivering

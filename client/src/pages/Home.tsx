@@ -374,8 +374,8 @@ export default function Home() {
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 500,      // 500ms hold to start drag – tydlig avsikt krävs
-        tolerance: 8,    // 8px – fingret måste vara nästan stilla, annars är det scroll
+        delay: 350,      // 350ms hold to start drag – snabbare aktivering
+        tolerance: 15,   // 15px – fingret kan röra sig lite utan att drag avbryts
       },
     })
   );
