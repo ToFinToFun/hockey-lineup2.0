@@ -112,3 +112,4 @@
 - [x] Export: Lägg till sponsorlogotyper högerställda i header-raden (samma rad som "Stålstadens Lineup")
 - [x] Export: Minska lagnamnsradens höjd (mindre ikon och text)
 - [x] BUGG: laget.se-synk fungerar inte på Netlify — återskapade Netlify Function med både GET (hämta) och POST (uppdatera)
+- [x] BUGG: Kan inte scrolla horisontellt/vertikalt genom att dra spelare mot kanten i desktop-läge
