@@ -368,6 +368,8 @@ export default function Home() {
   }, [handleUndo]);
 
   const isMobile = useIsMobile();
+  const isMobileRef = useRef(isMobile);
+  useEffect(() => { isMobileRef.current = isMobile; }, [isMobile]);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
@@ -394,8 +396,10 @@ export default function Home() {
     setActivePlayer(player || null);
     // Vibrera för att bekräfta att drag aktiverats
     if (navigator.vibrate) navigator.vibrate(50);
-    // Lås scrollning under drag på mobil
-    document.body.classList.add("dnd-scroll-lock");
+    // Lås scrollning under drag på mobil (inte desktop – där behövs horisontell scroll)
+    if (isMobile) {
+      document.body.classList.add("dnd-scroll-lock");
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -847,6 +851,8 @@ export default function Home() {
   });
   const tabHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastHoveredTabRef = useRef<MobileTab | null>(null);
+  const sideScrollRef = useRef<HTMLDivElement>(null);
+  const autoScrollRAF = useRef<number | null>(null);
 
   // Automatiskt flikbyte vid drag: håll spelaren över en flik-knapp i 600ms
   const handleDragMove = useCallback((event: DragMoveEvent) => {
@@ -875,7 +881,66 @@ export default function Home() {
     const screenWidth = window.innerWidth;
     const EDGE_ZONE = 40; // px från skärmkant
 
-    // Kolla om positionen är vid skärmkanten (drag-to-edge)
+    // Desktop: auto-scrolla horisontellt och vertikalt när man drar nära kanten
+    if (!isMobileRef.current) {
+      const SCROLL_EDGE = 80; // px från kant
+      const SCROLL_SPEED = 12; // px per frame
+
+      // Avbryt pågående auto-scroll
+      if (autoScrollRAF.current) {
+        cancelAnimationFrame(autoScrollRAF.current);
+        autoScrollRAF.current = null;
+      }
+
+      let hScrollDir = 0; // -1 vänster, 0 ingen, 1 höger
+      let vScrollDir = 0; // -1 upp, 0 ingen, 1 ner
+      let hIntensity = 0;
+      let vIntensity = 0;
+
+      // Horisontell scroll (sidoläge-container)
+      const container = sideScrollRef.current;
+      if (container) {
+        const containerRect = container.getBoundingClientRect();
+        if (clientX < containerRect.left + SCROLL_EDGE && container.scrollLeft > 0) {
+          hScrollDir = -1;
+          hIntensity = 1 - Math.max(0, clientX - containerRect.left) / SCROLL_EDGE;
+        } else if (clientX > containerRect.right - SCROLL_EDGE) {
+          const maxScroll = container.scrollWidth - container.clientWidth;
+          if (container.scrollLeft < maxScroll) {
+            hScrollDir = 1;
+            hIntensity = 1 - Math.max(0, containerRect.right - clientX) / SCROLL_EDGE;
+          }
+        }
+      }
+
+      // Vertikal scroll (window/page)
+      const viewH = window.innerHeight;
+      if (clientY < SCROLL_EDGE && window.scrollY > 0) {
+        vScrollDir = -1;
+        vIntensity = 1 - Math.max(0, clientY) / SCROLL_EDGE;
+      } else if (clientY > viewH - SCROLL_EDGE) {
+        const maxScrollY = document.documentElement.scrollHeight - viewH;
+        if (window.scrollY < maxScrollY) {
+          vScrollDir = 1;
+          vIntensity = 1 - Math.max(0, viewH - clientY) / SCROLL_EDGE;
+        }
+      }
+
+      if (hScrollDir !== 0 || vScrollDir !== 0) {
+        const scrollStep = () => {
+          if (hScrollDir !== 0 && container) {
+            container.scrollLeft += SCROLL_SPEED * hIntensity * hScrollDir;
+          }
+          if (vScrollDir !== 0) {
+            window.scrollBy(0, SCROLL_SPEED * vIntensity * vScrollDir);
+          }
+          autoScrollRAF.current = requestAnimationFrame(scrollStep);
+        };
+        autoScrollRAF.current = requestAnimationFrame(scrollStep);
+      }
+    }
+
+    // Kolla om positionen är vid skärmkanten (drag-to-edge) – mobil flikbyte
     let edgeTab: MobileTab | null = null;
     if (clientX <= EDGE_ZONE) {
       // Vänster kant → föregående flik
@@ -977,6 +1042,11 @@ export default function Home() {
         lastHoveredTabRef.current = null;
         setDragHoverTab(null);
         document.body.classList.remove("dnd-scroll-lock");
+        // Stoppa auto-scroll
+        if (autoScrollRAF.current) {
+          cancelAnimationFrame(autoScrollRAF.current);
+          autoScrollRAF.current = null;
+        }
         handleDragEnd(e);
       }}
     >
@@ -1289,7 +1359,7 @@ export default function Home() {
               /* Desktop layout – standard eller sidoläge */
               sideLayout ? (
                 /* Sidoläge: Trupp till vänster (fast bredd), lagen bredvid varandra */
-                <div className="flex gap-2 overflow-x-auto" style={{ minWidth: '850px' }}>
+                <div ref={sideScrollRef} className="flex gap-2 overflow-x-auto" style={{ minWidth: '850px' }}>
                   {/* Spelarlista (vänster) – fast bredd */}
                   <div
                     className="flex flex-col gap-2 shrink-0 min-w-0"
