@@ -369,13 +369,12 @@ export default function Home() {
 
   const isMobile = useIsMobile();
 
-
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 250,      // 250ms hold to start drag – snabb aktivering
-        tolerance: 25,   // 25px – fingret kan röra sig utan att tappa spelaren
+        delay: 500,      // 500ms hold to start drag – tydlig avsikt krävs
+        tolerance: 8,    // 8px – fingret måste vara nästan stilla, annars är det scroll
       },
     })
   );
@@ -395,13 +394,8 @@ export default function Home() {
     setActivePlayer(player || null);
     // Vibrera för att bekräfta att drag aktiverats
     if (navigator.vibrate) navigator.vibrate(50);
-    // Lås native scrollning under drag på mobil – vi hanterar all scrollning
-    // (både vertikal och horisontell) via vår egen auto-scroll-loop
-    if (isMobile) {
-      document.body.classList.add("dnd-scroll-lock");
-    }
-    // Starta custom auto-scroll (fungerar med touch och mus)
-    startAutoScroll();
+    // Lås scrollning under drag på mobil
+    document.body.classList.add("dnd-scroll-lock");
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -853,176 +847,6 @@ export default function Home() {
   });
   const tabHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastHoveredTabRef = useRef<MobileTab | null>(null);
-  const sideScrollRef = useRef<HTMLDivElement>(null);
-  const stdScrollRef = useRef<HTMLDivElement>(null);
-  const scrollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pointerPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const isDraggingRef = useRef(false);
-  // Ref för CSS transform-baserad horisontell panning vid zoom
-  // window.scrollBy fungerar inte horisontellt vid pinch-zoom (Chrome Android)
-  // eftersom documentElement.scrollWidth == window.innerWidth alltid.
-  // Istället använder vi CSS translateX på content-wrappern.
-  const zoomContentRef = useRef<HTMLDivElement>(null);
-  const zoomTranslateXRef = useRef(0);
-
-  const applyZoomTranslateX = useCallback((dx: number) => {
-    if (!zoomContentRef.current) return;
-
-    // Begränsa translateX så innehållet inte går utanför sidans gränser.
-    // Innehållet har en viss bredd (layoutW), och den synliga viewporten (visibleW)
-    // är ofta mindre än layoutW (vid zoom eller nedskalning).
-    // Vi tillåter panning så att hela innehållet kan nås.
-    const vv = window.visualViewport;
-    const scale = vv ? vv.scale : 1;
-    const layoutW = window.innerWidth;
-    // Bredden på det som faktiskt syns på skärmen (i CSS-pixlar)
-    const visibleW = vv ? vv.width : layoutW;
-    // Hur mycket av innehållet som är dolt på sidorna
-    // = layoutW - visibleW (kan vara 0 eller negativt om allt syns)
-    const hiddenW = Math.max(0, layoutW - visibleW);
-    // Tillåt panning åt båda håll med lite extra marginal (20%)
-    const maxPan = hiddenW > 0 ? hiddenW * 1.0 : layoutW * 0.4;
-
-    let newVal = zoomTranslateXRef.current + dx;
-    newVal = Math.min(maxPan, Math.max(-maxPan, newVal));
-
-    zoomTranslateXRef.current = newVal;
-    zoomContentRef.current.style.transform = `translateX(${newVal}px)`;
-  }, []);
-
-  const resetZoomTranslateX = useCallback(() => {
-    zoomTranslateXRef.current = 0;
-    if (zoomContentRef.current) {
-      zoomContentRef.current.style.transform = '';
-    }
-  }, []);
-
-  // Auto-scroll: lyssnar på riktiga touch/mouse-events för att få viewport-koordinater
-  // och kör scroll via setInterval. Stödjer både normal scroll och zoomad viewport.
-  const SCROLL_EDGE = 80;
-  const SCROLL_SPEED = 12;
-
-  const doAutoScroll = useCallback(() => {
-    const { x, y } = pointerPosRef.current;
-    if (x === 0 && y === 0) return;
-
-    // Viewport-info (visualViewport ger den synliga ytan, oavsett zoom-nivå)
-    const vv = window.visualViewport;
-    const scale = vv ? vv.scale : 1;
-
-    // Synlig viewport-storlek
-    const viewW = vv ? vv.width : window.innerWidth;
-    const viewH = vv ? vv.height : window.innerHeight;
-
-    // Edge-zon och hastighet
-    const edgeZone = SCROLL_EDGE;
-    const speed = SCROLL_SPEED;
-
-    let scrollDx = 0;
-    let scrollDy = 0;
-
-    // Horisontell: nära vänster/höger kant av synlig viewport
-    if (x < edgeZone) {
-      const intensity = 1 - Math.max(0, x) / edgeZone;
-      scrollDx = -speed * intensity;
-    } else if (x > viewW - edgeZone) {
-      const intensity = 1 - Math.max(0, viewW - x) / edgeZone;
-      scrollDx = speed * intensity;
-    }
-
-    // Vertikal: nära topp/botten av synlig viewport
-    if (y < edgeZone) {
-      const intensity = 1 - Math.max(0, y) / edgeZone;
-      scrollDy = -speed * intensity;
-    } else if (y > viewH - edgeZone) {
-      const intensity = 1 - Math.max(0, viewH - y) / edgeZone;
-      scrollDy = speed * intensity;
-    }
-
-    if (scrollDx === 0 && scrollDy === 0) return;
-
-    // Vertikal scroll – window.scrollBy fungerar alltid vertikalt
-    if (scrollDy !== 0) {
-      window.scrollBy(0, scrollDy);
-    }
-
-    // Horisontell scroll – prova container-scroll först, sedan window.scrollBy,
-    // och om inget fungerar: använd CSS translateX som fallback
-    if (scrollDx !== 0) {
-      let scrolled = false;
-
-      // 1. Prova overflow-container (sidoläge)
-      const container = sideScrollRef.current || stdScrollRef.current;
-      if (container) {
-        const isOverflowing = container.scrollWidth > container.clientWidth;
-        if (isOverflowing) {
-          const before = container.scrollLeft;
-          container.scrollLeft += scrollDx;
-          if (Math.abs(container.scrollLeft - before) > 0.5) {
-            scrolled = true;
-          }
-        }
-      }
-
-      // 2. Prova window.scrollBy
-      if (!scrolled) {
-        const canScrollH = document.documentElement.scrollWidth > window.innerWidth;
-        if (canScrollH) {
-          const before = window.scrollX;
-          window.scrollBy(scrollDx, 0);
-          if (Math.abs(window.scrollX - before) > 0.5) {
-            scrolled = true;
-          }
-        }
-      }
-
-      // 3. Fallback: CSS translateX på content-wrappern
-      // Detta fungerar alltid, även vid pinch-zoom på Chrome Android
-      // där documentElement.scrollWidth == window.innerWidth
-      if (!scrolled) {
-        applyZoomTranslateX(-scrollDx);
-      }
-    }
-  }, [applyZoomTranslateX]);
-
-  // Pointer-tracking via native events (inte dnd-kit events)
-  useEffect(() => {
-    const onTouchMove = (e: TouchEvent) => {
-      if (!isDraggingRef.current) return;
-      const t = e.touches[0];
-      if (t) pointerPosRef.current = { x: t.clientX, y: t.clientY };
-    };
-    const onMouseMove = (e: MouseEvent) => {
-      if (!isDraggingRef.current) return;
-      pointerPosRef.current = { x: e.clientX, y: e.clientY };
-    };
-    // Använd capture phase så vi får events även om dnd-kit stoppar propagation
-    window.addEventListener('touchmove', onTouchMove, { capture: true, passive: true });
-    window.addEventListener('mousemove', onMouseMove, { capture: true, passive: true });
-    return () => {
-      window.removeEventListener('touchmove', onTouchMove, { capture: true } as EventListenerOptions);
-      window.removeEventListener('mousemove', onMouseMove, { capture: true } as EventListenerOptions);
-    };
-  }, []);
-
-  const startAutoScroll = useCallback(() => {
-    isDraggingRef.current = true;
-    // Återställ eventuell kvarvarande transform
-    resetZoomTranslateX();
-    if (scrollIntervalRef.current) return;
-    scrollIntervalRef.current = setInterval(doAutoScroll, 16); // ~60fps
-  }, [doAutoScroll, resetZoomTranslateX]);
-
-  const stopAutoScroll = useCallback(() => {
-    isDraggingRef.current = false;
-    if (scrollIntervalRef.current) {
-      clearInterval(scrollIntervalRef.current);
-      scrollIntervalRef.current = null;
-    }
-    pointerPosRef.current = { x: 0, y: 0 };
-    // Återställ CSS transform för horisontell zoom-panning
-    resetZoomTranslateX();
-  }, [resetZoomTranslateX]);
 
   // Automatiskt flikbyte vid drag: håll spelaren över en flik-knapp i 600ms
   const handleDragMove = useCallback((event: DragMoveEvent) => {
@@ -1051,7 +875,7 @@ export default function Home() {
     const screenWidth = window.innerWidth;
     const EDGE_ZONE = 40; // px från skärmkant
 
-    // Kolla om positionen är vid skärmkanten (drag-to-edge) – mobil flikbyte
+    // Kolla om positionen är vid skärmkanten (drag-to-edge)
     let edgeTab: MobileTab | null = null;
     if (clientX <= EDGE_ZONE) {
       // Vänster kant → föregående flik
@@ -1141,7 +965,7 @@ export default function Home() {
       sensors={sensors}
       collisionDetection={pointerWithinOrClosest}
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
-      autoScroll={false}
+      autoScroll={{ enabled: true, threshold: { x: 0.15, y: 0.15 } }}
       onDragStart={handleDragStart}
       onDragMove={handleDragMove}
       onDragEnd={(e) => {
@@ -1153,8 +977,6 @@ export default function Home() {
         lastHoveredTabRef.current = null;
         setDragHoverTab(null);
         document.body.classList.remove("dnd-scroll-lock");
-        // Stoppa custom auto-scroll
-        stopAutoScroll();
         handleDragEnd(e);
       }}
     >
@@ -1171,7 +993,6 @@ export default function Home() {
         <div className="absolute inset-0 bg-black/45 pointer-events-none" />
 
         <div
-          ref={zoomContentRef}
           className="relative flex flex-col min-h-screen"
         >
           {/* Header */}
@@ -1468,7 +1289,7 @@ export default function Home() {
               /* Desktop layout – standard eller sidoläge */
               sideLayout ? (
                 /* Sidoläge: Trupp till vänster (fast bredd), lagen bredvid varandra */
-                <div ref={sideScrollRef} className="flex gap-2 overflow-x-auto" style={{ minWidth: '850px' }}>
+                <div className="flex gap-2 overflow-x-auto" style={{ minWidth: '850px' }}>
                   {/* Spelarlista (vänster) – fast bredd */}
                   <div
                     className="flex flex-col gap-2 shrink-0 min-w-0"
@@ -1539,7 +1360,7 @@ export default function Home() {
                 </div>
               ) : (
                 /* Standard-layout: Vita | Trupp | Gröna */
-                <div ref={stdScrollRef} className="overflow-x-auto">
+                <div className="overflow-x-auto">
                 <div
                   className="grid gap-1 md:gap-1.5"
                   style={{
