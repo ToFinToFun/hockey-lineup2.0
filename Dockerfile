@@ -23,18 +23,19 @@ COPY --from=build /app/drizzle ./drizzle
 COPY --from=build /app/package.json ./
 COPY --from=build /app/pnpm-lock.yaml ./
 COPY --from=build /app/drizzle.config.ts ./
-COPY --from=build /app/scripts ./scripts
+COPY --from=build /app/start.sh ./
 
-# Install only production dependencies
+# Install only production dependencies + drizzle-kit for migrations
 RUN corepack enable && corepack prepare pnpm@10.4.1 --activate
 COPY --from=deps /app/patches ./patches
 RUN pnpm install --frozen-lockfile --prod
+RUN pnpm add drizzle-kit
 
-# mysql2 is needed at runtime
-# drizzle-kit is needed for migrations (optional at runtime)
+# Make startup script executable
+RUN chmod +x start.sh
 
 EXPOSE 3000
 ENV NODE_ENV=production
-ENV PORT=3000
 
-CMD ["node", "dist/index.js"]
+# Start with migration then server
+CMD ["./start.sh"]
