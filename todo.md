@@ -169,3 +169,4 @@
 - [x] Gör appen installerbar som PWA med service worker
 - [x] KRITISK BUGG: Drag-and-drop fortfarande trasigt efter version-baserad fix - spelare flyger tillbaka 9/10 ggr, Auto blinkar och återställs (Fixat med pendingSaves-räknare som blockerar SSE under pågående sparningar)
 - [x] Synka aktuell Firebase-data till SQL-databasen (spelare med teamColor, nummer, positioner, captainRole + sparade uppställningar)
+- [x] KRITISK BUGG v3: Drag-and-drop och Auto fortfarande trasigt trots pendingSaves-fix — fixat med dirtyRef-approach som blockerar SSE OMEDELBART vid lokal ändring (inte bara under mutation), serialiserade sparningar (saveInFlightRef + saveQueuedRef)

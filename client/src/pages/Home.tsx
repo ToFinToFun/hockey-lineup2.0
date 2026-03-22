@@ -228,9 +228,18 @@ export default function Home() {
 
   // Track if we've received the initial server state
   const hasReceivedInitial = useRef(false);
-  // Pending saves counter: when > 0, ALL SSE stateChange events are ignored
-  // This prevents the race condition where SSE arrives before onSuccess updates the version
-  const pendingSavesRef = useRef<number>(0);
+  // === ROBUST SSE SYNC ===
+  // The key insight: we must block SSE from the MOMENT a local change happens,
+  // not just when the mutation is in-flight. The 300ms debounce gap was the bug.
+  //
+  // dirtyRef: set to true immediately on any local state change.
+  //           Cleared only after a successful save AND no pending debounce timer.
+  //           While dirty, ALL SSE stateChange events are ignored.
+  // saveInFlightRef: true while a mutation is in progress (prevents overlapping saves).
+  // saveQueuedRef: if a new change arrives while a save is in-flight, we queue a re-save.
+  const dirtyRef = useRef(false);
+  const saveInFlightRef = useRef(false);
+  const saveQueuedRef = useRef(false);
   // Flag to prevent save effect from firing during applyRemoteState
   const isSyncing = useRef(false);
   // Toast for remote changes
@@ -295,6 +304,45 @@ export default function Home() {
     });
   }, []);
 
+  // Serialized save function: only one save at a time, queue if needed
+  const doSave = useCallback(() => {
+    if (saveInFlightRef.current) {
+      // A save is already in progress — mark that we need to re-save when it completes
+      saveQueuedRef.current = true;
+      return;
+    }
+    saveInFlightRef.current = true;
+
+    // Capture current state from refs (always fresh)
+    const currentPlayers = availablePlayersRef.current;
+    const currentLineup = lineupRef.current;
+    const currentTeamAName = teamAName;
+    const currentTeamBName = teamBName;
+    const currentDeletedPlayerIds = Array.from(deletedPlayerIdsRef.current);
+
+    saveStateMutation.mutate({
+      players: currentPlayers,
+      lineup: currentLineup,
+      teamAName: currentTeamAName,
+      teamBName: currentTeamBName,
+      deletedPlayerIds: currentDeletedPlayerIds,
+      teamAConfig,
+      teamBConfig,
+    }, {
+      onSettled: () => {
+        saveInFlightRef.current = false;
+        if (saveQueuedRef.current) {
+          // Another change came in while we were saving — save again
+          saveQueuedRef.current = false;
+          doSave();
+        } else {
+          // No more queued changes — we're clean, SSE can resume
+          dirtyRef.current = false;
+        }
+      },
+    });
+  }, [saveStateMutation, teamAName, teamBName, teamAConfig, teamBConfig]);
+
   // Load initial state from SQL + subscribe to SSE for real-time updates
   useEffect(() => {
     let es: EventSource | null = null;
@@ -321,7 +369,7 @@ export default function Home() {
                 sanitizedLocalLineup[slotId] = player;
               }
             }
-            pendingSavesRef.current++;
+            dirtyRef.current = true;
             saveStateMutation.mutate({
               players: localState.availablePlayers,
               lineup: sanitizedLocalLineup,
@@ -329,7 +377,7 @@ export default function Home() {
               teamBName: localState.teamBName,
             }, {
               onSettled: () => {
-                pendingSavesRef.current = Math.max(0, pendingSavesRef.current - 1);
+                dirtyRef.current = false;
               },
             });
           }
@@ -352,9 +400,9 @@ export default function Home() {
       if (!mounted) return;
       try {
         const data = JSON.parse(event.data);
-        // If we have pending saves, ignore ALL SSE stateChange events
-        // This prevents the race condition where SSE arrives before our save's onSettled
-        if (pendingSavesRef.current > 0) {
+        // If we have unsaved local changes (dirty), ignore ALL SSE stateChange events.
+        // This covers the entire window from local change → debounce → mutation → onSettled.
+        if (dirtyRef.current) {
           return;
         }
         if (data.state) {
@@ -388,35 +436,16 @@ export default function Home() {
     const state: SavedState = { availablePlayers, lineup, teamAName, teamBName, teamAConfig, teamBConfig };
     saveLocalState(state);
 
-    // Capture current state values for the debounced closure
-    const currentPlayers = availablePlayers;
-    const currentLineup = lineup;
-    const currentTeamAName = teamAName;
-    const currentTeamBName = teamBName;
-    const currentDeletedPlayerIds = Array.from(deletedPlayerIds);
-    const currentTeamAConfig = teamAConfig;
-    const currentTeamBConfig = teamBConfig;
+    // IMMEDIATELY mark as dirty — this blocks SSE right away,
+    // not after the 300ms debounce fires
+    dirtyRef.current = true;
 
     // Debounce server saves to avoid rapid-fire mutations
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      pendingSavesRef.current++;
-      saveStateMutation.mutate({
-        players: currentPlayers,
-        lineup: currentLineup,
-        teamAName: currentTeamAName,
-        teamBName: currentTeamBName,
-        deletedPlayerIds: currentDeletedPlayerIds,
-        teamAConfig: currentTeamAConfig,
-        teamBConfig: currentTeamBConfig,
-      }, {
-        onSettled: () => {
-          // Decrement pending saves - when 0, SSE events will be processed again
-          pendingSavesRef.current = Math.max(0, pendingSavesRef.current - 1);
-        },
-      });
+      doSave();
     }, 300);
-  }, [availablePlayers, lineup, teamAName, teamBName, deletedPlayerIds, teamAConfig, teamBConfig]);
+  }, [availablePlayers, lineup, teamAName, teamBName, deletedPlayerIds, teamAConfig, teamBConfig, doSave]);
 
   // Spara en snapshot i undo-stacken
   const pushUndo = useCallback(() => {
