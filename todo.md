@@ -124,8 +124,13 @@
 - [x] Migrate frontend SavedLineupsPanel from Firebase to tRPC
 - [x] Migrate frontend ShareView from Firebase to tRPC
 - [x] Remove Firebase dependencies (firebase package, firebase.ts)
-- [ ] Build one-time Firebase → SQL data migration script
+- [x] Build one-time Firebase → SQL data migration script
 - [ ] Write tests for new tRPC endpoints
 - [ ] Verify real-time sync works with multiple browser tabs
 - [x] Bygg engångs-migrationsskript: Firebase → SQL (sparade uppställningar + delade länkar)
 - [x] Analysera och dokumentera Hetzner/Coolify deployment-krav
+
+## Databassammanslagning (Railway → vår databas)
+- [x] Analysera Railway-databasens schema och data
+- [x] Slå ihop Railway-schemat med vårt Drizzle-schema (undvik namnkonflikter)
+- [x] Bygg import-skript som läser all data från Railway och importerar till vår databas (testat och verifierat)

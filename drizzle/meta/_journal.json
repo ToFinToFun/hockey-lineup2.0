@@ -15,6 +15,13 @@
       "when": 1774181170281,
       "tag": "0001_strange_tana_nile",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1774184752152,
+      "tag": "0002_stiff_viper",
+      "breakpoints": true
     }
   ]
 }

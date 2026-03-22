@@ -1,0 +1,26 @@
+{
+  "query": "SELECT 'app_config' as tbl, COUNT(*) as cnt FROM app_config UNION ALL SELECT 'match_results', COUNT(*) FROM match_results UNION ALL SELECT 'lineup_state', COUNT(*) FROM lineup_state UNION ALL SELECT 'saved_lineups', COUNT(*) FROM saved_lineups;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3PARkGnP7Yq5GFZ.9b78b8692d1f --database SXvJKubXoqm5p7aDCmZ97X --execute SELECT 'app_config' as tbl, COUNT(*) as cnt FROM app_config UNION ALL SELECT 'match_results', COUNT(*) FROM match_results UNION ALL SELECT 'lineup_state', COUNT(*) FROM lineup_state UNION ALL SELECT 'saved_lineups', COUNT(*) FROM saved_lineups;",
+  "rows": [
+    {
+      "tbl": "lineup_state",
+      "cnt": "1"
+    },
+    {
+      "tbl": "match_results",
+      "cnt": "6"
+    },
+    {
+      "tbl": "app_config",
+      "cnt": "4"
+    },
+    {
+      "tbl": "saved_lineups",
+      "cnt": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "tbl\tcnt\nlineup_state\t1\nmatch_results\t6\napp_config\t4\nsaved_lineups\t0\n",
+  "stderr": "",
+  "execution_time_ms": 394
+}
