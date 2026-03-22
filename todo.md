@@ -112,3 +112,18 @@
 - [x] Export: Lägg till sponsorlogotyper högerställda i header-raden (samma rad som "Stålstadens Lineup")
 - [x] Export: Minska lagnamnsradens höjd (mindre ikon och text)
 - [x] BUGG: laget.se-synk fungerar inte på Netlify — återskapade Netlify Function med både GET (hämta) och POST (uppdatera)
+
+## Firebase → SQL Migration
+- [ ] Design SQL schema: lineup_state (current state), lineup_operations (change log), saved_lineups, shared_lineups
+- [ ] Create Drizzle schema and push migrations
+- [ ] Build tRPC endpoints: getState, saveOperation, getSavedLineups, saveSavedLineup, createSharedLineup, getSharedLineup
+- [ ] Implement SSE endpoint for real-time push notifications
+- [ ] Implement operation-based sync with sequence numbers
+- [ ] Add toast notifications for remote changes ("Någon flyttade X till Y")
+- [ ] Migrate frontend Home.tsx from Firebase subscriptions to tRPC + SSE
+- [ ] Migrate frontend SavedLineupsPanel from Firebase to tRPC
+- [ ] Migrate frontend ShareView from Firebase to tRPC
+- [ ] Build one-time Firebase → SQL data migration script
+- [ ] Remove Firebase dependencies (firebase package, firebase.ts, env vars)
+- [ ] Write tests for new tRPC endpoints
+- [ ] Verify real-time sync works with multiple browser tabs

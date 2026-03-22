@@ -7,6 +7,8 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { sseManager } from "../sse";
+import crypto from "crypto";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -35,6 +37,17 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  // SSE endpoint for real-time lineup sync
+  app.get("/api/sse/lineup", (req, res) => {
+    const clientId = crypto.randomUUID();
+    const lastSeq = parseInt(req.query.lastSeq as string) || 0;
+    sseManager.addClient(clientId, res, lastSeq);
+    // Keep the connection alive - don't call res.end()
+    req.on("close", () => {
+      // Client cleanup is handled in sseManager.addClient
+    });
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

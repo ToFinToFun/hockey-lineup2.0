@@ -8,6 +8,13 @@
       "when": 1772108686386,
       "tag": "0000_pale_naoko",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1774181170281,
+      "tag": "0001_strange_tana_nile",
+      "breakpoints": true
     }
   ]
 }
