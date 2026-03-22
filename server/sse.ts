@@ -5,6 +5,7 @@ import type { Response } from "express";
  * 
  * Each connected client holds an open HTTP connection.
  * When a lineup change occurs, all clients are notified with the operation details.
+ * The sender can be excluded via `excludeClientId` to prevent echo-back.
  */
 
 interface SSEClient {
@@ -20,7 +21,7 @@ class SSEManager {
   constructor() {
     // Send heartbeat every 15 seconds to keep connections alive
     this.heartbeatInterval = setInterval(() => {
-      this.broadcast(":heartbeat\n\n", true);
+      this.broadcast(":heartbeat\n\n");
     }, 15_000);
   }
 
@@ -36,7 +37,7 @@ class SSEManager {
       "X-Accel-Buffering": "no", // Disable nginx buffering
     });
 
-    // Send initial connection event
+    // Send initial connection event with the assigned clientId
     res.write(`event: connected\ndata: ${JSON.stringify({ clientId: id, lastSeq })}\n\n`);
 
     this.clients.set(id, { id, res, lastSeq });
@@ -49,6 +50,7 @@ class SSEManager {
 
   /**
    * Notify all connected clients about a state change.
+   * @param excludeClientId - If provided, this client will NOT receive the event (prevents echo-back).
    */
   notifyStateChange(data: {
     version: number;
@@ -56,10 +58,10 @@ class SSEManager {
     description: string;
     /** The full state is included so clients can update without a separate fetch */
     state?: any;
-  }): void {
+  }, excludeClientId?: string): void {
     const payload = JSON.stringify(data);
     const message = `event: stateChange\ndata: ${payload}\n\n`;
-    this.broadcast(message);
+    this.broadcast(message, excludeClientId);
   }
 
   /**
@@ -82,9 +84,13 @@ class SSEManager {
     return this.clients.size;
   }
 
-  private broadcast(message: string, _isRaw = false): void {
+  /**
+   * Broadcast a message to all clients, optionally excluding one.
+   */
+  private broadcast(message: string, excludeClientId?: string): void {
     const toRemove: string[] = [];
     this.clients.forEach((client, id) => {
+      if (excludeClientId && id === excludeClientId) return;
       try {
         client.res.write(message);
       } catch {
