@@ -44,10 +44,10 @@ import { autoDistribute } from "@/lib/autoDistribute";
 type MobileTab = "vita" | "trupp" | "grona";
 
 const BG_URL =
-  "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/gLOHFxhFzgQgHeKl.jpg";
+  "/images/background.jpg";
 
-const LOGO_GREEN = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/yvyuOVwYRSLbWwHt.png";
-const LOGO_WHITE = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/OmjlmGnLDLTblNdj.png";
+const LOGO_GREEN = "/images/logo-green.png";
+const LOGO_WHITE = "/images/logo-white.png";
 
 const STORAGE_KEY = "stalstadens-lineup-v2";
 const MAX_UNDO = 30; // max antal steg i ångra-historiken
@@ -226,12 +226,12 @@ export default function Home() {
   // Statistik-panel toggle
   const [showStats, setShowStats] = useState(false);
 
-  // Prevent writing back to server when we just received an update from SSE
-  const isReceivingRemote = useRef(false);
   // Track if we've received the initial server state
   const hasReceivedInitial = useRef(false);
-  // Our SSE client ID — used to exclude ourselves from SSE broadcasts
-  const sseClientIdRef = useRef<string | null>(null);
+  // Version-based sync: track the latest version we've saved to prevent echo-back
+  const lastSavedVersionRef = useRef<number>(0);
+  // Flag to prevent save effect from firing during applyRemoteState
+  const isSyncing = useRef(false);
   // Toast for remote changes
   const [remoteChangeToast, setRemoteChangeToast] = useState<string | null>(null);
 
@@ -247,7 +247,7 @@ export default function Home() {
     teamBConfig?: { goalkeepers: number; defensePairs: number; forwardLines: number } | null;
     deletedPlayerIds?: string[] | null;
   }) => {
-    isReceivingRemote.current = true;
+    isSyncing.current = true;
     skipNextUndoSnapshot.current = true;
 
     // Merge: se till att alla spelare från initialPlayers alltid finns i truppen
@@ -285,9 +285,13 @@ export default function Home() {
     setTeamBName(state.teamBName ?? "GRÖNA");
     if (state.teamAConfig) setTeamAConfig(state.teamAConfig);
     if (state.teamBConfig) setTeamBConfig(state.teamBConfig);
-    setTimeout(() => {
-      isReceivingRemote.current = false;
-    }, 100);
+    // Use requestAnimationFrame to ensure React has committed the state updates
+    // before allowing the save effect to fire again
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        isSyncing.current = false;
+      });
+    });
   }, []);
 
   // Load initial state from SQL + subscribe to SSE for real-time updates
@@ -304,6 +308,10 @@ export default function Home() {
         const wrapped = json?.result?.data;
         const state = wrapped?.json ?? wrapped;
         if (state && state.players) {
+          // Track the server's version so we can ignore our own SSE echoes
+          if (typeof state.version === "number") {
+            lastSavedVersionRef.current = state.version;
+          }
           applyRemoteState(state);
         } else if (!hasReceivedInitial.current) {
           // No data in SQL yet — push our local state up
@@ -321,7 +329,10 @@ export default function Home() {
               lineup: sanitizedLocalLineup,
               teamAName: localState.teamAName,
               teamBName: localState.teamBName,
-              sseClientId: sseClientIdRef.current ?? undefined,
+            }, {
+              onSuccess: (result) => {
+                if (result?.version) lastSavedVersionRef.current = result.version;
+              },
             });
           }
         }
@@ -337,19 +348,21 @@ export default function Home() {
     es.addEventListener("connected", (event) => {
       if (!mounted) return;
       setSseConnected(true);
-      try {
-        const data = JSON.parse(event.data);
-        if (data.clientId) {
-          sseClientIdRef.current = data.clientId;
-        }
-      } catch { /* ignore */ }
     });
 
     es.addEventListener("stateChange", (event) => {
       if (!mounted) return;
       try {
         const data = JSON.parse(event.data);
+        // Version-based echo prevention: ignore events from versions we already saved
+        const eventVersion = typeof data.version === "number" ? data.version : 0;
+        if (eventVersion > 0 && eventVersion <= lastSavedVersionRef.current) {
+          // This is our own change echoed back, or an older version — skip it
+          return;
+        }
         if (data.state) {
+          // Update our version tracker to this remote version
+          lastSavedVersionRef.current = eventVersion;
           applyRemoteState(data.state);
         }
         // Show toast for remote changes
@@ -374,26 +387,41 @@ export default function Home() {
   // Save to both SQL and localStorage on every state change (debounced)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (isReceivingRemote.current) return;
+    if (isSyncing.current) return;
     if (!hasReceivedInitial.current) return;
 
     const state: SavedState = { availablePlayers, lineup, teamAName, teamBName, teamAConfig, teamBConfig };
     saveLocalState(state);
 
+    // Capture current state values for the debounced closure
+    const currentPlayers = availablePlayers;
+    const currentLineup = lineup;
+    const currentTeamAName = teamAName;
+    const currentTeamBName = teamBName;
+    const currentDeletedPlayerIds = Array.from(deletedPlayerIds);
+    const currentTeamAConfig = teamAConfig;
+    const currentTeamBConfig = teamBConfig;
+
     // Debounce server saves to avoid rapid-fire mutations
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       saveStateMutation.mutate({
-        players: availablePlayers,
-        lineup,
-        teamAName,
-        teamBName,
-        deletedPlayerIds: Array.from(deletedPlayerIds),
-        teamAConfig,
-        teamBConfig,
-        sseClientId: sseClientIdRef.current ?? undefined,
+        players: currentPlayers,
+        lineup: currentLineup,
+        teamAName: currentTeamAName,
+        teamBName: currentTeamBName,
+        deletedPlayerIds: currentDeletedPlayerIds,
+        teamAConfig: currentTeamAConfig,
+        teamBConfig: currentTeamBConfig,
+      }, {
+        onSuccess: (result) => {
+          // Update our version so we can ignore our own SSE echo
+          if (result?.version) {
+            lastSavedVersionRef.current = result.version;
+          }
+        },
       });
-    }, 150);
+    }, 300);
   }, [availablePlayers, lineup, teamAName, teamBName, deletedPlayerIds, teamAConfig, teamBConfig]);
 
   // Spara en snapshot i undo-stacken
@@ -417,13 +445,16 @@ export default function Home() {
     setUndoStack((prev) => {
       if (prev.length === 0) return prev;
       const snapshot = prev[prev.length - 1];
-      isReceivingRemote.current = true;
+      isSyncing.current = true;
       skipNextUndoSnapshot.current = true;
       setAvailablePlayers(snapshot.availablePlayers);
       setLineup(snapshot.lineup);
-      setTimeout(() => {
-        isReceivingRemote.current = false;
-      }, 200);
+      // Allow React to commit the state updates before re-enabling saves
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          isSyncing.current = false;
+        });
+      });
       return prev.slice(0, prev.length - 1);
     });
   }, []);

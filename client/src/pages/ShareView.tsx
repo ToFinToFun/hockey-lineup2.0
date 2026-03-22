@@ -8,11 +8,11 @@ import type { Player } from "@/lib/players";
 import { Clock, Users } from "lucide-react";
 
 const BG_URL =
-  "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/gLOHFxhFzgQgHeKl.jpg";
+  "/images/background.jpg";
 const LOGO_GREEN =
-  "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/yvyuOVwYRSLbWwHt.png";
+  "/images/logo-green.png";
 const LOGO_WHITE =
-  "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/OmjlmGnLDLTblNdj.png";
+  "/images/logo-white.png";
 
 const TEAM_A_SLOTS = createTeamSlots("team-a", MAX_TEAM_CONFIG);
 const TEAM_B_SLOTS = createTeamSlots("team-b", MAX_TEAM_CONFIG);

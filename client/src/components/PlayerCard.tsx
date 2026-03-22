@@ -9,8 +9,8 @@ import { getPositionBadgeColor, ALL_POSITIONS } from "@/lib/players";
 import { useState, useRef } from "react";
 import { PortalDropdown } from "./PortalDropdown";
 
-const LOGO_GREEN = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/yvyuOVwYRSLbWwHt.png";
-const LOGO_WHITE = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/OmjlmGnLDLTblNdj.png";
+const LOGO_GREEN = "/images/logo-green.png";
+const LOGO_WHITE = "/images/logo-white.png";
 
 interface PlayerCardProps {
   player: Player;
