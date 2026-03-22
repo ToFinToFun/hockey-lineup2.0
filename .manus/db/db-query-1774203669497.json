@@ -1,0 +1,80 @@
+{
+  "query": "SELECT id, name, teamAName, teamBName, savedAt FROM saved_lineups ORDER BY savedAt DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3PARkGnP7Yq5GFZ.9b78b8692d1f --database SXvJKubXoqm5p7aDCmZ97X --execute SELECT id, name, teamAName, teamBName, savedAt FROM saved_lineups ORDER BY savedAt DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "60003",
+      "name": "Favorite Test 1774203038853",
+      "teamAName": "VITA",
+      "teamBName": "GRÖNA",
+      "savedAt": "1774203038853"
+    },
+    {
+      "id": "60002",
+      "name": "Lookup Test 1774203038823",
+      "teamAName": "VITA",
+      "teamBName": "GRÖNA",
+      "savedAt": "1774203038824"
+    },
+    {
+      "id": "60001",
+      "name": "Test Lineup 1774203038794",
+      "teamAName": "VITA",
+      "teamBName": "GRÖNA",
+      "savedAt": "1774203038795"
+    },
+    {
+      "id": "30011",
+      "name": "Favorite Test 1774201299122",
+      "teamAName": "VITA",
+      "teamBName": "GRÖNA",
+      "savedAt": "1774201299122"
+    },
+    {
+      "id": "30010",
+      "name": "Lookup Test 1774201299093",
+      "teamAName": "VITA",
+      "teamBName": "GRÖNA",
+      "savedAt": "1774201299094"
+    },
+    {
+      "id": "30009",
+      "name": "Test Lineup 1774201299064",
+      "teamAName": "VITA",
+      "teamBName": "GRÖNA",
+      "savedAt": "1774201299064"
+    },
+    {
+      "id": "30007",
+      "name": "Favorite Test 1774200870236",
+      "teamAName": "VITA",
+      "teamBName": "GRÖNA",
+      "savedAt": "1774200870236"
+    },
+    {
+      "id": "30006",
+      "name": "Lookup Test 1774200870203",
+      "teamAName": "VITA",
+      "teamBName": "GRÖNA",
+      "savedAt": "1774200870203"
+    },
+    {
+      "id": "30005",
+      "name": "Test Lineup 1774200870176",
+      "teamAName": "VITA",
+      "teamBName": "GRÖNA",
+      "savedAt": "1774200870177"
+    },
+    {
+      "id": "30003",
+      "name": "Favorite Test 1774199758486",
+      "teamAName": "VITA",
+      "teamBName": "GRÖNA",
+      "savedAt": "1774199758486"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tteamAName\tteamBName\tsavedAt\n60003\tFavorite Test 1774203038853\tVITA\tGRÖNA\t1774203038853\n60002\tLookup Test 1774203038823\tVITA\tGRÖNA\t1774203038824\n60001\tTest Lineup 1774203038794\tVITA\tGRÖNA\t1774203038795\n30011\tFavorite Test 1774201299122\tVITA\tGRÖNA\t1774201299122\n30010\tLookup Test 1774201299093\tVITA\tGRÖNA\t1774201299094\n30009\tTest Lineup 1774201299064\tVITA\tGRÖNA\t1774201299064\n30007\tFavorite Test 1774200870236\tVITA\tGRÖNA\t1774200870236\n30006\tLookup Test 1774200870203\tVITA\tGRÖNA\t1774200870203\n30005\tTest Lineup 1774200870176\tVITA\tGRÖNA\t1774200870177\n30003\tFavorite Test 1774199758486\tVITA\tGRÖNA\t1774199758486\n",
+  "stderr": "",
+  "execution_time_ms": 58
+}
