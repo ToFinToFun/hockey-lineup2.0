@@ -160,4 +160,4 @@
 - [x] Skriva README.md med Coolify deployment-guide
 - [x] Verifiera inga Netlify-referenser kvar i koden
 - [x] Uppdatera start.sh för automatisk databas-skapande vid deploy
-- [ ] Skapa GitHub repo ToFinToFun/hockey-lineup2.0 och pusha kod
+- [x] Skapa GitHub repo ToFinToFun/hockey-lineup2.0 och pusha kod
