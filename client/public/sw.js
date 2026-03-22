@@ -1,11 +1,14 @@
 // Service Worker for Stålstadens Lineup PWA
-// This enables the "Install App" prompt in Chrome and other browsers
+// Enables "Install App" prompt and offline caching
 
-const CACHE_NAME = 'stalstadens-lineup-v1';
+const CACHE_NAME = 'stalstadens-lineup-v2';
 
 // Assets to pre-cache for offline shell
 const PRECACHE_URLS = [
   '/',
+  '/manifest.json',
+  '/pwa-icon-192.png',
+  '/pwa-icon-512.png',
 ];
 
 // Install event - pre-cache essential assets
@@ -41,11 +44,10 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (event.request.method !== 'GET') return;
 
-  // Skip API calls and OAuth routes
+  // Skip API calls, SSE, and OAuth routes
   const url = new URL(event.request.url);
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('')) {
-    return;
-  }
+  if (url.pathname.startsWith('/api/')) return;
+  if (url.pathname.startsWith('/sse')) return;
 
   event.respondWith(
     fetch(event.request)
