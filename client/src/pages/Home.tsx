@@ -228,8 +228,9 @@ export default function Home() {
 
   // Track if we've received the initial server state
   const hasReceivedInitial = useRef(false);
-  // Version-based sync: track the latest version we've saved to prevent echo-back
-  const lastSavedVersionRef = useRef<number>(0);
+  // Pending saves counter: when > 0, ALL SSE stateChange events are ignored
+  // This prevents the race condition where SSE arrives before onSuccess updates the version
+  const pendingSavesRef = useRef<number>(0);
   // Flag to prevent save effect from firing during applyRemoteState
   const isSyncing = useRef(false);
   // Toast for remote changes
@@ -308,10 +309,6 @@ export default function Home() {
         const wrapped = json?.result?.data;
         const state = wrapped?.json ?? wrapped;
         if (state && state.players) {
-          // Track the server's version so we can ignore our own SSE echoes
-          if (typeof state.version === "number") {
-            lastSavedVersionRef.current = state.version;
-          }
           applyRemoteState(state);
         } else if (!hasReceivedInitial.current) {
           // No data in SQL yet — push our local state up
@@ -324,14 +321,15 @@ export default function Home() {
                 sanitizedLocalLineup[slotId] = player;
               }
             }
+            pendingSavesRef.current++;
             saveStateMutation.mutate({
               players: localState.availablePlayers,
               lineup: sanitizedLocalLineup,
               teamAName: localState.teamAName,
               teamBName: localState.teamBName,
             }, {
-              onSuccess: (result) => {
-                if (result?.version) lastSavedVersionRef.current = result.version;
+              onSettled: () => {
+                pendingSavesRef.current = Math.max(0, pendingSavesRef.current - 1);
               },
             });
           }
@@ -354,15 +352,12 @@ export default function Home() {
       if (!mounted) return;
       try {
         const data = JSON.parse(event.data);
-        // Version-based echo prevention: ignore events from versions we already saved
-        const eventVersion = typeof data.version === "number" ? data.version : 0;
-        if (eventVersion > 0 && eventVersion <= lastSavedVersionRef.current) {
-          // This is our own change echoed back, or an older version — skip it
+        // If we have pending saves, ignore ALL SSE stateChange events
+        // This prevents the race condition where SSE arrives before our save's onSettled
+        if (pendingSavesRef.current > 0) {
           return;
         }
         if (data.state) {
-          // Update our version tracker to this remote version
-          lastSavedVersionRef.current = eventVersion;
           applyRemoteState(data.state);
         }
         // Show toast for remote changes
@@ -405,6 +400,7 @@ export default function Home() {
     // Debounce server saves to avoid rapid-fire mutations
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
+      pendingSavesRef.current++;
       saveStateMutation.mutate({
         players: currentPlayers,
         lineup: currentLineup,
@@ -414,11 +410,9 @@ export default function Home() {
         teamAConfig: currentTeamAConfig,
         teamBConfig: currentTeamBConfig,
       }, {
-        onSuccess: (result) => {
-          // Update our version so we can ignore our own SSE echo
-          if (result?.version) {
-            lastSavedVersionRef.current = result.version;
-          }
+        onSettled: () => {
+          // Decrement pending saves - when 0, SSE events will be processed again
+          pendingSavesRef.current = Math.max(0, pendingSavesRef.current - 1);
         },
       });
     }, 300);
