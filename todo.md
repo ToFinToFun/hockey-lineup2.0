@@ -125,7 +125,7 @@
 - [x] Migrate frontend ShareView from Firebase to tRPC
 - [x] Remove Firebase dependencies (firebase package, firebase.ts)
 - [x] Build one-time Firebase → SQL data migration script
-- [ ] Write tests for new tRPC endpoints
+- [x] Write tests for new tRPC endpoints
 - [ ] Verify real-time sync works with multiple browser tabs
 - [x] Bygg engångs-migrationsskript: Firebase → SQL (sparade uppställningar + delade länkar)
 - [x] Analysera och dokumentera Hetzner/Coolify deployment-krav
@@ -134,3 +134,21 @@
 - [x] Analysera Railway-databasens schema och data
 - [x] Slå ihop Railway-schemat med vårt Drizzle-schema (undvik namnkonflikter)
 - [x] Bygg import-skript som läser all data från Railway och importerar till vår databas (testat och verifierat)
+
+## Laget.se inloggning via inställningar
+- [x] Skapa DB-tabell för krypterade credentials (app_secrets)
+- [x] Skapa server-side encrypt/decrypt-hjälpare
+- [x] Skapa tRPC-endpoints för att spara/ladda laget.se-inloggning
+- [x] Uppdatera lagetSe.ts att läsa credentials från DB istället för env vars
+- [x] Bygg dold inställnings-ikon/sida med formulär för laget.se-inloggning
+- [x] Ta bort hårdkodade credentials och Netlify-fallback
+
+## Cleanup & Deployment Prep
+- [x] Ta bort Netlify-filer (netlify.toml, netlify/functions/, _redirects)
+- [x] Ta bort build:netlify script från package.json
+- [x] Ta bort gammal server/index.ts (ersatt av server/_core/index.ts)
+- [x] Verifiera att Firebase är helt borttaget (inga imports, inga dependencies)
+- [x] Verifiera TypeScript kompilerar utan fel (pnpm check)
+- [x] Verifiera build lyckas (pnpm build)
+- [x] Verifiera alla tester passerar (20/20)
+- [x] Skriv tester för tRPC lineup-endpoints

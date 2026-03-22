@@ -14,6 +14,7 @@
 import axios, { type AxiosInstance, type AxiosResponse } from "axios";
 import * as cheerio from "cheerio";
 import { ENV } from "./_core/env";
+import { getLagetSeCredentials } from "./secretsDb";
 
 const TEAM_SLUG = "Stalstadens";
 const BASE_URL = "https://www.laget.se";
@@ -105,11 +106,13 @@ async function login(
   client: AxiosInstance,
   followRedirects: (resp: AxiosResponse) => Promise<AxiosResponse>
 ): Promise<boolean> {
-  const username = ENV.lagetSeUsername;
-  const password = ENV.lagetSePassword;
+  // Try DB credentials first, then fall back to ENV vars
+  const dbCreds = await getLagetSeCredentials();
+  const username = dbCreds?.username || ENV.lagetSeUsername;
+  const password = dbCreds?.password || ENV.lagetSePassword;
 
   if (!username || !password) {
-    throw new Error("Laget.se credentials not configured");
+    throw new Error("Laget.se credentials not configured. Gå till Inställningar och ange inloggningsuppgifter.");
   }
 
   // Steg 1: GET /Login – hämta CSRF-token

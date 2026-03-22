@@ -142,3 +142,20 @@ export const matchResults = mysqlTable("match_results", {
 
 export type MatchResult = typeof matchResults.$inferSelect;
 export type InsertMatchResult = typeof matchResults.$inferInsert;
+
+// ─── App Secrets ──────────────────────────────────────────────────────────────
+// Encrypted key-value store for sensitive credentials (e.g. laget.se login)
+
+export const appSecrets = mysqlTable("app_secrets", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Unique key identifying the secret, e.g. "laget_se" */
+  key: varchar("key", { length: 100 }).notNull().unique(),
+  /** AES-256-GCM encrypted value (base64-encoded JSON with iv + authTag + ciphertext) */
+  encryptedValue: text("encryptedValue").notNull(),
+  /** Human-readable label for the settings UI */
+  label: varchar("label", { length: 200 }),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AppSecret = typeof appSecrets.$inferSelect;
+export type InsertAppSecret = typeof appSecrets.$inferInsert;

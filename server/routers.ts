@@ -3,6 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { fetchAttendance, updateAttendance, type AttendingStatus } from "./lagetSe";
+import { saveLagetSeCredentials, getLagetSeCredentials, hasLagetSeCredentials } from "./secretsDb";
 import {
   getLineupState,
   saveLineupState,
@@ -168,6 +169,56 @@ export const appRouter = router({
         });
         return { success: true };
       }),
+  }),
+
+  // ─── Settings ──────────────────────────────────────────────────────────────
+
+  settings: router({
+    /** Check if laget.se credentials are configured */
+    hasLagetSeCredentials: publicProcedure.query(async () => {
+      return { configured: await hasLagetSeCredentials() };
+    }),
+
+    /** Get laget.se username (masked password) */
+    getLagetSeInfo: publicProcedure.query(async () => {
+      const creds = await getLagetSeCredentials();
+      if (!creds) return { configured: false, username: "" };
+      return { configured: true, username: creds.username };
+    }),
+
+    /** Save laget.se credentials (encrypted in DB) */
+    saveLagetSeCredentials: publicProcedure
+      .input(
+        z.object({
+          username: z.string().min(1, "Ange e-postadress"),
+          password: z.string().min(1, "Ange lösenord"),
+        })
+      )
+      .mutation(async ({ input }) => {
+        await saveLagetSeCredentials(input);
+        return { success: true };
+      }),
+
+    /** Test laget.se connection with current credentials */
+    testLagetSeConnection: publicProcedure.mutation(async () => {
+      try {
+        const result = await fetchAttendance();
+        if (result.error && result.error.includes("Kontrollera användarnamn")) {
+          return { success: false, error: "Felaktigt användarnamn eller lösenord" };
+        }
+        if (result.error) {
+          return { success: false, error: result.error };
+        }
+        return {
+          success: true,
+          eventTitle: result.eventTitle,
+          eventDate: result.eventDate,
+          totalRegistered: result.totalRegistered,
+        };
+      } catch (err: any) {
+        return { success: false, error: err.message || "Okänt fel" };
+      }
+    }),
   }),
 });
 
