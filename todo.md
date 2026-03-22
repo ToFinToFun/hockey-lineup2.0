@@ -127,3 +127,5 @@
 - [ ] Build one-time Firebase → SQL data migration script
 - [ ] Write tests for new tRPC endpoints
 - [ ] Verify real-time sync works with multiple browser tabs
+- [x] Bygg engångs-migrationsskript: Firebase → SQL (sparade uppställningar + delade länkar)
+- [x] Analysera och dokumentera Hetzner/Coolify deployment-krav
