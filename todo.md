@@ -153,3 +153,9 @@
 - [x] Verifiera alla tester passerar (20/20)
 - [x] Skriv tester för tRPC lineup-endpoints
 - [x] Förbättra felmeddelande vid laget.se-hämtning: visa tydlig text om att ange inloggning via inställningar istället för "HTTP 429"
+
+## Coolify Deployment
+- [x] Ta bort alla kvarvarande Netlify-filer (NETLIFY-GUIDE.md, DEPLOY.md, deploy.sh, build.sh, build.bat)
+- [x] Uppdatera Dockerfile med auto-migrering via start.sh
+- [x] Skriva README.md med Coolify deployment-guide
+- [x] Verifiera inga Netlify-referenser kvar i koden
