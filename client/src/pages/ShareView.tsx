@@ -1,12 +1,10 @@
-// ShareView – Skrivskyddad vy av en sparad uppställning
+// ShareView – Skrivskyddad vy av en sparad uppställning (SQL/tRPC-version)
 // Design: Industrial Ice Arena – mörk, polerad, läsbar
 
-import { useEffect, useState } from "react";
 import { useParams, Link } from "wouter";
-import { get, ref, getDatabase } from "firebase/database";
+import { trpc } from "@/lib/trpc";
 import { createTeamSlots, groupSlots, MAX_TEAM_CONFIG } from "@/lib/lineup";
 import type { Player } from "@/lib/players";
-import { getPositionBadgeColor, formatPlayerDisplay } from "@/lib/players";
 import { Clock, Users } from "lucide-react";
 
 const BG_URL =
@@ -18,15 +16,6 @@ const LOGO_WHITE =
 
 const TEAM_A_SLOTS = createTeamSlots("team-a", MAX_TEAM_CONFIG);
 const TEAM_B_SLOTS = createTeamSlots("team-b", MAX_TEAM_CONFIG);
-
-interface SavedLineup {
-  id: string;
-  name: string;
-  savedAt: number;
-  teamAName: string;
-  teamBName: string;
-  lineup: Record<string, Player>;
-}
 
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleDateString("sv-SE", {
@@ -147,7 +136,7 @@ function TeamSection({
 }
 
 // Panel för ett helt lag
-function TeamPanel({
+function TeamPanelView({
   teamName,
   slots,
   lineup,
@@ -207,31 +196,19 @@ function TeamPanel({
 
 export default function ShareView() {
   const { id } = useParams<{ id: string }>();
-  const [savedLineup, setSavedLineup] = useState<SavedLineup | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
 
-  useEffect(() => {
-    if (!id) { setNotFound(true); setLoading(false); return; }
+  const { data: savedLineup, isLoading: loading, error } = trpc.savedLineups.getByShareId.useQuery(
+    { shareId: id ?? "" },
+    { enabled: !!id, refetchOnWindowFocus: false }
+  );
 
-    const db = getDatabase();
-    const itemRef = ref(db, `savedLineups/${id}`);
-    get(itemRef)
-      .then((snap) => {
-        if (snap.exists()) {
-          setSavedLineup({ id, ...snap.val() } as SavedLineup);
-        } else {
-          setNotFound(true);
-        }
-      })
-      .catch(() => setNotFound(true))
-      .finally(() => setLoading(false));
-  }, [id]);
+  const notFound = (!loading && !savedLineup) || !!error;
 
   const teamALineup: Record<string, Player> = {};
   const teamBLineup: Record<string, Player> = {};
   if (savedLineup) {
-    for (const [slotId, player] of Object.entries(savedLineup.lineup)) {
+    const lineupData = savedLineup.lineup as Record<string, Player>;
+    for (const [slotId, player] of Object.entries(lineupData)) {
       if (slotId.startsWith("team-a-")) teamALineup[slotId] = player;
       else if (slotId.startsWith("team-b-")) teamBLineup[slotId] = player;
     }
@@ -304,21 +281,21 @@ export default function ShareView() {
                   </span>
                   <span className="flex items-center gap-1">
                     <Users className="w-3 h-3" />
-                    {Object.keys(savedLineup.lineup).length} placerade spelare
+                    {Object.keys(savedLineup.lineup as Record<string, any>).length} placerade spelare
                   </span>
                 </div>
               </div>
 
               {/* Lag-paneler */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <TeamPanel
+                <TeamPanelView
                   teamName={savedLineup.teamAName}
                   slots={TEAM_A_SLOTS}
                   lineup={teamALineup}
                   logo={LOGO_WHITE}
                   accentColor="text-slate-200"
                 />
-                <TeamPanel
+                <TeamPanelView
                   teamName={savedLineup.teamBName}
                   slots={TEAM_B_SLOTS}
                   lineup={teamBLineup}
