@@ -1,0 +1,15 @@
+{
+  "query": "SELECT JSON_EXTRACT(players, '$[0]') as first_player, JSON_EXTRACT(players, '$[1]') as second_player, JSON_EXTRACT(players, '$[2]') as third_player FROM lineup_state WHERE id = 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3PARkGnP7Yq5GFZ.9b78b8692d1f --database SXvJKubXoqm5p7aDCmZ97X --execute SELECT JSON_EXTRACT(players, '$[0]') as first_player, JSON_EXTRACT(players, '$[1]') as second_player, JSON_EXTRACT(players, '$[2]') as third_player FROM lineup_state WHERE id = 1;",
+  "rows": [
+    {
+      "first_player": "{\"id\": \"mv-1\", \"isDeclined\": false, \"isRegistered\": false, \"name\": \"Andreas Johansson\", \"number\": \"\", \"position\": \"MV\"}",
+      "second_player": "{\"id\": \"mv-2\", \"isDeclined\": false, \"isRegistered\": false, \"name\": \"Tobias Johansson\", \"number\": \"\", \"position\": \"MV\"}",
+      "third_player": "{\"id\": \"mv-3\", \"isDeclined\": false, \"isRegistered\": false, \"name\": \"Robin Bergstedt\", \"number\": \"\", \"position\": \"MV\"}"
+    }
+  ],
+  "messages": [],
+  "stdout": "first_player\tsecond_player\tthird_player\n{\"id\": \"mv-1\", \"isDeclined\": false, \"isRegistered\": false, \"name\": \"Andreas Johansson\", \"number\": \"\", \"position\": \"MV\"}\t{\"id\": \"mv-2\", \"isDeclined\": false, \"isRegistered\": false, \"name\": \"Tobias Johansson\", \"number\": \"\", \"position\": \"MV\"}\t{\"id\": \"mv-3\", \"isDeclined\": false, \"isRegistered\": false, \"name\": \"Robin Bergstedt\", \"number\": \"\", \"position\": \"MV\"}\n",
+  "stderr": "",
+  "execution_time_ms": 177
+}

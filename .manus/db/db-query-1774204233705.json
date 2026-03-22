@@ -1,0 +1,23 @@
+{
+  "query": "SELECT JSON_EXTRACT(players, '$[0].name') as name1, JSON_EXTRACT(players, '$[0].teamColor') as color1, JSON_EXTRACT(players, '$[0].number') as num1, JSON_EXTRACT(players, '$[1].name') as name2, JSON_EXTRACT(players, '$[1].teamColor') as color2, JSON_EXTRACT(players, '$[1].number') as num2, JSON_EXTRACT(players, '$[2].name') as name3, JSON_EXTRACT(players, '$[2].teamColor') as color3, JSON_EXTRACT(players, '$[2].number') as num3, JSON_LENGTH(lineup) as placed_count, version FROM lineup_state WHERE id = 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3PARkGnP7Yq5GFZ.9b78b8692d1f --database SXvJKubXoqm5p7aDCmZ97X --execute SELECT JSON_EXTRACT(players, '$[0].name') as name1, JSON_EXTRACT(players, '$[0].teamColor') as color1, JSON_EXTRACT(players, '$[0].number') as num1, JSON_EXTRACT(players, '$[1].name') as name2, JSON_EXTRACT(players, '$[1].teamColor') as color2, JSON_EXTRACT(players, '$[1].number') as num2, JSON_EXTRACT(players, '$[2].name') as name3, JSON_EXTRACT(players, '$[2].teamColor') as color3, JSON_EXTRACT(players, '$[2].number') as num3, JSON_LENGTH(lineup) as placed_count, version FROM lineup_state WHERE id = 1;",
+  "rows": [
+    {
+      "name1": "\"Aron Esberg\"",
+      "color1": "NULL",
+      "num1": "\"93\"",
+      "name2": "\"Alexander Haraldsson\"",
+      "color2": "\"white\"",
+      "num2": "\"13\"",
+      "name3": "\"Andreas Westerlund\"",
+      "color3": "\"white\"",
+      "num3": "\"51\"",
+      "placed_count": "8",
+      "version": "262"
+    }
+  ],
+  "messages": [],
+  "stdout": "name1\tcolor1\tnum1\tname2\tcolor2\tnum2\tname3\tcolor3\tnum3\tplaced_count\tversion\n\"Aron Esberg\"\tNULL\t\"93\"\t\"Alexander Haraldsson\"\t\"white\"\t\"13\"\t\"Andreas Westerlund\"\t\"white\"\t\"51\"\t8\t262\n",
+  "stderr": "",
+  "execution_time_ms": 185
+}

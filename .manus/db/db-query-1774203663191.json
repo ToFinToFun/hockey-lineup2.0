@@ -1,0 +1,19 @@
+{
+  "query": "SELECT id, version, JSON_LENGTH(players) as num_players, JSON_LENGTH(lineup) as num_in_lineup, teamAName, teamBName, updatedAt FROM lineup_state;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3PARkGnP7Yq5GFZ.9b78b8692d1f --database SXvJKubXoqm5p7aDCmZ97X --execute SELECT id, version, JSON_LENGTH(players) as num_players, JSON_LENGTH(lineup) as num_in_lineup, teamAName, teamBName, updatedAt FROM lineup_state;",
+  "rows": [
+    {
+      "id": "1",
+      "version": "258",
+      "num_players": "63",
+      "num_in_lineup": "0",
+      "teamAName": "VITA",
+      "teamBName": "GRÖNA",
+      "updatedAt": "2026-03-22 18:20:26"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tversion\tnum_players\tnum_in_lineup\tteamAName\tteamBName\tupdatedAt\n1\t258\t63\t0\tVITA\tGRÖNA\t2026-03-22 18:20:26\n",
+  "stderr": "",
+  "execution_time_ms": 62
+}
