@@ -152,3 +152,4 @@
 - [x] Verifiera build lyckas (pnpm build)
 - [x] Verifiera alla tester passerar (20/20)
 - [x] Skriv tester för tRPC lineup-endpoints
+- [x] Förbättra felmeddelande vid laget.se-hämtning: visa tydlig text om att ange inloggning via inställningar istället för "HTTP 429"

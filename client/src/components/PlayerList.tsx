@@ -597,7 +597,19 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                 : "bg-amber-500/15 border-amber-400/30 text-amber-300"
             }`}>
               {registerResult.error ? (
-                <span>{registerResult.error}</span>
+                <span>
+                  {registerResult.error.includes("NO_CREDENTIALS:") ? (
+                    <>Inga inloggningsuppgifter konfigurerade. Klicka på <button onClick={() => { const btn = document.querySelector('[data-settings-btn]') as HTMLButtonElement; btn?.click(); }} className="underline font-bold cursor-pointer hover:text-white">kugghjulet (⚙)</button> och ange ditt laget.se-konto.</>
+                  ) : registerResult.error.includes("LOGIN_FAILED:") ? (
+                    <>Kunde inte logga in på laget.se. Kontrollera uppgifterna i <button onClick={() => { const btn = document.querySelector('[data-settings-btn]') as HTMLButtonElement; btn?.click(); }} className="underline font-bold cursor-pointer hover:text-white">inställningarna (⚙)</button>.</>
+                  ) : registerResult.error.includes("AUTH_ERROR:") ? (
+                    <>Åtkomst nekad av laget.se. Kontrollera uppgifterna i <button onClick={() => { const btn = document.querySelector('[data-settings-btn]') as HTMLButtonElement; btn?.click(); }} className="underline font-bold cursor-pointer hover:text-white">inställningarna (⚙)</button>.</>
+                  ) : registerResult.error.includes("RATE_LIMITED:") ? (
+                    <>Laget.se blockerar tillfälligt förfrågningar. Vänta några minuter och försök igen.</>
+                  ) : (
+                    <>{registerResult.error.replace(/^[A-Z_]+:\s*/, "")}</>
+                  )}
+                </span>
               ) : registerResult.noEvent ? (
                 <span>Ingen träning idag eller imorgon — anmälningar nollställda</span>
               ) : (

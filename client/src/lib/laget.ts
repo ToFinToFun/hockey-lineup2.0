@@ -34,11 +34,23 @@ export async function fetchAttendanceFromApi(forceRefresh = false): Promise<Atte
 
   const response = await fetch("/api/trpc/laget.attendance");
   const contentType = response.headers.get("content-type") || "";
+  
   if (!response.ok || !contentType.includes("application/json")) {
+    // Ge tydliga felmeddelanden beroende på HTTP-status
+    if (response.status === 429) {
+      throw new Error("RATE_LIMITED: Laget.se blockerar tillfälligt förfrågningar. Vänta en stund och försök igen.");
+    }
     throw new Error(`Kunde inte hämta anmälningsdata (HTTP ${response.status})`);
   }
 
   const json = await response.json();
+  
+  // Kontrollera om det finns ett tRPC-fel (t.ex. credentials saknas)
+  const trpcError = json?.error?.json?.message || json?.[0]?.error?.json?.message;
+  if (trpcError) {
+    throw new Error(trpcError);
+  }
+  
   const data = json?.result?.data?.json;
   if (!data || data.registeredNames === undefined) {
     throw new Error("Oväntat svar från servern");
