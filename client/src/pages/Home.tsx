@@ -1188,6 +1188,7 @@ export default function Home() {
                 {/* Inställningar-knapp (dold) */}
                 <LongPressTooltip label="Inställningar">
                 <button
+                  data-settings-btn
                   onClick={() => setShowSettings(true)}
                   title="Inställningar"
                   className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider bg-white/5 border border-white/10 text-white/30 hover:bg-white/10 hover:text-white/60"

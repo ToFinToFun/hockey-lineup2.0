@@ -112,7 +112,7 @@ async function login(
   const password = dbCreds?.password || ENV.lagetSePassword;
 
   if (!username || !password) {
-    throw new Error("Laget.se credentials not configured. Gå till Inställningar och ange inloggningsuppgifter.");
+    throw new Error("NO_CREDENTIALS: Inga inloggningsuppgifter konfigurerade. Klicka på kugghjulet (⚙) och ange ditt laget.se-konto.");
   }
 
   // Steg 1: GET /Login – hämta CSRF-token
@@ -575,7 +575,7 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
         registeredNames: [],
         declinedNames: [],
         totalRegistered: 0,
-        error: "Kunde inte logga in på laget.se. Kontrollera användarnamn och lösenord.",
+        error: "LOGIN_FAILED: Kunde inte logga in på laget.se. Kontrollera användarnamn och lösenord i inställningarna (⚙).",
       };
     }
 
@@ -644,7 +644,11 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
         registeredNames: [],
         declinedNames: [],
         totalRegistered: 0,
-        error: `Kunde inte hämta anmälningslistan (HTTP ${resp.status})`,
+        error: resp.status === 429
+          ? "RATE_LIMITED: Laget.se blockerar tillfälligt förfrågningar. Vänta en stund och försök igen."
+          : resp.status === 401 || resp.status === 403
+          ? "AUTH_ERROR: Åtkomst nekad. Kontrollera inloggningsuppgifterna i inställningarna (⚙)."
+          : `Kunde inte hämta anmälningslistan (HTTP ${resp.status})`,
       };
     }
 
@@ -664,7 +668,9 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
       registeredNames: [],
       declinedNames: [],
       totalRegistered: 0,
-      error: `Fel vid hämtning: ${error.message || "Okänt fel"}`,
+      error: error.message?.startsWith("NO_CREDENTIALS:")
+        ? error.message
+        : `Fel vid hämtning: ${error.message || "Okänt fel"}`,
     };
   }
 }
