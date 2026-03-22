@@ -33,7 +33,8 @@ import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { LongPressTooltip } from "@/components/LongPressTooltip";
 import { trpc } from "@/lib/trpc";
 import type { Player as PlayerType } from "@/lib/players";
-import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp } from "lucide-react";
+import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Settings } from "lucide-react";
+import { SettingsModal } from "@/components/SettingsModal";
 import { matchRegisteredPlayers, matchDeclinedPlayers, fetchAttendanceFromApi, updateAttendanceOnLaget } from "@/lib/laget";
 import { createPortal } from "react-dom"; // används av PlayerList context-meny
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
@@ -157,6 +158,7 @@ export default function Home() {
 
   const [activePlayer, setActivePlayer] = useState<Player | null>(null);
   const [showExport, setShowExport] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [sseConnected, setSseConnected] = useState<boolean | null>(null);
   const [shareState, setShareState] = useState<"idle" | "saving" | "copied">("idle");
 
@@ -1182,6 +1184,17 @@ export default function Home() {
                   {showStats ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                 </button>
                 </LongPressTooltip>
+
+                {/* Inställningar-knapp (dold) */}
+                <LongPressTooltip label="Inställningar">
+                <button
+                  onClick={() => setShowSettings(true)}
+                  title="Inställningar"
+                  className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider bg-white/5 border border-white/10 text-white/30 hover:bg-white/10 hover:text-white/60"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                </button>
+                </LongPressTooltip>
               </div>
               {/* Hjälptext – positioner och instruktioner */}
               <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-white/35">
@@ -1587,7 +1600,10 @@ export default function Home() {
          />
       )}
 
-      {/* Bekräftelsedialog för Rensa */}
+      {/* Inställningar-modal */}
+      <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} />
+
+      {/* Bekäftelsedialog för Rensa */}
       {confirmClear && (
         <ConfirmDialog
           title="Rensa lag"

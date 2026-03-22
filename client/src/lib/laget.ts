@@ -1,6 +1,7 @@
-// Hämta anmälningsdata från laget.se via backend-API
+// Hämta anmälningsdata från laget.se via tRPC backend-API
 // Backend loggar in på laget.se, hittar dagens/nästa event, och returnerar anmälda namn
 // Smeknamn inom citattecken ignoreras (t.ex. Linus "The Wall" Carbin → Linus Carbin)
+// Inloggningsuppgifter hanteras via inställningssidan (krypterat i databasen)
 
 import type { Player } from "./players";
 
@@ -20,7 +21,7 @@ let cachedData: AttendanceData | null = null;
 let cacheTimestamp: number = 0;
 
 /**
- * Hämta anmälningslistan från backend (som i sin tur skrapar laget.se)
+ * Hämta anmälningslistan från tRPC backend (som i sin tur skrapar laget.se)
  * Cachelagrar resultatet i 5 minuter för att minska belastning.
  * Skicka forceRefresh=true för att tvinga en ny hämtning.
  */
@@ -31,47 +32,21 @@ export async function fetchAttendanceFromApi(forceRefresh = false): Promise<Atte
     return cachedData;
   }
 
-  // Försök med tRPC-backend först (Manus hosting)
-  // Om det misslyckas, försök med Netlify Function
-  let usedTrpc = false;
-  try {
-    const response = await fetch("/api/trpc/laget.attendance");
-    const contentType = response.headers.get("content-type") || "";
-    if (response.ok && contentType.includes("application/json")) {
-      const json = await response.json();
-      const data = json?.result?.data?.json;
-      if (data && data.registeredNames !== undefined) {
-        cachedData = data as AttendanceData;
-        cacheTimestamp = now;
-        usedTrpc = true;
-        return cachedData;
-      }
-    }
-  } catch {
-    // tRPC inte tillgänglig, försök med Netlify Function
+  const response = await fetch("/api/trpc/laget.attendance");
+  const contentType = response.headers.get("content-type") || "";
+  if (!response.ok || !contentType.includes("application/json")) {
+    throw new Error(`Kunde inte hämta anmälningsdata (HTTP ${response.status})`);
   }
 
-  // Fallback: Netlify Function (används på Netlify-hosting)
-  if (!usedTrpc) {
-    const response = await fetch("/.netlify/functions/laget-attendance");
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    const contentType = response.headers.get("content-type") || "";
-    if (!contentType.includes("application/json")) {
-      throw new Error("Oväntat svar (inte JSON) - kontrollera Netlify Function");
-    }
-    const data = await response.json();
-    if (!data) {
-      throw new Error("Oväntat svar från servern");
-    }
-
-    cachedData = data as AttendanceData;
-    cacheTimestamp = now;
-    return cachedData;
+  const json = await response.json();
+  const data = json?.result?.data?.json;
+  if (!data || data.registeredNames === undefined) {
+    throw new Error("Oväntat svar från servern");
   }
 
-  throw new Error("Kunde inte hämta anmälningsdata");
+  cachedData = data as AttendanceData;
+  cacheTimestamp = now;
+  return cachedData;
 }
 
 /**
@@ -172,7 +147,7 @@ export function matchDeclinedPlayers(
 }
 
 /**
- * Ändra en spelares deltagarstatus på laget.se via backend-API.
+ * Ändra en spelares deltagarstatus på laget.se via tRPC backend-API.
  * Returnerar { success, error?, newStatus? }
  */
 export async function updateAttendanceOnLaget(
@@ -180,44 +155,28 @@ export async function updateAttendanceOnLaget(
   status: "Attending" | "NotAttending" | "NotAnswered"
 ): Promise<{ success: boolean; error?: string; newStatus?: string }> {
   try {
-    // Försök med tRPC-backend först (Manus hosting)
-    try {
-      const response = await fetch("/api/trpc/laget.updateAttendance?batch=1", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          "0": { json: { playerName, status } },
-        }),
-      });
-
-      const contentType = response.headers.get("content-type") || "";
-      if (response.ok && contentType.includes("application/json")) {
-        const json = await response.json();
-        const result = Array.isArray(json) ? json[0] : json;
-        const data = result?.result?.data?.json;
-        if (data) {
-          return data;
-        }
-      }
-    } catch {
-      // tRPC inte tillgänglig, försök med Netlify Function
-    }
-
-    // Fallback: Netlify Function (POST)
-    const response = await fetch("/.netlify/functions/laget-attendance", {
+    const response = await fetch("/api/trpc/laget.updateAttendance?batch=1", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playerName, status }),
+      credentials: "include",
+      body: JSON.stringify({
+        "0": { json: { playerName, status } },
+      }),
     });
 
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`HTTP ${response.status}: ${text.slice(0, 200)}`);
+    const contentType = response.headers.get("content-type") || "";
+    if (!response.ok || !contentType.includes("application/json")) {
+      throw new Error(`HTTP ${response.status}`);
     }
 
-    const data = await response.json();
-    return data;
+    const json = await response.json();
+    const result = Array.isArray(json) ? json[0] : json;
+    const data = result?.result?.data?.json;
+    if (data) {
+      return data;
+    }
+
+    throw new Error("Oväntat svar från servern");
   } catch (err: any) {
     console.error("[Laget.se sync error]", err);
     return { success: false, error: err.message || "Kunde inte uppdatera status" };
