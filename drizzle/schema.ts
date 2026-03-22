@@ -1,17 +1,10 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, json, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, bigint } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
  */
 export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
@@ -25,4 +18,73 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+// ─── Lineup State ────────────────────────────────────────────────────────────
+// Single-row table holding the current lineup state (replaces Firebase /lineup node)
+
+export const lineupState = mysqlTable("lineup_state", {
+  id: int("id").autoincrement().primaryKey(),
+  /** JSON array of Player objects in the available roster */
+  players: json("players").notNull().$type<any[]>(),
+  /** JSON object mapping slotId → Player for current lineup */
+  lineup: json("lineup").notNull().$type<Record<string, any>>(),
+  /** Team A display name */
+  teamAName: varchar("teamAName", { length: 100 }).notNull().default("VITA"),
+  /** Team B display name */
+  teamBName: varchar("teamBName", { length: 100 }).notNull().default("GRÖNA"),
+  /** Team A formation config (goalkeepers, defensePairs, forwardLines) */
+  teamAConfig: json("teamAConfig").$type<{ goalkeepers: number; defensePairs: number; forwardLines: number }>(),
+  /** Team B formation config */
+  teamBConfig: json("teamBConfig").$type<{ goalkeepers: number; defensePairs: number; forwardLines: number }>(),
+  /** IDs of intentionally deleted players (prevents re-merge) */
+  deletedPlayerIds: json("deletedPlayerIds").$type<string[]>(),
+  /** Monotonically increasing version number for optimistic concurrency */
+  version: bigint("version", { mode: "number" }).notNull().default(0),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type LineupState = typeof lineupState.$inferSelect;
+export type InsertLineupState = typeof lineupState.$inferInsert;
+
+// ─── Lineup Operations (Change Log) ─────────────────────────────────────────
+// Each mutation is recorded as an operation for SSE-based real-time sync
+
+export const lineupOperations = mysqlTable("lineup_operations", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Monotonically increasing sequence number (matches lineupState.version) */
+  seq: bigint("seq", { mode: "number" }).notNull(),
+  /** Type of operation: movePlayer, removePlayer, renameTeam, updateConfig, etc. */
+  opType: varchar("opType", { length: 50 }).notNull(),
+  /** Human-readable description, e.g. "Någon flyttade Spelare X till Kedja 2" */
+  description: varchar("description", { length: 500 }).notNull().default(""),
+  /** Full operation payload as JSON (details vary by opType) */
+  payload: json("payload").$type<Record<string, any>>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type LineupOperation = typeof lineupOperations.$inferSelect;
+export type InsertLineupOperation = typeof lineupOperations.$inferInsert;
+
+// ─── Saved Lineups ──────────────────────────────────────────────────────────
+// Named lineup snapshots that users can save, load, share, and favorite
+
+export const savedLineups = mysqlTable("saved_lineups", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Short unique ID for sharing URLs (replaces Firebase push-key) */
+  shareId: varchar("shareId", { length: 20 }).notNull().unique(),
+  /** User-given name, e.g. "Hemmaplan 5-3-2" */
+  name: varchar("name", { length: 200 }).notNull(),
+  /** Team A display name at time of save */
+  teamAName: varchar("teamAName", { length: 100 }).notNull(),
+  /** Team B display name at time of save */
+  teamBName: varchar("teamBName", { length: 100 }).notNull(),
+  /** JSON object mapping slotId → Player */
+  lineup: json("lineup").notNull().$type<Record<string, any>>(),
+  /** Whether this lineup is marked as a favorite */
+  favorite: boolean("favorite").notNull().default(false),
+  /** Unix timestamp in ms when saved (for display) */
+  savedAt: bigint("savedAt", { mode: "number" }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SavedLineup = typeof savedLineups.$inferSelect;
+export type InsertSavedLineup = typeof savedLineups.$inferInsert;
