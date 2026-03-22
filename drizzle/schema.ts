@@ -88,3 +88,57 @@ export const savedLineups = mysqlTable("saved_lineups", {
 
 export type SavedLineup = typeof savedLineups.$inferSelect;
 export type InsertSavedLineup = typeof savedLineups.$inferInsert;
+
+// ─── App Config (from match results site) ──────────────────────────────────
+// Key-value config store for season/playoff dates etc.
+
+export const appConfig = mysqlTable("app_config", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 100 }).notNull().unique(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AppConfig = typeof appConfig.$inferSelect;
+export type InsertAppConfig = typeof appConfig.$inferInsert;
+
+// ─── Match Results (from match results site) ───────────────────────────────
+// Stores match scores, goal history, and lineup snapshots per match
+
+export const matchResults = mysqlTable("match_results", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Match name/title, e.g. "26-03-19 Torsdag 22:00 2-5" */
+  name: varchar("name", { length: 255 }).notNull(),
+  /** Team white (VITA) final score */
+  teamWhiteScore: int("teamWhiteScore").notNull(),
+  /** Team green (GRÖNA) final score */
+  teamGreenScore: int("teamGreenScore").notNull(),
+  /** JSON array of goal events: [{team, scorer, assist?, other?, sponsor?, timestamp}] */
+  goalHistory: json("goalHistory").$type<Array<{
+    team: string;
+    scorer: string;
+    assist?: string;
+    other?: string;
+    sponsor?: string;
+    timestamp: string;
+  }>>(),
+  /** When the match started */
+  matchStartTime: timestamp("matchStartTime"),
+  /** When the match ended */
+  matchEndTime: timestamp("matchEndTime").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  /** Last edit timestamp (null if never edited) */
+  editedAt: timestamp("editedAt"),
+  /** Full lineup snapshot at time of match: {lineup, availablePlayers, teamAName, teamBName, teamAConfig, teamBConfig} */
+  lineup: json("lineup").$type<{
+    lineup?: Record<string, any>;
+    availablePlayers?: any[];
+    teamAName?: string;
+    teamBName?: string;
+    teamAConfig?: { goalkeepers: number; defensePairs: number; forwardLines: number };
+    teamBConfig?: { goalkeepers: number; defensePairs: number; forwardLines: number };
+  }>(),
+});
+
+export type MatchResult = typeof matchResults.$inferSelect;
+export type InsertMatchResult = typeof matchResults.$inferInsert;
