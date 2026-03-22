@@ -161,3 +161,6 @@
 - [x] Verifiera inga Netlify-referenser kvar i koden
 - [x] Uppdatera start.sh för automatisk databas-skapande vid deploy
 - [x] Skapa GitHub repo ToFinToFun/hockey-lineup2.0 och pusha kod
+
+## Bugfix
+- [x] Fix drag-and-drop: spelare flyger tillbaka till mitten istället för att stanna på sin plats (påverkar även Auto-knappen)

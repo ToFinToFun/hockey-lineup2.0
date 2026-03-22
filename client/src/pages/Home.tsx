@@ -230,6 +230,8 @@ export default function Home() {
   const isReceivingRemote = useRef(false);
   // Track if we've received the initial server state
   const hasReceivedInitial = useRef(false);
+  // Our SSE client ID — used to exclude ourselves from SSE broadcasts
+  const sseClientIdRef = useRef<string | null>(null);
   // Toast for remote changes
   const [remoteChangeToast, setRemoteChangeToast] = useState<string | null>(null);
 
@@ -319,6 +321,7 @@ export default function Home() {
               lineup: sanitizedLocalLineup,
               teamAName: localState.teamAName,
               teamBName: localState.teamBName,
+              sseClientId: sseClientIdRef.current ?? undefined,
             });
           }
         }
@@ -331,8 +334,15 @@ export default function Home() {
     // 2. Subscribe to SSE for real-time updates
     es = new EventSource("/api/sse/lineup");
 
-    es.addEventListener("connected", () => {
-      if (mounted) setSseConnected(true);
+    es.addEventListener("connected", (event) => {
+      if (!mounted) return;
+      setSseConnected(true);
+      try {
+        const data = JSON.parse(event.data);
+        if (data.clientId) {
+          sseClientIdRef.current = data.clientId;
+        }
+      } catch { /* ignore */ }
     });
 
     es.addEventListener("stateChange", (event) => {
@@ -361,22 +371,29 @@ export default function Home() {
     };
   }, [applyRemoteState, saveStateMutation]);
 
-  // Save to both SQL and localStorage on every state change
+  // Save to both SQL and localStorage on every state change (debounced)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (isReceivingRemote.current) return;
     if (!hasReceivedInitial.current) return;
 
     const state: SavedState = { availablePlayers, lineup, teamAName, teamBName, teamAConfig, teamBConfig };
     saveLocalState(state);
-    saveStateMutation.mutate({
-      players: availablePlayers,
-      lineup,
-      teamAName,
-      teamBName,
-      deletedPlayerIds: Array.from(deletedPlayerIds),
-      teamAConfig,
-      teamBConfig,
-    });
+
+    // Debounce server saves to avoid rapid-fire mutations
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveStateMutation.mutate({
+        players: availablePlayers,
+        lineup,
+        teamAName,
+        teamBName,
+        deletedPlayerIds: Array.from(deletedPlayerIds),
+        teamAConfig,
+        teamBConfig,
+        sseClientId: sseClientIdRef.current ?? undefined,
+      });
+    }, 150);
   }, [availablePlayers, lineup, teamAName, teamBName, deletedPlayerIds, teamAConfig, teamBConfig]);
 
   // Spara en snapshot i undo-stacken
@@ -573,8 +590,6 @@ export default function Home() {
 
   // Auto-fördela anmälda spelare på lagen
   const handleAutoDistribute = useCallback((shuffle = false) => {
-    isReceivingRemote.current = true;
-
     // Rensa befintliga lag först
     const currentLineup = lineupRef.current;
     const removedPlayers: Player[] = [];
@@ -599,11 +614,6 @@ export default function Home() {
     const placedIds = new Set(Object.values(result.lineup).map(p => p.id));
     const remaining = allPlayers.filter(p => !placedIds.has(p.id));
     setAvailablePlayers(remaining);
-
-    // Spara till SQL
-    setTimeout(() => {
-      isReceivingRemote.current = false;
-    }, 100);
   }, [teamAName, teamBName]);
 
   // Utför Rensa efter bekräftelse
@@ -612,9 +622,6 @@ export default function Home() {
     setConfirmClear(null);
 
     const { teamPrefix } = confirmClear;
-
-    // Blockera inkommande SSE-uppdateringar under operationen
-    isReceivingRemote.current = true;
 
     const currentLineup = lineupRef.current;
     const removedPlayers: Player[] = [];
@@ -632,16 +639,10 @@ export default function Home() {
       setLineup(newLineup);
       setAvailablePlayers((prev) => [...removedPlayers, ...prev]);
     }
-
-    // Återaktivera SSE-synk efter att React hunnit rendera
-    setTimeout(() => {
-      isReceivingRemote.current = false;
-    }, 200);
   }, [confirmClear, pushUndo]);
 
   // Ladda en sparad uppställning
   const handleLoadLineup = useCallback((saved: { id: string; name: string; teamAName: string; teamBName: string; lineup: Record<string, Player>; savedAt: number }) => {
-    isReceivingRemote.current = true;
     pushUndo();
 
     // Guard against malformed saved lineups (lineup may be null/undefined in old entries)
@@ -665,10 +666,6 @@ export default function Home() {
     setAvailablePlayers(newAvailable);
     setTeamAName(saved.teamAName ?? "");
     setTeamBName(saved.teamBName ?? "");
-
-    setTimeout(() => {
-      isReceivingRemote.current = false;
-    }, 200);
   }, [pushUndo]);
 
   const handleChangeNumber = useCallback((playerId: string, number: string) => {

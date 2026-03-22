@@ -85,19 +85,20 @@ export const appRouter = router({
             description: z.string(),
             payload: z.record(z.string(), z.any()).optional(),
           }).optional(),
+          sseClientId: z.string().optional(),
         })
       )
       .mutation(async ({ input }) => {
-        const { operation, ...stateData } = input;
+        const { operation, sseClientId, ...stateData } = input;
         const result = await saveLineupState(stateData, operation);
 
-        // Notify all SSE clients about the change
+        // Notify all SSE clients about the change (exclude sender to prevent echo-back)
         sseManager.notifyStateChange({
           version: result.version,
           opType: operation?.opType ?? "fullSync",
           description: operation?.description ?? "",
           state: stateData,
-        });
+        }, sseClientId);
 
         return result;
       }),
