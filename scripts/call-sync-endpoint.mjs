@@ -18,33 +18,42 @@ async function main() {
   if (!fbRes.ok) throw new Error(`Firebase fetch failed: ${fbRes.status}`);
   const fbData = await fbRes.json();
   
-  // 2. Parse players
-  const benchPlayers = [];
-  const lineup = {};
+  // 2. Parse players - Firebase structure: data.lineup.players + data.lineup.lineup
+  const lineupRoot = fbData.lineup || {};
   
-  if (fbData.availablePlayers) {
-    const playersArr = Array.isArray(fbData.availablePlayers)
-      ? fbData.availablePlayers
-      : Object.values(fbData.availablePlayers);
-    for (const p of playersArr) {
-      if (p) benchPlayers.push(p);
+  // Bench players are in lineup.players (array)
+  let benchPlayers = [];
+  const rawPlayers = lineupRoot.players;
+  if (Array.isArray(rawPlayers)) {
+    benchPlayers = rawPlayers.filter(p => p != null);
+  } else if (rawPlayers && typeof rawPlayers === 'object') {
+    benchPlayers = Object.values(rawPlayers).filter(p => p != null);
+  }
+  
+  // Placed players are in lineup.lineup (object: slotId -> player)
+  const placedLineup = {};
+  const rawLineup = lineupRoot.lineup;
+  if (rawLineup && typeof rawLineup === 'object') {
+    for (const [slotId, player] of Object.entries(rawLineup)) {
+      if (player) placedLineup[slotId] = player;
     }
   }
   
-  if (fbData.lineup) {
-    for (const [slotId, player] of Object.entries(fbData.lineup)) {
-      if (player) lineup[slotId] = player;
-    }
-  }
-  
-  const teamAName = fbData.teamAName || "VITA";
-  const teamBName = fbData.teamBName || "GRÖNA";
-  const teamAConfig = fbData.teamAConfig || null;
-  const teamBConfig = fbData.teamBConfig || null;
+  const teamAName = lineupRoot.teamAName || "VITA";
+  const teamBName = lineupRoot.teamBName || "GRÖNA";
+  const teamAConfig = lineupRoot.teamAConfig || null;
+  const teamBConfig = lineupRoot.teamBConfig || null;
   
   console.log(`   Bench players: ${benchPlayers.length}`);
-  console.log(`   Placed players: ${Object.keys(lineup).length}`);
+  console.log(`   Placed players: ${Object.keys(placedLineup).length}`);
   console.log(`   Teams: ${teamAName} vs ${teamBName}`);
+  console.log(`   Config A: ${JSON.stringify(teamAConfig)}`);
+  console.log(`   Config B: ${JSON.stringify(teamBConfig)}`);
+  
+  // Show sample players with their teamColor
+  for (const p of benchPlayers.slice(0, 5)) {
+    console.log(`     ${p.name} #${p.number || '?'} team=${p.teamColor || 'none'} pos=${p.position || '?'}`);
+  }
   
   // 3. Parse saved lineups
   const savedLineups = [];
@@ -71,7 +80,7 @@ async function main() {
     },
     body: JSON.stringify({
       players: benchPlayers,
-      lineup,
+      lineup: placedLineup,
       teamAName,
       teamBName,
       teamAConfig,
@@ -83,6 +92,7 @@ async function main() {
   const result = await syncRes.json();
   if (syncRes.ok && result.success) {
     console.log("✅ Sync successful!");
+    console.log(`   Total players synced: ${benchPlayers.length} bench + ${Object.keys(placedLineup).length} placed`);
   } else {
     console.error("❌ Sync failed:", result);
     process.exit(1);
