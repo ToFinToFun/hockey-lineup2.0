@@ -1,7 +1,7 @@
 {
   "id": "/",
   "name": "Stålstadens Lineup",
-  "short_name": "Lineup",
+  "short_name": "Stålstadens",
   "description": "Ishockey formations-verktyg för Stålstadens Sportförening",
   "start_url": "/",
   "scope": "/",
@@ -10,6 +10,9 @@
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
   "categories": ["sports"],
+  "lang": "sv",
+  "dir": "ltr",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/pwa-icon-192.png",
