@@ -95,8 +95,8 @@
 - [x] Ta bort swipe-gester i desktop-vy (behåll bara i mobilvy)
 - [x] Lägg till PWA manifest för "Lägg till på startskärmen" med snygg ikon
 - [x] Ändra app-namn till "Stålstadens Lineup" (manifest, meta-taggar, title)
-- [ ] BUGG: PWA visar fel namn ("Stålstadens Ishockey Formations-App") och ingen ikon vid "Lägg till på startskärmen" i Chrome mobil
-- [ ] Gör appen installerbar som PWA ("Installera app" istället för bara "Lägg till på startskärmen") — kräver service worker
+- [x] BUGG: PWA visar fel namn ("Stålstadens Ishockey Formations-App") och ingen ikon vid "Lägg till på startskärmen" i Chrome mobil
+- [x] Gör appen installerbar som PWA ("Installera app" istället för bara "Lägg till på startskärmen") — kräver service worker
 - [x] Spelartrupp-kolumnen i sidoläge ska vara lika bred som i standardläge (desktop)
 - [x] Export: Ta bort all bifogad statistik från bildexporten
 - [x] Export: Fast bildförhållande 9:5 med komprimerad uppställning i bredd
@@ -170,3 +170,5 @@
 - [x] KRITISK BUGG: Drag-and-drop fortfarande trasigt efter version-baserad fix - spelare flyger tillbaka 9/10 ggr, Auto blinkar och återställs (Fixat med pendingSaves-räknare som blockerar SSE under pågående sparningar)
 - [x] Synka aktuell Firebase-data till SQL-databasen (spelare med teamColor, nummer, positioner, captainRole + sparade uppställningar)
 - [x] KRITISK BUGG v3: Drag-and-drop och Auto fortfarande trasigt trots pendingSaves-fix — fixat med dirtyRef-approach som blockerar SSE OMEDELBART vid lokal ändring (inte bara under mutation), serialiserade sparningar (saveInFlightRef + saveQueuedRef)
+- [x] Fixa PWA: rätt namn ("Stålstadens Lineup") och gröna lagets logga som ikon vid "Lägg till på startskärmen" i Chrome mobil
+- [x] Gör appen installerbar som PWA ("Installera app") med korrekt service worker

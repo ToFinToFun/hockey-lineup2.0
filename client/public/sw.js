@@ -1,7 +1,7 @@
 // Service Worker for Stålstadens Lineup PWA
 // Enables "Install App" prompt and offline caching
 
-const CACHE_NAME = 'stalstadens-lineup-v2';
+const CACHE_NAME = 'stalstadens-lineup-v3';
 
 // Assets to pre-cache for offline shell
 const PRECACHE_URLS = [
@@ -9,6 +9,7 @@ const PRECACHE_URLS = [
   '/manifest.json',
   '/pwa-icon-192.png',
   '/pwa-icon-512.png',
+  '/apple-touch-icon.png',
 ];
 
 // Install event - pre-cache essential assets
