@@ -1,11 +1,10 @@
 // Hockey Lineup App – Home
 // Design: Industrial Ice Arena
-import { useAuth } from "@/_core/hooks/useAuth";
-// - Firebase Realtime Database synkronisering (alla användare ser samma data)
-// - localStorage som fallback om Firebase är offline
+
+// - SQL database + SSE real-time sync (alla användare ser samma data)
+// - localStorage som fallback om servern är offline
 // - Ångra-funktion (Ctrl+Z + knapp i header)
 // - In-app bekräftelsedialog för Rensa
-
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
   DndContext,
@@ -32,7 +31,8 @@ import { ExportModal } from "@/components/ExportModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { LongPressTooltip } from "@/components/LongPressTooltip";
-import { saveStateToFirebase, subscribeToFirebase, saveLineupToFirebase, type AppState, type SavedLineup } from "@/lib/firebase";
+import { trpc } from "@/lib/trpc";
+import type { Player as PlayerType } from "@/lib/players";
 import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp } from "lucide-react";
 import { matchRegisteredPlayers, matchDeclinedPlayers, fetchAttendanceFromApi, updateAttendanceOnLaget } from "@/lib/laget";
 import { createPortal } from "react-dom"; // används av PlayerList context-meny
@@ -157,7 +157,7 @@ export default function Home() {
 
   const [activePlayer, setActivePlayer] = useState<Player | null>(null);
   const [showExport, setShowExport] = useState(false);
-  const [firebaseConnected, setFirebaseConnected] = useState<boolean | null>(null);
+  const [sseConnected, setSseConnected] = useState<boolean | null>(null);
   const [shareState, setShareState] = useState<"idle" | "saving" | "copied">("idle");
 
   // Event-info från senaste anmälningshämtning
@@ -166,23 +166,26 @@ export default function Home() {
   // Tidstämpel för senaste synk
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
 
+  const createSavedLineupMutation = trpc.savedLineups.create.useMutation();
+  const saveStateMutation = trpc.lineup.saveState.useMutation();
+
   const handleShare = useCallback(async () => {
     setShareState("saving");
     try {
-      const id = await saveLineupToFirebase(
-        `Delad ${new Date().toLocaleDateString("sv-SE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`,
+      const result = await createSavedLineupMutation.mutateAsync({
+        name: `Delad ${new Date().toLocaleDateString("sv-SE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`,
         teamAName,
         teamBName,
-        lineup
-      );
-      const url = `${window.location.origin}/lineup/${id}`;
+        lineup,
+      });
+      const url = `${window.location.origin}/lineup/${result.shareId}`;
       await navigator.clipboard.writeText(url).catch(() => {});
       setShareState("copied");
       setTimeout(() => setShareState("idle"), 2500);
     } catch {
       setShareState("idle");
     }
-  }, [teamAName, teamBName, lineup]);
+  }, [teamAName, teamBName, lineup, createSavedLineupMutation]);
 
   // IDs för medvetet borttagna spelare – hindrar merge från att lägga tillbaka dem
   const [deletedPlayerIds, setDeletedPlayerIds] = useState<Set<string>>(new Set());
@@ -221,98 +224,149 @@ export default function Home() {
   // Statistik-panel toggle
   const [showStats, setShowStats] = useState(false);
 
-  // Prevent writing back to Firebase when we just received an update from it
-  const isReceivingFromFirebase = useRef(false);
-  // Track if we've received the initial Firebase state
+  // Prevent writing back to server when we just received an update from SSE
+  const isReceivingRemote = useRef(false);
+  // Track if we've received the initial server state
   const hasReceivedInitial = useRef(false);
+  // Toast for remote changes
+  const [remoteChangeToast, setRemoteChangeToast] = useState<string | null>(null);
 
   const exportRef = useRef<HTMLDivElement>(null);
 
-  // Subscribe to Firebase on mount
-  useEffect(() => {
-    const unsubscribe = subscribeToFirebase((state: AppState | null) => {
-      setFirebaseConnected(true);
-      if (state) {
-        isReceivingFromFirebase.current = true;
-        skipNextUndoSnapshot.current = true; // Firebase-uppdateringar ska inte läggas i undo-stacken
+  // Helper to apply remote state (from initial load or SSE)
+  const applyRemoteState = useCallback((state: {
+    players: any[];
+    lineup: Record<string, any>;
+    teamAName: string;
+    teamBName: string;
+    teamAConfig?: { goalkeepers: number; defensePairs: number; forwardLines: number } | null;
+    teamBConfig?: { goalkeepers: number; defensePairs: number; forwardLines: number } | null;
+    deletedPlayerIds?: string[] | null;
+  }) => {
+    isReceivingRemote.current = true;
+    skipNextUndoSnapshot.current = true;
 
-        // Merge: se till att alla spelare från initialPlayers alltid finns i truppen
-        // (Firebase kan ha en äldre lista som saknar nyare spelare)
-        // Spelare som medvetet tagits bort (deletedPlayerIds) läggs INTE tillbaka
-        const firebasePlayers: Player[] = state.players ?? [];
-        const firebaseIds = new Set(firebasePlayers.map((p) => p.id));
-        const lineupIds = new Set(Object.values(state.lineup ?? {}).map((p) => p.id));
-        const firebaseDeletedIds = new Set<string>(state.deletedPlayerIds ?? []);
-        // Uppdatera deletedPlayerIds med vad Firebase vet om
-        if (firebaseDeletedIds.size > 0) {
-          setDeletedPlayerIds((prev) => {
-            const merged = new Set(Array.from(prev).concat(Array.from(firebaseDeletedIds)));
-            deletedPlayerIdsRef.current = merged;
-            return merged;
-          });
-        }
-        const allDeletedIds = new Set(Array.from(deletedPlayerIdsRef.current).concat(Array.from(firebaseDeletedIds)));
-        const missingPlayers = initialPlayers.filter(
-          (p) => !firebaseIds.has(p.id) && !lineupIds.has(p.id) && !allDeletedIds.has(p.id)
-        );
-        const mergedPlayers = missingPlayers.length > 0
-          ? [...firebasePlayers, ...missingPlayers]
-          : firebasePlayers;
+    // Merge: se till att alla spelare från initialPlayers alltid finns i truppen
+    const remotePlayers: Player[] = (state.players ?? []) as Player[];
+    const remoteIds = new Set(remotePlayers.map((p) => p.id));
+    const lineupIds = new Set(Object.values(state.lineup ?? {}).map((p: any) => p.id));
+    const remoteDeletedIds = new Set<string>(state.deletedPlayerIds ?? []);
+    if (remoteDeletedIds.size > 0) {
+      setDeletedPlayerIds((prev) => {
+        const merged = new Set(Array.from(prev).concat(Array.from(remoteDeletedIds)));
+        deletedPlayerIdsRef.current = merged;
+        return merged;
+      });
+    }
+    const allDeletedIds = new Set(Array.from(deletedPlayerIdsRef.current).concat(Array.from(remoteDeletedIds)));
+    const missingPlayers = initialPlayers.filter(
+      (p) => !remoteIds.has(p.id) && !lineupIds.has(p.id) && !allDeletedIds.has(p.id)
+    );
+    const mergedPlayers = missingPlayers.length > 0
+      ? [...remotePlayers, ...missingPlayers]
+      : remotePlayers;
 
-        // Filtrera bort ogiltiga slot-IDs (t.ex. från äldre versioner av appen)
-        // som kan ha sparat spelare i slot-IDs som inte längre existerar
-        const rawLineup = state.lineup ?? {};
-        const sanitizedLineup: Record<string, Player> = {};
-        for (const [slotId, player] of Object.entries(rawLineup)) {
-          if (ALL_SLOT_IDS.has(slotId)) {
-            sanitizedLineup[slotId] = player;
-          }
-        }
-
-        setAvailablePlayers(mergedPlayers);
-        setLineup(sanitizedLineup);
-        setTeamAName(state.teamAName ?? "VITA");
-        setTeamBName(state.teamBName ?? "GRÖNA");
-        if (state.teamAConfig) setTeamAConfig(state.teamAConfig);
-        if (state.teamBConfig) setTeamBConfig(state.teamBConfig);
-        // Allow re-renders to settle before re-enabling writes
-        setTimeout(() => {
-          isReceivingFromFirebase.current = false;
-        }, 100);
-      } else if (!hasReceivedInitial.current) {
-        // No data in Firebase yet — push our local state up
-        const localState = loadLocalState();
-        if (localState) {
-          // Sanitera localStorage-lineup också innan vi skriver till Firebase
-          const rawLocalLineup = localState.lineup ?? {};
-          const sanitizedLocalLineup: Record<string, Player> = {};
-          for (const [slotId, player] of Object.entries(rawLocalLineup)) {
-            if (ALL_SLOT_IDS.has(slotId)) {
-              sanitizedLocalLineup[slotId] = player;
-            }
-          }
-          saveStateToFirebase({
-            players: localState.availablePlayers,
-            lineup: sanitizedLocalLineup,
-            teamAName: localState.teamAName,
-            teamBName: localState.teamBName,
-          });
-        }
+    // Filtrera bort ogiltiga slot-IDs
+    const rawLineup = state.lineup ?? {};
+    const sanitizedLineup: Record<string, Player> = {};
+    for (const [slotId, player] of Object.entries(rawLineup)) {
+      if (ALL_SLOT_IDS.has(slotId)) {
+        sanitizedLineup[slotId] = player as Player;
       }
-      hasReceivedInitial.current = true;
-    });
+    }
 
-    return unsubscribe;
+    setAvailablePlayers(mergedPlayers);
+    setLineup(sanitizedLineup);
+    setTeamAName(state.teamAName ?? "VITA");
+    setTeamBName(state.teamBName ?? "GRÖNA");
+    if (state.teamAConfig) setTeamAConfig(state.teamAConfig);
+    if (state.teamBConfig) setTeamBConfig(state.teamBConfig);
+    setTimeout(() => {
+      isReceivingRemote.current = false;
+    }, 100);
   }, []);
 
-  // Save to both Firebase and localStorage on every state change
+  // Load initial state from SQL + subscribe to SSE for real-time updates
   useEffect(() => {
-    if (isReceivingFromFirebase.current) return;
+    let es: EventSource | null = null;
+    let mounted = true;
+
+    // 1. Load initial state from server (use superjson-aware tRPC batch endpoint)
+    fetch("/api/trpc/lineup.getState", { credentials: "include" })
+      .then(res => res.json())
+      .then((json) => {
+        if (!mounted) return;
+        // tRPC wraps response in { result: { data: { json: ..., meta: ... } } }
+        const wrapped = json?.result?.data;
+        const state = wrapped?.json ?? wrapped;
+        if (state && state.players) {
+          applyRemoteState(state);
+        } else if (!hasReceivedInitial.current) {
+          // No data in SQL yet — push our local state up
+          const localState = loadLocalState();
+          if (localState) {
+            const rawLocalLineup = localState.lineup ?? {};
+            const sanitizedLocalLineup: Record<string, Player> = {};
+            for (const [slotId, player] of Object.entries(rawLocalLineup)) {
+              if (ALL_SLOT_IDS.has(slotId)) {
+                sanitizedLocalLineup[slotId] = player;
+              }
+            }
+            saveStateMutation.mutate({
+              players: localState.availablePlayers,
+              lineup: sanitizedLocalLineup,
+              teamAName: localState.teamAName,
+              teamBName: localState.teamBName,
+            });
+          }
+        }
+        hasReceivedInitial.current = true;
+      })
+      .catch(() => {
+        if (mounted) setSseConnected(false);
+      });
+
+    // 2. Subscribe to SSE for real-time updates
+    es = new EventSource("/api/sse/lineup");
+
+    es.addEventListener("connected", () => {
+      if (mounted) setSseConnected(true);
+    });
+
+    es.addEventListener("stateChange", (event) => {
+      if (!mounted) return;
+      try {
+        const data = JSON.parse(event.data);
+        if (data.state) {
+          applyRemoteState(data.state);
+        }
+        // Show toast for remote changes
+        if (data.description) {
+          setRemoteChangeToast(data.description);
+          setTimeout(() => setRemoteChangeToast(null), 3000);
+        }
+      } catch { /* ignore parse errors */ }
+    });
+
+    es.onerror = () => {
+      if (mounted) setSseConnected(false);
+      // EventSource auto-reconnects
+    };
+
+    return () => {
+      mounted = false;
+      es?.close();
+    };
+  }, [applyRemoteState, saveStateMutation]);
+
+  // Save to both SQL and localStorage on every state change
+  useEffect(() => {
+    if (isReceivingRemote.current) return;
     if (!hasReceivedInitial.current) return;
 
     const state: SavedState = { availablePlayers, lineup, teamAName, teamBName, teamAConfig, teamBConfig };
     saveLocalState(state);
-    saveStateToFirebase({
+    saveStateMutation.mutate({
       players: availablePlayers,
       lineup,
       teamAName,
@@ -344,12 +398,12 @@ export default function Home() {
     setUndoStack((prev) => {
       if (prev.length === 0) return prev;
       const snapshot = prev[prev.length - 1];
-      isReceivingFromFirebase.current = true;
+      isReceivingRemote.current = true;
       skipNextUndoSnapshot.current = true;
       setAvailablePlayers(snapshot.availablePlayers);
       setLineup(snapshot.lineup);
       setTimeout(() => {
-        isReceivingFromFirebase.current = false;
+        isReceivingRemote.current = false;
       }, 200);
       return prev.slice(0, prev.length - 1);
     });
@@ -517,7 +571,7 @@ export default function Home() {
 
   // Auto-fördela anmälda spelare på lagen
   const handleAutoDistribute = useCallback((shuffle = false) => {
-    isReceivingFromFirebase.current = true;
+    isReceivingRemote.current = true;
 
     // Rensa befintliga lag först
     const currentLineup = lineupRef.current;
@@ -544,17 +598,9 @@ export default function Home() {
     const remaining = allPlayers.filter(p => !placedIds.has(p.id));
     setAvailablePlayers(remaining);
 
-    // Spara till Firebase
+    // Spara till SQL
     setTimeout(() => {
-      isReceivingFromFirebase.current = false;
-      saveStateToFirebase({
-        players: remaining,
-        lineup: result.lineup,
-        teamAName,
-        teamBName,
-        teamAConfig: result.teamAConfig,
-        teamBConfig: result.teamBConfig,
-      });
+      isReceivingRemote.current = false;
     }, 100);
   }, [teamAName, teamBName]);
 
@@ -565,8 +611,8 @@ export default function Home() {
 
     const { teamPrefix } = confirmClear;
 
-    // Blockera inkommande Firebase-uppdateringar under operationen
-    isReceivingFromFirebase.current = true;
+    // Blockera inkommande SSE-uppdateringar under operationen
+    isReceivingRemote.current = true;
 
     const currentLineup = lineupRef.current;
     const removedPlayers: Player[] = [];
@@ -585,15 +631,15 @@ export default function Home() {
       setAvailablePlayers((prev) => [...removedPlayers, ...prev]);
     }
 
-    // Återaktivera Firebase-synk efter att React hunnit rendera
+    // Återaktivera SSE-synk efter att React hunnit rendera
     setTimeout(() => {
-      isReceivingFromFirebase.current = false;
+      isReceivingRemote.current = false;
     }, 200);
   }, [confirmClear, pushUndo]);
 
   // Ladda en sparad uppställning
-  const handleLoadLineup = useCallback((saved: SavedLineup) => {
-    isReceivingFromFirebase.current = true;
+  const handleLoadLineup = useCallback((saved: { id: string; name: string; teamAName: string; teamBName: string; lineup: Record<string, Player>; savedAt: number }) => {
+    isReceivingRemote.current = true;
     pushUndo();
 
     // Guard against malformed saved lineups (lineup may be null/undefined in old entries)
@@ -619,7 +665,7 @@ export default function Home() {
     setTeamBName(saved.teamBName ?? "");
 
     setTimeout(() => {
-      isReceivingFromFirebase.current = false;
+      isReceivingRemote.current = false;
     }, 200);
   }, [pushUndo]);
 
@@ -1022,11 +1068,11 @@ export default function Home() {
               </div>
               </div>
               <div className="flex items-center flex-wrap gap-1 md:gap-1.5 mt-1.5 md:mt-0">
-                {/* Firebase sync status – bara ikon, ingen text */}
+                {/* SSE sync status – bara ikon, ingen text */}
                 <div className="flex items-center">
-                  {firebaseConnected === null ? (
+                  {sseConnected === null ? (
                     <span className="text-white/30 text-[9px]">...</span>
-                  ) : firebaseConnected ? (
+                  ) : sseConnected ? (
                     <Wifi className="w-3 h-3 text-emerald-400" />
                   ) : (
                     <WifiOff className="w-3 h-3 text-red-400" />
@@ -1567,6 +1613,12 @@ export default function Home() {
           }}
           onCancel={() => setConfirmAutoDistribute(false)}
         />
+      )}
+      {/* Remote change toast */}
+      {remoteChangeToast && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[99999] bg-black/80 text-white text-xs px-4 py-2 rounded-full shadow-lg backdrop-blur-sm border border-white/10 animate-in fade-in slide-in-from-bottom-2">
+          {remoteChangeToast}
+        </div>
       )}
     </DndContext>
   );

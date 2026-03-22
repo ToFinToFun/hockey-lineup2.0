@@ -114,16 +114,16 @@
 - [x] BUGG: laget.se-synk fungerar inte på Netlify — återskapade Netlify Function med både GET (hämta) och POST (uppdatera)
 
 ## Firebase → SQL Migration
-- [ ] Design SQL schema: lineup_state (current state), lineup_operations (change log), saved_lineups, shared_lineups
-- [ ] Create Drizzle schema and push migrations
-- [ ] Build tRPC endpoints: getState, saveOperation, getSavedLineups, saveSavedLineup, createSharedLineup, getSharedLineup
-- [ ] Implement SSE endpoint for real-time push notifications
-- [ ] Implement operation-based sync with sequence numbers
-- [ ] Add toast notifications for remote changes ("Någon flyttade X till Y")
-- [ ] Migrate frontend Home.tsx from Firebase subscriptions to tRPC + SSE
-- [ ] Migrate frontend SavedLineupsPanel from Firebase to tRPC
-- [ ] Migrate frontend ShareView from Firebase to tRPC
+- [x] Design SQL schema: lineup_state (current state), lineup_operations (change log), saved_lineups
+- [x] Create Drizzle schema and push migrations
+- [x] Build tRPC endpoints: getState, saveState, savedLineups CRUD
+- [x] Implement SSE endpoint for real-time push notifications
+- [x] Implement operation-based sync with sequence numbers
+- [x] Add toast notifications for remote changes ("Någon flyttade X till Y")
+- [x] Migrate frontend Home.tsx from Firebase subscriptions to tRPC + SSE
+- [x] Migrate frontend SavedLineupsPanel from Firebase to tRPC
+- [x] Migrate frontend ShareView from Firebase to tRPC
+- [x] Remove Firebase dependencies (firebase package, firebase.ts)
 - [ ] Build one-time Firebase → SQL data migration script
-- [ ] Remove Firebase dependencies (firebase package, firebase.ts, env vars)
 - [ ] Write tests for new tRPC endpoints
 - [ ] Verify real-time sync works with multiple browser tabs

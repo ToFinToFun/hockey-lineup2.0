@@ -1,22 +1,27 @@
-// SavedLineupsPanel – Spara och ladda namngivna uppställningar
+// SavedLineupsPanel – Sparade uppställningar (SQL/tRPC-version)
 // Design: Industrial Ice Arena – mörk panel med gröna accenter
 
 import { useState, useEffect } from "react";
 import { BookmarkPlus, Trash2, Download, ChevronDown, ChevronUp, Clock, Share2, Check, Star } from "lucide-react";
-import {
-  saveLineupToFirebase,
-  subscribeSavedLineups,
-  deleteLineupFromFirebase,
-  toggleFavoriteLineup,
-  type SavedLineup,
-} from "@/lib/firebase";
+import { trpc } from "@/lib/trpc";
 import type { Player } from "@/lib/players";
+
+interface SavedLineupData {
+  id: number;
+  shareId: string;
+  name: string;
+  teamAName: string;
+  teamBName: string;
+  lineup: Record<string, any>;
+  favorite: boolean;
+  savedAt: number;
+}
 
 interface SavedLineupsPanelProps {
   teamAName: string;
   teamBName: string;
   lineup: Record<string, Player>;
-  onLoadLineup: (saved: SavedLineup) => void;
+  onLoadLineup: (saved: { id: string; name: string; teamAName: string; teamBName: string; lineup: Record<string, Player>; savedAt: number }) => void;
 }
 
 function formatDate(ts: number): string {
@@ -35,43 +40,69 @@ export function SavedLineupsPanel({
   lineup,
   onLoadLineup,
 }: SavedLineupsPanelProps) {
-  const [savedLineups, setSavedLineups] = useState<SavedLineup[]>([]);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const handleShare = (id: string) => {
-    const url = `${window.location.origin}/lineup/${id}`;
+  const utils = trpc.useUtils();
+
+  // Fetch saved lineups from SQL
+  const { data: savedLineups = [] } = trpc.savedLineups.list.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+  });
+
+  // Listen for SSE savedLineupsChange events
+  useEffect(() => {
+    const es = new EventSource("/api/sse/lineup");
+    es.addEventListener("savedLineupsChange", () => {
+      utils.savedLineups.list.invalidate();
+    });
+    es.onerror = () => es.close();
+    return () => es.close();
+  }, [utils]);
+
+  // Mutations
+  const createMutation = trpc.savedLineups.create.useMutation({
+    onSuccess: () => utils.savedLineups.list.invalidate(),
+  });
+  const deleteMutation = trpc.savedLineups.delete.useMutation({
+    onSuccess: () => utils.savedLineups.list.invalidate(),
+  });
+  const toggleFavoriteMutation = trpc.savedLineups.toggleFavorite.useMutation({
+    onSuccess: () => utils.savedLineups.list.invalidate(),
+  });
+
+  const handleShare = (shareId: string) => {
+    const url = `${window.location.origin}/lineup/${shareId}`;
     navigator.clipboard.writeText(url).then(() => {
-      setCopiedId(id);
+      setCopiedId(shareId);
       setTimeout(() => setCopiedId(null), 2000);
     }).catch(() => {
-      // Fallback: öppna i nytt fönster
-      window.open(`/lineup/${id}`, "_blank");
+      window.open(`/lineup/${shareId}`, "_blank");
     });
   };
-
-  useEffect(() => {
-    const unsub = subscribeSavedLineups(setSavedLineups);
-    return unsub;
-  }, []);
 
   const handleSave = async () => {
     const trimmed = name.trim();
     if (!trimmed) return;
     setSaving(true);
     try {
-      await saveLineupToFirebase(trimmed, teamAName, teamBName, lineup);
+      await createMutation.mutateAsync({
+        name: trimmed,
+        teamAName,
+        teamBName,
+        lineup,
+      });
       setName("");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    await deleteLineupFromFirebase(id);
+  const handleDelete = async (id: number) => {
+    await deleteMutation.mutateAsync({ id });
     setConfirmDelete(null);
   };
 
@@ -134,7 +165,7 @@ export function SavedLineupsPanel({
             </p>
           ) : (
             <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-              {savedLineups.map((sl) => (
+              {(savedLineups as SavedLineupData[]).map((sl) => (
                 <div
                   key={sl.id}
                   className="flex items-center gap-2 bg-white/5 border border-white/8 rounded-lg px-3 py-2 group hover:border-white/15 transition-colors"
@@ -157,7 +188,7 @@ export function SavedLineupsPanel({
 
                   {/* Favorit */}
                   <button
-                    onClick={() => toggleFavoriteLineup(sl.id, !!sl.favorite)}
+                    onClick={() => toggleFavoriteMutation.mutate({ id: sl.id })}
                     title={sl.favorite ? "Ta bort favorit" : "Markera som favorit"}
                     className={`p-1.5 rounded-md transition-all ${
                       sl.favorite
@@ -170,22 +201,29 @@ export function SavedLineupsPanel({
 
                   {/* Dela */}
                   <button
-                    onClick={() => handleShare(sl.id)}
+                    onClick={() => handleShare(sl.shareId)}
                     title="Kopiera dela-länk"
                     className={`p-1.5 rounded-md transition-all ${
-                      copiedId === sl.id
+                      copiedId === sl.shareId
                         ? "text-emerald-300 bg-emerald-500/20"
                         : "text-white/30 hover:text-blue-300 hover:bg-blue-500/15"
                     }`}
                   >
-                    {copiedId === sl.id
+                    {copiedId === sl.shareId
                       ? <Check className="w-3.5 h-3.5" />
                       : <Share2 className="w-3.5 h-3.5" />}
                   </button>
 
                   {/* Ladda */}
                   <button
-                    onClick={() => onLoadLineup(sl)}
+                    onClick={() => onLoadLineup({
+                      id: sl.shareId,
+                      name: sl.name,
+                      teamAName: sl.teamAName,
+                      teamBName: sl.teamBName,
+                      lineup: sl.lineup as Record<string, Player>,
+                      savedAt: sl.savedAt,
+                    })}
                     title="Ladda uppställning"
                     className="p-1.5 rounded-md text-white/30 hover:text-emerald-300 hover:bg-emerald-500/15 transition-all"
                   >
