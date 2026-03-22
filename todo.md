@@ -167,3 +167,4 @@
 - [x] BUGG: Drag-and-drop fortfarande instabilt - spelare far tillbaka efter placering. Auto-knappen fungerar inte alls. (Fixat med version-baserad synk istället för clientId/isReceivingRemote)
 - [x] Fix PWA: rätt namn ("Stålstadens Lineup") och gröna lagets logga som ikon vid "Lägg till på startskärmen"
 - [x] Gör appen installerbar som PWA med service worker
+- [x] KRITISK BUGG: Drag-and-drop fortfarande trasigt efter version-baserad fix - spelare flyger tillbaka 9/10 ggr, Auto blinkar och återställs (Fixat med pendingSaves-räknare som blockerar SSE under pågående sparningar)
