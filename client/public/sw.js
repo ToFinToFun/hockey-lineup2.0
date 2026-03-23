@@ -1,12 +1,14 @@
-// Service Worker for Stålstadens Lineup PWA
-// Enables "Install App" prompt and offline caching
+// Service Worker for Stålstadens multi-app PWA
+// Handles Hub (/), Lineup (/lineup), and Score Tracker (/score)
 
-const CACHE_NAME = 'stalstadens-lineup-v3';
+const CACHE_NAME = 'stalstadens-app-v4';
 
 // Assets to pre-cache for offline shell
 const PRECACHE_URLS = [
   '/',
   '/manifest.json',
+  '/lineup-manifest.json',
+  '/score-manifest.json',
   '/pwa-icon-192.png',
   '/pwa-icon-512.png',
   '/apple-touch-icon.png',
@@ -18,7 +20,6 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_URLS);
     }).then(() => {
-      // Activate immediately without waiting
       return self.skipWaiting();
     })
   );
@@ -34,7 +35,6 @@ self.addEventListener('activate', (event) => {
           .map((name) => caches.delete(name))
       );
     }).then(() => {
-      // Take control of all pages immediately
       return self.clients.claim();
     })
   );
@@ -42,18 +42,17 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - network-first strategy with cache fallback
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
   if (event.request.method !== 'GET') return;
 
-  // Skip API calls, SSE, and OAuth routes
   const url = new URL(event.request.url);
+
+  // Skip API calls and SSE
   if (url.pathname.startsWith('/api/')) return;
   if (url.pathname.startsWith('/sse')) return;
 
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Clone and cache successful responses
         if (response.ok) {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -63,13 +62,18 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => {
-        // Fallback to cache if network fails
         return caches.match(event.request).then((cachedResponse) => {
           if (cachedResponse) {
             return cachedResponse;
           }
-          // For navigation requests, return cached index page
+          // For navigation requests, return the appropriate cached page
           if (event.request.mode === 'navigate') {
+            if (url.pathname.startsWith('/lineup')) {
+              return caches.match('/lineup') || caches.match('/');
+            }
+            if (url.pathname.startsWith('/score')) {
+              return caches.match('/score') || caches.match('/');
+            }
             return caches.match('/');
           }
           return new Response('Offline', { status: 503 });

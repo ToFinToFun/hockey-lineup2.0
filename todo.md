@@ -185,7 +185,7 @@
 - [x] Port Score Tracker db helpers (match results, app config)
 - [x] Port playerProfile, headToHead, seasonAwards, seasonStats, teamComparison
 - [x] Add proxy-image endpoint for match report export
-- [ ] Remove Manus OAuth / auth requirements — all endpoints public (deferred — all Score endpoints already use publicProcedure)
+- [x] Remove Manus OAuth / auth requirements — all endpoints public (auth router removed, protectedProcedure removed)
 
 ### Phase 3: Port Score Tracker Client
 - [x] Port MatchPage.tsx
@@ -209,12 +209,33 @@
 - [ ] Add PWA install prompts per sub-app
 
 ### Phase 6: PWA & Theme
-- [ ] Separate PWA manifests per sub-app
-- [ ] Add theme switching to Lineup app
-- [ ] Update service worker for multi-app
+- [x] Separate PWA manifests per sub-app
+- [x] Add theme switching to Lineup app
+- [x] Update service worker for multi-app
 
 ### Phase 7: Testing & Polish
 - [x] Verify all Score Tracker features work (Match, Uppställning, Historik, Statistik)
 - [x] Verify Lineup features still work (63 spelare, drag-and-drop)
 - [x] Run vitest tests (38/38 passed)
-- [ ] Push to GitHub
+- [x] Push to GitHub (99fc6a0)
+
+### Feature: Remove Manus OAuth
+- [x] Remove OAuth callback route and middleware from server
+- [x] Remove auth-related imports and hooks from client (useAuth kept as stub)
+- [x] Remove protectedProcedure/adminProcedure from trpc.ts
+- [x] Remove auth router (me/logout) from routers.ts
+- [x] Remove cookies.ts, auth.logout.test.ts
+- [x] Clean up shared/const.ts and client/const.ts
+
+### Feature: Separate PWA Manifests
+- [x] Create /lineup-manifest.json for Lineup PWA (name: "Stålstadens Lineup")
+- [x] Create /score-manifest.json for Score Tracker PWA (name: "Stålstadens Score")
+- [x] Update service worker to handle both sub-app scopes (v4)
+- [x] Dynamic manifest selection in main.tsx based on route
+- [ ] Add PWA install prompts on Hub page per sub-app (deferred)
+
+### Feature: Theme Switching for Lineup
+- [x] Add theme toggle button to Lineup header (Sun/Moon icon)
+- [x] Implement light/dark theme with useLineupTheme hook
+- [x] Persist theme preference in localStorage
+- [x] Add Home link button in Lineup header
