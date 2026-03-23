@@ -1,6 +1,7 @@
 /*
  * IceTimeApp – Wrapper component with tab navigation
  * Routes between Kalkylator and Översikt within /icetime
+ * DESIGN: Dark theme matching Hub landing page
  */
 
 import { useState } from "react";
@@ -21,17 +22,20 @@ export default function IceTimeApp() {
   const isOverview = location === "/icetime/oversikt";
 
   return (
-    <div className="icetime">
+    <div className="icetime-dark">
       {/* Sticky Navigation */}
-      <nav className="sticky top-0 z-40 border-b border-border/50 bg-white/85 backdrop-blur-md">
+      <nav className="sticky top-0 z-40 border-b border-white/10 bg-[#0a0a0a]/90 backdrop-blur-md">
         <div className="container flex items-center gap-1 py-2">
           <Link
             href="/"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all mr-2"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-white/40 hover:text-white hover:bg-white/5 transition-all mr-2"
           >
             <Home className="w-4 h-4" />
           </Link>
-          <span className="font-serif text-lg text-ice-deep mr-4 hidden sm:block">
+          <span
+            className="text-lg text-sky-400 mr-4 hidden sm:block font-bold tracking-tight"
+            style={{ fontFamily: "'Oswald', sans-serif" }}
+          >
             IceTime
           </span>
           {tabs.map((tab) => {
@@ -45,8 +49,8 @@ export default function IceTimeApp() {
                   flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all
                   ${
                     isActive
-                      ? "bg-ice-deep/10 text-ice-deep"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      ? "bg-sky-400/15 text-sky-400"
+                      : "text-white/40 hover:text-white hover:bg-white/5"
                   }
                 `}
               >

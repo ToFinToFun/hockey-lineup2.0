@@ -2,6 +2,7 @@
  * PositionDropZone component
  * A droppable zone that accepts dragged players.
  * Shows position info, player count, and calculated ice time.
+ * DESIGN: Dark theme matching Hub landing page
  */
 
 import { useDroppable } from "@dnd-kit/core";
@@ -21,26 +22,26 @@ interface PositionDropZoneProps {
 const zoneConfig = {
   backs: {
     icon: Shield,
-    accentBar: "bg-ice-deep",
-    iconBg: "bg-ice-deep/10",
-    iconColor: "text-ice-deep",
-    dropHighlight: "ring-ice-deep/40 bg-ice-deep/5",
+    accentBar: "bg-sky-400",
+    iconBg: "bg-sky-400/10 border border-sky-400/20",
+    iconColor: "text-sky-400",
+    dropHighlight: "ring-sky-400/40 bg-sky-400/5",
     emptyText: "Dra spelare hit",
   },
   centers: {
     icon: Target,
-    accentBar: "bg-ice-medium",
-    iconBg: "bg-ice-medium/10",
-    iconColor: "text-ice-medium",
-    dropHighlight: "ring-ice-medium/40 bg-ice-medium/5",
+    accentBar: "bg-[#0a7ea4]",
+    iconBg: "bg-[#0a7ea4]/15 border border-[#0a7ea4]/25",
+    iconColor: "text-[#0a7ea4]",
+    dropHighlight: "ring-[#0a7ea4]/40 bg-[#0a7ea4]/5",
     emptyText: "Dra spelare hit",
   },
   forwards: {
     icon: Swords,
-    accentBar: "bg-goal-red",
-    iconBg: "bg-goal-red/8",
-    iconColor: "text-goal-red",
-    dropHighlight: "ring-goal-red/30 bg-goal-red/5",
+    accentBar: "bg-orange-400",
+    iconBg: "bg-orange-400/10 border border-orange-400/20",
+    iconColor: "text-orange-400",
+    dropHighlight: "ring-orange-400/30 bg-orange-400/5",
     emptyText: "Dra spelare hit",
   },
 };
@@ -64,7 +65,8 @@ export default function PositionDropZone({
     <div
       ref={setNodeRef}
       className={`
-        glass-card-strong rounded-2xl p-5 relative overflow-hidden transition-all duration-200
+        rounded-2xl p-5 relative overflow-hidden transition-all duration-200
+        bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a]
         ${isOver ? `ring-2 ${config.dropHighlight}` : ""}
       `}
     >
@@ -78,40 +80,40 @@ export default function PositionDropZone({
             <Icon className={`w-5 h-5 ${config.iconColor}`} />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+            <h3 className="text-sm font-semibold text-white uppercase tracking-wider">
               {label}
             </h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-white/40">
               {iceSlots} på isen samtidigt
             </p>
           </div>
         </div>
         <div className="text-right">
-          <div className="text-3xl font-serif text-foreground">{playerCount}</div>
-          <div className="text-xs text-muted-foreground">spelare</div>
+          <div className="text-3xl font-bold text-white" style={{ fontFamily: "'Oswald', sans-serif" }}>{playerCount}</div>
+          <div className="text-xs text-white/40">spelare</div>
         </div>
       </div>
 
       {/* Ice time display */}
-      <div className="flex items-center gap-2 mb-4 p-3 rounded-xl bg-muted/30 border border-border/30">
-        <Clock className="w-4 h-4 text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">Speltid:</span>
+      <div className="flex items-center gap-2 mb-4 p-3 rounded-xl bg-white/5 border border-white/10">
+        <Clock className="w-4 h-4 text-white/40" />
+        <span className="text-sm text-white/40">Speltid:</span>
         <span className={`text-lg font-semibold ${config.iconColor}`}>
           {playerCount > 0 ? formatTime(timePerPlayer) : "—"}
         </span>
-        <span className="text-xs text-muted-foreground">per spelare</span>
+        <span className="text-xs text-white/30">per spelare</span>
       </div>
 
       {/* Players area */}
       <div
         className={`
           min-h-[60px] rounded-xl border-2 border-dashed p-3 transition-colors duration-200
-          ${isOver ? "border-current/30" : "border-border/40"}
+          ${isOver ? "border-current/30" : "border-white/10"}
           ${players.length === 0 ? "flex items-center justify-center" : ""}
         `}
       >
         {players.length === 0 ? (
-          <span className="text-xs text-muted-foreground/50">{config.emptyText}</span>
+          <span className="text-xs text-white/20">{config.emptyText}</span>
         ) : (
           <div className="flex flex-wrap gap-2">
             {players.map((player) => (
