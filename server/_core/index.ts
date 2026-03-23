@@ -49,6 +49,11 @@ async function startServer() {
     }
   });
 
+  // Health check endpoint for Coolify / Docker
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok", timestamp: Date.now() });
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

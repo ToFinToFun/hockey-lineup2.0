@@ -1063,6 +1063,7 @@ export default function Home() {
   };
 
   return (
+    <div className={isLineupDark ? '' : 'lineup-light'}>
     <DndContext
       sensors={sensors}
       collisionDetection={pointerWithinOrClosest}
@@ -1084,7 +1085,7 @@ export default function Home() {
     >
       {/* Bakgrundsbild */}
       <div
-        className={`min-h-screen w-full relative ${isLineupDark ? '' : 'lineup-light'}`}
+        className="min-h-screen w-full relative"
         style={{
           backgroundImage: `url(${BG_URL})`,
           backgroundSize: "cover",
@@ -1739,5 +1740,6 @@ export default function Home() {
         </div>
       )}
     </DndContext>
+    </div>
   );
 }

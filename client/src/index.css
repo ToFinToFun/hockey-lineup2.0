@@ -205,9 +205,12 @@ select option {
   }
 }
 
-/* Lineup light theme overrides */
+/* ============================================
+   Lineup Light Theme – comprehensive overrides
+   Applied via .lineup-light wrapper on the root div
+   ============================================ */
 .lineup-light {
-  /* Override scrollbar for light theme */
+  /* ---- Scrollbar ---- */
   ::-webkit-scrollbar-thumb {
     background: oklch(0 0 0 / 15%);
   }
@@ -218,4 +221,243 @@ select option {
     background-color: #f0f5f3;
     color: #111;
   }
+
+  /* ---- Generic text-white/XX → dark equivalents ---- */
+  .text-white { color: oklch(0.15 0.01 160) !important; }
+  .text-white\/80 { color: oklch(0.2 0.01 160) !important; }
+  .text-white\/70 { color: oklch(0.3 0.01 160) !important; }
+  .text-white\/60 { color: oklch(0.35 0.01 160) !important; }
+  .text-white\/50 { color: oklch(0.4 0.01 160) !important; }
+  .text-white\/40 { color: oklch(0.45 0.01 160) !important; }
+  .text-white\/35 { color: oklch(0.5 0.01 160) !important; }
+  .text-white\/30 { color: oklch(0.55 0.01 160) !important; }
+  .text-white\/25 { color: oklch(0.6 0.01 160) !important; }
+  .text-white\/20 { color: oklch(0.65 0.01 160) !important; }
+
+  /* ---- bg-white/XX → light gray equivalents ---- */
+  .bg-white\/5 { background-color: oklch(0 0 0 / 4%) !important; }
+  .bg-white\/8 { background-color: oklch(0 0 0 / 6%) !important; }
+  .bg-white\/10 { background-color: oklch(0 0 0 / 7%) !important; }
+  .bg-white\/15 { background-color: oklch(0 0 0 / 10%) !important; }
+  .bg-white\/20 { background-color: oklch(0 0 0 / 12%) !important; }
+
+  /* ---- hover:bg-white/XX ---- */
+  .hover\:bg-white\/5:hover { background-color: oklch(0 0 0 / 4%) !important; }
+  .hover\:bg-white\/10:hover { background-color: oklch(0 0 0 / 7%) !important; }
+  .hover\:bg-white\/15:hover { background-color: oklch(0 0 0 / 10%) !important; }
+  .hover\:bg-white\/20:hover { background-color: oklch(0 0 0 / 12%) !important; }
+
+  /* ---- hover:text-white/XX ---- */
+  .hover\:text-white:hover { color: oklch(0.15 0.01 160) !important; }
+  .hover\:text-white\/50:hover { color: oklch(0.4 0.01 160) !important; }
+  .hover\:text-white\/60:hover { color: oklch(0.35 0.01 160) !important; }
+  .hover\:text-white\/70:hover { color: oklch(0.3 0.01 160) !important; }
+  .hover\:text-white\/80:hover { color: oklch(0.2 0.01 160) !important; }
+
+  /* ---- border-white/XX → dark borders ---- */
+  .border-white\/8 { border-color: oklch(0 0 0 / 8%) !important; }
+  .border-white\/10 { border-color: oklch(0 0 0 / 10%) !important; }
+  .border-white\/15 { border-color: oklch(0 0 0 / 12%) !important; }
+  .border-white\/20 { border-color: oklch(0 0 0 / 15%) !important; }
+  .border-white\/30 { border-color: oklch(0 0 0 / 18%) !important; }
+  .border-white\/40 { border-color: oklch(0 0 0 / 22%) !important; }
+  .border-white\/50 { border-color: oklch(0 0 0 / 28%) !important; }
+
+  /* ---- hover:border-white/XX ---- */
+  .hover\:border-white\/15:hover { border-color: oklch(0 0 0 / 12%) !important; }
+  .hover\:border-white\/20:hover { border-color: oklch(0 0 0 / 15%) !important; }
+  .hover\:border-white\/30:hover { border-color: oklch(0 0 0 / 18%) !important; }
+
+  /* ---- ring-white/XX ---- */
+  .ring-white\/20 { --tw-ring-color: oklch(0 0 0 / 12%) !important; }
+  .ring-white\/30 { --tw-ring-color: oklch(0 0 0 / 18%) !important; }
+
+  /* ---- bg-black/XX → light equivalents ---- */
+  .bg-black\/25 { background-color: oklch(1 0 0 / 75%) !important; }
+  .bg-black\/30 { background-color: oklch(1 0 0 / 70%) !important; }
+
+  /* ---- Dark section backgrounds → light equivalents ---- */
+  .bg-amber-950\/10 { background-color: oklch(0.85 0.05 85 / 15%) !important; }
+  .bg-amber-950\/20 { background-color: oklch(0.85 0.05 85 / 20%) !important; }
+  .bg-blue-950\/10 { background-color: oklch(0.88 0.04 240 / 15%) !important; }
+  .bg-blue-950\/15 { background-color: oklch(0.88 0.04 240 / 18%) !important; }
+  .bg-blue-950\/20 { background-color: oklch(0.88 0.04 240 / 20%) !important; }
+  .bg-emerald-950\/10 { background-color: oklch(0.88 0.04 160 / 15%) !important; }
+  .bg-emerald-950\/15 { background-color: oklch(0.88 0.04 160 / 18%) !important; }
+  .bg-emerald-950\/20 { background-color: oklch(0.88 0.04 160 / 20%) !important; }
+  .bg-purple-950\/25 { background-color: oklch(0.88 0.04 300 / 20%) !important; }
+  .bg-violet-500\/10 { background-color: oklch(0.88 0.06 290 / 15%) !important; }
+
+  /* ---- Section header text → darker for readability ---- */
+  .text-amber-300 { color: oklch(0.6 0.15 85) !important; }
+  .text-amber-400 { color: oklch(0.58 0.15 85) !important; }
+  .text-blue-400 { color: oklch(0.48 0.15 240) !important; }
+  .text-purple-400 { color: oklch(0.48 0.15 300) !important; }
+
+  /* ---- Muted colored text ---- */
+  .text-blue-400\/60 { color: oklch(0.5 0.12 240 / 70%) !important; }
+  .text-emerald-400\/60 { color: oklch(0.5 0.12 160 / 70%) !important; }
+  .text-amber-400\/35 { color: oklch(0.55 0.1 85 / 50%) !important; }
+  .text-blue-400\/35 { color: oklch(0.5 0.1 240 / 50%) !important; }
+  .text-emerald-400\/35 { color: oklch(0.5 0.1 160 / 50%) !important; }
+  .text-purple-400\/40 { color: oklch(0.5 0.1 300 / 55%) !important; }
+
+  /* ---- Modal / dialog backgrounds ---- */
+  .bg-gray-900 { background-color: oklch(0.97 0.005 160) !important; }
+
+  /* ---- Inputs: placeholder colors ---- */
+  .placeholder-white\/25::placeholder,
+  .placeholder-white\/30::placeholder {
+    color: oklch(0.55 0.01 160) !important;
+  }
+
+  /* ---- Backdrop blur panels ---- */
+  .backdrop-blur-md { backdrop-filter: blur(12px) saturate(1.2); }
+  .backdrop-blur-sm { backdrop-filter: blur(6px) saturate(1.2); }
+
+  /* ---- Accent colors: slightly deeper for light bg ---- */
+  .text-emerald-400 { color: oklch(0.5 0.18 160) !important; }
+  .text-emerald-300 { color: oklch(0.45 0.15 160) !important; }
+  .text-blue-300 { color: oklch(0.45 0.15 240) !important; }
+  .text-purple-300 { color: oklch(0.45 0.15 300) !important; }
+  .text-red-400 { color: oklch(0.55 0.2 25) !important; }
+  .text-red-300 { color: oklch(0.5 0.18 25) !important; }
+  .text-red-400\/70 { color: oklch(0.55 0.2 25 / 80%) !important; }
+  .text-yellow-300 { color: oklch(0.6 0.15 85) !important; }
+  .text-yellow-400 { color: oklch(0.58 0.18 85) !important; }
+  .text-orange-300 { color: oklch(0.58 0.15 55) !important; }
+  .text-slate-200 { color: oklch(0.35 0.01 240) !important; }
+  .text-slate-300\/70 { color: oklch(0.4 0.01 240 / 80%) !important; }
+
+  /* ---- Badge backgrounds: slightly more opaque for light bg ---- */
+  .bg-amber-500\/15 { background-color: oklch(0.8 0.1 85 / 25%) !important; }
+  .bg-amber-500\/20 { background-color: oklch(0.8 0.1 85 / 30%) !important; }
+  .bg-blue-500\/20 { background-color: oklch(0.8 0.1 240 / 30%) !important; }
+  .bg-emerald-500\/20 { background-color: oklch(0.8 0.1 160 / 30%) !important; }
+  .bg-emerald-500\/30 { background-color: oklch(0.8 0.1 160 / 40%) !important; }
+  .bg-purple-500\/25 { background-color: oklch(0.8 0.1 300 / 35%) !important; }
+  .bg-red-500\/20 { background-color: oklch(0.85 0.1 25 / 25%) !important; }
+  .bg-yellow-400\/25 { background-color: oklch(0.85 0.1 85 / 30%) !important; }
+  .bg-yellow-500\/15 { background-color: oklch(0.85 0.1 85 / 25%) !important; }
+  .bg-orange-400\/25 { background-color: oklch(0.85 0.1 55 / 30%) !important; }
+
+  /* ---- Hover accent backgrounds ---- */
+  .hover\:bg-emerald-500\/10:hover { background-color: oklch(0.8 0.1 160 / 18%) !important; }
+  .hover\:bg-emerald-500\/20:hover { background-color: oklch(0.8 0.1 160 / 28%) !important; }
+  .hover\:bg-emerald-500\/30:hover { background-color: oklch(0.8 0.1 160 / 38%) !important; }
+  .hover\:bg-emerald-500\/35:hover { background-color: oklch(0.8 0.1 160 / 42%) !important; }
+  .hover\:bg-emerald-400\/20:hover { background-color: oklch(0.8 0.1 160 / 28%) !important; }
+  .hover\:bg-red-400\/20:hover { background-color: oklch(0.85 0.1 25 / 25%) !important; }
+  .hover\:bg-red-500\/10:hover { background-color: oklch(0.85 0.1 25 / 18%) !important; }
+  .hover\:bg-red-500\/35:hover { background-color: oklch(0.85 0.1 25 / 40%) !important; }
+  .hover\:bg-amber-500\/35:hover { background-color: oklch(0.85 0.1 85 / 40%) !important; }
+  .hover\:bg-blue-500\/15:hover { background-color: oklch(0.85 0.1 240 / 22%) !important; }
+  .hover\:bg-yellow-500\/10:hover { background-color: oklch(0.85 0.1 85 / 18%) !important; }
+
+  /* ---- Solid white → dark for light theme ---- */
+  .text-white { color: oklch(0.15 0.01 160) !important; }
+  .bg-white { background-color: oklch(0.98 0.005 160) !important; }
+
+  /* ---- Additional border-white/XX ---- */
+  .border-white\/35 { border-color: oklch(0 0 0 / 20%) !important; }
+  .border-white\/60 { border-color: oklch(0 0 0 / 32%) !important; }
+
+  /* ---- bg-emerald-500/XX (player list badges) ---- */
+  .bg-emerald-500\/10 { background-color: oklch(0.85 0.08 160 / 18%) !important; }
+  .bg-emerald-500\/15 { background-color: oklch(0.85 0.08 160 / 22%) !important; }
+  .bg-emerald-500\/25 { background-color: oklch(0.85 0.08 160 / 32%) !important; }
+
+  /* ---- bg-red-400/XX and bg-red-500/XX (player list) ---- */
+  .bg-red-400\/10 { background-color: oklch(0.9 0.06 25 / 15%) !important; }
+  .bg-red-400\/15 { background-color: oklch(0.9 0.06 25 / 20%) !important; }
+  .bg-red-400\/20 { background-color: oklch(0.9 0.06 25 / 25%) !important; }
+  .bg-red-400\/25 { background-color: oklch(0.9 0.06 25 / 30%) !important; }
+  .bg-red-500\/5 { background-color: oklch(0.92 0.04 25 / 10%) !important; }
+  .bg-red-500\/15 { background-color: oklch(0.88 0.06 25 / 20%) !important; }
+  .bg-red-500\/30 { background-color: oklch(0.85 0.08 25 / 35%) !important; }
+  .bg-red-500\/50 { background-color: oklch(0.85 0.08 25 / 50%) !important; }
+
+  /* ---- bg-sky-500/XX (waiver badges) ---- */
+  .bg-sky-500\/10 { background-color: oklch(0.88 0.06 230 / 15%) !important; }
+  .bg-sky-500\/20 { background-color: oklch(0.88 0.06 230 / 25%) !important; }
+  .bg-sky-500\/30 { background-color: oklch(0.88 0.06 230 / 35%) !important; }
+
+  /* ---- bg-slate-XX (neutral badges) ---- */
+  .bg-slate-300\/20 { background-color: oklch(0.85 0.01 240 / 20%) !important; }
+  .bg-slate-500\/15 { background-color: oklch(0.85 0.01 240 / 18%) !important; }
+
+  /* ---- bg-orange-400/XX (player cards) ---- */
+  .bg-orange-400\/20 { background-color: oklch(0.88 0.08 55 / 25%) !important; }
+
+  /* ---- bg-yellow-400/XX (player cards) ---- */
+  .bg-yellow-400\/20 { background-color: oklch(0.88 0.08 85 / 25%) !important; }
+
+  /* ---- bg-emerald-400/XX (team panel) ---- */
+  .bg-emerald-400\/15 { background-color: oklch(0.85 0.08 160 / 22%) !important; }
+  .bg-emerald-400\/20 { background-color: oklch(0.85 0.08 160 / 28%) !important; }
+  .bg-emerald-400\/25 { background-color: oklch(0.85 0.08 160 / 32%) !important; }
+  .bg-emerald-900 { background-color: oklch(0.88 0.06 160) !important; }
+  .bg-emerald-400 { background-color: oklch(0.55 0.18 160) !important; }
+
+  /* ---- text-sky-XX (waiver text) ---- */
+  .text-sky-300 { color: oklch(0.45 0.15 230) !important; }
+  .text-sky-300\/50 { color: oklch(0.5 0.12 230 / 60%) !important; }
+
+  /* ---- text-violet-400 ---- */
+  .text-violet-400 { color: oklch(0.48 0.15 290) !important; }
+
+  /* ---- text-slate-300 ---- */
+  .text-slate-300 { color: oklch(0.4 0.01 240) !important; }
+
+  /* ---- text-emerald-300/70 ---- */
+  .text-emerald-300\/70 { color: oklch(0.45 0.12 160 / 80%) !important; }
+  .text-emerald-400\/70 { color: oklch(0.5 0.15 160 / 80%) !important; }
+
+  /* ---- text-amber-300/70 ---- */
+  .text-amber-300\/70 { color: oklch(0.55 0.12 85 / 80%) !important; }
+
+  /* ---- Additional border-XX/XX (colored borders) ---- */
+  .border-emerald-300\/60 { border-color: oklch(0.5 0.15 160 / 50%) !important; }
+  .border-emerald-400\/50 { border-color: oklch(0.5 0.15 160 / 40%) !important; }
+  .border-emerald-400\/60 { border-color: oklch(0.5 0.15 160 / 50%) !important; }
+  .border-orange-400\/40 { border-color: oklch(0.6 0.12 55 / 40%) !important; }
+  .border-orange-400\/50 { border-color: oklch(0.6 0.12 55 / 45%) !important; }
+  .border-red-400\/20 { border-color: oklch(0.6 0.12 25 / 22%) !important; }
+  .border-red-400\/40 { border-color: oklch(0.6 0.12 25 / 40%) !important; }
+  .border-red-400\/50 { border-color: oklch(0.6 0.12 25 / 45%) !important; }
+  .border-yellow-400\/40 { border-color: oklch(0.65 0.12 85 / 40%) !important; }
+  .border-yellow-400\/50 { border-color: oklch(0.65 0.12 85 / 45%) !important; }
+  .border-sky-400\/20 { border-color: oklch(0.55 0.12 230 / 22%) !important; }
+  .border-sky-400\/40 { border-color: oklch(0.55 0.12 230 / 40%) !important; }
+  .border-violet-400\/20 { border-color: oklch(0.55 0.12 290 / 22%) !important; }
+  .border-slate-300\/50 { border-color: oklch(0.6 0.01 240 / 40%) !important; }
+  .border-slate-400\/30 { border-color: oklch(0.55 0.01 240 / 30%) !important; }
+  .border-amber-400\/20 { border-color: oklch(0.6 0.12 85 / 22%) !important; }
+  .border-amber-400\/25 { border-color: oklch(0.6 0.12 85 / 28%) !important; }
+  .border-amber-400\/30 { border-color: oklch(0.6 0.12 85 / 30%) !important; }
+  .border-amber-400\/40 { border-color: oklch(0.6 0.12 85 / 40%) !important; }
+  .border-blue-400\/15 { border-color: oklch(0.55 0.12 240 / 18%) !important; }
+  .border-blue-400\/20 { border-color: oklch(0.55 0.12 240 / 22%) !important; }
+  .border-blue-400\/40 { border-color: oklch(0.55 0.12 240 / 40%) !important; }
+  .border-emerald-400\/15 { border-color: oklch(0.5 0.15 160 / 18%) !important; }
+  .border-emerald-400\/20 { border-color: oklch(0.5 0.15 160 / 22%) !important; }
+  .border-emerald-400\/30 { border-color: oklch(0.5 0.15 160 / 30%) !important; }
+  .border-emerald-400\/40 { border-color: oklch(0.5 0.15 160 / 38%) !important; }
+  .border-emerald-400 { border-color: oklch(0.5 0.18 160) !important; }
+  .border-purple-400\/50 { border-color: oklch(0.55 0.12 300 / 45%) !important; }
+  .border-red-400\/30 { border-color: oklch(0.6 0.12 25 / 30%) !important; }
+  .border-red-400\/60 { border-color: oklch(0.6 0.12 25 / 50%) !important; }
+  .border-slate-300\/20 { border-color: oklch(0.6 0.01 240 / 20%) !important; }
+
+  /* ---- Hover border colors ---- */
+  .hover\:border-emerald-400\/30:hover { border-color: oklch(0.5 0.15 160 / 30%) !important; }
+  .hover\:border-emerald-400\/40:hover { border-color: oklch(0.5 0.15 160 / 38%) !important; }
+
+  /* ---- Drop shadow on logos ---- */
+  .drop-shadow-lg { filter: drop-shadow(0 2px 4px oklch(0 0 0 / 15%)); }
+
+  /* ---- Scrollbar for light mode ---- */
+  ::-webkit-scrollbar-track { background: oklch(0.95 0.005 160); }
+  ::-webkit-scrollbar-thumb { background: oklch(0.75 0.01 160); }
+  ::-webkit-scrollbar-thumb:hover { background: oklch(0.65 0.01 160); }
 }
