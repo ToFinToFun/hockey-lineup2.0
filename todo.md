@@ -253,3 +253,22 @@
 - [x] Add IceTime to dynamic manifest selection in main.tsx
 - [x] Write vitest tests for IceTime calculator logic (16 tests)
 - [x] Verify all 4 sub-apps work (Hub, Lineup, Score, IceTime) — 53/53 tests pass
+
+## Deepen Lineup Light Theme
+- [x] Make TeamPanel backgrounds and borders theme-aware (CSS overrides in .lineup-light)
+- [x] Make PlayerCard backgrounds, text, and borders theme-aware (CSS overrides)
+- [x] Make PlayerList (spelartrupp) background and text theme-aware (CSS overrides)
+- [x] Make ExportModal theme-aware (moved lineup-light wrapper to DndContext level)
+- [x] Make ConfirmDialog theme-aware (moved lineup-light wrapper to DndContext level)
+- [x] Make SavedLineupsPanel theme-aware (CSS overrides)
+- [x] Make SettingsPage theme-aware (CSS overrides)
+- [x] Make mobile tab bar theme-aware (CSS overrides)
+- [x] Test light theme on desktop and mobile views
+
+## Dockerfile & Coolify Deploy
+- [x] Update Dockerfile with Docker HEALTHCHECK for Coolify
+- [x] Add /api/health endpoint to Express server
+- [x] Create DEPLOY.md with Coolify setup guide and env vars
+- [x] Verify pnpm build succeeds (dist/index.js 92KB + dist/public/)
+- [x] Verify all 53 tests pass
+- [x] .dockerignore already existed and is correct
