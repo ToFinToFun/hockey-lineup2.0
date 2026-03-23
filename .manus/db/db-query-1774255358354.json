@@ -1,0 +1,64 @@
+{
+  "query": "SELECT id, name, teamWhiteScore, teamGreenScore, matchStartTime, matchEndTime, editedAt FROM match_results ORDER BY matchEndTime DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3PARkGnP7Yq5GFZ.9b78b8692d1f --database SXvJKubXoqm5p7aDCmZ97X --execute SELECT id, name, teamWhiteScore, teamGreenScore, matchStartTime, matchEndTime, editedAt FROM match_results ORDER BY matchEndTime DESC;",
+  "rows": [
+    {
+      "id": "6",
+      "name": "26-03-19 Torsdag 22:00 2-5",
+      "teamWhiteScore": "2",
+      "teamGreenScore": "5",
+      "matchStartTime": "2026-03-19 21:12:27",
+      "matchEndTime": "2026-03-19 22:01:21",
+      "editedAt": "NULL"
+    },
+    {
+      "id": "5",
+      "name": "26-03-18 Onsdag 15:00 3-4",
+      "teamWhiteScore": "3",
+      "teamGreenScore": "4",
+      "matchStartTime": "2026-03-18 15:13:07",
+      "matchEndTime": "2026-03-18 15:14:51",
+      "editedAt": "2026-03-18 17:20:10"
+    },
+    {
+      "id": "4",
+      "name": "26-03-12 Torsdag 22:00 5-6",
+      "teamWhiteScore": "5",
+      "teamGreenScore": "6",
+      "matchStartTime": "2026-03-12 21:06:33",
+      "matchEndTime": "2026-03-12 22:28:39",
+      "editedAt": "2026-03-12 22:30:10"
+    },
+    {
+      "id": "3",
+      "name": "26-03-10 Tisdag 23:00 12-4",
+      "teamWhiteScore": "12",
+      "teamGreenScore": "4",
+      "matchStartTime": "2026-03-10 21:15:07",
+      "matchEndTime": "2026-03-10 22:30:38",
+      "editedAt": "NULL"
+    },
+    {
+      "id": "2",
+      "name": "26-03-05 Torsdag 22:00 10-6",
+      "teamWhiteScore": "10",
+      "teamGreenScore": "6",
+      "matchStartTime": "2026-03-05 22:03:10",
+      "matchEndTime": "2026-03-05 22:08:39",
+      "editedAt": "NULL"
+    },
+    {
+      "id": "1",
+      "name": "26-03-04 Onsdag 08:00 10-0",
+      "teamWhiteScore": "10",
+      "teamGreenScore": "0",
+      "matchStartTime": "2026-03-04 08:15:53",
+      "matchEndTime": "2026-03-04 08:19:19",
+      "editedAt": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tteamWhiteScore\tteamGreenScore\tmatchStartTime\tmatchEndTime\teditedAt\n6\t26-03-19 Torsdag 22:00 2-5\t2\t5\t2026-03-19 21:12:27\t2026-03-19 22:01:21\tNULL\n5\t26-03-18 Onsdag 15:00 3-4\t3\t4\t2026-03-18 15:13:07\t2026-03-18 15:14:51\t2026-03-18 17:20:10\n4\t26-03-12 Torsdag 22:00 5-6\t5\t6\t2026-03-12 21:06:33\t2026-03-12 22:28:39\t2026-03-12 22:30:10\n3\t26-03-10 Tisdag 23:00 12-4\t12\t4\t2026-03-10 21:15:07\t2026-03-10 22:30:38\tNULL\n2\t26-03-05 Torsdag 22:00 10-6\t10\t6\t2026-03-05 22:03:10\t2026-03-05 22:08:39\tNULL\n1\t26-03-04 Onsdag 08:00 10-0\t10\t0\t2026-03-04 08:15:53\t2026-03-04 08:19:19\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}

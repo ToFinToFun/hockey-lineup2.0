@@ -4,6 +4,8 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { fetchAttendance, updateAttendance, type AttendingStatus } from "./lagetSe";
 import { saveLagetSeCredentials, getLagetSeCredentials, hasLagetSeCredentials } from "./secretsDb";
+import { scoreRouter } from "./routers/score";
+import { scoreStatsRouter } from "./routers/scoreStats";
 import {
   getLineupState,
   saveLineupState,
@@ -19,6 +21,8 @@ import { z } from "zod";
 
 export const appRouter = router({
   system: systemRouter,
+  score: scoreRouter,
+  scoreStats: scoreStatsRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

@@ -172,3 +172,49 @@
 - [x] KRITISK BUGG v3: Drag-and-drop och Auto fortfarande trasigt trots pendingSaves-fix — fixat med dirtyRef-approach som blockerar SSE OMEDELBART vid lokal ändring (inte bara under mutation), serialiserade sparningar (saveInFlightRef + saveQueuedRef)
 - [x] Fixa PWA: rätt namn ("Stålstadens Lineup") och gröna lagets logga som ikon vid "Lägg till på startskärmen" i Chrome mobil
 - [x] Gör appen installerbar som PWA ("Installera app") med korrekt service worker
+
+## Merge: Score Tracker + Lineup → Unified App (app.stalstadens.se)
+
+### Phase 1: Routing & Structure
+- [x] Restructure App.tsx routing: Hub at /, Lineup at /lineup, Score at /score
+- [x] Move current Home.tsx (lineup) to /lineup route
+- [x] Create placeholder Hub page at /
+
+### Phase 2: Port Score Tracker Server
+- [x] Port Score Tracker tRPC endpoints (score router)
+- [x] Port Score Tracker db helpers (match results, app config)
+- [x] Port playerProfile, headToHead, seasonAwards, seasonStats, teamComparison
+- [x] Add proxy-image endpoint for match report export
+- [ ] Remove Manus OAuth / auth requirements — all endpoints public (deferred — all Score endpoints already use publicProcedure)
+
+### Phase 3: Port Score Tracker Client
+- [x] Port MatchPage.tsx
+- [x] Port MatchHistoryPage.tsx
+- [x] Port SeasonStatsPage.tsx
+- [x] Port SeasonAwardsPage.tsx
+- [x] Port PlayerProfileModal.tsx
+- [x] Port HeadToHeadSection.tsx
+- [x] Port LineupPage.tsx (read-only lineup display)
+- [x] Port HockeyIcons, MatchReportExport, PullToRefresh components
+- [x] Port constants.ts (images, sounds, colors)
+- [x] Create ScoreApp wrapper with tab navigation at /score
+
+### Phase 4: Replace Firebase with tRPC
+- [x] Replace useLineup.ts Firebase subscription with tRPC lineup.getState
+- [x] Update Score Tracker pages to use tRPC lineup data
+- [x] Remove firebase dependency (never added — using tRPC from start)
+
+### Phase 5: Hub Landing Page
+- [x] Design and build Hub landing page
+- [ ] Add PWA install prompts per sub-app
+
+### Phase 6: PWA & Theme
+- [ ] Separate PWA manifests per sub-app
+- [ ] Add theme switching to Lineup app
+- [ ] Update service worker for multi-app
+
+### Phase 7: Testing & Polish
+- [x] Verify all Score Tracker features work (Match, Uppställning, Historik, Statistik)
+- [x] Verify Lineup features still work (63 spelare, drag-and-drop)
+- [x] Run vitest tests (38/38 passed)
+- [ ] Push to GitHub

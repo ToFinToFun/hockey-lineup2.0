@@ -122,3 +122,16 @@ export function groupSlots(slots: Slot[]): { groupLabel: string; slots: Slot[] }
     slots,
   }));
 }
+
+// AppState type used by Score Tracker to represent the full lineup state
+import type { Player } from "./players";
+
+export interface AppState {
+  players: Player[];
+  lineup: Record<string, Player>;
+  teamAName: string;
+  teamBName: string;
+  deletedPlayerIds?: string[];
+  teamAConfig?: TeamConfig;
+  teamBConfig?: TeamConfig;
+}
