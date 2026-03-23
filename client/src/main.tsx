@@ -39,6 +39,8 @@ function setManifest() {
     manifestUrl = "/lineup-manifest.json";
   } else if (path.startsWith("/score")) {
     manifestUrl = "/score-manifest.json";
+  } else if (path.startsWith("/icetime")) {
+    manifestUrl = "/icetime-manifest.json";
   }
   const existing = document.querySelector('link[rel="manifest"]');
   if (existing) {

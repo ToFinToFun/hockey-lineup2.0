@@ -8,6 +8,7 @@ import Hub from "./pages/Hub";
 import Home from "./pages/Home";
 import ShareView from "./pages/ShareView";
 import ScoreApp from "./pages/score/ScoreApp";
+import IceTimeApp from "./pages/icetime/IceTimeApp";
 
 function Router() {
   return (
@@ -21,6 +22,10 @@ function Router() {
 
       {/* Score Tracker app */}
       <Route path="/score" component={ScoreApp} />
+
+      {/* IceTime app */}
+      <Route path="/icetime" component={IceTimeApp} />
+      <Route path="/icetime/oversikt" component={IceTimeApp} />
 
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
