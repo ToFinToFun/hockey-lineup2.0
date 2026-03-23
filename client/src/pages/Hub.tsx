@@ -5,7 +5,7 @@
  */
 
 import { Link } from "wouter";
-import { BarChart3, Users, ChevronRight, Trophy, ClipboardList } from "lucide-react";
+import { BarChart3, Users, ChevronRight, Trophy, ClipboardList, Timer } from "lucide-react";
 
 const LOGO_GREEN =
   "https://d2xsxph8kpxj0f.cloudfront.net/310519663363408929/PKtRPHEa7fsCMSzHJMpymq/team-green-logo_0c27fdbe.png";
@@ -118,6 +118,37 @@ export default function Hub() {
                 <ChevronRight
                   size={20}
                   className="text-white/20 group-hover:text-emerald-500 transition-colors flex-shrink-0"
+                />
+              </div>
+            </div>
+          </Link>
+          {/* IceTime Card */}
+          <Link href="/icetime">
+            <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] hover:border-sky-400/60 transition-all duration-300 cursor-pointer">
+              {/* Accent line */}
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-sky-400 to-sky-400/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+
+              <div className="p-5 sm:p-6 flex items-center gap-4">
+                <div className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-sky-400/10 border border-sky-400/20 flex items-center justify-center">
+                  <Timer size={24} className="text-sky-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold tracking-tight">IceTime</h2>
+                  <p className="text-white/40 text-xs sm:text-sm mt-0.5">
+                    Speltidskalkylator och positionsfördelning
+                  </p>
+                  <div className="flex items-center gap-3 mt-2">
+                    <span className="inline-flex items-center gap-1 text-[10px] text-white/30 bg-white/5 px-2 py-0.5 rounded-full">
+                      <Timer size={10} /> Kalkylator
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[10px] text-white/30 bg-white/5 px-2 py-0.5 rounded-full">
+                      <BarChart3 size={10} /> Översikt
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight
+                  size={20}
+                  className="text-white/20 group-hover:text-sky-400 transition-colors flex-shrink-0"
                 />
               </div>
             </div>

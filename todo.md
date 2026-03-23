@@ -239,3 +239,17 @@
 - [x] Implement light/dark theme with useLineupTheme hook
 - [x] Persist theme preference in localStorage
 - [x] Add Home link button in Lineup header
+
+## Integrate IceTime (Speltidskalkylator)
+- [x] Port IceTime pages (IceTimeCalc, IceTimeOverview) to /icetime route
+- [x] Port IceTime components (DraggablePlayer, PositionDropZone)
+- [x] Port useIceTimeCalculator hook
+- [x] Add IceTime CSS theme (ice-deep, ice-medium, ice-light, goal-red, glass-card)
+- [x] Add DM Serif Display + DM Sans fonts
+- [x] Create IceTimeApp wrapper with navigation at /icetime
+- [x] Add /icetime route to App.tsx
+- [x] Add IceTime card to Hub landing page (sky-blue accent)
+- [x] Create icetime-manifest.json for PWA
+- [x] Add IceTime to dynamic manifest selection in main.tsx
+- [x] Write vitest tests for IceTime calculator logic (16 tests)
+- [x] Verify all 4 sub-apps work (Hub, Lineup, Score, IceTime) — 53/53 tests pass
