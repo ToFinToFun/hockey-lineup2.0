@@ -4,15 +4,25 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import Hub from "./pages/Hub";
 import Home from "./pages/Home";
 import ShareView from "./pages/ShareView";
+import ScoreApp from "./pages/score/ScoreApp";
+
 function Router() {
-  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
-      <Route path={"/lineup/:id"} component={ShareView} />
-      <Route path={"/404"} component={NotFound} />
+      {/* Hub landing page */}
+      <Route path="/" component={Hub} />
+
+      {/* Lineup app */}
+      <Route path="/lineup" component={Home} />
+      <Route path="/lineup/:id" component={ShareView} />
+
+      {/* Score Tracker app */}
+      <Route path="/score" component={ScoreApp} />
+
+      <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
   );

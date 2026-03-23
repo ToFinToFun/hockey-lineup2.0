@@ -26,6 +26,29 @@ async function startServer() {
   });
 
 
+  // Proxy image endpoint for match report canvas export (avoids CORS tainting)
+  app.get("/api/proxy-image", async (req, res) => {
+    const url = req.query.url as string;
+    if (!url) {
+      res.status(400).send("Missing url parameter");
+      return;
+    }
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        res.status(response.status).send("Failed to fetch image");
+        return;
+      }
+      const contentType = response.headers.get("content-type") || "image/png";
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      const buffer = Buffer.from(await response.arrayBuffer());
+      res.send(buffer);
+    } catch (err) {
+      res.status(500).send("Proxy error");
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

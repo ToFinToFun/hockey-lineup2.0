@@ -1,0 +1,42 @@
+{
+  "query": "SELECT table_name, table_rows FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY table_name;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3PARkGnP7Yq5GFZ.9b78b8692d1f --database SXvJKubXoqm5p7aDCmZ97X --execute SELECT table_name, table_rows FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY table_name;",
+  "rows": [
+    {
+      "table_name": "__drizzle_migrations",
+      "table_rows": "4"
+    },
+    {
+      "table_name": "app_config",
+      "table_rows": "4"
+    },
+    {
+      "table_name": "app_secrets",
+      "table_rows": "0"
+    },
+    {
+      "table_name": "lineup_operations",
+      "table_rows": "11"
+    },
+    {
+      "table_name": "lineup_state",
+      "table_rows": "1"
+    },
+    {
+      "table_name": "match_results",
+      "table_rows": "6"
+    },
+    {
+      "table_name": "saved_lineups",
+      "table_rows": "15"
+    },
+    {
+      "table_name": "users",
+      "table_rows": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "table_name\ttable_rows\n__drizzle_migrations\t4\napp_config\t4\napp_secrets\t0\nlineup_operations\t11\nlineup_state\t1\nmatch_results\t6\nsaved_lineups\t15\nusers\t1\n",
+  "stderr": "",
+  "execution_time_ms": 234
+}
