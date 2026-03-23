@@ -1,6 +1,6 @@
 /*
  * IceTime Calculator – Ported from IceTime app
- * DESIGN: "Ice Sheet" – Nordisk Minimalism
+ * DESIGN: Dark theme matching Hub landing page
  */
 
 import { useState, useCallback, useMemo, useEffect } from "react";
@@ -36,10 +36,8 @@ import {
   Sparkles,
 } from "lucide-react";
 
-const HERO_IMG =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663363408929/QKSTbYNZ5jtXjZohbMfik9/hero-ice-rink-g5CLVMBrUHoT5YVqthJUND.webp";
-const ICE_TEXTURE =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663363408929/QKSTbYNZ5jtXjZohbMfik9/ice-texture-4DLD3bP9auFmXfmP9KFzus.webp";
+const BG_URL =
+  "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/gLOHFxhFzgQgHeKl.jpg";
 
 const ICE_SLOTS = { backs: 2, centers: 1, forwards: 2 } as const;
 
@@ -94,32 +92,32 @@ function DistributionRow({
 }) {
   return (
     <tr
-      className={`border-b border-border/50 transition-colors hover:bg-ice/30 ${
-        isBest ? "bg-ice/40 font-medium" : ""
+      className={`border-b border-white/5 transition-colors hover:bg-white/5 ${
+        isBest ? "bg-sky-400/10 font-medium" : ""
       }`}
     >
-      <td className="py-3 px-3 sm:px-4 text-center">
+      <td className="py-3 px-3 sm:px-4 text-center text-white/70">
         {isBest && (
-          <span className="inline-block w-2 h-2 rounded-full bg-goal-red mr-1.5 animate-pulse" />
+          <span className="inline-block w-2 h-2 rounded-full bg-sky-400 mr-1.5 animate-pulse" />
         )}
         #{dist.rank}
       </td>
-      <td className="py-3 px-3 sm:px-4 text-center">{dist.backs}B</td>
-      <td className="py-3 px-3 sm:px-4 text-center">{dist.centers}C</td>
-      <td className="py-3 px-3 sm:px-4 text-center">{dist.forwards}F</td>
-      <td className="py-3 px-3 sm:px-4 text-center text-sm">
+      <td className="py-3 px-3 sm:px-4 text-center text-white/70">{dist.backs}B</td>
+      <td className="py-3 px-3 sm:px-4 text-center text-white/70">{dist.centers}C</td>
+      <td className="py-3 px-3 sm:px-4 text-center text-white/70">{dist.forwards}F</td>
+      <td className="py-3 px-3 sm:px-4 text-center text-sm text-sky-400">
         {formatTime(dist.timePerBack)}
       </td>
-      <td className="py-3 px-3 sm:px-4 text-center text-sm">
+      <td className="py-3 px-3 sm:px-4 text-center text-sm text-[#0a7ea4]">
         {formatTime(dist.timePerCenter)}
       </td>
-      <td className="py-3 px-3 sm:px-4 text-center text-sm">
+      <td className="py-3 px-3 sm:px-4 text-center text-sm text-orange-400">
         {formatTime(dist.timePerForward)}
       </td>
       <td className="py-3 px-3 sm:px-4 text-center">
         <span
           className={`text-sm font-semibold ${
-            isBest ? "text-goal-red" : "text-muted-foreground"
+            isBest ? "text-sky-400" : "text-white/40"
           }`}
         >
           {formatTime(dist.maxDifference)}
@@ -273,36 +271,45 @@ export default function IceTimeCalc() {
   }, [activeId, positions]);
 
   return (
-    <div className="icetime min-h-screen flex flex-col">
+    <div className="icetime-dark min-h-screen flex flex-col bg-[#0a0a0a] text-white relative">
+      {/* Background image with overlay */}
+      <div
+        className="fixed inset-0 bg-cover bg-center opacity-[0.05] z-0"
+        style={{ backgroundImage: `url(${BG_URL})` }}
+      />
+      <div className="fixed inset-0 bg-gradient-to-b from-[#0a0a0a]/60 via-transparent to-[#0a0a0a] z-0" />
+
       {/* Hero Section */}
-      <header className="relative overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${HERO_IMG})` }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/60 to-[oklch(0.98_0.005_230)]" />
-        <div className="relative container py-10 sm:py-16 lg:py-20">
+      <header className="relative z-10 overflow-hidden">
+        <div className="container py-8 sm:py-12 lg:py-16">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             className="max-w-2xl"
           >
-            <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl text-foreground leading-tight mb-3">
+            <h1
+              className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight mb-3"
+              style={{ fontFamily: "'Oswald', sans-serif" }}
+            >
               Speltids
               <br />
-              <span className="text-ice-deep">kalkylator</span>
+              <span className="text-sky-400">kalkylator</span>
             </h1>
-            <p className="text-base sm:text-lg text-muted-foreground max-w-lg leading-relaxed">
+            <p className="text-sm sm:text-base text-white/40 max-w-lg leading-relaxed">
               Beräkna optimal positionsfördelning för ditt ishockeylag.
               Dra spelare mellan positioner för att se speltiden uppdateras.
             </p>
           </motion.div>
         </div>
+        {/* Divider */}
+        <div className="container">
+          <div className="w-24 h-[2px] bg-gradient-to-r from-transparent via-sky-400 to-transparent" />
+        </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 -mt-4">
+      <main className="flex-1 relative z-10">
         <div className="container pt-6 pb-16 sm:pb-24">
           <div className="grid lg:grid-cols-[340px_1fr] gap-8 lg:gap-10 items-start">
             {/* Input Panel */}
@@ -310,15 +317,18 @@ export default function IceTimeCalc() {
               initial={{ opacity: 0, x: -30 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="glass-card-strong rounded-2xl p-6 sm:p-8 sticky top-6 z-10"
+              className="rounded-2xl p-6 sm:p-8 sticky top-16 z-10 bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a]"
             >
-              <h2 className="font-serif text-2xl text-foreground mb-6">
+              <h2
+                className="text-xl font-bold tracking-tight mb-6"
+                style={{ fontFamily: "'Oswald', sans-serif" }}
+              >
                 Laguppställning
               </h2>
 
               {/* Player Count */}
               <div className="mb-8">
-                <label className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+                <label className="flex items-center gap-2 text-xs font-medium text-white/40 mb-3 uppercase tracking-wider">
                   <Users className="w-4 h-4" />
                   Antal utespelare
                 </label>
@@ -326,19 +336,19 @@ export default function IceTimeCalc() {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="h-10 w-10 rounded-xl shrink-0"
+                    className="h-10 w-10 rounded-xl shrink-0 border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white"
                     onClick={() => setPlayerCount((p) => Math.max(5, p - 1))}
                     disabled={playerCount <= 5}
                   >
                     -
                   </Button>
-                  <span className="text-5xl font-serif text-foreground text-center flex-1">
+                  <span className="text-5xl font-bold text-white text-center flex-1" style={{ fontFamily: "'Oswald', sans-serif" }}>
                     {playerCount}
                   </span>
                   <Button
                     variant="outline"
                     size="icon"
-                    className="h-10 w-10 rounded-xl shrink-0"
+                    className="h-10 w-10 rounded-xl shrink-0 border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white"
                     onClick={() => setPlayerCount((p) => Math.min(20, p + 1))}
                     disabled={playerCount >= 20}
                   >
@@ -353,7 +363,7 @@ export default function IceTimeCalc() {
                   step={1}
                   className="mt-2"
                 />
-                <div className="flex justify-between text-xs text-muted-foreground mt-1.5">
+                <div className="flex justify-between text-xs text-white/30 mt-1.5">
                   <span>5</span>
                   <span>20</span>
                 </div>
@@ -361,7 +371,7 @@ export default function IceTimeCalc() {
 
               {/* Match Time */}
               <div className="mb-6">
-                <label className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+                <label className="flex items-center gap-2 text-xs font-medium text-white/40 mb-3 uppercase tracking-wider">
                   <Clock className="w-4 h-4" />
                   Matchtid (minuter)
                 </label>
@@ -369,19 +379,19 @@ export default function IceTimeCalc() {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="h-10 w-10 rounded-xl shrink-0"
+                    className="h-10 w-10 rounded-xl shrink-0 border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white"
                     onClick={() => setMatchTime((t) => Math.max(50, t - 5))}
                     disabled={matchTime <= 50}
                   >
                     -
                   </Button>
-                  <span className="text-4xl font-serif text-foreground text-center flex-1">
+                  <span className="text-4xl font-bold text-white text-center flex-1" style={{ fontFamily: "'Oswald', sans-serif" }}>
                     {matchTime}
                   </span>
                   <Button
                     variant="outline"
                     size="icon"
-                    className="h-10 w-10 rounded-xl shrink-0"
+                    className="h-10 w-10 rounded-xl shrink-0 border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white"
                     onClick={() => setMatchTime((t) => Math.min(120, t + 5))}
                     disabled={matchTime >= 120}
                   >
@@ -396,18 +406,18 @@ export default function IceTimeCalc() {
                   step={5}
                   className="mt-2"
                 />
-                <div className="flex justify-between text-xs text-muted-foreground mt-1.5">
+                <div className="flex justify-between text-xs text-white/30 mt-1.5">
                   <span>50 min</span>
                   <span>120 min</span>
                 </div>
               </div>
 
               {/* Info box */}
-              <div className="rounded-xl bg-ice/50 border border-ice-light p-4 flex gap-3 mb-4">
-                <Info className="w-4 h-4 text-ice-medium shrink-0 mt-0.5" />
-                <p className="text-xs text-muted-foreground leading-relaxed">
+              <div className="rounded-xl bg-sky-400/10 border border-sky-400/20 p-4 flex gap-3 mb-4">
+                <Info className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-white/50 leading-relaxed">
                   Beräkningen utgår från att det alltid är{" "}
-                  <strong className="text-foreground">5 utespelare</strong> på
+                  <strong className="text-white/80">5 utespelare</strong> på
                   isen: 2 backar, 1 center och 2 ytterforwards.
                 </p>
               </div>
@@ -416,7 +426,7 @@ export default function IceTimeCalc() {
               {!isOptimal && (
                 <Button
                   variant="outline"
-                  className="w-full gap-2 rounded-xl"
+                  className="w-full gap-2 rounded-xl border-sky-400/30 text-sky-400 hover:bg-sky-400/10 hover:text-sky-400"
                   onClick={resetToOptimal}
                 >
                   <Sparkles className="w-4 h-4" />
@@ -435,10 +445,13 @@ export default function IceTimeCalc() {
                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-3"
               >
                 <div>
-                  <h2 className="font-serif text-2xl sm:text-3xl text-foreground mb-1">
+                  <h2
+                    className="text-2xl sm:text-3xl font-bold tracking-tight mb-1"
+                    style={{ fontFamily: "'Oswald', sans-serif" }}
+                  >
                     Positionsfördelning
                   </h2>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-white/40">
                     Dra spelare mellan positionerna nedan
                   </p>
                 </div>
@@ -448,8 +461,8 @@ export default function IceTimeCalc() {
                       px-4 py-2 rounded-xl text-sm font-medium transition-colors
                       ${
                         isOptimal
-                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                          : "bg-amber-50 text-amber-700 border border-amber-200"
+                          ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                          : "bg-amber-500/15 text-amber-400 border border-amber-500/30"
                       }
                     `}
                   >
@@ -506,7 +519,7 @@ export default function IceTimeCalc() {
                 {/* Drag Overlay */}
                 <DragOverlay>
                   {activePlayer ? (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium bg-white shadow-xl border-border">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium bg-[#1a1a1a] shadow-xl border-white/20 text-white">
                       <GripVertical className="w-3.5 h-3.5 opacity-40" />
                       <span>{activePlayer.player.label}</span>
                     </div>
@@ -519,9 +532,12 @@ export default function IceTimeCalc() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
-                className="glass-card rounded-2xl p-5"
+                className="rounded-2xl p-5 bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a]"
               >
-                <h3 className="font-serif text-lg text-foreground mb-4">
+                <h3
+                  className="text-lg font-bold tracking-tight mb-4"
+                  style={{ fontFamily: "'Oswald', sans-serif" }}
+                >
                   Speltid per position
                 </h3>
                 <div className="space-y-4">
@@ -529,21 +545,21 @@ export default function IceTimeCalc() {
                     label="Backar"
                     time={currentTimes.backs}
                     maxTime={matchTime}
-                    color="bg-ice-deep"
+                    color="bg-sky-400"
                     count={positions.backs.length}
                   />
                   <TimeBar
                     label="Centrar"
                     time={currentTimes.centers}
                     maxTime={matchTime}
-                    color="bg-ice-medium"
+                    color="bg-[#0a7ea4]"
                     count={positions.centers.length}
                   />
                   <TimeBar
                     label="Forwards"
                     time={currentTimes.forwards}
                     maxTime={matchTime}
-                    color="bg-goal-red"
+                    color="bg-orange-400"
                     count={positions.forwards.length}
                   />
                 </div>
@@ -555,21 +571,24 @@ export default function IceTimeCalc() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.4 }}
-                  className="glass-card rounded-2xl overflow-hidden"
+                  className="rounded-2xl overflow-hidden bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a]"
                 >
                   <button
                     onClick={() =>
                       setShowAllDistributions(!showAllDistributions)
                     }
-                    className="w-full flex items-center justify-between p-5 sm:p-6 hover:bg-ice/20 transition-colors"
+                    className="w-full flex items-center justify-between p-5 sm:p-6 hover:bg-white/5 transition-colors"
                   >
-                    <h3 className="font-serif text-xl text-foreground">
+                    <h3
+                      className="text-xl font-bold tracking-tight"
+                      style={{ fontFamily: "'Oswald', sans-serif" }}
+                    >
                       Alla fördelningar ({calcResult.distributions.length} st)
                     </h3>
                     {showAllDistributions ? (
-                      <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                      <ChevronUp className="w-5 h-5 text-white/40" />
                     ) : (
-                      <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                      <ChevronDown className="w-5 h-5 text-white/40" />
                     )}
                   </button>
 
@@ -588,29 +607,29 @@ export default function IceTimeCalc() {
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
                             <thead>
-                              <tr className="border-b border-border bg-muted/30">
-                                <th className="py-3 px-3 sm:px-4 text-center font-medium text-muted-foreground">
+                              <tr className="border-b border-white/10 bg-white/5">
+                                <th className="py-3 px-3 sm:px-4 text-center font-medium text-white/40">
                                   #
                                 </th>
-                                <th className="py-3 px-3 sm:px-4 text-center font-medium text-muted-foreground">
+                                <th className="py-3 px-3 sm:px-4 text-center font-medium text-white/40">
                                   Backar
                                 </th>
-                                <th className="py-3 px-3 sm:px-4 text-center font-medium text-muted-foreground">
+                                <th className="py-3 px-3 sm:px-4 text-center font-medium text-white/40">
                                   Centrar
                                 </th>
-                                <th className="py-3 px-3 sm:px-4 text-center font-medium text-muted-foreground">
+                                <th className="py-3 px-3 sm:px-4 text-center font-medium text-white/40">
                                   Forwards
                                 </th>
-                                <th className="py-3 px-3 sm:px-4 text-center font-medium text-muted-foreground">
+                                <th className="py-3 px-3 sm:px-4 text-center font-medium text-white/40">
                                   Tid/B
                                 </th>
-                                <th className="py-3 px-3 sm:px-4 text-center font-medium text-muted-foreground">
+                                <th className="py-3 px-3 sm:px-4 text-center font-medium text-white/40">
                                   Tid/C
                                 </th>
-                                <th className="py-3 px-3 sm:px-4 text-center font-medium text-muted-foreground">
+                                <th className="py-3 px-3 sm:px-4 text-center font-medium text-white/40">
                                   Tid/F
                                 </th>
-                                <th className="py-3 px-3 sm:px-4 text-center font-medium text-muted-foreground">
+                                <th className="py-3 px-3 sm:px-4 text-center font-medium text-white/40">
                                   Skillnad
                                 </th>
                               </tr>
@@ -637,20 +656,11 @@ export default function IceTimeCalc() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border/50 py-6">
-        <div className="container text-center text-xs text-muted-foreground">
-          Ishockey Speltidskalkylator
+      <footer className="relative z-10 border-t border-white/5 py-6">
+        <div className="container text-center text-xs text-white/15 tracking-wider uppercase">
+          Stålstadens Sportförening &middot; A-lag Herrar
         </div>
       </footer>
-
-      {/* Background texture */}
-      <div
-        className="fixed inset-0 pointer-events-none opacity-[0.015] z-[-1]"
-        style={{
-          backgroundImage: `url(${ICE_TEXTURE})`,
-          backgroundSize: "cover",
-        }}
-      />
     </div>
   );
 }
@@ -672,18 +682,19 @@ function TimeBar({
 
   return (
     <div className="flex items-center gap-4">
-      <div className="w-20 text-sm text-muted-foreground shrink-0">
+      <div className="w-20 text-sm text-white/40 shrink-0">
         {label}
-        <span className="text-xs ml-1">({count})</span>
+        <span className="text-xs ml-1 text-white/25">({count})</span>
       </div>
-      <div className="flex-1 h-8 bg-muted/40 rounded-lg overflow-hidden relative">
+      <div className="flex-1 h-8 bg-white/5 rounded-lg overflow-hidden relative">
         <motion.div
           className={`h-full ${color} rounded-lg`}
           initial={{ width: 0 }}
           animate={{ width: `${percentage}%` }}
           transition={{ duration: 0.5, ease: "easeOut" }}
+          style={{ opacity: 0.8 }}
         />
-        <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-foreground">
+        <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-white">
           {time > 0 ? formatTime(time) : "—"}
         </span>
       </div>

@@ -272,3 +272,7 @@
 - [x] Verify pnpm build succeeds (dist/index.js 92KB + dist/public/)
 - [x] Verify all 53 tests pass
 - [x] .dockerignore already existed and is correct
+
+## IceTime Design Sync
+- [x] Fix IceTime black areas on page
+- [x] Sync IceTime design with Hub landing page (background, colors, theme)
