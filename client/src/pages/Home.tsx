@@ -33,7 +33,9 @@ import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { LongPressTooltip } from "@/components/LongPressTooltip";
 import { trpc } from "@/lib/trpc";
 import type { Player as PlayerType } from "@/lib/players";
-import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Settings } from "lucide-react";
+import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Settings, Sun, Moon, Home as HomeIcon } from "lucide-react";
+import { useLineupTheme } from "@/hooks/useLineupTheme";
+import { Link } from "wouter";
 import { SettingsModal } from "@/components/SettingsModal";
 import { matchRegisteredPlayers, matchDeclinedPlayers, fetchAttendanceFromApi, updateAttendanceOnLaget } from "@/lib/laget";
 import { createPortal } from "react-dom"; // används av PlayerList context-meny
@@ -106,6 +108,7 @@ function saveLocalState(state: SavedState) {
 
 export default function Home() {
   const local = loadLocalState();
+  const { theme: lineupTheme, toggle: toggleLineupTheme, isDark: isLineupDark } = useLineupTheme();
 
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>(
     local?.availablePlayers ?? initialPlayers
@@ -1081,7 +1084,7 @@ export default function Home() {
     >
       {/* Bakgrundsbild */}
       <div
-        className="min-h-screen w-full relative"
+        className={`min-h-screen w-full relative ${isLineupDark ? '' : 'lineup-light'}`}
         style={{
           backgroundImage: `url(${BG_URL})`,
           backgroundSize: "cover",
@@ -1089,7 +1092,7 @@ export default function Home() {
           backgroundRepeat: "no-repeat",
         }}
       >
-        <div className="absolute inset-0 bg-black/45 pointer-events-none" />
+        <div className={`absolute inset-0 pointer-events-none ${isLineupDark ? 'bg-black/45' : 'bg-white/75'}`} />
 
         <div
           className="relative flex flex-col min-h-screen"
@@ -1099,22 +1102,34 @@ export default function Home() {
             <div className="max-w-7xl mx-auto">
               <div className="flex items-center justify-between">
               <div className="shrink-0">
-                <h1
-                  className="text-xl md:text-3xl font-black text-white tracking-widest uppercase"
-                  style={{ fontFamily: "'Oswald', sans-serif" }}
-                >
-                  Stålstadens
-                  <span className="text-emerald-400 ml-2">Lineup</span>
-                </h1>
-                <p className="text-white/40 text-[10px] md:text-xs tracking-wider uppercase">
-                  A-lag Herrar · Formations-verktyg
-                </p>
+                <div className="flex items-center gap-2">
+                  <Link href="/">
+                    <button
+                      title="Tillbaka till startsidan"
+                      className={`p-1.5 rounded transition-all ${isLineupDark ? 'bg-white/10 hover:bg-white/20 text-white/60 hover:text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-500 hover:text-gray-700'}`}
+                    >
+                      <HomeIcon className="w-4 h-4" />
+                    </button>
+                  </Link>
+                  <div>
+                    <h1
+                      className={`text-xl md:text-3xl font-black tracking-widest uppercase ${isLineupDark ? 'text-white' : 'text-gray-900'}`}
+                      style={{ fontFamily: "'Oswald', sans-serif" }}
+                    >
+                      Stålstadens
+                      <span className={`ml-2 ${isLineupDark ? 'text-emerald-400' : 'text-emerald-600'}`}>Lineup</span>
+                    </h1>
+                    <p className={`text-[10px] md:text-xs tracking-wider uppercase ${isLineupDark ? 'text-white/40' : 'text-gray-500'}`}>
+                      A-lag Herrar · Formations-verktyg
+                    </p>
+                  </div>
+                </div>
                 {eventInfo && (
-                  <p className="flex items-center gap-1.5 text-sky-300/80 text-[10px] md:text-[11px] mt-0.5 font-medium">
+                  <p className={`flex items-center gap-1.5 text-[10px] md:text-[11px] mt-0.5 font-medium ${isLineupDark ? 'text-sky-300/80' : 'text-sky-600'}`}>
                     <CalendarDays className="w-3 h-3" />
                     {eventInfo.title}{eventInfo.date ? ` · ${eventInfo.date}` : ""}
                     {lastSyncTime && (
-                      <span className="text-white/30 ml-1.5">· Hämtat {lastSyncTime}</span>
+                      <span className={`ml-1.5 ${isLineupDark ? 'text-white/30' : 'text-gray-400'}`}>· Hämtat {lastSyncTime}</span>
                     )}
                   </p>
                 )}
@@ -1124,9 +1139,9 @@ export default function Home() {
                 {/* SSE sync status – bara ikon, ingen text */}
                 <div className="flex items-center">
                   {sseConnected === null ? (
-                    <span className="text-white/30 text-[9px]">...</span>
+                    <span className={`text-[9px] ${isLineupDark ? 'text-white/30' : 'text-gray-400'}`}>...</span>
                   ) : sseConnected ? (
-                    <Wifi className="w-3 h-3 text-emerald-400" />
+                    <Wifi className={`w-3 h-3 ${isLineupDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
                   ) : (
                     <WifiOff className="w-3 h-3 text-red-400" />
                   )}
@@ -1140,8 +1155,12 @@ export default function Home() {
                   title={`Ångra (Ctrl+Z) – ${undoStack.length} steg`}
                   className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${
                     undoStack.length > 0
-                      ? "bg-white/10 border border-white/20 text-white/70 hover:bg-white/20 hover:text-white"
-                      : "bg-white/5 border border-white/10 text-white/20 cursor-not-allowed"
+                      ? isLineupDark
+                        ? "bg-white/10 border border-white/20 text-white/70 hover:bg-white/20 hover:text-white"
+                        : "bg-gray-200 border border-gray-300 text-gray-600 hover:bg-gray-300 hover:text-gray-800"
+                      : isLineupDark
+                        ? "bg-white/5 border border-white/10 text-white/20 cursor-not-allowed"
+                        : "bg-gray-100 border border-gray-200 text-gray-300 cursor-not-allowed"
                   }`}
                 >
                   <Undo2 className="w-3.5 h-3.5" />
@@ -1156,8 +1175,12 @@ export default function Home() {
                   title={sideLayout ? "Standard-layout (Vita | Trupp | Gröna)" : "Sidoläge (Trupp till vänster, lagen bredvid)"}
                   className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${
                     sideLayout
-                      ? "bg-violet-500/30 border border-violet-400/50 text-violet-300 hover:bg-violet-500/40"
-                      : "bg-white/5 border border-white/15 text-white/50 hover:bg-white/10 hover:text-white/80"
+                      ? isLineupDark
+                        ? "bg-violet-500/30 border border-violet-400/50 text-violet-300 hover:bg-violet-500/40"
+                        : "bg-violet-100 border border-violet-300 text-violet-700 hover:bg-violet-200"
+                      : isLineupDark
+                        ? "bg-white/5 border border-white/15 text-white/50 hover:bg-white/10 hover:text-white/80"
+                        : "bg-gray-100 border border-gray-300 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
                   }`}
                 >
                   {sideLayout ? <Columns3 className="w-3.5 h-3.5" /> : <PanelLeft className="w-3.5 h-3.5" />}
@@ -1170,7 +1193,7 @@ export default function Home() {
                 <button
                   onClick={() => setConfirmAutoDistribute(true)}
                   title="Fördela anmälda spelare automatiskt på lagen"
-                  className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 text-[10px] font-bold hover:bg-cyan-500/30 transition-all uppercase tracking-wider"
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${isLineupDark ? 'bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 hover:bg-cyan-500/30' : 'bg-cyan-100 border border-cyan-300 text-cyan-700 hover:bg-cyan-200'}`}
                 >
                   <Shuffle className="w-3.5 h-3.5" />
                   <span>Auto</span>
@@ -1182,7 +1205,7 @@ export default function Home() {
                 <button
                   onClick={() => handleAutoDistribute(true)}
                   title="Slumpa om neutrala spelare (utan lagfärg) mellan lagen"
-                  className="flex items-center gap-1 px-2 py-1 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold hover:bg-amber-500/30 transition-all uppercase tracking-wider"
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${isLineupDark ? 'bg-amber-500/20 border border-amber-400/40 text-amber-300 hover:bg-amber-500/30' : 'bg-amber-100 border border-amber-300 text-amber-700 hover:bg-amber-200'}`}
                 >
                   <Dices className="w-3.5 h-3.5" />
                   <span>Slumpa</span>
@@ -1198,8 +1221,12 @@ export default function Home() {
                   title="Dela skrivskyddad länk till aktuell uppställning"
                   className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${
                     shareState === "copied"
-                      ? "bg-emerald-500/30 border border-emerald-400/60 text-emerald-200"
-                      : "bg-white/5 border border-white/15 text-white/60 hover:bg-white/10 hover:text-white/90 disabled:opacity-50"
+                      ? isLineupDark
+                        ? "bg-emerald-500/30 border border-emerald-400/60 text-emerald-200"
+                        : "bg-emerald-100 border border-emerald-300 text-emerald-700"
+                      : isLineupDark
+                        ? "bg-white/5 border border-white/15 text-white/60 hover:bg-white/10 hover:text-white/90 disabled:opacity-50"
+                        : "bg-gray-100 border border-gray-300 text-gray-500 hover:bg-gray-200 hover:text-gray-700 disabled:opacity-50"
                   }`}
                 >
                   {shareState === "copied"
@@ -1213,7 +1240,7 @@ export default function Home() {
                 <button
                   onClick={() => setShowExport(true)}
                   title="Exportera laguppställning"
-                  className="flex items-center gap-1 px-2 py-1 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-bold hover:bg-emerald-500/30 transition-all uppercase tracking-wider"
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${isLineupDark ? 'bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/30' : 'bg-emerald-100 border border-emerald-300 text-emerald-700 hover:bg-emerald-200'}`}
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Exportera</span>
@@ -1227,12 +1254,31 @@ export default function Home() {
                   title="Visa/dölj statistik"
                   className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${
                     showStats
-                      ? "bg-sky-500/30 border border-sky-400/50 text-sky-300"
-                      : "bg-white/5 border border-white/15 text-white/50 hover:bg-white/10 hover:text-white/80"
+                      ? isLineupDark
+                        ? "bg-sky-500/30 border border-sky-400/50 text-sky-300"
+                        : "bg-sky-100 border border-sky-300 text-sky-700"
+                      : isLineupDark
+                        ? "bg-white/5 border border-white/15 text-white/50 hover:bg-white/10 hover:text-white/80"
+                        : "bg-gray-100 border border-gray-300 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
                   }`}
                 >
                   <BarChart3 className="w-3.5 h-3.5" />
                   {showStats ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </button>
+                </LongPressTooltip>
+
+                {/* Tema-toggle */}
+                <LongPressTooltip label={isLineupDark ? "Ljust tema" : "Mörkt tema"}>
+                <button
+                  onClick={toggleLineupTheme}
+                  title={isLineupDark ? "Byt till ljust tema" : "Byt till mörkt tema"}
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${
+                    isLineupDark
+                      ? 'bg-white/5 border border-white/10 text-white/40 hover:bg-white/10 hover:text-white/70'
+                      : 'bg-gray-100 border border-gray-300 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
+                  }`}
+                >
+                  {isLineupDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
                 </button>
                 </LongPressTooltip>
 
@@ -1242,14 +1288,18 @@ export default function Home() {
                   data-settings-btn
                   onClick={() => setShowSettings(true)}
                   title="Inställningar"
-                  className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider bg-white/5 border border-white/10 text-white/30 hover:bg-white/10 hover:text-white/60"
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${
+                    isLineupDark
+                      ? 'bg-white/5 border border-white/10 text-white/30 hover:bg-white/10 hover:text-white/60'
+                      : 'bg-gray-50 border border-gray-200 text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                  }`}
                 >
                   <Settings className="w-3.5 h-3.5" />
                 </button>
                 </LongPressTooltip>
               </div>
               {/* Hjälptext – positioner och instruktioner */}
-              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-white/35">
+              <div className={`mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] ${isLineupDark ? 'text-white/35' : 'text-gray-500'}`}>
                 <span className="flex items-center gap-1"><span className="bg-yellow-500/30 text-yellow-300 px-1 rounded text-[9px] font-bold">MV</span> Målvakt</span>
                 <span className="flex items-center gap-1"><span className="bg-blue-500/30 text-blue-300 px-1 rounded text-[9px] font-bold">B</span> Back</span>
                 <span className="flex items-center gap-1"><span className="bg-red-500/30 text-red-300 px-1 rounded text-[9px] font-bold">F</span> Forward</span>

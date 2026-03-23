@@ -31,15 +31,32 @@ createRoot(document.getElementById("root")!).render(
   </trpc.Provider>
 );
 
+// Dynamic manifest selection based on current route
+function setManifest() {
+  const path = window.location.pathname;
+  let manifestUrl = "/manifest.json";
+  if (path.startsWith("/lineup")) {
+    manifestUrl = "/lineup-manifest.json";
+  } else if (path.startsWith("/score")) {
+    manifestUrl = "/score-manifest.json";
+  }
+  const existing = document.querySelector('link[rel="manifest"]');
+  if (existing) {
+    existing.setAttribute("href", manifestUrl);
+  }
+}
+
+setManifest();
+
 // Register service worker for PWA installability
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").then(
       (registration) => {
-        console.log('[SW] Registered:', registration.scope);
+        console.log("[SW] Registered:", registration.scope);
       },
       (error) => {
-        console.log('[SW] Registration failed:', error);
+        console.log("[SW] Registration failed:", error);
       }
     );
   });
