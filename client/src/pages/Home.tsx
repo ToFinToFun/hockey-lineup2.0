@@ -33,9 +33,9 @@ import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { LongPressTooltip } from "@/components/LongPressTooltip";
 import { trpc } from "@/lib/trpc";
 import type { Player as PlayerType } from "@/lib/players";
-import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Settings, Sun, Moon, Home as HomeIcon, Palette } from "lucide-react";
+import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Settings, Sun, Moon, Home as HomeIcon } from "lucide-react";
 import { useLineupTheme } from "@/hooks/useLineupTheme";
-import { useForwardColor, ALL_FORWARD_THEMES, type ForwardColorTheme } from "@/hooks/useForwardColor";
+import { useForwardColor } from "@/hooks/useForwardColor";
 import { Link } from "wouter";
 import { SettingsModal } from "@/components/SettingsModal";
 import { matchRegisteredPlayers, matchDeclinedPlayers, fetchAttendanceFromApi, updateAttendanceOnLaget } from "@/lib/laget";
@@ -110,7 +110,7 @@ function saveLocalState(state: SavedState) {
 export default function Home() {
   const local = loadLocalState();
   const { theme: lineupTheme, toggle: toggleLineupTheme, isDark: isLineupDark } = useLineupTheme();
-  const { theme: fwdColorTheme, setTheme: setFwdColorTheme, colors: fc, allThemes: fwdThemes, allColors: fwdAllColors } = useForwardColor();
+  const { colors: fc } = useForwardColor();
 
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>(
     local?.availablePlayers ?? initialPlayers
@@ -1295,27 +1295,6 @@ export default function Home() {
                   {isLineupDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
                 </button>
                 </LongPressTooltip>
-
-                {/* Forward-färgväljare */}
-                <div className="flex items-center gap-0.5 px-1 py-0.5 rounded border border-white/10 bg-white/5">
-                  <Palette className="w-3 h-3 text-white/30 mr-0.5" />
-                  {fwdThemes.map((t) => {
-                    const c = fwdAllColors[t];
-                    const isActive = fwdColorTheme === t;
-                    return (
-                      <button
-                        key={t}
-                        onClick={() => setFwdColorTheme(t)}
-                        title={`Forward-färg: ${c.name}`}
-                        className={`w-5 h-5 rounded-full border-2 transition-all ${
-                          isActive ? 'border-white scale-110' : 'border-transparent opacity-50 hover:opacity-80'
-                        }`}
-                      >
-                        <div className={`w-full h-full rounded-full ${c.dot}`} />
-                      </button>
-                    );
-                  })}
-                </div>
 
                 {/* Inställningar-knapp (dold) */}
                 <LongPressTooltip label="Inställningar">
