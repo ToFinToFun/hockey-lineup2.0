@@ -227,7 +227,7 @@ export default function Home() {
   }, []);
 
   // Fast bredd på spelartrupp-kolumnen i sidoläge (samma som standard-layout)
-  const ROSTER_WIDTH = 320;
+  const ROSTER_WIDTH = 280;
 
   // Statistik-panel toggle
   const [showStats, setShowStats] = useState(false);
@@ -1122,7 +1122,7 @@ export default function Home() {
           backgroundRepeat: "no-repeat",
         }}
       >
-        <div className={`absolute inset-0 pointer-events-none ${isLineupDark ? 'bg-black/45' : 'bg-white/75'}`} />
+        <div className={`absolute inset-0 pointer-events-none ${isLineupDark ? 'bg-black/60' : 'bg-white/75'}`} />
 
         {/* Glassmorphism background glow orbs */}
         {isLineupDark && (
@@ -1137,45 +1137,38 @@ export default function Home() {
         <div
           className="relative flex flex-col min-h-screen"
         >
-          {/* Header */}
-          <header className="px-4 pt-3 pb-2 shrink-0">
-            <div className="max-w-7xl mx-auto glass-panel-strong rounded-xl px-3 py-2 shadow-[0_0_30px_-5px] shadow-white/5">
-              <div className="flex items-center justify-between">
-              <div className="shrink-0">
-                <div className="flex items-center gap-2">
-                  <Link href="/">
-                    <button
-                      title="Tillbaka till startsidan"
-                      className={`p-1.5 rounded transition-all ${isLineupDark ? 'bg-white/10 hover:bg-white/20 text-white/60 hover:text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-500 hover:text-gray-700'}`}
-                    >
-                      <HomeIcon className="w-4 h-4" />
-                    </button>
-                  </Link>
-                  <div>
-                    <h1
-                      className={`text-xl md:text-3xl font-black tracking-widest uppercase ${isLineupDark ? 'text-white' : 'text-gray-900'}`}
-                      style={{ fontFamily: "'Oswald', sans-serif" }}
-                    >
-                      Stålstadens
-                      <span className={`ml-2 ${isLineupDark ? 'text-emerald-400' : 'text-emerald-600'}`}>Lineup</span>
-                    </h1>
-                    <p className={`text-[10px] md:text-xs tracking-wider uppercase ${isLineupDark ? 'text-white/40' : 'text-gray-500'}`}>
-                      A-lag Herrar · Formations-verktyg
+          {/* Header – compact toolbar like mockup */}
+          <header className="px-3 pt-2 pb-1.5 shrink-0">
+            <div className="glass-header rounded-lg px-3 py-1.5">
+              <div className="flex items-center gap-3 flex-wrap">
+              {/* Left: Logo + title + event info */}
+              <div className="flex items-center gap-2 shrink-0">
+                <Link href="/">
+                  <img src="/images/logo-green.png" alt="Stålstadens" className="w-7 h-7 object-contain" />
+                </Link>
+                <div className="leading-tight">
+                  <h1
+                    className={`text-sm font-black tracking-widest uppercase ${isLineupDark ? 'text-white' : 'text-gray-900'}`}
+                    style={{ fontFamily: "'Oswald', sans-serif" }}
+                  >
+                    Stålstadens SF
+                  </h1>
+                  {eventInfo ? (
+                    <p className={`flex items-center gap-1 text-[9px] font-medium ${isLineupDark ? 'text-sky-300/70' : 'text-sky-600'}`}>
+                      <CalendarDays className="w-2.5 h-2.5" />
+                      {eventInfo.title}{eventInfo.date ? ` · ${eventInfo.date}` : ""}
+                      {lastSyncTime && (
+                        <span className={`ml-1 ${isLineupDark ? 'text-white/25' : 'text-gray-400'}`}>· {lastSyncTime}</span>
+                      )}
                     </p>
-                  </div>
+                  ) : (
+                    <p className={`text-[9px] ${isLineupDark ? 'text-white/30' : 'text-gray-400'}`}>Formations-verktyg</p>
+                  )}
                 </div>
-                {eventInfo && (
-                  <p className={`flex items-center gap-1.5 text-[10px] md:text-[11px] mt-0.5 font-medium ${isLineupDark ? 'text-sky-300/80' : 'text-sky-600'}`}>
-                    <CalendarDays className="w-3 h-3" />
-                    {eventInfo.title}{eventInfo.date ? ` · ${eventInfo.date}` : ""}
-                    {lastSyncTime && (
-                      <span className={`ml-1.5 ${isLineupDark ? 'text-white/30' : 'text-gray-400'}`}>· Hämtat {lastSyncTime}</span>
-                    )}
-                  </p>
-                )}
               </div>
-              </div>
-              <div className="flex items-center flex-wrap gap-1 md:gap-1.5 mt-1.5 md:mt-0">
+
+              {/* Center: Toolbar buttons */}
+              <div className="flex items-center gap-1 flex-wrap flex-1 justify-end">
                 {/* SSE sync status – bara ikon, ingen text */}
                 <div className="flex items-center">
                   {sseConnected === null ? (
@@ -1338,15 +1331,6 @@ export default function Home() {
                 </button>
                 </LongPressTooltip>
               </div>
-              {/* Hjälptext – positioner och instruktioner */}
-              <div className={`mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] ${isLineupDark ? 'text-white/35' : 'text-gray-500'}`}>
-                <span className="flex items-center gap-1"><span className="bg-yellow-500/30 text-yellow-300 px-1 rounded text-[9px] font-bold">MV</span> Målvakt</span>
-                <span className="flex items-center gap-1"><span className="bg-blue-500/30 text-blue-300 px-1 rounded text-[9px] font-bold">B</span> Back</span>
-                <span className="flex items-center gap-1"><span className={`${fc.badgeBg} px-1 rounded text-[9px] font-bold`}>F</span> Forward</span>
-                <span className="flex items-center gap-1"><span className="bg-purple-500/30 text-purple-300 px-1 rounded text-[9px] font-bold">C</span> Center</span>
-                <span className="flex items-center gap-1"><span className="bg-teal-500/30 text-teal-300 px-1 rounded text-[9px] font-bold">IB</span> IceBox</span>
-                <span className="text-white/20">|</span>
-                <span>Dra spelare till en plats · Klicka på badge för att ändra position</span>
               </div>
             </div>
           </header>
@@ -1461,7 +1445,7 @@ export default function Home() {
               /* Desktop layout – standard eller sidoläge */
               sideLayout ? (
                 /* Sidoläge: Trupp till vänster (fast bredd), lagen bredvid varandra */
-                <div className="flex gap-2 overflow-x-auto" style={{ minWidth: '850px' }}>
+                <div className="flex gap-1.5">
                   {/* Spelarlista (vänster) – fast bredd */}
                   <div
                     className="flex flex-col gap-2 shrink-0 min-w-0"
@@ -1532,12 +1516,10 @@ export default function Home() {
                 </div>
               ) : (
                 /* Standard-layout: Vita | Trupp | Gröna */
-                <div className="overflow-x-auto">
                 <div
                   className="grid gap-1 md:gap-1.5"
                   style={{
-                    gridTemplateColumns: "minmax(220px, 1fr) 320px minmax(220px, 1fr)",
-                    minWidth: "850px",
+                    gridTemplateColumns: "minmax(180px, 1fr) 280px minmax(180px, 1fr)",
                   }}
                 >
                   {/* Lag A (VITA) – vänster */}
@@ -1601,7 +1583,6 @@ export default function Home() {
                     config={teamBConfig}
                     onConfigChange={setTeamBConfig}
                   />
-                </div>
                 </div>
               )
             ) : (
