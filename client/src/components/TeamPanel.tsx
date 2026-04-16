@@ -117,6 +117,10 @@ export function TeamPanel({
   const accentColor = isWhite ? "text-slate-200" : "text-emerald-400";
   const panelBorder = isWhite ? "border-slate-400/25" : "border-emerald-500/25";
   const glowColor = isWhite ? "shadow-slate-300/8" : "shadow-emerald-400/8";
+  // Gradient glow overlay for team identity
+  const teamGradient = isWhite
+    ? "bg-gradient-to-b from-slate-300/[0.06] via-transparent to-transparent"
+    : "bg-gradient-to-b from-emerald-500/[0.08] via-transparent to-transparent";
 
   const { colors: fc } = useForwardColor();
 
@@ -133,14 +137,17 @@ export function TeamPanel({
   return (
     <div
       className={`
-        flex flex-col rounded-xl overflow-hidden
+        flex flex-col rounded-xl overflow-hidden relative
         bg-[#0d1424]/80 backdrop-blur-xl
         border ${panelBorder}
         shadow-[0_0_40px_-8px] ${glowColor}
       `}
     >
+      {/* Team color gradient overlay */}
+      <div className={`absolute inset-0 pointer-events-none ${teamGradient} rounded-xl`} />
+
       {/* ── Team header ── */}
-      <div className={`flex items-center gap-2 ${compact ? 'px-2 py-1.5' : 'px-3 py-2.5'} border-b border-white/[0.08] bg-white/[0.02]`}>
+      <div className={`flex items-center gap-2 ${compact ? 'px-2 py-1.5' : 'px-3 py-2.5'} border-b border-white/[0.08] bg-white/[0.02] relative`}>
         <img
           src={logo}
           alt={teamName}
