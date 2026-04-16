@@ -1122,7 +1122,7 @@ export default function Home() {
           backgroundRepeat: "no-repeat",
         }}
       >
-        <div className={`absolute inset-0 pointer-events-none ${isLineupDark ? 'bg-black/60' : 'bg-white/75'}`} />
+        <div className={`absolute inset-0 pointer-events-none ${isLineupDark ? 'bg-[#080c18]/85' : 'bg-white/75'}`} />
 
         {/* Glassmorphism background glow orbs */}
         {isLineupDark && (

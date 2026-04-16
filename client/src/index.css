@@ -486,10 +486,11 @@ select option {
   }
 
   .glass-header {
-    background: oklch(0.06 0.02 240 / 80%);
-    backdrop-filter: blur(24px) saturate(1.4);
-    -webkit-backdrop-filter: blur(24px) saturate(1.4);
-    border-bottom: 1px solid oklch(1 0 0 / 10%);
+    background: oklch(0.06 0.02 240 / 82%);
+    backdrop-filter: blur(28px) saturate(1.5);
+    -webkit-backdrop-filter: blur(28px) saturate(1.5);
+    border: 1px solid oklch(1 0 0 / 12%);
+    box-shadow: 0 0 30px -5px oklch(1 0 0 / 5%), 0 4px 20px -4px oklch(0 0 0 / 40%);
   }
 
   .glass-button {
