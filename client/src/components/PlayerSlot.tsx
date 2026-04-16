@@ -1,6 +1,6 @@
-// Hockey Lineup App – PlayerSlot
-// En fast namngiven plats som alltid visas och tar emot en spelare via drag and drop
-// Stödjer compact-läge för mobil side-by-side
+// Hockey Lineup App – PlayerSlot – Glassmorphism v2
+// Flat design: thin left-colored border accent, minimal background
+// Empty slots: dashed border with placeholder text
 
 import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard } from "./PlayerCard";
@@ -16,58 +16,69 @@ interface PlayerSlotProps {
   compact?: boolean;
 }
 
-const baseRoleColors = {
-  gk:     { border: "border-amber-400/40",   bg: "bg-amber-950/20",   label: "text-amber-300",   empty: "text-amber-400/35",   badge: "bg-amber-500/20 text-amber-300" },
-  "res-gk": { border: "border-amber-400/25", bg: "bg-amber-950/10",   label: "text-amber-300/70",empty: "text-amber-400/25",   badge: "bg-amber-500/15 text-amber-300/70" },
-  def:    { border: "border-blue-400/40",    bg: "bg-blue-950/20",    label: "text-blue-300",    empty: "text-blue-400/35",    badge: "bg-blue-500/20 text-blue-300" },
-  c:      { border: "border-purple-400/50",  bg: "bg-purple-950/25",  label: "text-purple-300",  empty: "text-purple-400/40",  badge: "bg-purple-500/25 text-purple-300" },
+/* Role-specific accent colors for the left border and badge */
+const roleAccents: Record<string, { border: string; badge: string; badgeText: string; empty: string }> = {
+  gk:       { border: "border-l-amber-400",    badge: "bg-amber-500",    badgeText: "text-amber-950",   empty: "text-amber-400/30" },
+  "res-gk": { border: "border-l-amber-400/50", badge: "bg-amber-500/70", badgeText: "text-amber-950",   empty: "text-amber-400/20" },
+  def:      { border: "border-l-blue-400",     badge: "bg-blue-500",     badgeText: "text-blue-950",    empty: "text-blue-400/30" },
+  c:        { border: "border-l-purple-400",    badge: "bg-purple-500",   badgeText: "text-purple-950",  empty: "text-purple-400/30" },
 };
 
 export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact = false }: PlayerSlotProps) {
   const { isOver, setNodeRef } = useDroppable({ id: slot.id });
   const { colors: fc } = useForwardColor();
 
-  // Forward roles (lw, rw) use the dynamic forward color
-  const forwardRoleColor = {
-    border: fc.slotBorder,
-    bg: fc.slotBg,
-    label: fc.slotLabel,
-    empty: fc.slotEmpty,
-    badge: fc.slotBadge,
+  // Forward roles (lw, rw) use cyan
+  const forwardAccent = {
+    border: "border-l-cyan-400",
+    badge: "bg-cyan-500",
+    badgeText: "text-cyan-950",
+    empty: "text-cyan-400/30",
   };
 
-  const roleColors: Record<string, typeof forwardRoleColor> = {
-    ...baseRoleColors,
-    lw: forwardRoleColor,
-    rw: forwardRoleColor,
+  const accents: Record<string, typeof forwardAccent> = {
+    ...roleAccents,
+    lw: forwardAccent,
+    rw: forwardAccent,
   };
 
-  const colors = roleColors[slot.role];
+  const accent = accents[slot.role] ?? forwardAccent;
+
+  const filledClasses = `
+    bg-white/[0.04] border border-white/[0.08] ${accent.border} border-l-2
+    hover:bg-white/[0.07] hover:border-white/[0.12]
+  `;
+
+  const emptyClasses = `
+    border border-dashed border-white/[0.1] ${accent.border} border-l-2
+    bg-transparent
+  `;
+
+  const dropHighlight = isOver
+    ? "!bg-white/[0.08] !border-white/30 ring-1 ring-white/20 shadow-md"
+    : "";
 
   return (
     <div
       ref={setNodeRef}
       style={{ touchAction: "manipulation" }}
       className={`
-        flex items-center gap-1.5 rounded-md border transition-all duration-150 overflow-visible
-        ${compact ? 'min-h-[28px] px-1 py-0.5' : 'min-h-[36px] px-2 py-1.5'}
-        ${isOver && !player
-          ? `${colors.bg} border-white/50 shadow-md ring-1 ring-white/30`
-          : isOver && player
-          ? "bg-white/5 border-white/40 ring-1 ring-white/20"
-          : `${colors.bg} ${colors.border}`
-        }
+        flex items-center gap-1.5 rounded-lg transition-all duration-150 overflow-visible
+        ${compact ? 'min-h-[26px] px-1 py-0.5' : 'min-h-[34px] px-2 py-1'}
+        ${player ? filledClasses : emptyClasses}
+        ${dropHighlight}
       `}
     >
-      {/* Roll-badge */}
+      {/* Position badge — circle */}
       <span className={`
-        ${compact ? 'text-[7px] w-5 py-0' : 'text-[9px] w-7 py-0.5'} font-black text-center shrink-0 rounded px-0.5 uppercase tracking-wide
-        ${colors.badge}
+        ${compact ? 'w-5 h-5 text-[7px]' : 'w-6 h-6 text-[9px]'}
+        font-black flex items-center justify-center shrink-0 rounded-full uppercase
+        ${accent.badge} ${accent.badgeText}
       `}>
         {slot.shortLabel}
       </span>
 
-      {/* Spelarkortet eller tom plats */}
+      {/* Player card or empty placeholder */}
       {player ? (
         <div className="flex-1 min-w-0 overflow-visible">
           <DraggablePlayerCard
@@ -78,7 +89,7 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact =
           />
         </div>
       ) : (
-        <span className={`${compact ? 'text-[9px]' : 'text-[11px]'} italic flex-1 ${colors.empty} ${isOver ? "text-white/50" : ""}`}>
+        <span className={`${compact ? 'text-[9px]' : 'text-[11px]'} italic flex-1 ${accent.empty} ${isOver ? "!text-white/50" : ""}`}>
           {isOver ? "Släpp här" : (compact ? slot.shortLabel : slot.label)}
         </span>
       )}

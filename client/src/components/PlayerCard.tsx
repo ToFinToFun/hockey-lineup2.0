@@ -1,5 +1,6 @@
-// Hockey Lineup App – PlayerCard
-// Dropdowns renderas via React Portal för att alltid visas ovanpå allt
+// Hockey Lineup App – PlayerCard – Glassmorphism v2
+// Flat design: no colored row backgrounds, just name + number + badges
+// PortalDropdown edit panel preserved with all functionality
 
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -31,7 +32,7 @@ interface PlayerCardProps {
   isHolding?: boolean;
   holdDuration?: number;
   compact?: boolean;
-  hideExtras?: boolean; // Dölj position/lag även i icke-compact (används i export)
+  hideExtras?: boolean;
 }
 
 export function DraggablePlayerCard({
@@ -67,16 +68,13 @@ export function DraggablePlayerCard({
 
   const editBtnRef = useRef<HTMLButtonElement>(null);
 
-  // Under drag: göm originalet helt (DragOverlay hanterar all visuell feedback)
   const style = isDragging
     ? { opacity: 0, pointerEvents: "none" as const }
     : {};
 
-  // Spara startposition för att beräkna rörelse-avstånd
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    // Starta long-press timer (endast touch)
     if (e.pointerType !== "mouse" && onLongPress) {
       pointerStartRef.current = { x: e.clientX, y: e.clientY };
       onLongPress(e);
@@ -89,7 +87,6 @@ export function DraggablePlayerCard({
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    // Avbryt long-press bara om fingret rört sig mer än 15px (undvik falska avbrott)
     if (pointerStartRef.current && onLongPressMove) {
       const dx = e.clientX - pointerStartRef.current.x;
       const dy = e.clientY - pointerStartRef.current.y;
@@ -104,13 +101,13 @@ export function DraggablePlayerCard({
   return (
     <div
       ref={setNodeRef}
-      style={{ ...style, touchAction: "manipulation" }}  /* manipulation = scroll + pinch fungerar, dnd-kit TouchSensor hanterar drag via delay */
+      style={{ ...style, touchAction: "manipulation" }}
       className={`
         group relative flex items-center gap-1.5 rounded-md
-        bg-white/[0.07] border border-white/15 backdrop-blur-sm
-        hover:bg-white/[0.12] hover:border-white/25
+        bg-transparent
+        hover:bg-white/[0.05]
         transition-all duration-150 select-none
-        ${compact ? "px-1.5 py-1 text-xs" : "px-2 py-1.5 text-sm"}
+        ${compact ? "px-0.5 py-0.5 text-xs" : "px-1 py-1 text-sm"}
         ${isDragging ? "shadow-2xl ring-2 ring-emerald-400/60" : ""}
         ${isHolding ? "ring-1 ring-red-400/60" : ""}
       `}
@@ -121,7 +118,7 @@ export function DraggablePlayerCard({
       onPointerMove={handlePointerMove}
       onPointerCancel={handlePointerUp}
     >
-      {/* Visuell hold-timer overlay */}
+      {/* Hold-timer overlay */}
       {isHolding && (
         <div className="absolute inset-0 rounded-md pointer-events-none flex items-center justify-center z-10"
           style={{ background: 'rgba(239,68,68,0.10)' }}
@@ -143,23 +140,24 @@ export function DraggablePlayerCard({
         </div>
       )}
 
-      {/* Anmäld/Avböjd-indikator + Namn + #nr */}
+      {/* Registered/Declined indicator */}
       {!hideExtras && player.isRegistered && (
         <span className="text-emerald-400 text-[9px] shrink-0" title="Anmäld (Kommer)">✓</span>
       )}
       {!hideExtras && player.isDeclined && !player.isRegistered && (
         <span className="text-red-400 text-[9px] shrink-0" title="Avböjd (Kommer inte)">✗</span>
       )}
+
+      {/* Player name + number */}
       <span className="text-white font-medium truncate flex-1 leading-tight">
         {player.name}
-        {!compact && !hideExtras && player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
-        {compact && !hideExtras && player.number ? <span className="text-white/40 font-normal ml-1"> #{player.number}</span> : null}
+        {player.number ? <span className="text-white/35 font-normal ml-1">#{player.number}</span> : null}
         {!hideExtras && !compact && player.gamesPlayed != null && player.gamesPlayed > 0 && (
-          <span className="ml-1 text-white/30 text-[9px]" title="Matcher spelade">({player.gamesPlayed})</span>
+          <span className="ml-1 text-white/25 text-[9px]" title="Matcher spelade">({player.gamesPlayed})</span>
         )}
       </span>
 
-      {/* Captain + Lag-cirkel + position i compact-läge – klickbara för att öppna redigeringspanelen */}
+      {/* Compact badges — clickable for edit */}
       {compact && !hideExtras && onChangeName ? (
         <button
           ref={editBtnRef}
@@ -181,7 +179,7 @@ export function DraggablePlayerCard({
             }`}>{player.captainRole}</span>
           )}
           <TeamColorIndicator teamColor={player.teamColor ?? null} size={10} />
-          <span className={`text-[8px] font-bold px-1 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position, fc.badgeBg)}`}>
+          <span className={`text-[8px] font-bold w-5 h-5 flex items-center justify-center rounded-full shrink-0 ${getPositionBadgeColor(player.position, fc.badgeBg)}`}>
             {player.position}
           </span>
         </button>
@@ -195,13 +193,13 @@ export function DraggablePlayerCard({
             }`}>{player.captainRole}</span>
           )}
           <TeamColorIndicator teamColor={player.teamColor ?? null} size={10} />
-          <span className={`text-[8px] font-bold px-1 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position, fc.badgeBg)}`}>
+          <span className={`text-[8px] font-bold w-5 h-5 flex items-center justify-center rounded-full shrink-0 ${getPositionBadgeColor(player.position, fc.badgeBg)}`}>
             {player.position}
           </span>
         </div>
       ) : null}
 
-      {/* Icke-compact badges – klickbara för att öppna redigeringspanelen */}
+      {/* Non-compact badges — clickable for edit */}
       {!compact && !hideExtras && onChangeName ? (
         <button
           ref={!compact ? editBtnRef : undefined}
@@ -212,7 +210,7 @@ export function DraggablePlayerCard({
             setNrValue(player.number ?? "");
             setShowEditPanel((v) => !v);
           }}
-          className="flex items-center gap-1 shrink-0 hover:ring-1 hover:ring-emerald-400/40 rounded px-0.5 py-0.5 transition-all cursor-pointer"
+          className="flex items-center gap-1.5 shrink-0 hover:ring-1 hover:ring-emerald-400/40 rounded px-0.5 py-0.5 transition-all cursor-pointer"
           title="Klicka för att redigera spelare"
         >
           {player.captainRole && (
@@ -222,13 +220,13 @@ export function DraggablePlayerCard({
                 : "bg-orange-400/20 text-orange-300 border-orange-400/40"
             }`}>{player.captainRole}</span>
           )}
-          <TeamColorIndicator teamColor={player.teamColor ?? null} size={16} />
-          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${getPositionBadgeColor(player.position, fc.badgeBg)}`}>
+          <TeamColorIndicator teamColor={player.teamColor ?? null} size={14} />
+          <span className={`text-[9px] font-bold w-6 h-6 flex items-center justify-center rounded-full shrink-0 ${getPositionBadgeColor(player.position, fc.badgeBg)}`}>
             {player.position}
           </span>
         </button>
       ) : !compact && !hideExtras ? (
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           {player.captainRole && (
             <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${
               player.captainRole === "C"
@@ -236,14 +234,14 @@ export function DraggablePlayerCard({
                 : "bg-orange-400/20 text-orange-300 border-orange-400/40"
             }`}>{player.captainRole}</span>
           )}
-          <TeamColorIndicator teamColor={player.teamColor ?? null} size={16} />
-          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${getPositionBadgeColor(player.position, fc.badgeBg)}`}>
+          <TeamColorIndicator teamColor={player.teamColor ?? null} size={14} />
+          <span className={`text-[9px] font-bold w-6 h-6 flex items-center justify-center rounded-full shrink-0 ${getPositionBadgeColor(player.position, fc.badgeBg)}`}>
             {player.position}
           </span>
         </div>
       ) : null}
 
-      {/* Gemensam PortalDropdown för både compact och icke-compact */}
+      {/* PortalDropdown edit panel */}
       {onChangeName && (
         <PortalDropdown
             anchorRef={editBtnRef}
@@ -251,7 +249,7 @@ export function DraggablePlayerCard({
             onClose={() => setShowEditPanel(false)}
           >
             <div className="px-3 py-2.5 flex flex-col gap-2" onPointerDown={(e) => e.stopPropagation()}>
-              {/* Rad 1: Namn-fält */}
+              {/* Name field */}
               <div className="flex items-center gap-2">
                 <input
                   type="text"
@@ -285,7 +283,7 @@ export function DraggablePlayerCard({
                   Spara
                 </button>
               </div>
-              {/* Rad 2: Lag-väljare */}
+              {/* Team color */}
               {onChangeTeamColor && (
                 <div className="flex items-center gap-1.5 pt-1 border-t border-white/10">
                   <span className="text-white/40 text-[10px] w-6">Lag:</span>
@@ -313,7 +311,7 @@ export function DraggablePlayerCard({
                   ))}
                 </div>
               )}
-              {/* Rad 3: Position-väljare */}
+              {/* Position */}
               {onChangePosition && (
                 <div className="flex items-center gap-1 pt-1 border-t border-white/10 flex-wrap">
                   <span className="text-white/40 text-[10px] w-6">Pos:</span>
@@ -336,7 +334,7 @@ export function DraggablePlayerCard({
                   ))}
                 </div>
               )}
-              {/* Rad 4: Nr + Roll på samma rad */}
+              {/* Number + Captain role */}
               {(onChangeNumber || onChangeCaptainRole) && (
                 <div className="flex items-center gap-3 pt-1 border-t border-white/10">
                   {onChangeNumber && (
@@ -395,7 +393,7 @@ export function DraggablePlayerCard({
                   )}
                 </div>
               )}
-              {/* Rad 5: Anmäld + Synka till laget.se */}
+              {/* Registered + Sync to laget.se */}
               <div className="flex items-center gap-3 flex-wrap">
                 {onChangeRegistered && (
                   <div className="flex items-center gap-1.5">
@@ -488,7 +486,7 @@ export function DraggablePlayerCard({
                   </div>
                 )}
               </div>
-              {/* Ta bort spelare */}
+              {/* Delete player */}
               {onDelete && (
                 <div className="pt-1.5 border-t border-white/10">
                   {!confirmDelete ? (
@@ -540,12 +538,12 @@ export function DraggablePlayerCard({
           </PortalDropdown>
       )}
 
-      {/* Ta bort-knapp */}
+      {/* Remove button */}
       {onRemove && (
         <button
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); onRemove(); }}
-          className="ml-0.5 text-red-400 hover:text-red-300 shrink-0 transition-colors"
+          className="ml-0.5 text-red-400/50 hover:text-red-300 shrink-0 transition-colors"
         >
           <X className="w-3 h-3" />
         </button>
@@ -554,7 +552,7 @@ export function DraggablePlayerCard({
   );
 }
 
-// Liten indikator för lag-tillhörighet – solid färgcirkel
+// Team color indicator — solid circle
 export function TeamColorIndicator({ teamColor, size = 16 }: { teamColor: TeamColor; size?: number }) {
   if (teamColor === "green") {
     return (
@@ -582,11 +580,11 @@ export function TeamColorIndicator({ teamColor, size = 16 }: { teamColor: TeamCo
   );
 }
 
-// Overlay-kort som visas under musen vid drag
+// Drag overlay card
 export function PlayerCardOverlay({ player }: { player: Player }) {
   const { colors: fc } = useForwardColor();
   return (
-    <div className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm bg-emerald-900 border border-emerald-400 shadow-2xl ring-2 ring-emerald-400/60 cursor-grabbing select-none" style={{ minWidth: 160, maxWidth: 240 }}>
+    <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm bg-[#0d1424]/95 border border-emerald-400/60 shadow-2xl shadow-emerald-500/20 ring-2 ring-emerald-400/40 cursor-grabbing select-none backdrop-blur-xl" style={{ minWidth: 160, maxWidth: 240 }}>
       <TeamColorIndicator teamColor={player.teamColor ?? null} size={14} />
       {player.captainRole && (
         <span className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 border ${
@@ -601,7 +599,7 @@ export function PlayerCardOverlay({ player }: { player: Player }) {
           {player.number}
         </span>
       )}
-      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position, fc.badgeBg)}`}>
+      <span className={`text-[9px] font-bold w-6 h-6 flex items-center justify-center rounded-full shrink-0 ${getPositionBadgeColor(player.position, fc.badgeBg)}`}>
         {player.position}
       </span>
     </div>

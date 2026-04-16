@@ -1124,12 +1124,22 @@ export default function Home() {
       >
         <div className={`absolute inset-0 pointer-events-none ${isLineupDark ? 'bg-black/45' : 'bg-white/75'}`} />
 
+        {/* Glassmorphism background glow orbs */}
+        {isLineupDark && (
+          <>
+            <div className="bg-orb bg-orb-emerald" style={{ width: '500px', height: '500px', top: '-10%', left: '-5%' }} />
+            <div className="bg-orb bg-orb-cyan" style={{ width: '400px', height: '400px', top: '30%', right: '-8%' }} />
+            <div className="bg-orb bg-orb-purple" style={{ width: '350px', height: '350px', bottom: '5%', left: '25%' }} />
+            <div className="bg-orb bg-orb-amber" style={{ width: '300px', height: '300px', top: '60%', right: '20%', opacity: 0.2 }} />
+          </>
+        )}
+
         <div
           className="relative flex flex-col min-h-screen"
         >
           {/* Header */}
           <header className="px-4 pt-3 pb-2 shrink-0">
-            <div className="max-w-7xl mx-auto glass-panel rounded-xl px-3 py-2">
+            <div className="max-w-7xl mx-auto glass-panel-strong rounded-xl px-3 py-2 shadow-[0_0_30px_-5px] shadow-white/5">
               <div className="flex items-center justify-between">
               <div className="shrink-0">
                 <div className="flex items-center gap-2">
