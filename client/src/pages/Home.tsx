@@ -30,10 +30,11 @@ import { PlayerCardOverlay } from "@/components/PlayerCard";
 import { ExportModal } from "@/components/ExportModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
+import { MobileRosterDrawer } from "@/components/MobileRosterDrawer";
 import { LongPressTooltip } from "@/components/LongPressTooltip";
 import { trpc } from "@/lib/trpc";
 import type { Player as PlayerType } from "@/lib/players";
-import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Settings, Sun, Moon, Home as HomeIcon } from "lucide-react";
+import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Settings, Sun, Moon, Home as HomeIcon, Users } from "lucide-react";
 import { useLineupTheme } from "@/hooks/useLineupTheme";
 import { useForwardColor } from "@/hooks/useForwardColor";
 import { Link } from "wouter";
@@ -928,6 +929,21 @@ export default function Home() {
   const [mobileTab, setMobileTabRaw] = useState<MobileTab>("trupp");
   const [dragHoverTab, setDragHoverTab] = useState<MobileTab | null>(null);
 
+  // Mobile roster drawer state
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+
+  // Tap-to-assign: placera en spelare i nästa lediga slot i valt lag
+  const handleTapAssign = useCallback((player: Player, team: "team-a" | "team-b") => {
+    const slots = team === "team-a" ? TEAM_A_SLOTS : TEAM_B_SLOTS;
+    const currentLineup = lineupRef.current;
+    // Hitta första lediga slot
+    const emptySlot = slots.find(s => !currentLineup[s.id]);
+    if (!emptySlot) return; // Laget är fullt
+    pushUndo();
+    setAvailablePlayers(prev => prev.filter(p => p.id !== player.id));
+    setLineup(prev => ({ ...prev, [emptySlot.id]: player }));
+  }, [TEAM_A_SLOTS, TEAM_B_SLOTS, pushUndo]);
+
   // Wrapper med haptic feedback vid flikbyte
   const setMobileTab = useCallback((valOrFn: MobileTab | ((prev: MobileTab) => MobileTab)) => {
     setMobileTabRaw((prev) => {
@@ -1112,8 +1128,8 @@ export default function Home() {
           className="relative flex flex-col min-h-screen"
         >
           {/* Header */}
-          <header className="px-4 pt-4 pb-2 shrink-0">
-            <div className="max-w-7xl mx-auto">
+          <header className="px-4 pt-3 pb-2 shrink-0">
+            <div className="max-w-7xl mx-auto glass-panel rounded-xl px-3 py-2">
               <div className="flex items-center justify-between">
               <div className="shrink-0">
                 <div className="flex items-center gap-2">
@@ -1409,53 +1425,24 @@ export default function Home() {
             );
           })()}
 
-          {/* Mobilflikar – styrs av isMobile (samma källa som innehållet) */}
-          {isMobile && <div className="shrink-0">
-            <div className="flex gap-0 px-2">
-              {(sideLayout
-                ? [
-                    { key: "trupp" as MobileTab, label: "Trupp", color: "border-emerald-400/60 text-emerald-300" },
-                    { key: "vita" as MobileTab, label: `${teamAName} (${teamARegistered}/${teamACount})`, color: "border-slate-300/60 text-slate-200" },
-                    { key: "grona" as MobileTab, label: `${teamBName} (${teamBRegistered}/${teamBCount})`, color: "border-emerald-500/60 text-emerald-400" },
-                  ]
-                : [
-                    { key: "vita" as MobileTab, label: `${teamAName} (${teamARegistered}/${teamACount})`, color: "border-slate-300/60 text-slate-200" },
-                    { key: "trupp" as MobileTab, label: "Trupp", color: "border-emerald-400/60 text-emerald-300" },
-                    { key: "grona" as MobileTab, label: `${teamBName} (${teamBRegistered}/${teamBCount})`, color: "border-emerald-500/60 text-emerald-400" },
-                  ]
-              ).map(({ key, label, color }) => (
-                <button
-                  key={key}
-                  data-mobile-tab={key}
-                  onClick={() => setMobileTab(key)}
-                  className={`
-                    flex-1 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all
-                    ${mobileTab === key
-                      ? `${color} bg-white/5`
-                      : dragHoverTab === key
-                      ? `${color} bg-white/10 scale-105 animate-pulse`
-                      : "border-transparent text-white/30 hover:text-white/50"}
-                  `}
-                  style={{ fontFamily: "'Oswald', sans-serif" }}
-                >
-                  {label}
-                </button>
-              ))}
+          {/* Mobil: Trupp-knapp (öppnar drawer) */}
+          {isMobile && (
+            <div className="shrink-0 px-2 py-1.5 flex items-center justify-between">
+              <button
+                onClick={() => setMobileDrawerOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg glass-button text-xs font-bold uppercase tracking-wider text-emerald-300"
+                style={{ fontFamily: "'Oswald', sans-serif" }}
+              >
+                <Users className="w-3.5 h-3.5" />
+                Trupp ({totalRegistered}/{totalPlayers})
+              </button>
+              <div className="flex items-center gap-1 text-[10px] text-white/30">
+                <span className="text-slate-200">{teamAName} {teamARegistered}/{teamACount}</span>
+                <span>|</span>
+                <span className="text-emerald-400">{teamBName} {teamBRegistered}/{teamBCount}</span>
+              </div>
             </div>
-            {/* Swipe-indikator (prickar) */}
-            <div className="flex justify-center gap-1.5 py-1.5">
-              {(sideLayout ? ["trupp", "vita", "grona"] as MobileTab[] : TAB_ORDER).map((tab) => (
-                <div
-                  key={tab}
-                  className={`rounded-full transition-all duration-200 ${
-                    mobileTab === tab
-                      ? "w-4 h-1.5 bg-emerald-400/70"
-                      : "w-1.5 h-1.5 bg-white/20"
-                  }`}
-                />
-              ))}
-            </div>
-          </div>}
+          )}
 
           <main className="px-2 md:px-4 pb-8" ref={exportRef}>
             {/* Villkorlig rendering: ANTINGEN desktop ELLER mobil – aldrig båda */}
@@ -1608,27 +1595,10 @@ export default function Home() {
                 </div>
               )
             ) : (
-              /* Mobilvy – bara den aktiva fliken renderas */
-              <div
-                ref={swipeRef}
-                className="relative touch-pan-y transition-transform duration-200 ease-out"
-              >
-                {/* Kantindikatorer vid drag – visar att man kan dra åt sidan */}
-                {activePlayer && isMobile && (
-                  <>
-                    {TAB_ORDER.indexOf(mobileTab) > 0 && (
-                      <div className="absolute left-0 top-0 bottom-0 w-8 z-30 pointer-events-none flex items-center justify-center bg-gradient-to-r from-cyan-400/20 to-transparent animate-pulse rounded-l">
-                        <span className="text-white/60 text-lg">❮</span>
-                      </div>
-                    )}
-                    {TAB_ORDER.indexOf(mobileTab) < TAB_ORDER.length - 1 && (
-                      <div className="absolute right-0 top-0 bottom-0 w-8 z-30 pointer-events-none flex items-center justify-center bg-gradient-to-l from-emerald-400/20 to-transparent animate-pulse rounded-r">
-                        <span className="text-white/60 text-lg">❯</span>
-                      </div>
-                    )}
-                  </>
-                )}
-                {mobileTab === "vita" && (
+              /* Mobilvy – Side-by-side: båda lagen synliga + trupp-drawer */
+              <div className="flex gap-1 min-h-0">
+                {/* Lag A (VITA) – vänster kolumn */}
+                <div className="mobile-team-col">
                   <TeamPanel
                     teamId="team-a"
                     teamName={teamAName}
@@ -1641,39 +1611,12 @@ export default function Home() {
                     isWhite
                     config={teamAConfig}
                     onConfigChange={setTeamAConfig}
+                    compact
                   />
-                )}
-                {mobileTab === "trupp" && (
-                  <div className="flex flex-col gap-2">
-                    <PlayerList
-                      players={availablePlayers}
-                      onAddPlayer={handleAddPlayer}
-                      onDeletePlayer={handleDeletePlayer}
-                      onChangePosition={handleChangePosition}
-                      onChangeTeamColor={handleChangeTeamColor}
-                      onChangeNumber={handleChangeNumber}
-                      onChangeName={handleChangeName}
-                      onChangeCaptainRole={handleChangeCaptainRole}
-                      onChangeRegistered={handleChangeRegistered}
-                      onSyncToLaget={handleSyncToLaget}
-                      syncingPlayerIds={syncingPlayerIds}
-                      onBulkSyncToLaget={handleBulkSyncToLaget}
-                      onChangeGamesPlayed={handleChangeGamesPlayed}
-                      onBulkRegister={handleBulkRegister}
-                       onEventInfoUpdate={setEventInfo}
-                       totalRegistered={totalRegistered}
-                       totalDeclined={totalDeclined}
-                       totalPlayers={totalPlayers}
-                     />
-                    <SavedLineupsPanel
-                      teamAName={teamAName}
-                      teamBName={teamBName}
-                      lineup={lineup}
-                      onLoadLineup={handleLoadLineup}
-                    />
-                  </div>
-                )}
-                {mobileTab === "grona" && (
+                </div>
+
+                {/* Lag B (GRÖNA) – höger kolumn */}
+                <div className="mobile-team-col">
                   <TeamPanel
                     teamId="team-b"
                     teamName={teamBName}
@@ -1686,8 +1629,9 @@ export default function Home() {
                     isWhite={false}
                     config={teamBConfig}
                     onConfigChange={setTeamBConfig}
+                    compact
                   />
-                )}
+                </div>
               </div>
             )}
           </main>
@@ -1746,6 +1690,28 @@ export default function Home() {
           onCancel={() => setConfirmAutoDistribute(false)}
         />
       )}
+      {/* Mobile Roster Drawer */}
+      {isMobile && (
+        <MobileRosterDrawer
+          open={mobileDrawerOpen}
+          onClose={() => setMobileDrawerOpen(false)}
+          players={availablePlayers}
+          onBulkRegister={() => {
+            handleBulkRegister().then((result) => {
+              if (result.eventTitle) {
+                setEventInfo({ title: result.eventTitle, date: result.eventDate || "" });
+              }
+            });
+          }}
+          totalRegistered={totalRegistered}
+          totalDeclined={totalDeclined}
+          totalPlayers={totalPlayers}
+          onTapAssign={handleTapAssign}
+          teamAName={teamAName}
+          teamBName={teamBName}
+        />
+      )}
+
       {/* Remote change toast */}
       {remoteChangeToast && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[99999] bg-black/80 text-white text-xs px-4 py-2 rounded-full shadow-lg backdrop-blur-sm border border-white/10 animate-in fade-in slide-in-from-bottom-2">
