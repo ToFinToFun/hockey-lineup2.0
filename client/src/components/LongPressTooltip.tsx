@@ -43,7 +43,7 @@ export function LongPressTooltip({ label, children, className = "" }: LongPressT
       {children}
       {show && (
         <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-[9999] pointer-events-none animate-in fade-in duration-150">
-          <div className="bg-gray-900 border border-white/20 text-white text-[10px] font-semibold px-2 py-1 rounded-md shadow-lg whitespace-nowrap">
+          <div className="glass-panel-strong text-white text-[10px] font-semibold px-2 py-1 rounded-md shadow-lg whitespace-nowrap">
             {label}
           </div>
         </div>

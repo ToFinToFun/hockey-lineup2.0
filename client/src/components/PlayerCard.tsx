@@ -107,8 +107,8 @@ export function DraggablePlayerCard({
       style={{ ...style, touchAction: "manipulation" }}  /* manipulation = scroll + pinch fungerar, dnd-kit TouchSensor hanterar drag via delay */
       className={`
         group relative flex items-center gap-1.5 rounded-md
-        bg-white/10 border border-white/20 backdrop-blur-sm
-        hover:bg-white/15 hover:border-white/35
+        bg-white/[0.07] border border-white/15 backdrop-blur-sm
+        hover:bg-white/[0.12] hover:border-white/25
         transition-all duration-150 select-none
         ${compact ? "px-1.5 py-1 text-xs" : "px-2 py-1.5 text-sm"}
         ${isDragging ? "shadow-2xl ring-2 ring-emerald-400/60" : ""}

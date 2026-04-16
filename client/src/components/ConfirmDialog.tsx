@@ -45,7 +45,7 @@ export function ConfirmDialog({
       onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
     >
       <div
-        className="bg-gray-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
+        className="glass-panel-strong rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
