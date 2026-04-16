@@ -617,7 +617,7 @@ export function ExportModal({
       style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-gray-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] w-full max-w-5xl overflow-hidden">
+      <div className="glass-panel-strong rounded-2xl shadow-2xl flex flex-col max-h-[90vh] w-full max-w-5xl overflow-hidden">
         {/* Modal header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0">
           <h2 className="text-white font-black text-base uppercase tracking-widest" style={{ fontFamily: "'Oswald', sans-serif" }}>

@@ -166,11 +166,11 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
     <div
       ref={setNodeRef}
       className={`
-        flex flex-col rounded-xl border backdrop-blur-md
-        bg-black/30 transition-all duration-200 min-w-0 overflow-hidden
+        flex flex-col rounded-xl glass-panel
+        transition-all duration-200 min-w-0 overflow-hidden
         ${isOver
-          ? "border-emerald-400/60 bg-emerald-950/20 shadow-lg shadow-emerald-500/10"
-          : "border-white/10"
+          ? "border-emerald-400/60 !bg-emerald-950/20 shadow-lg shadow-emerald-500/10"
+          : ""
         }
       `}
     >

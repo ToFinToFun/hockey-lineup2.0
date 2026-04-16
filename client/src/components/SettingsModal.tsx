@@ -101,7 +101,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md bg-slate-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-md glass-panel-strong rounded-xl shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
           <div className="flex items-center gap-2">

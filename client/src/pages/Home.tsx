@@ -1365,7 +1365,7 @@ export default function Home() {
             return (
               <div className="px-4 pb-2 shrink-0">
                 <div className="max-w-7xl mx-auto">
-                  <div className="bg-white/5 border border-white/10 rounded-lg p-3 backdrop-blur-sm">
+                  <div className="glass-panel rounded-lg p-3">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                       {/* Översikt */}
                       <div>
@@ -1714,7 +1714,7 @@ export default function Home() {
 
       {/* Remote change toast */}
       {remoteChangeToast && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[99999] bg-black/80 text-white text-xs px-4 py-2 rounded-full shadow-lg backdrop-blur-sm border border-white/10 animate-in fade-in slide-in-from-bottom-2">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[99999] glass-panel-strong text-white text-xs px-4 py-2 rounded-full shadow-lg animate-in fade-in slide-in-from-bottom-2">
           {remoteChangeToast}
         </div>
       )}

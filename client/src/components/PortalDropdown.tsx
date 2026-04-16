@@ -64,7 +64,7 @@ export function PortalDropdown({ anchorRef, open, onClose, children }: PortalDro
         zIndex: 99999,
         minWidth: 160,
       }}
-      className="bg-gray-900/98 border border-white/20 rounded-lg shadow-2xl overflow-hidden backdrop-blur-md"
+      className="glass-panel-strong rounded-lg shadow-2xl overflow-hidden"
       onPointerDown={(e) => e.stopPropagation()}
     >
       {children}
