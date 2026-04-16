@@ -109,7 +109,7 @@ export function SavedLineupsPanel({
   const placedCount = Object.keys(lineup).length;
 
   return (
-    <div className="rounded-xl overflow-hidden glass-panel">
+    <div className="rounded-xl overflow-hidden bg-[#0d1424]/80 backdrop-blur-xl border border-white/[0.12] shadow-[0_0_40px_-8px] shadow-white/5">
       {/* Header – klickbar för att expandera/minimera */}
       <button
         onClick={() => setExpanded((v) => !v)}

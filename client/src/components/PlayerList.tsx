@@ -1,4 +1,5 @@
-// Mittenpanel med spelarlista, sökfunktion, positions- och lag-filter, sortering
+// Mittenpanel med spelarlista – Glassmorphism v2
+// Visible glass border, frosted background, clean layout
 
 import { useState, useCallback } from "react";
 import { useDroppable } from "@dnd-kit/core";
@@ -59,12 +60,12 @@ function sortPlayers(players: Player[], key: SortKey, dir: SortDir): Player[] {
     if (key === "registered") {
       const ra = a.isRegistered ? 1 : 0;
       const rb = b.isRegistered ? 1 : 0;
-      cmp = rb - ra; // Anmälda först vid asc
+      cmp = rb - ra;
       if (cmp === 0) cmp = a.name.localeCompare(b.name, "sv");
     } else if (key === "declined") {
       const da = a.isDeclined ? 1 : 0;
       const db = b.isDeclined ? 1 : 0;
-      cmp = db - da; // Avböjda först vid asc
+      cmp = db - da;
       if (cmp === 0) cmp = a.name.localeCompare(b.name, "sv");
     } else if (key === "name") {
       cmp = a.name.localeCompare(b.name, "sv");
@@ -98,8 +99,6 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
   const [newPosition, setNewPosition] = useState<Position>("IB");
   const [newTeamColor, setNewTeamColor] = useState<TeamColor>(null);
   const [newCaptainRole, setNewCaptainRole] = useState<CaptainRole>(null);
-
-
 
   const { setNodeRef, isOver } = useDroppable({ id: "player-list" });
 
@@ -166,16 +165,19 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
     <div
       ref={setNodeRef}
       className={`
-        flex flex-col rounded-xl glass-panel
-        transition-all duration-200 min-w-0 overflow-hidden
+        flex flex-col rounded-xl overflow-hidden
+        bg-[#0d1424]/80 backdrop-blur-xl
+        border border-white/[0.12]
+        shadow-[0_0_40px_-8px] shadow-white/5
+        transition-all duration-200 min-w-0
         ${isOver
-          ? "border-emerald-400/60 !bg-emerald-950/20 shadow-lg shadow-emerald-500/10"
+          ? "!border-emerald-400/60 !shadow-emerald-500/15 ring-1 ring-emerald-400/30"
           : ""
         }
       `}
     >
       {/* Header */}
-      <div className="p-3 border-b border-white/10 min-w-0">
+      <div className="p-3 border-b border-white/[0.08] bg-white/[0.02] min-w-0">
         <div className="flex items-center justify-between mb-2 flex-wrap gap-y-1 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             <h2 className="text-white font-bold text-sm uppercase tracking-widest whitespace-nowrap" style={{ fontFamily: "'Oswald', sans-serif" }}>
@@ -207,7 +209,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
           </div>
         </div>
 
-        {/* Sökfält */}
+        {/* Search */}
         <div className="relative mb-2">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
           <input
@@ -215,7 +217,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Sök spelare..."
-            className="w-full bg-white/5 border border-white/10 rounded-md pl-7 pr-3 py-1.5 text-xs text-white placeholder-white/30 outline-none focus:border-emerald-400/50 transition-all"
+            className="w-full bg-white/[0.05] border border-white/[0.1] rounded-lg pl-7 pr-3 py-1.5 text-xs text-white placeholder-white/30 outline-none focus:border-emerald-400/50 transition-all"
           />
           {search && (
             <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60">
@@ -224,17 +226,17 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
           )}
         </div>
 
-        {/* Positionsfilter */}
+        {/* Position filter */}
         <div className="flex gap-1 mb-1.5 min-w-0">
           {positionFilters.map((f) => (
             <button
               key={f.value}
               onClick={() => setPosFilter(f.value)}
               className={`
-                flex-1 text-[10px] font-bold py-1 rounded transition-all
+                flex-1 text-[10px] font-bold py-1 rounded-md transition-all
                 ${posFilter === f.value
                   ? "bg-emerald-500/30 text-emerald-300 border border-emerald-400/50"
-                  : "bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60"
+                  : "bg-white/[0.04] text-white/40 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white/60"
                 }
               `}
             >
@@ -243,21 +245,21 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
           ))}
         </div>
 
-        {/* Lag-filter */}
+        {/* Team filter */}
         <div className="flex gap-1 mb-2 min-w-0">
           {teamFilters.map((f) => (
             <button
               key={String(f.value)}
               onClick={() => setTeamFilter(f.value)}
               className={`
-                flex-1 flex items-center justify-center gap-1 text-[10px] font-bold py-1 rounded transition-all
+                flex-1 flex items-center justify-center gap-1 text-[10px] font-bold py-1 rounded-md transition-all
                 ${teamFilter === f.value
                   ? f.value === "white"
                     ? "bg-slate-300/20 text-slate-200 border border-slate-300/50"
                     : f.value === "green"
                     ? "bg-emerald-500/30 text-emerald-300 border border-emerald-400/50"
                     : "bg-white/15 text-white border border-white/30"
-                  : "bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 hover:text-white/60"
+                  : "bg-white/[0.04] text-white/40 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white/60"
                 }
               `}
             >
@@ -269,7 +271,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
           ))}
         </div>
 
-        {/* Sortering */}
+        {/* Sort */}
         <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto">
           <span className="text-white/30 text-[9px] uppercase tracking-wider shrink-0">Sortera:</span>
           <div className="flex gap-1 shrink-0">
@@ -280,10 +282,9 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
             <SortBtn k="position" label="Pos" />
           </div>
         </div>
-
       </div>
 
-      {/* Bulk-åtgärder */}
+      {/* Bulk actions */}
       {bulkSelectMode && onBulkSyncToLaget && (
         <div className="px-3 py-2.5 border-b border-violet-400/20 bg-violet-500/10">
           <div className="flex items-center gap-2 mb-2">
@@ -357,8 +358,8 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
         </div>
       )}
 
-      {/* Spelarlista – scrollbar med fast höjd */}
-      <div className="overflow-y-auto p-2 space-y-1" style={{ maxHeight: "560px", overscrollBehavior: "auto" }}>
+      {/* Player list */}
+      <div className="overflow-y-auto p-2 space-y-0.5" style={{ maxHeight: "560px", overscrollBehavior: "auto" }}>
         {sorted.length === 0 ? (
           <div className="text-center text-white/30 text-xs italic py-8">
             Inga spelare hittades
@@ -409,10 +410,8 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
         )}
       </div>
 
-
-
-      {/* Lägg till spelare */}
-      <div className="p-2 border-t border-white/10">
+      {/* Add player */}
+      <div className="p-2 border-t border-white/[0.08]">
         {!showAddForm ? (
           <button
             onClick={() => {
@@ -423,14 +422,13 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
               setNewTeamColor(null);
               setNewCaptainRole(null);
             }}
-            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-md bg-white/5 border border-white/10 text-white/50 hover:bg-emerald-500/10 hover:border-emerald-400/30 hover:text-emerald-300 transition-all text-xs font-medium"
+            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/[0.04] border border-white/[0.1] text-white/50 hover:bg-emerald-500/10 hover:border-emerald-400/30 hover:text-emerald-300 transition-all text-xs font-medium"
           >
             <UserPlus className="w-3.5 h-3.5" />
             Lägg till spelare
           </button>
         ) : (
-          <div className="flex flex-col gap-2 bg-white/5 border border-emerald-400/30 rounded-lg p-3">
-            {/* Rad 1: Namn + Spara */}
+          <div className="flex flex-col gap-2 bg-white/[0.04] border border-emerald-400/30 rounded-lg p-3">
             <div className="flex items-center gap-2">
               <input
                 type="text"
@@ -449,7 +447,6 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                 Lägg till
               </button>
             </div>
-            {/* Rad 2: Lag */}
             <div className="flex items-center gap-1.5 pt-1 border-t border-white/10">
               <span className="text-white/40 text-[10px] w-6">Lag:</span>
               {([
@@ -471,7 +468,6 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                 </button>
               ))}
             </div>
-            {/* Rad 3: Position */}
             <div className="flex items-center gap-1 pt-1 border-t border-white/10 flex-wrap">
               <span className="text-white/40 text-[10px] w-6">Pos:</span>
               {ALL_POSITIONS.map((pos) => (
@@ -488,7 +484,6 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                 </button>
               ))}
             </div>
-            {/* Rad 4: Nr + Roll */}
             <div className="flex items-center gap-3 pt-1 border-t border-white/10">
               <div className="flex items-center gap-1">
                 <span className="text-white/40 text-[10px]">Nr:</span>
@@ -528,7 +523,6 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                 ))}
               </div>
             </div>
-            {/* Avbryt-knapp */}
             <button
               onClick={() => { setShowAddForm(false); setNewName(""); setNewNumber(""); setNewPosition("IB"); setNewTeamColor(null); setNewCaptainRole(null); }}
               className="w-full py-1 rounded bg-white/5 border border-white/10 text-white/40 text-xs hover:bg-white/10 transition-all"
@@ -539,9 +533,9 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
         )}
       </div>
 
-      {/* Hämta anmälningar från laget.se */}
+      {/* Fetch attendance from laget.se */}
       {onBulkRegister && (
-        <div className="p-2 border-t border-white/10">
+        <div className="p-2 border-t border-white/[0.08]">
           <button
             onClick={async () => {
               if (isLoadingAttendance) return;
@@ -601,11 +595,11 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
               {registerResult.error ? (
                 <span>
                   {registerResult.error.includes("NO_CREDENTIALS:") ? (
-                    <>Inga inloggningsuppgifter konfigurerade. Klicka på <button onClick={() => { const btn = document.querySelector('[data-settings-btn]') as HTMLButtonElement; btn?.click(); }} className="underline font-bold cursor-pointer hover:text-white">kugghjulet (⚙)</button> och ange ditt laget.se-konto.</>
+                    <>Inga inloggningsuppgifter konfigurerade. Klicka på <button onClick={() => { const btn = document.querySelector('[data-settings-btn]') as HTMLButtonElement; btn?.click(); }} className="underline font-bold cursor-pointer hover:text-white">kugghjulet</button> och ange ditt laget.se-konto.</>
                   ) : registerResult.error.includes("LOGIN_FAILED:") ? (
-                    <>Kunde inte logga in på laget.se. Kontrollera uppgifterna i <button onClick={() => { const btn = document.querySelector('[data-settings-btn]') as HTMLButtonElement; btn?.click(); }} className="underline font-bold cursor-pointer hover:text-white">inställningarna (⚙)</button>.</>
+                    <>Kunde inte logga in på laget.se. Kontrollera uppgifterna i <button onClick={() => { const btn = document.querySelector('[data-settings-btn]') as HTMLButtonElement; btn?.click(); }} className="underline font-bold cursor-pointer hover:text-white">inställningarna</button>.</>
                   ) : registerResult.error.includes("AUTH_ERROR:") ? (
-                    <>Åtkomst nekad av laget.se. Kontrollera uppgifterna i <button onClick={() => { const btn = document.querySelector('[data-settings-btn]') as HTMLButtonElement; btn?.click(); }} className="underline font-bold cursor-pointer hover:text-white">inställningarna (⚙)</button>.</>
+                    <>Åtkomst nekad av laget.se. Kontrollera uppgifterna i <button onClick={() => { const btn = document.querySelector('[data-settings-btn]') as HTMLButtonElement; btn?.click(); }} className="underline font-bold cursor-pointer hover:text-white">inställningarna</button>.</>
                   ) : registerResult.error.includes("RATE_LIMITED:") ? (
                     <>Laget.se blockerar tillfälligt förfrågningar. Vänta några minuter och försök igen.</>
                   ) : (

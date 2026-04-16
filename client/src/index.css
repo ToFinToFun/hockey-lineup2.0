@@ -468,28 +468,28 @@ select option {
 }
 
 /* ============================================
-   Glassmorphism Utility Classes
+   Glassmorphism Utility Classes – v2
    ============================================ */
 @layer components {
   .glass-panel {
-    background: oklch(0.12 0.02 240 / 40%);
-    backdrop-filter: blur(16px) saturate(1.3);
-    -webkit-backdrop-filter: blur(16px) saturate(1.3);
-    border: 1px solid oklch(1 0 0 / 8%);
+    background: oklch(0.08 0.02 240 / 60%);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border: 1px solid oklch(1 0 0 / 10%);
   }
 
   .glass-panel-strong {
-    background: oklch(0.1 0.02 240 / 60%);
-    backdrop-filter: blur(24px) saturate(1.4);
-    -webkit-backdrop-filter: blur(24px) saturate(1.4);
-    border: 1px solid oklch(1 0 0 / 12%);
+    background: oklch(0.06 0.02 240 / 75%);
+    backdrop-filter: blur(28px) saturate(1.5);
+    -webkit-backdrop-filter: blur(28px) saturate(1.5);
+    border: 1px solid oklch(1 0 0 / 14%);
   }
 
   .glass-header {
-    background: oklch(0.08 0.02 240 / 70%);
-    backdrop-filter: blur(20px) saturate(1.3);
-    -webkit-backdrop-filter: blur(20px) saturate(1.3);
-    border-bottom: 1px solid oklch(1 0 0 / 8%);
+    background: oklch(0.06 0.02 240 / 80%);
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    border-bottom: 1px solid oklch(1 0 0 / 10%);
   }
 
   .glass-button {
@@ -506,11 +506,11 @@ select option {
 
   /* Mobile roster drawer */
   .roster-drawer {
-    background: oklch(0.08 0.02 240 / 92%);
-    backdrop-filter: blur(24px) saturate(1.5);
-    -webkit-backdrop-filter: blur(24px) saturate(1.5);
+    background: oklch(0.06 0.02 240 / 94%);
+    backdrop-filter: blur(28px) saturate(1.6);
+    -webkit-backdrop-filter: blur(28px) saturate(1.6);
     border-top: 1px solid oklch(1 0 0 / 12%);
-    border-left: 1px solid oklch(1 0 0 / 8%);
+    border-left: 1px solid oklch(1 0 0 / 10%);
   }
 
   .roster-drawer-handle {
@@ -520,6 +520,30 @@ select option {
     background: oklch(1 0 0 / 25%);
     margin: 8px auto;
   }
+}
+
+/* ============================================
+   Background glow orbs
+   ============================================ */
+.bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+  opacity: 0.35;
+  z-index: 0;
+}
+.bg-orb-emerald {
+  background: radial-gradient(circle, oklch(0.65 0.2 160) 0%, transparent 70%);
+}
+.bg-orb-cyan {
+  background: radial-gradient(circle, oklch(0.65 0.2 200) 0%, transparent 70%);
+}
+.bg-orb-purple {
+  background: radial-gradient(circle, oklch(0.5 0.2 290) 0%, transparent 70%);
+}
+.bg-orb-amber {
+  background: radial-gradient(circle, oklch(0.65 0.15 85) 0%, transparent 70%);
 }
 
 /* Mobile side-by-side layout */
