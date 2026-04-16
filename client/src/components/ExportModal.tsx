@@ -7,6 +7,7 @@ import type { Player } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
 import { groupSlots } from "@/lib/lineup";
 import { LOGO_GREEN_B64, LOGO_WHITE_B64 } from "@/lib/logoBase64";
+import { useForwardColor, type ForwardColors } from "@/hooks/useForwardColor";
 
 interface ExportModalProps {
   onClose: () => void;
@@ -94,11 +95,11 @@ function drawCircleLogo(
   ctx.restore();
 }
 
-function getRoleColor(role: string): { bg: string; text: string } {
+function getRoleColor(role: string, fc: ForwardColors): { bg: string; text: string } {
   if (role === "gk" || role === "res-gk") return { bg: "rgba(245,158,11,0.6)", text: "#fbbf24" };
   if (role === "def") return { bg: "rgba(96,165,250,0.6)", text: "#93c5fd" };
   if (role === "c") return { bg: "rgba(167,139,250,0.6)", text: "#c4b5fd" };
-  return { bg: "rgba(248,113,113,0.6)", text: "#fca5a5" };
+  return { bg: fc.canvasRoleBg, text: fc.canvasRoleText };
 }
 
 // ─── Sizing constants (at native 1800×1000) ───
@@ -157,7 +158,8 @@ function drawTeamBlock(
   lineup: Record<string, Player>,
   logoImg: HTMLImageElement | null,
   logoFallbackColor: string,
-  s: number // scale factor (1.0 = native, <1 if we need to shrink)
+  s: number, // scale factor (1.0 = native, <1 if we need to shrink)
+  fc: ForwardColors
 ): number {
   let curY = y;
 
@@ -200,7 +202,7 @@ function drawTeamBlock(
   };
 
   const drawSlotRow = (slot: Slot, player: Player | null, rowX: number, rowWidth: number) => {
-    const { bg, text } = getRoleColor(slot.role);
+    const { bg, text } = getRoleColor(slot.role, fc);
 
     // Row background
     ctx.fillStyle = "rgba(0,0,0,0.35)";
@@ -287,7 +289,7 @@ function drawTeamBlock(
   }
 
   // ── Forwards (2-column grid) ──
-  drawSectionLabel("Forwards", "#fca5a5", forwardSlots.length > 0);
+  drawSectionLabel("Forwards", fc.canvasSectionLabel, forwardSlots.length > 0);
   if (forwardSlots.length > 0) {
     const colW = (width - Math.round(8 * s)) / 2;
     const baseY = curY;
@@ -306,7 +308,7 @@ function drawTeamBlock(
       curY = gy;
 
       ctx.font = `bold ${Math.round(FONT_GROUP * s)}px 'Oswald', sans-serif`;
-      ctx.fillStyle = "rgba(52,211,153,0.6)";
+      ctx.fillStyle = fc.canvasGroupLabel;
       ctx.letterSpacing = "2px";
       ctx.fillText(group.groupLabel.toUpperCase(), gx, curY + Math.round(12 * s));
       curY += groupLabelH;
@@ -336,6 +338,7 @@ export function ExportModal({
   const [exporting, setExporting] = useState(false);
   const [rendered, setRendered] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const { colors: fc } = useForwardColor();
 
   const renderCanvas = async () => {
     const canvas = canvasRef.current;
@@ -480,7 +483,7 @@ export function ExportModal({
       ctx.fill();
 
       // VITA
-      drawTeamBlock(ctx, padding, contentY, colW, teamAName, "#e2e8f0", teamASlots, teamALineup, imgWhite, "#ffffff", scale);
+      drawTeamBlock(ctx, padding, contentY, colW, teamAName, "#e2e8f0", teamASlots, teamALineup, imgWhite, "#ffffff", scale, fc);
 
       // Center separator
       const sepX = padding + colW + gap / 2;
@@ -492,17 +495,17 @@ export function ExportModal({
       ctx.stroke();
 
       // GRÖNA
-      drawTeamBlock(ctx, padding + colW + gap, contentY, colW, teamBName, "#34d399", teamBSlots, teamBLineup, imgGreen, "#337931", scale);
+      drawTeamBlock(ctx, padding + colW + gap, contentY, colW, teamBName, "#34d399", teamBSlots, teamBLineup, imgGreen, "#337931", scale, fc);
     } else if (teamAHasPlayers) {
       ctx.fillStyle = "rgba(255,255,255,0.02)";
       roundRect(ctx, padding - 6, contentY - 4, contentW + 12, contentH + 8, 8);
       ctx.fill();
-      drawTeamBlock(ctx, padding, contentY, contentW, teamAName, "#e2e8f0", teamASlots, teamALineup, imgWhite, "#ffffff", scale);
+      drawTeamBlock(ctx, padding, contentY, contentW, teamAName, "#e2e8f0", teamASlots, teamALineup, imgWhite, "#ffffff", scale, fc);
     } else if (teamBHasPlayers) {
       ctx.fillStyle = "rgba(255,255,255,0.02)";
       roundRect(ctx, padding - 6, contentY - 4, contentW + 12, contentH + 8, 8);
       ctx.fill();
-      drawTeamBlock(ctx, padding, contentY, contentW, teamBName, "#34d399", teamBSlots, teamBLineup, imgGreen, "#337931", scale);
+      drawTeamBlock(ctx, padding, contentY, contentW, teamBName, "#34d399", teamBSlots, teamBLineup, imgGreen, "#337931", scale, fc);
     }
 
     // ── Footer ──

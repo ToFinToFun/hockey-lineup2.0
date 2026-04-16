@@ -8,6 +8,7 @@ import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
 import { getPositionBadgeColor, ALL_POSITIONS } from "@/lib/players";
 import { useState, useRef } from "react";
 import { PortalDropdown } from "./PortalDropdown";
+import { useForwardColor } from "@/hooks/useForwardColor";
 
 const LOGO_GREEN = "/images/logo-green.png";
 const LOGO_WHITE = "/images/logo-white.png";
@@ -55,6 +56,8 @@ export function DraggablePlayerCard({
 }: PlayerCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: player.id, data: { player } });
+
+  const { colors: fc } = useForwardColor();
 
   const [showEditPanel, setShowEditPanel] = useState(false);
   const [nameValue, setNameValue] = useState("");
@@ -178,7 +181,7 @@ export function DraggablePlayerCard({
             }`}>{player.captainRole}</span>
           )}
           <TeamColorIndicator teamColor={player.teamColor ?? null} size={10} />
-          <span className={`text-[8px] font-bold px-1 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position)}`}>
+          <span className={`text-[8px] font-bold px-1 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position, fc.badgeBg)}`}>
             {player.position}
           </span>
         </button>
@@ -192,7 +195,7 @@ export function DraggablePlayerCard({
             }`}>{player.captainRole}</span>
           )}
           <TeamColorIndicator teamColor={player.teamColor ?? null} size={10} />
-          <span className={`text-[8px] font-bold px-1 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position)}`}>
+          <span className={`text-[8px] font-bold px-1 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position, fc.badgeBg)}`}>
             {player.position}
           </span>
         </div>
@@ -220,7 +223,7 @@ export function DraggablePlayerCard({
             }`}>{player.captainRole}</span>
           )}
           <TeamColorIndicator teamColor={player.teamColor ?? null} size={16} />
-          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${getPositionBadgeColor(player.position)}`}>
+          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${getPositionBadgeColor(player.position, fc.badgeBg)}`}>
             {player.position}
           </span>
         </button>
@@ -234,7 +237,7 @@ export function DraggablePlayerCard({
             }`}>{player.captainRole}</span>
           )}
           <TeamColorIndicator teamColor={player.teamColor ?? null} size={16} />
-          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${getPositionBadgeColor(player.position)}`}>
+          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${getPositionBadgeColor(player.position, fc.badgeBg)}`}>
             {player.position}
           </span>
         </div>
@@ -324,7 +327,7 @@ export function DraggablePlayerCard({
                       }}
                       className={`text-[9px] font-bold px-1.5 py-0.5 rounded transition-all ${
                         player.position === pos
-                          ? `${getPositionBadgeColor(pos)} ring-1 ring-white/30`
+                          ? `${getPositionBadgeColor(pos, fc.badgeBg)} ring-1 ring-white/30`
                           : "bg-white/5 text-white/30 border border-white/10 hover:bg-white/10 hover:text-white/50"
                       }`}
                     >
@@ -581,6 +584,7 @@ export function TeamColorIndicator({ teamColor, size = 16 }: { teamColor: TeamCo
 
 // Overlay-kort som visas under musen vid drag
 export function PlayerCardOverlay({ player }: { player: Player }) {
+  const { colors: fc } = useForwardColor();
   return (
     <div className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm bg-emerald-900 border border-emerald-400 shadow-2xl ring-2 ring-emerald-400/60 cursor-grabbing select-none" style={{ minWidth: 160, maxWidth: 240 }}>
       <TeamColorIndicator teamColor={player.teamColor ?? null} size={14} />
@@ -597,7 +601,7 @@ export function PlayerCardOverlay({ player }: { player: Player }) {
           {player.number}
         </span>
       )}
-      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position)}`}>
+      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${getPositionBadgeColor(player.position, fc.badgeBg)}`}>
         {player.position}
       </span>
     </div>

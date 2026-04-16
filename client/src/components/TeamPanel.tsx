@@ -7,6 +7,7 @@ import { PlayerSlot } from "./PlayerSlot";
 import type { Player, Position } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
 import { groupSlots, MAX_TEAM_CONFIG, type TeamConfig } from "@/lib/lineup";
+import { useForwardColor } from "@/hooks/useForwardColor";
 
 const LOGO_GREEN = "/images/logo-green.png";
 const LOGO_WHITE = "/images/logo-white.png";
@@ -25,7 +26,7 @@ interface TeamPanelProps {
   onConfigChange: (config: TeamConfig) => void;
 }
 
-const sectionStyles = {
+const baseSectionStyles = {
   goalkeeper: {
     headerColor: "text-amber-300",
     borderColor: "border-amber-400/20",
@@ -35,11 +36,6 @@ const sectionStyles = {
     headerColor: "text-blue-300",
     borderColor: "border-blue-400/20",
     bgColor: "bg-blue-950/10",
-  },
-  forward: {
-    headerColor: "text-red-300",
-    borderColor: "border-red-400/20",
-    bgColor: "bg-red-950/10",
   },
 };
 
@@ -56,9 +52,11 @@ function GroupCard({
   onChangePosition: (playerId: string, pos: Position) => void;
   type: "defense" | "forward";
 }) {
-  const headerColor = type === "defense" ? "text-blue-400/60" : "text-red-400/60";
-  const borderColor = type === "defense" ? "border-blue-400/15" : "border-red-400/15";
-  const bgColor = type === "defense" ? "bg-blue-950/15" : "bg-red-950/15";
+  const { colors: fc } = useForwardColor();
+
+  const headerColor = type === "defense" ? "text-blue-400/60" : fc.groupHeader;
+  const borderColor = type === "defense" ? "border-blue-400/15" : fc.groupBorder;
+  const bgColor = type === "defense" ? "bg-blue-950/15" : fc.groupBg;
 
   return (
     <div className={`rounded-md ${bgColor} border ${borderColor} p-1.5`}>
@@ -140,6 +138,8 @@ export function TeamPanel({
   const borderAccent = isWhite ? "border-slate-300/20" : "border-emerald-400/20";
   const shadowColor = isWhite ? "shadow-slate-400/10" : "shadow-emerald-900/20";
 
+  const { colors: fc } = useForwardColor();
+
   const goalkeeperSlots = slots.filter((s) => s.type === "goalkeeper");
   const defenseSlots = slots.filter((s) => s.type === "defense");
   const forwardSlots = slots.filter((s) => s.type === "forward");
@@ -153,6 +153,15 @@ export function TeamPanel({
   const totalSlots = slots.length;
   const registeredInTeam = Object.values(lineup).filter((p) => p.isRegistered).length;
 
+  // Dynamic forward section styles
+  const sectionStyles = {
+    ...baseSectionStyles,
+    forward: {
+      headerColor: fc.sectionHeader,
+      borderColor: fc.sectionBorder,
+      bgColor: fc.sectionBg,
+    },
+  };
 
   return (
     <div className={`
@@ -201,6 +210,7 @@ export function TeamPanel({
         <Section
           label="Målvakter"
           type="goalkeeper"
+          sectionStyles={sectionStyles}
           extra={
             <AddRemoveButtons
               count={config.goalkeepers}
@@ -232,6 +242,7 @@ export function TeamPanel({
         <Section
           label="Backar"
           type="defense"
+          sectionStyles={sectionStyles}
           extra={
             <AddRemoveButtons
               count={config.defensePairs}
@@ -261,6 +272,7 @@ export function TeamPanel({
         <Section
           label="Forwards"
           type="forward"
+          sectionStyles={sectionStyles}
           extra={
             <AddRemoveButtons
               count={config.forwardLines}
@@ -295,11 +307,13 @@ function Section({
   type,
   children,
   extra,
+  sectionStyles,
 }: {
   label: string;
   type: "goalkeeper" | "defense" | "forward";
   children: React.ReactNode;
   extra?: React.ReactNode;
+  sectionStyles: Record<string, { headerColor: string; borderColor: string; bgColor: string }>;
 }) {
   const s = sectionStyles[type];
   return (
