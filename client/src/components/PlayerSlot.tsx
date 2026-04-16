@@ -17,9 +17,9 @@ const roleColors = {
   gk:     { border: "border-amber-400/40",   bg: "bg-amber-950/20",   label: "text-amber-300",   empty: "text-amber-400/35",   badge: "bg-amber-500/20 text-amber-300" },
   "res-gk": { border: "border-amber-400/25", bg: "bg-amber-950/10",   label: "text-amber-300/70",empty: "text-amber-400/25",   badge: "bg-amber-500/15 text-amber-300/70" },
   def:    { border: "border-blue-400/40",    bg: "bg-blue-950/20",    label: "text-blue-300",    empty: "text-blue-400/35",    badge: "bg-blue-500/20 text-blue-300" },
-  lw:     { border: "border-emerald-400/40", bg: "bg-emerald-950/20", label: "text-emerald-300", empty: "text-emerald-400/35", badge: "bg-emerald-500/20 text-emerald-300" },
+  lw:     { border: "border-red-400/40", bg: "bg-red-950/20", label: "text-red-300", empty: "text-red-400/35", badge: "bg-red-500/20 text-red-300" },
   c:      { border: "border-purple-400/50",  bg: "bg-purple-950/25",  label: "text-purple-300",  empty: "text-purple-400/40",  badge: "bg-purple-500/25 text-purple-300" },
-  rw:     { border: "border-emerald-400/40", bg: "bg-emerald-950/20", label: "text-emerald-300", empty: "text-emerald-400/35", badge: "bg-emerald-500/20 text-emerald-300" },
+  rw:     { border: "border-red-400/40", bg: "bg-red-950/20", label: "text-red-300", empty: "text-red-400/35", badge: "bg-red-500/20 text-red-300" },
 };
 
 export function PlayerSlot({ slot, player, onRemove, onChangePosition }: PlayerSlotProps) {
