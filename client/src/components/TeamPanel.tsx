@@ -1,5 +1,6 @@
-// Hockey Lineup App – TeamPanel med logotyp-header och dynamiska grupper
+// Hockey Lineup App – TeamPanel med glassmorphism-design
 // VITA = vit logotyp, GRÖNA = grön logotyp
+// Stödjer kompakt läge för mobil side-by-side
 
 import { useMemo } from "react";
 import { Plus, Minus } from "lucide-react";
@@ -24,6 +25,7 @@ interface TeamPanelProps {
   isWhite?: boolean;
   config: TeamConfig;
   onConfigChange: (config: TeamConfig) => void;
+  compact?: boolean; // Kompakt läge för mobil side-by-side
 }
 
 const baseSectionStyles = {
@@ -45,12 +47,14 @@ function GroupCard({
   onRemovePlayer,
   onChangePosition,
   type,
+  compact,
 }: {
   group: { groupLabel: string; slots: Slot[] };
   lineup: Record<string, Player>;
   onRemovePlayer: (slotId: string) => void;
   onChangePosition: (playerId: string, pos: Position) => void;
   type: "defense" | "forward";
+  compact?: boolean;
 }) {
   const { colors: fc } = useForwardColor();
 
@@ -59,11 +63,11 @@ function GroupCard({
   const bgColor = type === "defense" ? "bg-blue-950/15" : fc.groupBg;
 
   return (
-    <div className={`rounded-md ${bgColor} border ${borderColor} p-1.5`}>
-      <div className={`text-[9px] font-bold uppercase tracking-wider mb-1 px-0.5 ${headerColor}`}>
+    <div className={`rounded-md ${bgColor} border ${borderColor} ${compact ? 'p-1' : 'p-1.5'}`}>
+      <div className={`${compact ? 'text-[8px]' : 'text-[9px]'} font-bold uppercase tracking-wider mb-1 px-0.5 ${headerColor}`}>
         {group.groupLabel}
       </div>
-      <div className="space-y-1">
+      <div className={compact ? "space-y-0.5" : "space-y-1"}>
         {group.slots.map((slot) => (
           <PlayerSlot
             key={slot.id}
@@ -74,6 +78,7 @@ function GroupCard({
               const p = lineup[slot.id];
               if (p) onChangePosition(p.id, pos);
             }}
+            compact={compact}
           />
         ))}
       </div>
@@ -88,6 +93,7 @@ function AddRemoveButtons({
   onAdd,
   onRemove,
   accentClass,
+  compact,
 }: {
   count: number;
   max: number;
@@ -95,25 +101,28 @@ function AddRemoveButtons({
   onAdd: () => void;
   onRemove: () => void;
   accentClass: string;
+  compact?: boolean;
 }) {
+  const size = compact ? "w-4 h-4" : "w-5 h-5";
+  const iconSize = compact ? "w-2.5 h-2.5" : "w-3 h-3";
   return (
     <div className="flex items-center gap-1 ml-auto">
       {count > min && (
         <button
           onClick={onRemove}
-          className={`w-5 h-5 rounded flex items-center justify-center bg-white/5 hover:bg-red-400/20 text-white/40 hover:text-red-400 transition-all border border-white/10 hover:border-red-400/30`}
+          className={`${size} rounded flex items-center justify-center bg-white/5 hover:bg-red-400/20 text-white/40 hover:text-red-400 transition-all border border-white/10 hover:border-red-400/30`}
           title="Ta bort"
         >
-          <Minus className="w-3 h-3" />
+          <Minus className={iconSize} />
         </button>
       )}
       {count < max && (
         <button
           onClick={onAdd}
-          className={`w-5 h-5 rounded flex items-center justify-center bg-white/5 hover:bg-emerald-400/20 text-white/40 hover:text-emerald-400 transition-all border border-white/10 hover:border-emerald-400/30`}
+          className={`${size} rounded flex items-center justify-center bg-white/5 hover:bg-emerald-400/20 text-white/40 hover:text-emerald-400 transition-all border border-white/10 hover:border-emerald-400/30`}
           title="Lägg till"
         >
-          <Plus className="w-3 h-3" />
+          <Plus className={iconSize} />
         </button>
       )}
     </div>
@@ -132,11 +141,11 @@ export function TeamPanel({
   isWhite = false,
   config,
   onConfigChange,
+  compact = false,
 }: TeamPanelProps) {
   const logo = isWhite ? LOGO_WHITE : LOGO_GREEN;
   const accentColor = isWhite ? "text-slate-200" : "text-emerald-400";
   const borderAccent = isWhite ? "border-slate-300/20" : "border-emerald-400/20";
-  const shadowColor = isWhite ? "shadow-slate-400/10" : "shadow-emerald-900/20";
 
   const { colors: fc } = useForwardColor();
 
@@ -146,8 +155,6 @@ export function TeamPanel({
 
   const defenseGroups = useMemo(() => groupSlots(defenseSlots), [defenseSlots]);
   const forwardGroups = useMemo(() => groupSlots(forwardSlots), [forwardSlots]);
-
-  // Alla grupper renderas vertikalt (under varandra)
 
   const filledCount = Object.keys(lineup).length;
   const totalSlots = slots.length;
@@ -165,52 +172,62 @@ export function TeamPanel({
 
   return (
     <div className={`
-      flex flex-col rounded-xl border backdrop-blur-md
-      bg-black/25 ${borderAccent}
-      ${shadowColor} shadow-xl
+      flex flex-col rounded-xl border
+      glass-panel
+      ${borderAccent}
     `}>
       {/* Lagnamn-header med logotyp */}
-      <div className={`flex items-center gap-2.5 px-3 py-2 border-b ${borderAccent} shrink-0`}>
+      <div className={`flex items-center gap-2 ${compact ? 'px-2 py-1.5' : 'px-3 py-2'} border-b ${borderAccent} shrink-0`}>
         <img
           src={logo}
           alt={teamName}
-          className="w-10 h-10 object-contain shrink-0 drop-shadow-lg"
+          className={`${compact ? 'w-7 h-7' : 'w-10 h-10'} object-contain shrink-0 drop-shadow-lg`}
         />
         <div className="flex-1 min-w-0">
           <input
             type="text"
             value={teamName}
             onChange={(e) => onRenameTeam(e.target.value)}
-            className={`bg-transparent border-none outline-none font-black text-lg w-full tracking-widest uppercase ${accentColor}`}
+            className={`bg-transparent border-none outline-none font-black ${compact ? 'text-sm' : 'text-lg'} w-full tracking-widest uppercase ${accentColor}`}
             style={{ fontFamily: "'Oswald', sans-serif" }}
             placeholder="Lagnamn..."
             maxLength={30}
           />
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-white/30 text-xs">{registeredInTeam} anmälda av {filledCount} i laget</span>
-          {filledCount > 0 && (
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className={`text-white/30 ${compact ? 'text-[9px]' : 'text-xs'}`}>
+            {registeredInTeam}/{filledCount}
+          </span>
+          {filledCount > 0 && !compact && (
             <button
-              onClick={() => {
-                onClearTeam();
-              }}
+              onClick={() => onClearTeam()}
               className="text-[10px] font-bold px-2 py-0.5 rounded border border-red-400/30 text-red-400/70 hover:text-red-400 hover:border-red-400/60 hover:bg-red-400/10 transition-all uppercase tracking-wider"
               title="Rensa alla spelare från laget"
             >
               Rensa
             </button>
           )}
+          {filledCount > 0 && compact && (
+            <button
+              onClick={() => onClearTeam()}
+              className="text-[8px] font-bold px-1 py-0.5 rounded border border-red-400/30 text-red-400/70 hover:text-red-400 transition-all"
+              title="Rensa"
+            >
+              ✕
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Slots – scrollar med sidan (ingen intern scrollbar) */}
-      <div className="p-2 space-y-2">
+      {/* Slots */}
+      <div className={compact ? "p-1.5 space-y-1.5" : "p-2 space-y-2"}>
 
         {/* Målvakter */}
         <Section
           label="Målvakter"
           type="goalkeeper"
           sectionStyles={sectionStyles}
+          compact={compact}
           extra={
             <AddRemoveButtons
               count={config.goalkeepers}
@@ -219,10 +236,11 @@ export function TeamPanel({
               onAdd={() => onConfigChange({ ...config, goalkeepers: config.goalkeepers + 1 })}
               onRemove={() => onConfigChange({ ...config, goalkeepers: config.goalkeepers - 1 })}
               accentClass="amber"
+              compact={compact}
             />
           }
         >
-          <div className="space-y-1.5">
+          <div className={compact ? "space-y-0.5" : "space-y-1.5"}>
             {goalkeeperSlots.map((slot) => (
               <PlayerSlot
                 key={slot.id}
@@ -233,6 +251,7 @@ export function TeamPanel({
                   const p = lineup[slot.id];
                   if (p) onChangePosition(p.id, pos);
                 }}
+                compact={compact}
               />
             ))}
           </div>
@@ -243,6 +262,7 @@ export function TeamPanel({
           label="Backar"
           type="defense"
           sectionStyles={sectionStyles}
+          compact={compact}
           extra={
             <AddRemoveButtons
               count={config.defensePairs}
@@ -251,10 +271,11 @@ export function TeamPanel({
               onAdd={() => onConfigChange({ ...config, defensePairs: config.defensePairs + 1 })}
               onRemove={() => onConfigChange({ ...config, defensePairs: config.defensePairs - 1 })}
               accentClass="blue"
+              compact={compact}
             />
           }
         >
-          <div className="space-y-1.5">
+          <div className={compact ? "space-y-1" : "space-y-1.5"}>
             {defenseGroups.map((group) => (
               <GroupCard
                 key={group.groupLabel}
@@ -263,6 +284,7 @@ export function TeamPanel({
                 onRemovePlayer={onRemovePlayer}
                 onChangePosition={onChangePosition}
                 type="defense"
+                compact={compact}
               />
             ))}
           </div>
@@ -273,6 +295,7 @@ export function TeamPanel({
           label="Forwards"
           type="forward"
           sectionStyles={sectionStyles}
+          compact={compact}
           extra={
             <AddRemoveButtons
               count={config.forwardLines}
@@ -281,10 +304,11 @@ export function TeamPanel({
               onAdd={() => onConfigChange({ ...config, forwardLines: config.forwardLines + 1 })}
               onRemove={() => onConfigChange({ ...config, forwardLines: config.forwardLines - 1 })}
               accentClass="emerald"
+              compact={compact}
             />
           }
         >
-          <div className="space-y-1.5">
+          <div className={compact ? "space-y-1" : "space-y-1.5"}>
             {forwardGroups.map((group) => (
               <GroupCard
                 key={group.groupLabel}
@@ -293,6 +317,7 @@ export function TeamPanel({
                 onRemovePlayer={onRemovePlayer}
                 onChangePosition={onChangePosition}
                 type="forward"
+                compact={compact}
               />
             ))}
           </div>
@@ -308,18 +333,20 @@ function Section({
   children,
   extra,
   sectionStyles,
+  compact,
 }: {
   label: string;
   type: "goalkeeper" | "defense" | "forward";
   children: React.ReactNode;
   extra?: React.ReactNode;
   sectionStyles: Record<string, { headerColor: string; borderColor: string; bgColor: string }>;
+  compact?: boolean;
 }) {
   const s = sectionStyles[type];
   return (
-    <div className={`rounded-lg border ${s.borderColor} ${s.bgColor} p-2`}>
-      <div className="flex items-center mb-2">
-        <div className={`text-xs font-bold uppercase tracking-widest ${s.headerColor}`}>
+    <div className={`rounded-lg border ${s.borderColor} ${s.bgColor} ${compact ? 'p-1.5' : 'p-2'}`}>
+      <div className="flex items-center mb-1.5">
+        <div className={`${compact ? 'text-[9px]' : 'text-xs'} font-bold uppercase tracking-widest ${s.headerColor}`}>
           {label}
         </div>
         {extra}

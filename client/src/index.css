@@ -47,35 +47,35 @@
   --font-serif: "DM Serif Display", Georgia, serif;
 }
 
-/* Hockey Lineup App – Dark Ice Arena Theme */
+/* Hockey Lineup App – Glassmorphism Dark Theme */
 :root {
-  --radius: 0.5rem;
-  --background: oklch(0.1 0.01 160);
-  --foreground: oklch(0.95 0.01 160);
-  --card: oklch(0.15 0.015 160);
-  --card-foreground: oklch(0.95 0.01 160);
-  --popover: oklch(0.15 0.015 160);
-  --popover-foreground: oklch(0.95 0.01 160);
+  --radius: 0.625rem;
+  --background: oklch(0.08 0.02 240);
+  --foreground: oklch(0.95 0.01 240);
+  --card: oklch(0.12 0.02 240);
+  --card-foreground: oklch(0.95 0.01 240);
+  --popover: oklch(0.12 0.02 240);
+  --popover-foreground: oklch(0.95 0.01 240);
   --primary: oklch(0.65 0.18 155);
-  --primary-foreground: oklch(0.1 0.01 160);
-  --secondary: oklch(0.2 0.01 160);
-  --secondary-foreground: oklch(0.85 0.01 160);
-  --muted: oklch(0.2 0.01 160);
-  --muted-foreground: oklch(0.6 0.01 160);
+  --primary-foreground: oklch(0.08 0.02 240);
+  --secondary: oklch(0.16 0.02 240);
+  --secondary-foreground: oklch(0.85 0.01 240);
+  --muted: oklch(0.16 0.02 240);
+  --muted-foreground: oklch(0.6 0.01 240);
   --accent: oklch(0.65 0.18 155);
-  --accent-foreground: oklch(0.1 0.01 160);
+  --accent-foreground: oklch(0.08 0.02 240);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 10%);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 8%);
   --ring: oklch(0.65 0.18 155);
-  --sidebar: oklch(0.12 0.01 160);
-  --sidebar-foreground: oklch(0.95 0.01 160);
+  --sidebar: oklch(0.1 0.02 240);
+  --sidebar-foreground: oklch(0.95 0.01 240);
   --sidebar-primary: oklch(0.65 0.18 155);
-  --sidebar-primary-foreground: oklch(0.1 0.01 160);
-  --sidebar-accent: oklch(0.2 0.01 160);
-  --sidebar-accent-foreground: oklch(0.85 0.01 160);
-  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-primary-foreground: oklch(0.08 0.02 240);
+  --sidebar-accent: oklch(0.16 0.02 240);
+  --sidebar-accent-foreground: oklch(0.85 0.01 240);
+  --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.65 0.18 155);
 }
 
@@ -465,4 +465,73 @@ select option {
   ::-webkit-scrollbar-track { background: oklch(0.95 0.005 160); }
   ::-webkit-scrollbar-thumb { background: oklch(0.75 0.01 160); }
   ::-webkit-scrollbar-thumb:hover { background: oklch(0.65 0.01 160); }
+}
+
+/* ============================================
+   Glassmorphism Utility Classes
+   ============================================ */
+@layer components {
+  .glass-panel {
+    background: oklch(0.12 0.02 240 / 40%);
+    backdrop-filter: blur(16px) saturate(1.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    border: 1px solid oklch(1 0 0 / 8%);
+  }
+
+  .glass-panel-strong {
+    background: oklch(0.1 0.02 240 / 60%);
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    border: 1px solid oklch(1 0 0 / 12%);
+  }
+
+  .glass-header {
+    background: oklch(0.08 0.02 240 / 70%);
+    backdrop-filter: blur(20px) saturate(1.3);
+    -webkit-backdrop-filter: blur(20px) saturate(1.3);
+    border-bottom: 1px solid oklch(1 0 0 / 8%);
+  }
+
+  .glass-button {
+    background: oklch(1 0 0 / 6%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid oklch(1 0 0 / 10%);
+    transition: all 0.15s ease;
+  }
+  .glass-button:hover {
+    background: oklch(1 0 0 / 12%);
+    border-color: oklch(1 0 0 / 18%);
+  }
+
+  /* Mobile roster drawer */
+  .roster-drawer {
+    background: oklch(0.08 0.02 240 / 92%);
+    backdrop-filter: blur(24px) saturate(1.5);
+    -webkit-backdrop-filter: blur(24px) saturate(1.5);
+    border-top: 1px solid oklch(1 0 0 / 12%);
+    border-left: 1px solid oklch(1 0 0 / 8%);
+  }
+
+  .roster-drawer-handle {
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: oklch(1 0 0 / 25%);
+    margin: 8px auto;
+  }
+}
+
+/* Mobile side-by-side layout */
+@media (max-width: 768px) {
+  .mobile-team-col {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mobile-team-col::-webkit-scrollbar {
+    width: 2px;
+  }
 }

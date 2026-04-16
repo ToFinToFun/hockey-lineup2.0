@@ -1,5 +1,6 @@
 // Hockey Lineup App – PlayerSlot
 // En fast namngiven plats som alltid visas och tar emot en spelare via drag and drop
+// Stödjer compact-läge för mobil side-by-side
 
 import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard } from "./PlayerCard";
@@ -12,6 +13,7 @@ interface PlayerSlotProps {
   player: Player | null;
   onRemove: () => void;
   onChangePosition: (pos: Position) => void;
+  compact?: boolean;
 }
 
 const baseRoleColors = {
@@ -21,7 +23,7 @@ const baseRoleColors = {
   c:      { border: "border-purple-400/50",  bg: "bg-purple-950/25",  label: "text-purple-300",  empty: "text-purple-400/40",  badge: "bg-purple-500/25 text-purple-300" },
 };
 
-export function PlayerSlot({ slot, player, onRemove, onChangePosition }: PlayerSlotProps) {
+export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact = false }: PlayerSlotProps) {
   const { isOver, setNodeRef } = useDroppable({ id: slot.id });
   const { colors: fc } = useForwardColor();
 
@@ -47,19 +49,19 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition }: PlayerS
       ref={setNodeRef}
       style={{ touchAction: "manipulation" }}
       className={`
-        flex items-center gap-2 rounded-md border transition-all duration-150 min-h-[36px] overflow-visible
+        flex items-center gap-1.5 rounded-md border transition-all duration-150 overflow-visible
+        ${compact ? 'min-h-[28px] px-1 py-0.5' : 'min-h-[36px] px-2 py-1.5'}
         ${isOver && !player
           ? `${colors.bg} border-white/50 shadow-md ring-1 ring-white/30`
           : isOver && player
           ? "bg-white/5 border-white/40 ring-1 ring-white/20"
           : `${colors.bg} ${colors.border}`
         }
-        px-2 py-1.5
       `}
     >
       {/* Roll-badge */}
       <span className={`
-        text-[9px] font-black w-7 text-center shrink-0 rounded px-1 py-0.5 uppercase tracking-wide
+        ${compact ? 'text-[7px] w-5 py-0' : 'text-[9px] w-7 py-0.5'} font-black text-center shrink-0 rounded px-0.5 uppercase tracking-wide
         ${colors.badge}
       `}>
         {slot.shortLabel}
@@ -76,8 +78,8 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition }: PlayerS
           />
         </div>
       ) : (
-        <span className={`text-[11px] italic flex-1 ${colors.empty} ${isOver ? "text-white/50" : ""}`}>
-          {isOver ? "Släpp här" : slot.label}
+        <span className={`${compact ? 'text-[9px]' : 'text-[11px]'} italic flex-1 ${colors.empty} ${isOver ? "text-white/50" : ""}`}>
+          {isOver ? "Släpp här" : (compact ? slot.shortLabel : slot.label)}
         </span>
       )}
     </div>
