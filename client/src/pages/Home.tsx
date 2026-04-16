@@ -34,7 +34,7 @@ import { MobileRosterDrawer } from "@/components/MobileRosterDrawer";
 import { LongPressTooltip } from "@/components/LongPressTooltip";
 import { trpc } from "@/lib/trpc";
 import type { Player as PlayerType } from "@/lib/players";
-import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Settings, Sun, Moon, Home as HomeIcon, Users } from "lucide-react";
+import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Settings, Sun, Moon, Home as HomeIcon, Users, HelpCircle } from "lucide-react";
 import { useLineupTheme } from "@/hooks/useLineupTheme";
 import { useForwardColor } from "@/hooks/useForwardColor";
 import { Link } from "wouter";
@@ -1112,17 +1112,10 @@ export default function Home() {
         handleDragEnd(e);
       }}
     >
-      {/* Bakgrundsbild */}
+      {/* Solid dark background matching mockup */}
       <div
-        className="min-h-screen w-full relative overflow-x-hidden"
-        style={{
-          backgroundImage: `url(${BG_URL})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center top",
-          backgroundRepeat: "no-repeat",
-        }}
+        className={`min-h-screen w-full relative overflow-x-hidden ${isLineupDark ? 'bg-[#080c18]' : 'bg-gray-100'}`}
       >
-        <div className={`absolute inset-0 pointer-events-none ${isLineupDark ? 'bg-[#080c18]/85' : 'bg-white/75'}`} />
 
         {/* Glassmorphism background glow orbs */}
         {isLineupDark && (
@@ -1137,10 +1130,10 @@ export default function Home() {
         <div
           className="relative flex flex-col min-h-screen"
         >
-          {/* Header – compact toolbar like mockup */}
-          <header className="px-3 pt-2 pb-1.5 shrink-0">
-            <div className="glass-header rounded-lg px-3 py-1.5">
-              <div className="flex items-center gap-3 flex-wrap">
+          {/* Header – compact toolbar matching mockup exactly */}
+          <header className="shrink-0">
+            <div className="glass-header px-3 py-2">
+              <div className="flex items-center gap-3">
               {/* Left: Logo + title + event info */}
               <div className="flex items-center gap-2 shrink-0">
                 <Link href="/">
@@ -1167,99 +1160,100 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Center: Toolbar buttons */}
-              <div className="flex items-center gap-1 flex-wrap flex-1 justify-end">
-                {/* SSE sync status – bara ikon, ingen text */}
-                <div className="flex items-center">
+              {/* Toolbar buttons – matching mockup layout */}
+              <div className="flex items-center gap-1.5 flex-1">
+                {/* SSE sync icon */}
+                <div className="flex items-center mr-0.5">
                   {sseConnected === null ? (
                     <span className={`text-[9px] ${isLineupDark ? 'text-white/30' : 'text-gray-400'}`}>...</span>
                   ) : sseConnected ? (
-                    <Wifi className={`w-3 h-3 ${isLineupDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                    <Wifi className={`w-3.5 h-3.5 ${isLineupDark ? 'text-emerald-400/60' : 'text-emerald-600'}`} />
                   ) : (
-                    <WifiOff className="w-3 h-3 text-red-400" />
+                    <WifiOff className="w-3.5 h-3.5 text-red-400" />
                   )}
                 </div>
 
-                {/* Ångra-knapp */}
+                {/* Undo icon button */}
                 <LongPressTooltip label={`Ångra (${undoStack.length} steg)`}>
                 <button
                   onClick={handleUndo}
                   disabled={undoStack.length === 0}
                   title={`Ångra (Ctrl+Z) – ${undoStack.length} steg`}
-                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${
+                  className={`p-1.5 rounded transition-all ${
                     undoStack.length > 0
                       ? isLineupDark
-                        ? "bg-white/10 border border-white/20 text-white/70 hover:bg-white/20 hover:text-white"
-                        : "bg-gray-200 border border-gray-300 text-gray-600 hover:bg-gray-300 hover:text-gray-800"
+                        ? "text-white/60 hover:text-white hover:bg-white/10"
+                        : "text-gray-500 hover:text-gray-800 hover:bg-gray-200"
                       : isLineupDark
-                        ? "bg-white/5 border border-white/10 text-white/20 cursor-not-allowed"
-                        : "bg-gray-100 border border-gray-200 text-gray-300 cursor-not-allowed"
+                        ? "text-white/15 cursor-not-allowed"
+                        : "text-gray-300 cursor-not-allowed"
                   }`}
                 >
-                  <Undo2 className="w-3.5 h-3.5" />
-                  {undoStack.length > 0 && <span>{undoStack.length}</span>}
+                  <Undo2 className="w-4 h-4" />
                 </button>
                 </LongPressTooltip>
 
-                {/* Layout-toggle-knapp */}
+                {/* Divider */}
+                <div className={`w-px h-5 ${isLineupDark ? 'bg-white/10' : 'bg-gray-300'} mx-0.5`} />
+
+                {/* SIDOLÄGE text button */}
                 <LongPressTooltip label={sideLayout ? "Standard" : "Sidoläge"}>
                 <button
                   onClick={toggleSideLayout}
-                  title={sideLayout ? "Standard-layout (Vita | Trupp | Gröna)" : "Sidoläge (Trupp till vänster, lagen bredvid)"}
-                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${
+                  title={sideLayout ? "Standard-layout" : "Sidoläge"}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${
                     sideLayout
                       ? isLineupDark
-                        ? "bg-violet-500/30 border border-violet-400/50 text-violet-300 hover:bg-violet-500/40"
-                        : "bg-violet-100 border border-violet-300 text-violet-700 hover:bg-violet-200"
+                        ? "bg-violet-500/25 text-violet-300 hover:bg-violet-500/35"
+                        : "bg-violet-100 text-violet-700 hover:bg-violet-200"
                       : isLineupDark
-                        ? "bg-white/5 border border-white/15 text-white/50 hover:bg-white/10 hover:text-white/80"
-                        : "bg-gray-100 border border-gray-300 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
+                        ? "text-white/50 hover:bg-white/8 hover:text-white/80"
+                        : "text-gray-500 hover:bg-gray-200 hover:text-gray-700"
                   }`}
                 >
                   {sideLayout ? <Columns3 className="w-3.5 h-3.5" /> : <PanelLeft className="w-3.5 h-3.5" />}
-                  <span>{sideLayout ? "Standard" : "Sidoläge"}</span>
+                  <span>Sidoläge</span>
                 </button>
                 </LongPressTooltip>
 
-                {/* Auto-fördela-knapp */}
+                {/* AUTO green button */}
                 <LongPressTooltip label="Autofördela">
                 <button
                   onClick={() => setConfirmAutoDistribute(true)}
-                  title="Fördela anmälda spelare automatiskt på lagen"
-                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${isLineupDark ? 'bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 hover:bg-cyan-500/30' : 'bg-cyan-100 border border-cyan-300 text-cyan-700 hover:bg-cyan-200'}`}
+                  title="Fördela anmälda spelare automatiskt"
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${isLineupDark ? 'bg-emerald-500/25 text-emerald-300 hover:bg-emerald-500/35' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}
                 >
                   <Shuffle className="w-3.5 h-3.5" />
                   <span>Auto</span>
                 </button>
                 </LongPressTooltip>
 
-                {/* Slumpa om-knapp */}
+                {/* SLUMPA yellow/amber button */}
                 <LongPressTooltip label="Slumpa">
                 <button
                   onClick={() => handleAutoDistribute(true)}
-                  title="Slumpa om neutrala spelare (utan lagfärg) mellan lagen"
-                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${isLineupDark ? 'bg-amber-500/20 border border-amber-400/40 text-amber-300 hover:bg-amber-500/30' : 'bg-amber-100 border border-amber-300 text-amber-700 hover:bg-amber-200'}`}
+                  title="Slumpa om neutrala spelare"
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${isLineupDark ? 'bg-amber-500/25 text-amber-300 hover:bg-amber-500/35' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
                 >
                   <Dices className="w-3.5 h-3.5" />
                   <span>Slumpa</span>
                 </button>
                 </LongPressTooltip>
 
-
-                {/* Dela-knapp */}
+                {/* DELA button */}
                 <LongPressTooltip label="Dela länk">
                 <button
                   onClick={handleShare}
                   disabled={shareState === "saving"}
-                  title="Dela skrivskyddad länk till aktuell uppställning"
-                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${
+                  title="Dela skrivskyddad länk"
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${
                     shareState === "copied"
                       ? isLineupDark
-                        ? "bg-emerald-500/30 border border-emerald-400/60 text-emerald-200"
-                        : "bg-emerald-100 border border-emerald-300 text-emerald-700"
+                        ? "bg-emerald-500/25 text-emerald-200"
+                        : "bg-emerald-100 text-emerald-700"
                       : isLineupDark
-                        ? "bg-white/5 border border-white/15 text-white/60 hover:bg-white/10 hover:text-white/90 disabled:opacity-50"
-                        : "bg-gray-100 border border-gray-300 text-gray-500 hover:bg-gray-200 hover:text-gray-700 disabled:opacity-50"
+                        ? "text-white/50 hover:bg-white/8 hover:text-white/80 disabled:opacity-50"
+                        : "text-gray-500 hover:bg-gray-200 hover:text-gray-700 disabled:opacity-50"
                   }`}
                 >
                   {shareState === "copied"
@@ -1268,66 +1262,82 @@ export default function Home() {
                 </button>
                 </LongPressTooltip>
 
-                {/* Export-knapp */}
-                <LongPressTooltip label="Exportera">
-                <button
-                  onClick={() => setShowExport(true)}
-                  title="Exportera laguppställning"
-                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${isLineupDark ? 'bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/30' : 'bg-emerald-100 border border-emerald-300 text-emerald-700 hover:bg-emerald-200'}`}
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Exportera</span>
-                </button>
-                </LongPressTooltip>
+                {/* Divider */}
+                <div className={`w-px h-5 ${isLineupDark ? 'bg-white/10' : 'bg-gray-300'} mx-0.5`} />
 
-                {/* Statistik-knapp */}
+                {/* Stats icon button with dropdown */}
                 <LongPressTooltip label="Statistik">
                 <button
                   onClick={() => setShowStats((v) => !v)}
                   title="Visa/dölj statistik"
-                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${
+                  className={`flex items-center gap-0.5 p-1.5 rounded transition-all ${
                     showStats
                       ? isLineupDark
-                        ? "bg-sky-500/30 border border-sky-400/50 text-sky-300"
-                        : "bg-sky-100 border border-sky-300 text-sky-700"
+                        ? "text-sky-300 bg-sky-500/20"
+                        : "text-sky-700 bg-sky-100"
                       : isLineupDark
-                        ? "bg-white/5 border border-white/15 text-white/50 hover:bg-white/10 hover:text-white/80"
-                        : "bg-gray-100 border border-gray-300 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
+                        ? "text-white/40 hover:text-white/70 hover:bg-white/8"
+                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-200"
                   }`}
                 >
-                  <BarChart3 className="w-3.5 h-3.5" />
+                  <BarChart3 className="w-4 h-4" />
                   {showStats ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                 </button>
                 </LongPressTooltip>
 
-                {/* Tema-toggle */}
+                {/* Theme toggle icon */}
                 <LongPressTooltip label={isLineupDark ? "Ljust tema" : "Mörkt tema"}>
                 <button
                   onClick={toggleLineupTheme}
                   title={isLineupDark ? "Byt till ljust tema" : "Byt till mörkt tema"}
-                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${
+                  className={`p-1.5 rounded transition-all ${
                     isLineupDark
-                      ? 'bg-white/5 border border-white/10 text-white/40 hover:bg-white/10 hover:text-white/70'
-                      : 'bg-gray-100 border border-gray-300 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
+                      ? 'text-white/40 hover:text-white/70 hover:bg-white/8'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  {isLineupDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+                  {isLineupDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                 </button>
                 </LongPressTooltip>
 
-                {/* Inställningar-knapp (dold) */}
+                {/* Export icon button */}
+                <LongPressTooltip label="Exportera">
+                <button
+                  onClick={() => setShowExport(true)}
+                  title="Exportera laguppställning"
+                  className={`p-1.5 rounded transition-all ${isLineupDark ? 'text-white/40 hover:text-white/70 hover:bg-white/8' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'}`}
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+                </LongPressTooltip>
+              </div>
+
+              {/* Right: Help + Settings icons */}
+              <div className="flex items-center gap-0.5 shrink-0">
+                {/* Help icon (placeholder) */}
+                <LongPressTooltip label="Hjälp">
+                <button
+                  title="Hjälp"
+                  className={`p-1.5 rounded transition-all ${isLineupDark ? 'text-white/30 hover:text-white/60 hover:bg-white/8' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}
+                  onClick={() => {}}
+                >
+                  <HelpCircle className="w-4 h-4" />
+                </button>
+                </LongPressTooltip>
+
+                {/* Settings icon */}
                 <LongPressTooltip label="Inställningar">
                 <button
                   data-settings-btn
                   onClick={() => setShowSettings(true)}
                   title="Inställningar"
-                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${
+                  className={`p-1.5 rounded transition-all ${
                     isLineupDark
-                      ? 'bg-white/5 border border-white/10 text-white/30 hover:bg-white/10 hover:text-white/60'
-                      : 'bg-gray-50 border border-gray-200 text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                      ? 'text-white/30 hover:text-white/60 hover:bg-white/8'
+                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  <Settings className="w-3.5 h-3.5" />
+                  <Settings className="w-4 h-4" />
                 </button>
                 </LongPressTooltip>
               </div>
