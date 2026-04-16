@@ -285,6 +285,9 @@ select option {
   .bg-emerald-950\/10 { background-color: oklch(0.88 0.04 160 / 15%) !important; }
   .bg-emerald-950\/15 { background-color: oklch(0.88 0.04 160 / 18%) !important; }
   .bg-emerald-950\/20 { background-color: oklch(0.88 0.04 160 / 20%) !important; }
+  .bg-red-950\/10 { background-color: oklch(0.88 0.04 25 / 15%) !important; }
+  .bg-red-950\/15 { background-color: oklch(0.88 0.04 25 / 18%) !important; }
+  .bg-red-950\/20 { background-color: oklch(0.88 0.04 25 / 20%) !important; }
   .bg-purple-950\/25 { background-color: oklch(0.88 0.04 300 / 20%) !important; }
   .bg-violet-500\/10 { background-color: oklch(0.88 0.06 290 / 15%) !important; }
 
@@ -297,9 +300,11 @@ select option {
   /* ---- Muted colored text ---- */
   .text-blue-400\/60 { color: oklch(0.5 0.12 240 / 70%) !important; }
   .text-emerald-400\/60 { color: oklch(0.5 0.12 160 / 70%) !important; }
+  .text-red-400\/60 { color: oklch(0.5 0.12 25 / 70%) !important; }
   .text-amber-400\/35 { color: oklch(0.55 0.1 85 / 50%) !important; }
   .text-blue-400\/35 { color: oklch(0.5 0.1 240 / 50%) !important; }
   .text-emerald-400\/35 { color: oklch(0.5 0.1 160 / 50%) !important; }
+  .text-red-400\/35 { color: oklch(0.5 0.1 25 / 50%) !important; }
   .text-purple-400\/40 { color: oklch(0.5 0.1 300 / 55%) !important; }
 
   /* ---- Modal / dialog backgrounds ---- */

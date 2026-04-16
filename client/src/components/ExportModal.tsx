@@ -98,7 +98,7 @@ function getRoleColor(role: string): { bg: string; text: string } {
   if (role === "gk" || role === "res-gk") return { bg: "rgba(245,158,11,0.6)", text: "#fbbf24" };
   if (role === "def") return { bg: "rgba(96,165,250,0.6)", text: "#93c5fd" };
   if (role === "c") return { bg: "rgba(167,139,250,0.6)", text: "#c4b5fd" };
-  return { bg: "rgba(52,211,153,0.6)", text: "#6ee7b7" };
+  return { bg: "rgba(248,113,113,0.6)", text: "#fca5a5" };
 }
 
 // ─── Sizing constants (at native 1800×1000) ───
@@ -287,7 +287,7 @@ function drawTeamBlock(
   }
 
   // ── Forwards (2-column grid) ──
-  drawSectionLabel("Forwards", "#6ee7b7", forwardSlots.length > 0);
+  drawSectionLabel("Forwards", "#fca5a5", forwardSlots.length > 0);
   if (forwardSlots.length > 0) {
     const colW = (width - Math.round(8 * s)) / 2;
     const baseY = curY;

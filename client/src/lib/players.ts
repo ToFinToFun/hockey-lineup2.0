@@ -113,7 +113,7 @@ export function getPositionBadgeColor(position: Position): string {
   switch (position) {
     case "MV": return "bg-amber-500 text-amber-950";
     case "B":  return "bg-blue-500 text-blue-950";
-    case "F":  return "bg-emerald-500 text-emerald-950";
+    case "F":  return "bg-red-500 text-red-950";
     case "C":  return "bg-purple-500 text-purple-950";
     case "IB":  return "bg-slate-400 text-slate-950";
   }
@@ -123,7 +123,7 @@ export function getPositionDotColor(position: Position): string {
   switch (position) {
     case "MV": return "bg-amber-400";
     case "B":  return "bg-blue-400";
-    case "F":  return "bg-emerald-400";
+    case "F":  return "bg-red-400";
     case "C":  return "bg-purple-400";
     case "IB":  return "bg-slate-400";
   }

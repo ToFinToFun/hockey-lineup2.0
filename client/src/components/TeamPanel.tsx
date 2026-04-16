@@ -37,9 +37,9 @@ const sectionStyles = {
     bgColor: "bg-blue-950/10",
   },
   forward: {
-    headerColor: "text-emerald-300",
-    borderColor: "border-emerald-400/20",
-    bgColor: "bg-emerald-950/10",
+    headerColor: "text-red-300",
+    borderColor: "border-red-400/20",
+    bgColor: "bg-red-950/10",
   },
 };
 
@@ -56,9 +56,9 @@ function GroupCard({
   onChangePosition: (playerId: string, pos: Position) => void;
   type: "defense" | "forward";
 }) {
-  const headerColor = type === "defense" ? "text-blue-400/60" : "text-emerald-400/60";
-  const borderColor = type === "defense" ? "border-blue-400/15" : "border-emerald-400/15";
-  const bgColor = type === "defense" ? "bg-blue-950/15" : "bg-emerald-950/15";
+  const headerColor = type === "defense" ? "text-blue-400/60" : "text-red-400/60";
+  const borderColor = type === "defense" ? "border-blue-400/15" : "border-red-400/15";
+  const bgColor = type === "defense" ? "bg-blue-950/15" : "bg-red-950/15";
 
   return (
     <div className={`rounded-md ${bgColor} border ${borderColor} p-1.5`}>
