@@ -240,12 +240,18 @@ export default function Home() {
   // - isSyncing prevents the save effect from firing during applyRemoteState
   const versionRef = useRef(0);
   const isSyncing = useRef(false);
+  // Epoch counter: incremented by applyRemoteState. The save effect captures
+  // the current epoch when it schedules a save. If the epoch has changed by
+  // the time the 50ms timer fires, the save is skipped (it was triggered by
+  // remote state, not a local change).
+  const syncEpochRef = useRef(0);
   // Toast for remote changes
   const [remoteChangeToast, setRemoteChangeToast] = useState<string | null>(null);
 
   const exportRef = useRef<HTMLDivElement>(null);
 
   // Helper to apply remote state (from initial load or SSE)
+  // The version parameter is passed so we can update versionRef here too.
   const applyRemoteState = useCallback((state: {
     players: any[];
     lineup: Record<string, any>;
@@ -254,9 +260,15 @@ export default function Home() {
     teamAConfig?: { goalkeepers: number; defensePairs: number; forwardLines: number } | null;
     teamBConfig?: { goalkeepers: number; defensePairs: number; forwardLines: number } | null;
     deletedPlayerIds?: string[] | null;
-  }) => {
+  }, version?: number) => {
     isSyncing.current = true;
     skipNextUndoSnapshot.current = true;
+    // Increment epoch so any pending save-effect timer knows to skip
+    syncEpochRef.current += 1;
+    // Update versionRef so the save-effect won't re-save this same state
+    if (version && version > versionRef.current) {
+      versionRef.current = version;
+    }
 
     const remotePlayers: Player[] = (state.players ?? []) as Player[];
     const remoteDeletedIds = new Set<string>(state.deletedPlayerIds ?? []);
@@ -294,13 +306,14 @@ export default function Home() {
     setTeamBName(state.teamBName ?? "GRÖNA");
     if (state.teamAConfig) setTeamAConfig(state.teamAConfig);
     if (state.teamBConfig) setTeamBConfig(state.teamBConfig);
-    // Use requestAnimationFrame to ensure React has committed the state updates
-    // before allowing the save effect to fire again
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        isSyncing.current = false;
-      });
-    });
+    // Keep isSyncing true long enough for the save effect to see it.
+    // The save effect has a 50ms debounce, so 150ms ensures we cover:
+    // - React commit + useEffect scheduling (~16ms)
+    // - The 50ms setTimeout in the save effect
+    // - Some margin for safety
+    setTimeout(() => {
+      isSyncing.current = false;
+    }, 150);
   }, []);
 
   // Direct save to server — no debounce, no queue.
@@ -346,9 +359,7 @@ export default function Home() {
         const wrapped = json?.result?.data;
         const state = wrapped?.json ?? wrapped;
         if (state && state.players) {
-          // Track the server's version so we can ignore echo SSE events
-          if (state.version) versionRef.current = state.version;
-          applyRemoteState(state);
+          applyRemoteState(state, state.version);
         } else if (!hasReceivedInitial.current) {
           // No data in SQL yet — push our local state up
           const localState = loadLocalState();
@@ -394,9 +405,8 @@ export default function Home() {
         if (data.version && data.version <= versionRef.current) {
           return;
         }
-        if (data.version) versionRef.current = data.version;
         if (data.state) {
-          applyRemoteState(data.state);
+          applyRemoteState(data.state, data.version);
         }
         // Show toast for remote changes
         if (data.description) {
@@ -418,20 +428,30 @@ export default function Home() {
   }, [applyRemoteState, saveStateMutation]);
 
   // Save to both SQL and localStorage on every state change.
-  // No debounce — saves fire immediately. Version-based echo prevention
-  // in the SSE handler ensures we don't apply our own changes back.
+  // Uses syncEpochRef to distinguish local changes from remote state:
+  // - applyRemoteState increments syncEpochRef before setting state
+  // - The save effect captures the epoch when it runs
+  // - If the epoch changed by the time the timer fires, it means
+  //   applyRemoteState caused this effect, so we skip the save
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
+    // isSyncing is set by applyRemoteState — don't save remote state back
     if (isSyncing.current) return;
     if (!hasReceivedInitial.current) return;
 
     const state: SavedState = { availablePlayers, lineup, teamAName, teamBName, teamAConfig, teamBConfig };
     saveLocalState(state);
 
+    // Capture the current epoch at schedule time
+    const epochAtSchedule = syncEpochRef.current;
+
     // Small debounce (50ms) to batch rapid React state updates (e.g. drag-end
     // sets both lineup and availablePlayers in quick succession)
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
+      // Skip if applyRemoteState ran since we scheduled this save
+      if (syncEpochRef.current !== epochAtSchedule) return;
+      if (isSyncing.current) return;
       saveToServer();
     }, 50);
   }, [availablePlayers, lineup, teamAName, teamBName, deletedPlayerIds, teamAConfig, teamBConfig, saveToServer]);
