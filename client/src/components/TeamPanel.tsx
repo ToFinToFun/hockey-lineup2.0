@@ -137,7 +137,7 @@ export function TeamPanel({
   return (
     <div
       className={`
-        flex flex-col rounded-xl overflow-hidden relative
+        flex flex-col rounded-xl relative
         bg-[#0d1424]/80 backdrop-blur-xl
         border ${panelBorder}
         shadow-[0_0_40px_-8px] ${glowColor}
@@ -147,7 +147,7 @@ export function TeamPanel({
       <div className={`absolute inset-0 pointer-events-none ${teamGradient} rounded-xl`} />
 
       {/* ── Team header ── */}
-      <div className={`flex items-center gap-2 ${compact ? 'px-2 py-1.5' : 'px-3 py-2.5'} border-b border-white/[0.08] bg-white/[0.02] relative`}>
+      <div className={`flex items-center gap-2 ${compact ? 'px-2 py-1.5' : 'px-3 py-2.5'} border-b border-white/[0.08] bg-white/[0.02] relative z-10`}>
         <img
           src={logo}
           alt={teamName}
@@ -190,7 +190,7 @@ export function TeamPanel({
       </div>
 
       {/* ── Slots content ── */}
-      <div className={compact ? "p-1.5" : "p-3"}>
+      <div className={`relative z-10 ${compact ? "p-1.5" : "p-3"}`}>
 
         {/* ── MÅLVAKTER ── */}
         <div className={compact ? "mb-2" : "mb-3"}>
