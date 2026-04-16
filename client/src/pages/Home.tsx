@@ -33,8 +33,9 @@ import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { LongPressTooltip } from "@/components/LongPressTooltip";
 import { trpc } from "@/lib/trpc";
 import type { Player as PlayerType } from "@/lib/players";
-import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Settings, Sun, Moon, Home as HomeIcon } from "lucide-react";
+import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Settings, Sun, Moon, Home as HomeIcon, Palette } from "lucide-react";
 import { useLineupTheme } from "@/hooks/useLineupTheme";
+import { useForwardColor, ALL_FORWARD_THEMES, type ForwardColorTheme } from "@/hooks/useForwardColor";
 import { Link } from "wouter";
 import { SettingsModal } from "@/components/SettingsModal";
 import { matchRegisteredPlayers, matchDeclinedPlayers, fetchAttendanceFromApi, updateAttendanceOnLaget } from "@/lib/laget";
@@ -109,6 +110,7 @@ function saveLocalState(state: SavedState) {
 export default function Home() {
   const local = loadLocalState();
   const { theme: lineupTheme, toggle: toggleLineupTheme, isDark: isLineupDark } = useLineupTheme();
+  const { theme: fwdColorTheme, setTheme: setFwdColorTheme, colors: fc, allThemes: fwdThemes, allColors: fwdAllColors } = useForwardColor();
 
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>(
     local?.availablePlayers ?? initialPlayers
@@ -1294,6 +1296,27 @@ export default function Home() {
                 </button>
                 </LongPressTooltip>
 
+                {/* Forward-färgväljare */}
+                <div className="flex items-center gap-0.5 px-1 py-0.5 rounded border border-white/10 bg-white/5">
+                  <Palette className="w-3 h-3 text-white/30 mr-0.5" />
+                  {fwdThemes.map((t) => {
+                    const c = fwdAllColors[t];
+                    const isActive = fwdColorTheme === t;
+                    return (
+                      <button
+                        key={t}
+                        onClick={() => setFwdColorTheme(t)}
+                        title={`Forward-färg: ${c.name}`}
+                        className={`w-5 h-5 rounded-full border-2 transition-all ${
+                          isActive ? 'border-white scale-110' : 'border-transparent opacity-50 hover:opacity-80'
+                        }`}
+                      >
+                        <div className={`w-full h-full rounded-full ${c.dot}`} />
+                      </button>
+                    );
+                  })}
+                </div>
+
                 {/* Inställningar-knapp (dold) */}
                 <LongPressTooltip label="Inställningar">
                 <button
@@ -1314,7 +1337,7 @@ export default function Home() {
               <div className={`mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] ${isLineupDark ? 'text-white/35' : 'text-gray-500'}`}>
                 <span className="flex items-center gap-1"><span className="bg-yellow-500/30 text-yellow-300 px-1 rounded text-[9px] font-bold">MV</span> Målvakt</span>
                 <span className="flex items-center gap-1"><span className="bg-blue-500/30 text-blue-300 px-1 rounded text-[9px] font-bold">B</span> Back</span>
-                <span className="flex items-center gap-1"><span className="bg-red-500/30 text-red-300 px-1 rounded text-[9px] font-bold">F</span> Forward</span>
+                <span className="flex items-center gap-1"><span className={`${fc.badgeBg} px-1 rounded text-[9px] font-bold`}>F</span> Forward</span>
                 <span className="flex items-center gap-1"><span className="bg-purple-500/30 text-purple-300 px-1 rounded text-[9px] font-bold">C</span> Center</span>
                 <span className="flex items-center gap-1"><span className="bg-teal-500/30 text-teal-300 px-1 rounded text-[9px] font-bold">IB</span> IceBox</span>
                 <span className="text-white/20">|</span>
@@ -1367,7 +1390,7 @@ export default function Home() {
                           {[
                             { pos: "MV", label: "Målvakter", color: "text-amber-400" },
                             { pos: "B", label: "Backar", color: "text-blue-400" },
-                            { pos: "F", label: "Forwards", color: "text-emerald-400" },
+                            { pos: "F", label: "Forwards", color: fc.sectionHeader },
                             { pos: "C", label: "Center", color: "text-purple-400" },
                             { pos: "IB", label: "Ice Box", color: "text-white/40" },
                           ].map(({ pos, label, color }) => (
@@ -1388,7 +1411,7 @@ export default function Home() {
                           {[
                             { pos: "MV", label: "MV", color: "text-amber-400" },
                             { pos: "B", label: "B", color: "text-blue-400" },
-                            { pos: "F", label: "F", color: "text-emerald-400" },
+                            { pos: "F", label: "F", color: fc.sectionHeader },
                             { pos: "C", label: "C", color: "text-purple-400" },
                           ].map(({ pos, label, color }) => (
                             <React.Fragment key={pos}>

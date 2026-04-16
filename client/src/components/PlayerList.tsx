@@ -7,6 +7,7 @@ import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
 import { ALL_POSITIONS, POSITION_LABELS, getPositionBadgeColor } from "@/lib/players";
 import { Search, UserPlus, X, ArrowUpDown, ClipboardCheck, CheckSquare, Square, Loader2 } from "lucide-react";
 import { nanoid } from "nanoid";
+import { useForwardColor } from "@/hooks/useForwardColor";
 
 interface PlayerListProps {
   players: Player[];
@@ -80,6 +81,7 @@ function sortPlayers(players: Player[], key: SortKey, dir: SortDir): Player[] {
 }
 
 export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber, onChangeName, onChangeCaptainRole, onChangeRegistered, onSyncToLaget, syncingPlayerIds, onBulkSyncToLaget, onChangeGamesPlayed, onBulkRegister, onEventInfoUpdate, totalRegistered, totalDeclined, totalPlayers }: PlayerListProps) {
+  const { colors: fc } = useForwardColor();
   const [bulkSelectMode, setBulkSelectMode] = useState(false);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
   const [isBulkSyncing, setIsBulkSyncing] = useState(false);
@@ -478,7 +480,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                   onClick={() => setNewPosition(pos)}
                   className={`text-[9px] font-bold px-1.5 py-0.5 rounded transition-all ${
                     newPosition === pos
-                      ? `${getPositionBadgeColor(pos)} ring-1 ring-white/30`
+                      ? `${getPositionBadgeColor(pos, fc.badgeBg)} ring-1 ring-white/30`
                       : "bg-white/5 text-white/30 border border-white/10 hover:bg-white/10 hover:text-white/50"
                   }`}
                 >

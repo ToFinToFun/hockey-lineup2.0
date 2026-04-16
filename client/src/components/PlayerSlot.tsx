@@ -5,6 +5,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard } from "./PlayerCard";
 import type { Player, Position } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
+import { useForwardColor } from "@/hooks/useForwardColor";
 
 interface PlayerSlotProps {
   slot: Slot;
@@ -13,17 +14,32 @@ interface PlayerSlotProps {
   onChangePosition: (pos: Position) => void;
 }
 
-const roleColors = {
+const baseRoleColors = {
   gk:     { border: "border-amber-400/40",   bg: "bg-amber-950/20",   label: "text-amber-300",   empty: "text-amber-400/35",   badge: "bg-amber-500/20 text-amber-300" },
   "res-gk": { border: "border-amber-400/25", bg: "bg-amber-950/10",   label: "text-amber-300/70",empty: "text-amber-400/25",   badge: "bg-amber-500/15 text-amber-300/70" },
   def:    { border: "border-blue-400/40",    bg: "bg-blue-950/20",    label: "text-blue-300",    empty: "text-blue-400/35",    badge: "bg-blue-500/20 text-blue-300" },
-  lw:     { border: "border-red-400/40", bg: "bg-red-950/20", label: "text-red-300", empty: "text-red-400/35", badge: "bg-red-500/20 text-red-300" },
   c:      { border: "border-purple-400/50",  bg: "bg-purple-950/25",  label: "text-purple-300",  empty: "text-purple-400/40",  badge: "bg-purple-500/25 text-purple-300" },
-  rw:     { border: "border-red-400/40", bg: "bg-red-950/20", label: "text-red-300", empty: "text-red-400/35", badge: "bg-red-500/20 text-red-300" },
 };
 
 export function PlayerSlot({ slot, player, onRemove, onChangePosition }: PlayerSlotProps) {
   const { isOver, setNodeRef } = useDroppable({ id: slot.id });
+  const { colors: fc } = useForwardColor();
+
+  // Forward roles (lw, rw) use the dynamic forward color
+  const forwardRoleColor = {
+    border: fc.slotBorder,
+    bg: fc.slotBg,
+    label: fc.slotLabel,
+    empty: fc.slotEmpty,
+    badge: fc.slotBadge,
+  };
+
+  const roleColors: Record<string, typeof forwardRoleColor> = {
+    ...baseRoleColors,
+    lw: forwardRoleColor,
+    rw: forwardRoleColor,
+  };
+
   const colors = roleColors[slot.role];
 
   return (
