@@ -231,19 +231,14 @@ export default function Home() {
 
   // Track if we've received the initial server state
   const hasReceivedInitial = useRef(false);
-  // === ROBUST SSE SYNC ===
-  // The key insight: we must block SSE from the MOMENT a local change happens,
-  // not just when the mutation is in-flight. The 300ms debounce gap was the bug.
-  //
-  // dirtyRef: set to true immediately on any local state change.
-  //           Cleared only after a successful save AND no pending debounce timer.
-  //           While dirty, ALL SSE stateChange events are ignored.
-  // saveInFlightRef: true while a mutation is in progress (prevents overlapping saves).
-  // saveQueuedRef: if a new change arrives while a save is in-flight, we queue a re-save.
-  const dirtyRef = useRef(false);
-  const saveInFlightRef = useRef(false);
-  const saveQueuedRef = useRef(false);
-  // Flag to prevent save effect from firing during applyRemoteState
+  // === VERSION-BASED SSE SYNC (Firebase-style) ===
+  // Instead of time-based blocking (dirtyRef/debounce), we use version numbers:
+  // - versionRef tracks the latest version we've sent to or received from the server
+  // - When we save, we get back a version number and update versionRef
+  // - When an SSE event arrives with version <= versionRef, we ignore it (echo)
+  // - When an SSE event arrives with version > versionRef, we apply it (remote change)
+  // - isSyncing prevents the save effect from firing during applyRemoteState
+  const versionRef = useRef(0);
   const isSyncing = useRef(false);
   // Toast for remote changes
   const [remoteChangeToast, setRemoteChangeToast] = useState<string | null>(null);
@@ -263,10 +258,7 @@ export default function Home() {
     isSyncing.current = true;
     skipNextUndoSnapshot.current = true;
 
-    // Merge: se till att alla spelare från initialPlayers alltid finns i truppen
     const remotePlayers: Player[] = (state.players ?? []) as Player[];
-    const remoteIds = new Set(remotePlayers.map((p) => p.id));
-    const lineupIds = new Set(Object.values(state.lineup ?? {}).map((p: any) => p.id));
     const remoteDeletedIds = new Set<string>(state.deletedPlayerIds ?? []);
     if (remoteDeletedIds.size > 0) {
       setDeletedPlayerIds((prev) => {
@@ -275,24 +267,28 @@ export default function Home() {
         return merged;
       });
     }
-    const allDeletedIds = new Set(Array.from(deletedPlayerIdsRef.current).concat(Array.from(remoteDeletedIds)));
-    const missingPlayers = initialPlayers.filter(
-      (p) => !remoteIds.has(p.id) && !lineupIds.has(p.id) && !allDeletedIds.has(p.id)
-    );
-    const mergedPlayers = missingPlayers.length > 0
-      ? [...remotePlayers, ...missingPlayers]
-      : remotePlayers;
+
+    // Only merge with initialPlayers if the database is completely empty
+    // (i.e., first-ever app launch). Otherwise, trust the server's data entirely.
+    const remoteLineup = state.lineup ?? {};
+    let finalPlayers: Player[];
+    if (remotePlayers.length === 0 && Object.keys(remoteLineup).length === 0) {
+      finalPlayers = initialPlayers;
+    } else {
+      // Server owns the truth — use its data directly.
+      // This preserves isRegistered/isDeclined from laget.se syncs.
+      finalPlayers = remotePlayers;
+    }
 
     // Filtrera bort ogiltiga slot-IDs
-    const rawLineup = state.lineup ?? {};
     const sanitizedLineup: Record<string, Player> = {};
-    for (const [slotId, player] of Object.entries(rawLineup)) {
+    for (const [slotId, player] of Object.entries(remoteLineup)) {
       if (ALL_SLOT_IDS.has(slotId)) {
         sanitizedLineup[slotId] = player as Player;
       }
     }
 
-    setAvailablePlayers(mergedPlayers);
+    setAvailablePlayers(finalPlayers);
     setLineup(sanitizedLineup);
     setTeamAName(state.teamAName ?? "VITA");
     setTeamBName(state.teamBName ?? "GRÖNA");
@@ -307,43 +303,34 @@ export default function Home() {
     });
   }, []);
 
-  // Serialized save function: only one save at a time, queue if needed
-  const doSave = useCallback(() => {
-    if (saveInFlightRef.current) {
-      // A save is already in progress — mark that we need to re-save when it completes
-      saveQueuedRef.current = true;
-      return;
+  // Direct save to server — no debounce, no queue.
+  // Uses mutateAsync so we can await the version number.
+  // The returned version is used for SSE echo-prevention.
+  const saveToServer = useCallback(async (
+    players?: Player[],
+    lineupData?: Record<string, Player>,
+    operation?: { opType: string; description: string; payload?: Record<string, any> }
+  ) => {
+    const currentPlayers = players ?? availablePlayersRef.current;
+    const currentLineup = lineupData ?? lineupRef.current;
+    try {
+      const result = await saveStateMutation.mutateAsync({
+        players: currentPlayers,
+        lineup: currentLineup,
+        teamAName,
+        teamBName,
+        deletedPlayerIds: Array.from(deletedPlayerIdsRef.current),
+        teamAConfig,
+        teamBConfig,
+        operation,
+      });
+      // Update our version — all SSE events with version <= this will be ignored
+      versionRef.current = result.version;
+      return result;
+    } catch (err) {
+      console.error("Save to server failed:", err);
+      return null;
     }
-    saveInFlightRef.current = true;
-
-    // Capture current state from refs (always fresh)
-    const currentPlayers = availablePlayersRef.current;
-    const currentLineup = lineupRef.current;
-    const currentTeamAName = teamAName;
-    const currentTeamBName = teamBName;
-    const currentDeletedPlayerIds = Array.from(deletedPlayerIdsRef.current);
-
-    saveStateMutation.mutate({
-      players: currentPlayers,
-      lineup: currentLineup,
-      teamAName: currentTeamAName,
-      teamBName: currentTeamBName,
-      deletedPlayerIds: currentDeletedPlayerIds,
-      teamAConfig,
-      teamBConfig,
-    }, {
-      onSettled: () => {
-        saveInFlightRef.current = false;
-        if (saveQueuedRef.current) {
-          // Another change came in while we were saving — save again
-          saveQueuedRef.current = false;
-          doSave();
-        } else {
-          // No more queued changes — we're clean, SSE can resume
-          dirtyRef.current = false;
-        }
-      },
-    });
   }, [saveStateMutation, teamAName, teamBName, teamAConfig, teamBConfig]);
 
   // Load initial state from SQL + subscribe to SSE for real-time updates
@@ -351,15 +338,16 @@ export default function Home() {
     let es: EventSource | null = null;
     let mounted = true;
 
-    // 1. Load initial state from server (use superjson-aware tRPC batch endpoint)
+    // 1. Load initial state from server
     fetch("/api/trpc/lineup.getState", { credentials: "include" })
       .then(res => res.json())
       .then((json) => {
         if (!mounted) return;
-        // tRPC wraps response in { result: { data: { json: ..., meta: ... } } }
         const wrapped = json?.result?.data;
         const state = wrapped?.json ?? wrapped;
         if (state && state.players) {
+          // Track the server's version so we can ignore echo SSE events
+          if (state.version) versionRef.current = state.version;
           applyRemoteState(state);
         } else if (!hasReceivedInitial.current) {
           // No data in SQL yet — push our local state up
@@ -372,17 +360,14 @@ export default function Home() {
                 sanitizedLocalLineup[slotId] = player;
               }
             }
-            dirtyRef.current = true;
-            saveStateMutation.mutate({
+            saveStateMutation.mutateAsync({
               players: localState.availablePlayers,
               lineup: sanitizedLocalLineup,
               teamAName: localState.teamAName,
               teamBName: localState.teamBName,
-            }, {
-              onSettled: () => {
-                dirtyRef.current = false;
-              },
-            });
+            }).then((result) => {
+              if (result?.version) versionRef.current = result.version;
+            }).catch(() => {});
           }
         }
         hasReceivedInitial.current = true;
@@ -403,11 +388,13 @@ export default function Home() {
       if (!mounted) return;
       try {
         const data = JSON.parse(event.data);
-        // If we have unsaved local changes (dirty), ignore ALL SSE stateChange events.
-        // This covers the entire window from local change → debounce → mutation → onSettled.
-        if (dirtyRef.current) {
+        // Version-based echo prevention (Firebase-style):
+        // If this event's version is <= our last known version, it's an echo
+        // of our own save — ignore it. Only apply truly new remote changes.
+        if (data.version && data.version <= versionRef.current) {
           return;
         }
+        if (data.version) versionRef.current = data.version;
         if (data.state) {
           applyRemoteState(data.state);
         }
@@ -430,7 +417,9 @@ export default function Home() {
     };
   }, [applyRemoteState, saveStateMutation]);
 
-  // Save to both SQL and localStorage on every state change (debounced)
+  // Save to both SQL and localStorage on every state change.
+  // No debounce — saves fire immediately. Version-based echo prevention
+  // in the SSE handler ensures we don't apply our own changes back.
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (isSyncing.current) return;
@@ -439,16 +428,13 @@ export default function Home() {
     const state: SavedState = { availablePlayers, lineup, teamAName, teamBName, teamAConfig, teamBConfig };
     saveLocalState(state);
 
-    // IMMEDIATELY mark as dirty — this blocks SSE right away,
-    // not after the 300ms debounce fires
-    dirtyRef.current = true;
-
-    // Debounce server saves to avoid rapid-fire mutations
+    // Small debounce (50ms) to batch rapid React state updates (e.g. drag-end
+    // sets both lineup and availablePlayers in quick succession)
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      doSave();
-    }, 300);
-  }, [availablePlayers, lineup, teamAName, teamBName, deletedPlayerIds, teamAConfig, teamBConfig, doSave]);
+      saveToServer();
+    }, 50);
+  }, [availablePlayers, lineup, teamAName, teamBName, deletedPlayerIds, teamAConfig, teamBConfig, saveToServer]);
 
   // Spara en snapshot i undo-stacken
   const pushUndo = useCallback(() => {
@@ -898,19 +884,24 @@ export default function Home() {
     }
   }, [handleSyncToLaget]);
 
-  // Auto-hämta anmälningar vid sidladdning
+  // Auto-hämta anmälningar vid sidladdning — vänta tills initial state har laddats
+  // så att matchRegisteredPlayers har spelare att matcha mot
   const autoFetchDone = useRef(false);
   useEffect(() => {
     if (autoFetchDone.current) return;
+    if (!hasReceivedInitial.current) return; // Vänta på server-state först
     autoFetchDone.current = true;
-    handleBulkRegister().then((result) => {
-      if (result.eventTitle) {
-        setEventInfo({ title: result.eventTitle, date: result.eventDate || "" });
-      } else if (result.noEvent) {
-        setEventInfo(null);
-      }
-    });
-  }, [handleBulkRegister]);
+    // Small delay to ensure React has committed the state from applyRemoteState
+    setTimeout(() => {
+      handleBulkRegister().then((result) => {
+        if (result.eventTitle) {
+          setEventInfo({ title: result.eventTitle, date: result.eventDate || "" });
+        } else if (result.noEvent) {
+          setEventInfo(null);
+        }
+      });
+    }, 100);
+  }, [handleBulkRegister, availablePlayers]);
 
   const [mobileTab, setMobileTabRaw] = useState<MobileTab>("trupp");
   const [dragHoverTab, setDragHoverTab] = useState<MobileTab | null>(null);
