@@ -1092,7 +1092,7 @@ export default function Home() {
   };
 
   return (
-    <div className={isLineupDark ? '' : 'lineup-light'}>
+    <div className={`overflow-x-hidden max-w-[100vw] ${isLineupDark ? '' : 'lineup-light'}`}>
     <DndContext
       sensors={sensors}
       collisionDetection={pointerWithinOrClosest}
@@ -1114,7 +1114,7 @@ export default function Home() {
     >
       {/* Bakgrundsbild */}
       <div
-        className="min-h-screen w-full relative"
+        className="min-h-screen w-full relative overflow-x-hidden"
         style={{
           backgroundImage: `url(${BG_URL})`,
           backgroundSize: "cover",
@@ -1438,18 +1438,18 @@ export default function Home() {
             </div>
           )}
 
-          <main className="px-2 md:px-4 pb-8" ref={exportRef}>
+          <main className="px-2 md:px-4 pb-8 overflow-x-hidden max-w-full" ref={exportRef}>
             {/* Villkorlig rendering: ANTINGEN desktop ELLER mobil – aldrig båda */}
             {/* Detta eliminerar dubbla droppables som förvirrar dnd-kit */}
             {!isMobile ? (
               /* Desktop layout – standard eller sidoläge */
               sideLayout ? (
                 /* Sidoläge: Trupp till vänster (fast bredd), lagen bredvid varandra */
-                <div className="flex gap-1.5">
+                <div className="flex gap-1.5 w-full max-w-full">
                   {/* Spelarlista (vänster) – fast bredd */}
                   <div
                     className="flex flex-col gap-2 shrink-0 min-w-0"
-                    style={{ width: `${ROSTER_WIDTH}px` }}
+                    style={{ width: `${ROSTER_WIDTH}px`, maxWidth: '25vw' }}
                   >
                     <div>
                       <PlayerList
@@ -1517,9 +1517,9 @@ export default function Home() {
               ) : (
                 /* Standard-layout: Vita | Trupp | Gröna */
                 <div
-                  className="grid gap-1 md:gap-1.5"
+                  className="grid gap-1 md:gap-1.5 w-full max-w-full"
                   style={{
-                    gridTemplateColumns: "minmax(180px, 1fr) 280px minmax(180px, 1fr)",
+                    gridTemplateColumns: "1fr minmax(240px, 280px) 1fr",
                   }}
                 >
                   {/* Lag A (VITA) – vänster */}
