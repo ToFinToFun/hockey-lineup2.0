@@ -78,20 +78,21 @@ export const appRouter = router({
             description: z.string(),
             payload: z.record(z.string(), z.any()).optional(),
           }).optional(),
+          clientId: z.string().optional(),
         })
       )
       .mutation(async ({ input }) => {
-        const { operation, ...stateData } = input;
+        const { operation, clientId, ...stateData } = input;
         const result = await saveLineupState(stateData, operation);
 
         // Notify all SSE clients about the change
-        // Echo prevention is handled client-side via version numbers
+        // Server-side echo prevention: exclude the sender so they don't get their own change back
         sseManager.notifyStateChange({
           version: result.version,
           opType: operation?.opType ?? "fullSync",
           description: operation?.description ?? "",
           state: stateData,
-        });
+        }, clientId);
 
         return result;
       }),
