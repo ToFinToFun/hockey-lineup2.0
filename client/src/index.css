@@ -242,12 +242,12 @@
   }
 
   /* Badge colors — matching mockup exactly */
-  .pos-badge-mv { background: #7c3aed; } /* violet-600 */
+  .pos-badge-mv { background: #f97316; } /* orange-500 */
   .pos-badge-b  { background: #3b82f6; } /* blue-500 */
   .pos-badge-f,
   .pos-badge-lw,
-  .pos-badge-rw { background: #22c55e; } /* green-500 */
-  .pos-badge-c  { background: #22c55e; } /* green-500 (same as F in mockup) */
+  .pos-badge-rw { background: #06b6d4; } /* cyan-500 */
+  .pos-badge-c  { background: #8b5cf6; } /* violet-500 */
   .pos-badge-lm { background: #8b5cf6; } /* violet-500 */
   .pos-badge-ib,
   .pos-badge-mi { background: #6366f1; } /* indigo-500 */
