@@ -249,6 +249,8 @@ export default function Home() {
   // - isSyncing prevents the save effect from firing during applyRemoteState
   const versionRef = useRef(0);
   const isSyncing = useRef(false);
+  // SSE client ID — assigned by the server on connection, sent with saves for server-side echo prevention
+  const sseClientIdRef = useRef<string | null>(null);
   // Epoch counter: incremented by applyRemoteState. The save effect captures
   // the current epoch when it schedules a save. If the epoch has changed by
   // the time the 50ms timer fires, the save is skipped (it was triggered by
@@ -351,6 +353,7 @@ export default function Home() {
         teamAConfig: teamAConfigRef.current,
         teamBConfig: teamBConfigRef.current,
         operation,
+        clientId: sseClientIdRef.current ?? undefined,
       });
       // Update our version — all SSE events with version <= this will be ignored
       versionRef.current = result.version;
@@ -407,6 +410,10 @@ export default function Home() {
 
     es.addEventListener("connected", (event) => {
       if (!mounted) return;
+      try {
+        const data = JSON.parse(event.data);
+        if (data.clientId) sseClientIdRef.current = data.clientId;
+      } catch { /* ignore */ }
       setSseConnected(true);
     });
 
