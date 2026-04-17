@@ -1133,7 +1133,7 @@ export default function Home() {
           {/* Header – compact toolbar matching mockup exactly */}
           <header className="shrink-0">
             <div className="glass-header px-3 py-2">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 max-w-[1400px] mx-auto">
               {/* Left: Logo + title + event info */}
               <div className="flex items-center gap-2 shrink-0">
                 <Link href="/">
@@ -1196,19 +1196,19 @@ export default function Home() {
                 {/* Divider */}
                 <div className={`w-px h-5 ${isLineupDark ? 'bg-white/10' : 'bg-gray-300'} mx-0.5`} />
 
-                {/* SIDOLÄGE text button */}
+                {/* SIDOLÄGE button - outlined like mockup */}
                 <LongPressTooltip label={sideLayout ? "Standard" : "Sidoläge"}>
                 <button
                   onClick={toggleSideLayout}
                   title={sideLayout ? "Standard-layout" : "Sidoläge"}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider ${
                     sideLayout
                       ? isLineupDark
-                        ? "bg-violet-500/25 text-violet-300 hover:bg-violet-500/35"
-                        : "bg-violet-100 text-violet-700 hover:bg-violet-200"
+                        ? "bg-violet-500/30 border border-violet-400/50 text-violet-300 hover:bg-violet-500/40"
+                        : "bg-violet-100 border border-violet-300 text-violet-700 hover:bg-violet-200"
                       : isLineupDark
-                        ? "text-white/50 hover:bg-white/8 hover:text-white/80"
-                        : "text-gray-500 hover:bg-gray-200 hover:text-gray-700"
+                        ? "border border-white/20 text-white/60 hover:bg-white/10 hover:text-white"
+                        : "border border-gray-300 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
                   }`}
                 >
                   {sideLayout ? <Columns3 className="w-3.5 h-3.5" /> : <PanelLeft className="w-3.5 h-3.5" />}
@@ -1216,44 +1216,44 @@ export default function Home() {
                 </button>
                 </LongPressTooltip>
 
-                {/* AUTO green button */}
+                {/* AUTO green pill button - solid bg like mockup */}
                 <LongPressTooltip label="Autofördela">
                 <button
                   onClick={() => setConfirmAutoDistribute(true)}
                   title="Fördela anmälda spelare automatiskt"
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${isLineupDark ? 'bg-emerald-500/25 text-emerald-300 hover:bg-emerald-500/35' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider ${isLineupDark ? 'bg-emerald-500 text-white hover:bg-emerald-400 shadow-lg shadow-emerald-500/20' : 'bg-emerald-500 text-white hover:bg-emerald-400'}`}
                 >
                   <Shuffle className="w-3.5 h-3.5" />
                   <span>Auto</span>
                 </button>
                 </LongPressTooltip>
 
-                {/* SLUMPA yellow/amber button */}
+                {/* SLUMPA yellow/amber pill button - solid bg like mockup */}
                 <LongPressTooltip label="Slumpa">
                 <button
                   onClick={() => handleAutoDistribute(true)}
                   title="Slumpa om neutrala spelare"
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${isLineupDark ? 'bg-amber-500/25 text-amber-300 hover:bg-amber-500/35' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider ${isLineupDark ? 'bg-amber-500 text-white hover:bg-amber-400 shadow-lg shadow-amber-500/20' : 'bg-amber-500 text-white hover:bg-amber-400'}`}
                 >
                   <Dices className="w-3.5 h-3.5" />
                   <span>Slumpa</span>
                 </button>
                 </LongPressTooltip>
 
-                {/* DELA button */}
+                {/* DELA button - outlined style like mockup */}
                 <LongPressTooltip label="Dela länk">
                 <button
                   onClick={handleShare}
                   disabled={shareState === "saving"}
                   title="Dela skrivskyddad länk"
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider ${
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider ${
                     shareState === "copied"
                       ? isLineupDark
-                        ? "bg-emerald-500/25 text-emerald-200"
-                        : "bg-emerald-100 text-emerald-700"
+                        ? "bg-emerald-500/30 border border-emerald-400/60 text-emerald-200"
+                        : "bg-emerald-100 border border-emerald-300 text-emerald-700"
                       : isLineupDark
-                        ? "text-white/50 hover:bg-white/8 hover:text-white/80 disabled:opacity-50"
-                        : "text-gray-500 hover:bg-gray-200 hover:text-gray-700 disabled:opacity-50"
+                        ? "border border-white/20 text-white/60 hover:bg-white/10 hover:text-white disabled:opacity-50"
+                        : "border border-gray-300 text-gray-500 hover:bg-gray-200 hover:text-gray-700 disabled:opacity-50"
                   }`}
                 >
                   {shareState === "copied"
@@ -1448,7 +1448,7 @@ export default function Home() {
             </div>
           )}
 
-          <main className="px-2 md:px-4 pb-8 overflow-x-hidden max-w-full" ref={exportRef}>
+          <main className="px-2 md:px-3 pb-8 overflow-x-hidden max-w-[1400px] mx-auto w-full" ref={exportRef}>
             {/* Villkorlig rendering: ANTINGEN desktop ELLER mobil – aldrig båda */}
             {/* Detta eliminerar dubbla droppables som förvirrar dnd-kit */}
             {!isMobile ? (

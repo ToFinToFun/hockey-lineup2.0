@@ -149,9 +149,9 @@ export function DraggablePlayerCard({
       )}
 
       {/* Player name + number */}
-      <span className="text-white font-medium truncate flex-1 leading-tight">
+      <span className="text-white font-medium truncate flex-1 leading-tight text-[13px]">
         {player.name}
-        {player.number ? <span className="text-white/35 font-normal ml-1">#{player.number}</span> : null}
+        {player.number ? <span className="text-white/40 font-normal ml-1.5">#{player.number}</span> : null}
         {!hideExtras && !compact && player.gamesPlayed != null && player.gamesPlayed > 0 && (
           <span className="ml-1 text-white/25 text-[9px]" title="Matcher spelade">({player.gamesPlayed})</span>
         )}
