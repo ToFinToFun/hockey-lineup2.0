@@ -47,7 +47,10 @@
   --font-serif: "DM Serif Display", Georgia, serif;
 }
 
-/* Hockey Lineup App – Glassmorphism Dark Theme */
+/* ============================================
+   Hockey Lineup App – Dark Theme (default)
+   Page background: #0f1a2d
+   ============================================ */
 :root {
   --radius: 0.625rem;
   --background: oklch(0.08 0.02 240);
@@ -100,6 +103,10 @@
   }
 }
 
+/* ============================================
+   DESIGN SYSTEM – Dark Theme Components
+   Matching mockup: design-mockup-1-glass-desktop.png
+   ============================================ */
 @layer components {
   .container {
     width: 100%;
@@ -143,444 +150,67 @@
     box-shadow: 0 8px 32px oklch(0.5 0.05 230 / 12%),
                 0 2px 8px oklch(0.5 0.05 230 / 6%);
   }
-}
 
-/* Scrollbar styling – smal som standard (interna listor) */
-::-webkit-scrollbar {
-  width: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: oklch(1 0 0 / 15%);
-  border-radius: 2px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: oklch(1 0 0 / 25%);
-}
-
-
-/* Select styling */
-select option {
-  background-color: #0d1a14;
-  color: white;
-}
-
-/* Touch optimizations for drag and drop */
-/* Prevent text selection during drag on touch devices */
-[data-draggable="true"],
-[role="button"] {
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-/* Prevent page scroll when dragging over drop zones */
-.dnd-scroll-lock {
-  overflow: hidden;
-  touch-action: none;
-}
-
-/* Larger touch targets on mobile */
-@media (max-width: 768px) {
-  /* Make player cards taller for easier touch */
-  .player-card-touch {
-    min-height: 44px;
-  }
-  
-  /* Prevent callout on long press */
-  * {
-    -webkit-touch-callout: none;
-  }
-}
-
-/* Hold-timer progress animation for long-press delete */
-/* r=14 → circumference = 2 * PI * 14 = 87.96 */
-@keyframes holdProgress {
-  from {
-    stroke-dashoffset: 87.96;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-/* ============================================
-   Lineup Light Theme – comprehensive overrides
-   Applied via .lineup-light wrapper on the root div
-   ============================================ */
-.lineup-light {
-  /* ---- Scrollbar ---- */
-  ::-webkit-scrollbar-thumb {
-    background: oklch(0 0 0 / 15%);
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: oklch(0 0 0 / 25%);
-  }
-  select option {
-    background-color: #f0f5f3;
-    color: #111;
-  }
-
-  /* ---- Generic text-white/XX → dark equivalents ---- */
-  .text-white { color: oklch(0.15 0.01 160) !important; }
-  .text-white\/80 { color: oklch(0.2 0.01 160) !important; }
-  .text-white\/70 { color: oklch(0.3 0.01 160) !important; }
-  .text-white\/60 { color: oklch(0.35 0.01 160) !important; }
-  .text-white\/50 { color: oklch(0.4 0.01 160) !important; }
-  .text-white\/40 { color: oklch(0.45 0.01 160) !important; }
-  .text-white\/35 { color: oklch(0.5 0.01 160) !important; }
-  .text-white\/30 { color: oklch(0.55 0.01 160) !important; }
-  .text-white\/25 { color: oklch(0.6 0.01 160) !important; }
-  .text-white\/20 { color: oklch(0.65 0.01 160) !important; }
-
-  /* ---- bg-white/XX → light gray equivalents ---- */
-  .bg-white\/5 { background-color: oklch(0 0 0 / 4%) !important; }
-  .bg-white\/8 { background-color: oklch(0 0 0 / 6%) !important; }
-  .bg-white\/10 { background-color: oklch(0 0 0 / 7%) !important; }
-  .bg-white\/15 { background-color: oklch(0 0 0 / 10%) !important; }
-  .bg-white\/20 { background-color: oklch(0 0 0 / 12%) !important; }
-
-  /* ---- hover:bg-white/XX ---- */
-  .hover\:bg-white\/5:hover { background-color: oklch(0 0 0 / 4%) !important; }
-  .hover\:bg-white\/10:hover { background-color: oklch(0 0 0 / 7%) !important; }
-  .hover\:bg-white\/15:hover { background-color: oklch(0 0 0 / 10%) !important; }
-  .hover\:bg-white\/20:hover { background-color: oklch(0 0 0 / 12%) !important; }
-
-  /* ---- hover:text-white/XX ---- */
-  .hover\:text-white:hover { color: oklch(0.15 0.01 160) !important; }
-  .hover\:text-white\/50:hover { color: oklch(0.4 0.01 160) !important; }
-  .hover\:text-white\/60:hover { color: oklch(0.35 0.01 160) !important; }
-  .hover\:text-white\/70:hover { color: oklch(0.3 0.01 160) !important; }
-  .hover\:text-white\/80:hover { color: oklch(0.2 0.01 160) !important; }
-
-  /* ---- border-white/XX → dark borders ---- */
-  .border-white\/8 { border-color: oklch(0 0 0 / 8%) !important; }
-  .border-white\/10 { border-color: oklch(0 0 0 / 10%) !important; }
-  .border-white\/15 { border-color: oklch(0 0 0 / 12%) !important; }
-  .border-white\/20 { border-color: oklch(0 0 0 / 15%) !important; }
-  .border-white\/30 { border-color: oklch(0 0 0 / 18%) !important; }
-  .border-white\/40 { border-color: oklch(0 0 0 / 22%) !important; }
-  .border-white\/50 { border-color: oklch(0 0 0 / 28%) !important; }
-
-  /* ---- hover:border-white/XX ---- */
-  .hover\:border-white\/15:hover { border-color: oklch(0 0 0 / 12%) !important; }
-  .hover\:border-white\/20:hover { border-color: oklch(0 0 0 / 15%) !important; }
-  .hover\:border-white\/30:hover { border-color: oklch(0 0 0 / 18%) !important; }
-
-  /* ---- ring-white/XX ---- */
-  .ring-white\/20 { --tw-ring-color: oklch(0 0 0 / 12%) !important; }
-  .ring-white\/30 { --tw-ring-color: oklch(0 0 0 / 18%) !important; }
-
-  /* ---- bg-black/XX → light equivalents ---- */
-  .bg-black\/25 { background-color: oklch(1 0 0 / 75%) !important; }
-  .bg-black\/30 { background-color: oklch(1 0 0 / 70%) !important; }
-
-  /* ---- Dark section backgrounds → light equivalents ---- */
-  .bg-amber-950\/10 { background-color: oklch(0.85 0.05 85 / 15%) !important; }
-  .bg-amber-950\/20 { background-color: oklch(0.85 0.05 85 / 20%) !important; }
-  .bg-blue-950\/10 { background-color: oklch(0.88 0.04 240 / 15%) !important; }
-  .bg-blue-950\/15 { background-color: oklch(0.88 0.04 240 / 18%) !important; }
-  .bg-blue-950\/20 { background-color: oklch(0.88 0.04 240 / 20%) !important; }
-  .bg-emerald-950\/10 { background-color: oklch(0.88 0.04 160 / 15%) !important; }
-  .bg-emerald-950\/15 { background-color: oklch(0.88 0.04 160 / 18%) !important; }
-  .bg-emerald-950\/20 { background-color: oklch(0.88 0.04 160 / 20%) !important; }
-  .bg-red-950\/10 { background-color: oklch(0.88 0.04 25 / 15%) !important; }
-  .bg-red-950\/15 { background-color: oklch(0.88 0.04 25 / 18%) !important; }
-  .bg-red-950\/20 { background-color: oklch(0.88 0.04 25 / 20%) !important; }
-  .bg-purple-950\/25 { background-color: oklch(0.88 0.04 300 / 20%) !important; }
-  .bg-violet-500\/10 { background-color: oklch(0.88 0.06 290 / 15%) !important; }
-
-  /* ---- Section header text → darker for readability ---- */
-  .text-amber-300 { color: oklch(0.6 0.15 85) !important; }
-  .text-amber-400 { color: oklch(0.58 0.15 85) !important; }
-  .text-blue-400 { color: oklch(0.48 0.15 240) !important; }
-  .text-purple-400 { color: oklch(0.48 0.15 300) !important; }
-
-  /* ---- Muted colored text ---- */
-  .text-blue-400\/60 { color: oklch(0.5 0.12 240 / 70%) !important; }
-  .text-emerald-400\/60 { color: oklch(0.5 0.12 160 / 70%) !important; }
-  .text-red-400\/60 { color: oklch(0.5 0.12 25 / 70%) !important; }
-  .text-amber-400\/35 { color: oklch(0.55 0.1 85 / 50%) !important; }
-  .text-blue-400\/35 { color: oklch(0.5 0.1 240 / 50%) !important; }
-  .text-emerald-400\/35 { color: oklch(0.5 0.1 160 / 50%) !important; }
-  .text-red-400\/35 { color: oklch(0.5 0.1 25 / 50%) !important; }
-  .text-purple-400\/40 { color: oklch(0.5 0.1 300 / 55%) !important; }
-
-  /* ---- Modal / dialog backgrounds ---- */
-  .bg-gray-900 { background-color: oklch(0.97 0.005 160) !important; }
-
-  /* ---- Inputs: placeholder colors ---- */
-  .placeholder-white\/25::placeholder,
-  .placeholder-white\/30::placeholder {
-    color: oklch(0.55 0.01 160) !important;
-  }
-
-  /* ---- Backdrop blur panels ---- */
-  .backdrop-blur-md { backdrop-filter: blur(12px) saturate(1.2); }
-  .backdrop-blur-sm { backdrop-filter: blur(6px) saturate(1.2); }
-
-  /* ---- Accent colors: slightly deeper for light bg ---- */
-  .text-emerald-400 { color: oklch(0.5 0.18 160) !important; }
-  .text-emerald-300 { color: oklch(0.45 0.15 160) !important; }
-  .text-blue-300 { color: oklch(0.45 0.15 240) !important; }
-  .text-purple-300 { color: oklch(0.45 0.15 300) !important; }
-  .text-red-400 { color: oklch(0.55 0.2 25) !important; }
-  .text-red-300 { color: oklch(0.5 0.18 25) !important; }
-  .text-red-400\/70 { color: oklch(0.55 0.2 25 / 80%) !important; }
-  .text-yellow-300 { color: oklch(0.6 0.15 85) !important; }
-  .text-yellow-400 { color: oklch(0.58 0.18 85) !important; }
-  .text-orange-300 { color: oklch(0.58 0.15 55) !important; }
-  .text-slate-200 { color: oklch(0.35 0.01 240) !important; }
-  .text-slate-300\/70 { color: oklch(0.4 0.01 240 / 80%) !important; }
-
-  /* ---- Badge backgrounds: slightly more opaque for light bg ---- */
-  .bg-amber-500\/15 { background-color: oklch(0.8 0.1 85 / 25%) !important; }
-  .bg-amber-500\/20 { background-color: oklch(0.8 0.1 85 / 30%) !important; }
-  .bg-blue-500\/20 { background-color: oklch(0.8 0.1 240 / 30%) !important; }
-  .bg-emerald-500\/20 { background-color: oklch(0.8 0.1 160 / 30%) !important; }
-  .bg-emerald-500\/30 { background-color: oklch(0.8 0.1 160 / 40%) !important; }
-  .bg-purple-500\/25 { background-color: oklch(0.8 0.1 300 / 35%) !important; }
-  .bg-red-500\/20 { background-color: oklch(0.85 0.1 25 / 25%) !important; }
-  .bg-yellow-400\/25 { background-color: oklch(0.85 0.1 85 / 30%) !important; }
-  .bg-yellow-500\/15 { background-color: oklch(0.85 0.1 85 / 25%) !important; }
-  .bg-orange-400\/25 { background-color: oklch(0.85 0.1 55 / 30%) !important; }
-
-  /* ---- Hover accent backgrounds ---- */
-  .hover\:bg-emerald-500\/10:hover { background-color: oklch(0.8 0.1 160 / 18%) !important; }
-  .hover\:bg-emerald-500\/20:hover { background-color: oklch(0.8 0.1 160 / 28%) !important; }
-  .hover\:bg-emerald-500\/30:hover { background-color: oklch(0.8 0.1 160 / 38%) !important; }
-  .hover\:bg-emerald-500\/35:hover { background-color: oklch(0.8 0.1 160 / 42%) !important; }
-  .hover\:bg-emerald-400\/20:hover { background-color: oklch(0.8 0.1 160 / 28%) !important; }
-  .hover\:bg-red-400\/20:hover { background-color: oklch(0.85 0.1 25 / 25%) !important; }
-  .hover\:bg-red-500\/10:hover { background-color: oklch(0.85 0.1 25 / 18%) !important; }
-  .hover\:bg-red-500\/35:hover { background-color: oklch(0.85 0.1 25 / 40%) !important; }
-  .hover\:bg-amber-500\/35:hover { background-color: oklch(0.85 0.1 85 / 40%) !important; }
-  .hover\:bg-blue-500\/15:hover { background-color: oklch(0.85 0.1 240 / 22%) !important; }
-  .hover\:bg-yellow-500\/10:hover { background-color: oklch(0.85 0.1 85 / 18%) !important; }
-
-  /* ---- Solid white → dark for light theme ---- */
-  .text-white { color: oklch(0.15 0.01 160) !important; }
-  .bg-white { background-color: oklch(0.98 0.005 160) !important; }
-
-  /* ---- Additional border-white/XX ---- */
-  .border-white\/35 { border-color: oklch(0 0 0 / 20%) !important; }
-  .border-white\/60 { border-color: oklch(0 0 0 / 32%) !important; }
-
-  /* ---- bg-emerald-500/XX (player list badges) ---- */
-  .bg-emerald-500\/10 { background-color: oklch(0.85 0.08 160 / 18%) !important; }
-  .bg-emerald-500\/15 { background-color: oklch(0.85 0.08 160 / 22%) !important; }
-  .bg-emerald-500\/25 { background-color: oklch(0.85 0.08 160 / 32%) !important; }
-
-  /* ---- bg-red-400/XX and bg-red-500/XX (player list) ---- */
-  .bg-red-400\/10 { background-color: oklch(0.9 0.06 25 / 15%) !important; }
-  .bg-red-400\/15 { background-color: oklch(0.9 0.06 25 / 20%) !important; }
-  .bg-red-400\/20 { background-color: oklch(0.9 0.06 25 / 25%) !important; }
-  .bg-red-400\/25 { background-color: oklch(0.9 0.06 25 / 30%) !important; }
-  .bg-red-500\/5 { background-color: oklch(0.92 0.04 25 / 10%) !important; }
-  .bg-red-500\/15 { background-color: oklch(0.88 0.06 25 / 20%) !important; }
-  .bg-red-500\/30 { background-color: oklch(0.85 0.08 25 / 35%) !important; }
-  .bg-red-500\/50 { background-color: oklch(0.85 0.08 25 / 50%) !important; }
-
-  /* ---- bg-sky-500/XX (waiver badges) ---- */
-  .bg-sky-500\/10 { background-color: oklch(0.88 0.06 230 / 15%) !important; }
-  .bg-sky-500\/20 { background-color: oklch(0.88 0.06 230 / 25%) !important; }
-  .bg-sky-500\/30 { background-color: oklch(0.88 0.06 230 / 35%) !important; }
-
-  /* ---- bg-slate-XX (neutral badges) ---- */
-  .bg-slate-300\/20 { background-color: oklch(0.85 0.01 240 / 20%) !important; }
-  .bg-slate-500\/15 { background-color: oklch(0.85 0.01 240 / 18%) !important; }
-
-  /* ---- bg-orange-400/XX (player cards) ---- */
-  .bg-orange-400\/20 { background-color: oklch(0.88 0.08 55 / 25%) !important; }
-
-  /* ---- bg-yellow-400/XX (player cards) ---- */
-  .bg-yellow-400\/20 { background-color: oklch(0.88 0.08 85 / 25%) !important; }
-
-  /* ---- bg-emerald-400/XX (team panel) ---- */
-  .bg-emerald-400\/15 { background-color: oklch(0.85 0.08 160 / 22%) !important; }
-  .bg-emerald-400\/20 { background-color: oklch(0.85 0.08 160 / 28%) !important; }
-  .bg-emerald-400\/25 { background-color: oklch(0.85 0.08 160 / 32%) !important; }
-  .bg-emerald-900 { background-color: oklch(0.88 0.06 160) !important; }
-  .bg-emerald-400 { background-color: oklch(0.55 0.18 160) !important; }
-
-  /* ---- text-sky-XX (waiver text) ---- */
-  .text-sky-300 { color: oklch(0.45 0.15 230) !important; }
-  .text-sky-300\/50 { color: oklch(0.5 0.12 230 / 60%) !important; }
-
-  /* ---- text-violet-400 ---- */
-  .text-violet-400 { color: oklch(0.48 0.15 290) !important; }
-
-  /* ---- text-slate-300 ---- */
-  .text-slate-300 { color: oklch(0.4 0.01 240) !important; }
-
-  /* ---- text-emerald-300/70 ---- */
-  .text-emerald-300\/70 { color: oklch(0.45 0.12 160 / 80%) !important; }
-  .text-emerald-400\/70 { color: oklch(0.5 0.15 160 / 80%) !important; }
-
-  /* ---- text-amber-300/70 ---- */
-  .text-amber-300\/70 { color: oklch(0.55 0.12 85 / 80%) !important; }
-
-  /* ---- Additional border-XX/XX (colored borders) ---- */
-  .border-emerald-300\/60 { border-color: oklch(0.5 0.15 160 / 50%) !important; }
-  .border-emerald-400\/50 { border-color: oklch(0.5 0.15 160 / 40%) !important; }
-  .border-emerald-400\/60 { border-color: oklch(0.5 0.15 160 / 50%) !important; }
-  .border-orange-400\/40 { border-color: oklch(0.6 0.12 55 / 40%) !important; }
-  .border-orange-400\/50 { border-color: oklch(0.6 0.12 55 / 45%) !important; }
-  .border-red-400\/20 { border-color: oklch(0.6 0.12 25 / 22%) !important; }
-  .border-red-400\/40 { border-color: oklch(0.6 0.12 25 / 40%) !important; }
-  .border-red-400\/50 { border-color: oklch(0.6 0.12 25 / 45%) !important; }
-  .border-yellow-400\/40 { border-color: oklch(0.65 0.12 85 / 40%) !important; }
-  .border-yellow-400\/50 { border-color: oklch(0.65 0.12 85 / 45%) !important; }
-  .border-sky-400\/20 { border-color: oklch(0.55 0.12 230 / 22%) !important; }
-  .border-sky-400\/40 { border-color: oklch(0.55 0.12 230 / 40%) !important; }
-  .border-violet-400\/20 { border-color: oklch(0.55 0.12 290 / 22%) !important; }
-  .border-slate-300\/50 { border-color: oklch(0.6 0.01 240 / 40%) !important; }
-  .border-slate-400\/30 { border-color: oklch(0.55 0.01 240 / 30%) !important; }
-  .border-amber-400\/20 { border-color: oklch(0.6 0.12 85 / 22%) !important; }
-  .border-amber-400\/25 { border-color: oklch(0.6 0.12 85 / 28%) !important; }
-  .border-amber-400\/30 { border-color: oklch(0.6 0.12 85 / 30%) !important; }
-  .border-amber-400\/40 { border-color: oklch(0.6 0.12 85 / 40%) !important; }
-  .border-blue-400\/15 { border-color: oklch(0.55 0.12 240 / 18%) !important; }
-  .border-blue-400\/20 { border-color: oklch(0.55 0.12 240 / 22%) !important; }
-  .border-blue-400\/40 { border-color: oklch(0.55 0.12 240 / 40%) !important; }
-  .border-emerald-400\/15 { border-color: oklch(0.5 0.15 160 / 18%) !important; }
-  .border-emerald-400\/20 { border-color: oklch(0.5 0.15 160 / 22%) !important; }
-  .border-emerald-400\/30 { border-color: oklch(0.5 0.15 160 / 30%) !important; }
-  .border-emerald-400\/40 { border-color: oklch(0.5 0.15 160 / 38%) !important; }
-  .border-emerald-400 { border-color: oklch(0.5 0.18 160) !important; }
-  .border-purple-400\/50 { border-color: oklch(0.55 0.12 300 / 45%) !important; }
-  .border-red-400\/30 { border-color: oklch(0.6 0.12 25 / 30%) !important; }
-  .border-red-400\/60 { border-color: oklch(0.6 0.12 25 / 50%) !important; }
-  .border-slate-300\/20 { border-color: oklch(0.6 0.01 240 / 20%) !important; }
-
-  /* ---- Hover border colors ---- */
-  .hover\:border-emerald-400\/30:hover { border-color: oklch(0.5 0.15 160 / 30%) !important; }
-  .hover\:border-emerald-400\/40:hover { border-color: oklch(0.5 0.15 160 / 38%) !important; }
-
-  /* ---- Drop shadow on logos ---- */
-  .drop-shadow-lg { filter: drop-shadow(0 2px 4px oklch(0 0 0 / 15%)); }
-
-  /* ---- Scrollbar for light mode ---- */
-  ::-webkit-scrollbar-track { background: oklch(0.95 0.005 160); }
-  ::-webkit-scrollbar-thumb { background: oklch(0.75 0.01 160); }
-  ::-webkit-scrollbar-thumb:hover { background: oklch(0.65 0.01 160); }
-
-  /* ---- Glass design system – light theme overrides ---- */
+  /* ---- GLASS PANEL ----
+     Used for: Team panels, center panel, saved lineups
+     Mockup: subtle glass over #0f1a2d background
+     Extracted: panel bg ~#0e1929, border ~#343747 */
   .glass-panel {
-    background: oklch(1 0 0 / 70%) !important;
-    border: 1px solid oklch(0 0 0 / 10%) !important;
-    box-shadow: 0 2px 12px oklch(0 0 0 / 6%);
-  }
-  .glass-panel-strong {
-    background: oklch(1 0 0 / 85%) !important;
-    border: 1px solid oklch(0 0 0 / 12%) !important;
-    box-shadow: 0 4px 20px oklch(0 0 0 / 8%);
-  }
-  .glass-header {
-    background: oklch(0.97 0.005 230 / 80%) !important;
-    border-bottom: 1px solid oklch(0 0 0 / 10%) !important;
-    backdrop-filter: blur(16px) saturate(1.2);
-    -webkit-backdrop-filter: blur(16px) saturate(1.2);
-  }
-  .glass-button {
-    background: oklch(0 0 0 / 5%) !important;
-    border: 1px solid oklch(0 0 0 / 10%) !important;
-  }
-  .glass-button:hover {
-    background: oklch(0 0 0 / 10%) !important;
-    border-color: oklch(0 0 0 / 15%) !important;
-  }
-  .player-row {
-    background: oklch(0 0 0 / 4%) !important;
-  }
-  .player-row:hover {
-    background: oklch(0 0 0 / 7%) !important;
-  }
-  .pos-badge {
-    color: white !important;
-  }
-  .pos-badge-mv { background: oklch(0.65 0.18 85) !important; }
-  .pos-badge-b { background: oklch(0.50 0.18 240) !important; }
-  .pos-badge-f,
-  .pos-badge-lw,
-  .pos-badge-rw { background: oklch(0.50 0.18 155) !important; }
-  .pos-badge-c { background: oklch(0.50 0.18 300) !important; }
-  .pos-badge-lm { background: oklch(0.45 0.15 280) !important; }
-  .pos-badge-ib,
-  .pos-badge-mi { background: oklch(0.45 0.12 230) !important; }
-  .roster-drawer {
-    background: oklch(0.97 0.005 230 / 95%) !important;
-    border-left: 1px solid oklch(0 0 0 / 10%) !important;
-  }
-
-  /* ---- bg-white/[0.0X] fractional opacities ---- */
-  .bg-white\/\[0\.02\] { background-color: oklch(0 0 0 / 2%) !important; }
-  .bg-white\/\[0\.03\] { background-color: oklch(0 0 0 / 3%) !important; }
-  .bg-white\/\[0\.04\] { background-color: oklch(0 0 0 / 3%) !important; }
-  .bg-white\/\[0\.06\] { background-color: oklch(0 0 0 / 5%) !important; }
-  .bg-white\/\[0\.08\] { background-color: oklch(0 0 0 / 6%) !important; }
-
-  /* ---- border-white/[0.0X] fractional opacities ---- */
-  .border-white\/\[0\.06\] { border-color: oklch(0 0 0 / 6%) !important; }
-  .border-white\/\[0\.08\] { border-color: oklch(0 0 0 / 8%) !important; }
-  .border-white\/\[0\.10\] { border-color: oklch(0 0 0 / 10%) !important; }
-  .border-white\/\[0\.12\] { border-color: oklch(0 0 0 / 12%) !important; }
-}
-
-/* ============================================
-   Glassmorphism Utility Classes – v3 (final)
-   Consistent design system matching mockup
-   ============================================ */
-@layer components {
-  /* Team panels – visible dark bg with clear border, matching mockup */
-  .glass-panel {
-    background: oklch(0.10 0.02 230 / 85%);
-    border: 1px solid oklch(1 0 0 / 14%);
+    background: #0e1929;
+    border: 1px solid rgba(255, 255, 255, 0.10);
     border-radius: 10px;
   }
 
-  /* Stronger panels (modals, etc) */
+  /* Stronger panels (modals, dropdowns) */
   .glass-panel-strong {
-    background: oklch(0.10 0.02 230 / 65%);
+    background: rgba(18, 28, 46, 0.92);
     backdrop-filter: blur(20px) saturate(1.3);
     -webkit-backdrop-filter: blur(20px) saturate(1.3);
-    border: 1px solid oklch(1 0 0 / 12%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
   }
 
-  /* Header – clearly visible glass bar, lighter than body bg */
+  /* ---- GLASS HEADER ----
+     Mockup: semi-transparent bar, lighter than body
+     Extracted: header bg ~#2e3540 at ~70% opacity */
   .glass-header {
-    background: oklch(0.15 0.025 230 / 80%);
+    background: rgba(22, 34, 52, 0.90);
     backdrop-filter: blur(24px) saturate(1.4);
     -webkit-backdrop-filter: blur(24px) saturate(1.4);
-    border-bottom: 1px solid oklch(1 0 0 / 15%);
-    box-shadow: 0 1px 0 oklch(1 0 0 / 5%) inset, 0 2px 8px oklch(0 0 0 / 30%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06),
+                0 4px 16px rgba(0, 0, 0, 0.4);
   }
 
-  /* Toolbar buttons */
+  /* ---- GLASS BUTTON ----
+     Toolbar buttons in header */
   .glass-button {
-    background: oklch(1 0 0 / 6%);
-    border: 1px solid oklch(1 0 0 / 10%);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.10);
     transition: all 0.15s ease;
   }
   .glass-button:hover {
-    background: oklch(1 0 0 / 12%);
-    border-color: oklch(1 0 0 / 18%);
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.18);
   }
 
-  /* Player row – clearly visible dark card, matching mockup */
+  /* ---- PLAYER ROW ----
+     Mockup: each row is a distinct dark card on the panel
+     Panel bg: #131e30, Row bg: slightly lighter ~#182538 */
   .player-row {
-    background: oklch(0.15 0.025 230);
+    background: #182538;
+    border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 6px;
-    border: 1px solid oklch(1 0 0 / 6%);
-    transition: background 0.15s ease;
+    transition: all 0.15s ease;
   }
   .player-row:hover {
-    background: oklch(0.18 0.03 230);
-    border-color: oklch(1 0 0 / 10%);
+    background: #1d2d42;
+    border-color: rgba(255, 255, 255, 0.10);
   }
 
-  /* Position badge – rounded rectangle, solid color */
+  /* ---- POSITION BADGES ----
+     Mockup: rounded rectangles, solid vibrant colors
+     MV = purple/violet, B = blue, F/LW/RW = green, C = green/teal, LM = purple */
   .pos-badge {
     display: flex;
     align-items: center;
@@ -590,48 +220,106 @@ select option {
     border-radius: 6px;
     color: white;
     flex-shrink: 0;
+    letter-spacing: 0.02em;
   }
+  /* Small: used in center panel (PlayerList) */
   .pos-badge-sm {
     width: 24px;
-    height: 24px;
+    height: 22px;
     font-size: 9px;
   }
+  /* Medium: used in team panels (PlayerSlot) */
   .pos-badge-md {
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 28px;
     font-size: 11px;
   }
+  /* Large: used in drag overlay */
   .pos-badge-lg {
     width: 34px;
-    height: 34px;
+    height: 30px;
     font-size: 12px;
   }
-  .pos-badge-mv { background: oklch(0.65 0.18 85); }
-  .pos-badge-b { background: oklch(0.55 0.18 240); }
+
+  /* Badge colors — matching mockup exactly */
+  .pos-badge-mv { background: #7c3aed; } /* violet-600 */
+  .pos-badge-b  { background: #3b82f6; } /* blue-500 */
   .pos-badge-f,
   .pos-badge-lw,
-  .pos-badge-rw { background: oklch(0.55 0.18 155); }
-  .pos-badge-c { background: oklch(0.55 0.18 300); }
-  .pos-badge-lm { background: oklch(0.50 0.15 280); }
+  .pos-badge-rw { background: #22c55e; } /* green-500 */
+  .pos-badge-c  { background: #22c55e; } /* green-500 (same as F in mockup) */
+  .pos-badge-lm { background: #8b5cf6; } /* violet-500 */
   .pos-badge-ib,
-  .pos-badge-mi { background: oklch(0.50 0.12 230); }
+  .pos-badge-mi { background: #6366f1; } /* indigo-500 */
 
-  /* Mobile roster drawer */
+  /* ---- MOBILE ROSTER DRAWER ---- */
   .roster-drawer {
-    background: oklch(0.08 0.02 230 / 95%);
+    background: rgba(12, 20, 36, 0.95);
     backdrop-filter: blur(24px) saturate(1.4);
     -webkit-backdrop-filter: blur(24px) saturate(1.4);
-    border-top: 1px solid oklch(1 0 0 / 10%);
-    border-left: 1px solid oklch(1 0 0 / 8%);
+    border-top: 1px solid rgba(255, 255, 255, 0.10);
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   .roster-drawer-handle {
     width: 40px;
     height: 4px;
     border-radius: 2px;
-    background: oklch(1 0 0 / 25%);
+    background: rgba(255, 255, 255, 0.25);
     margin: 8px auto;
   }
+}
+
+/* ============================================
+   Scrollbar styling
+   ============================================ */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Select styling */
+select option {
+  background-color: #0d1a14;
+  color: white;
+}
+
+/* ============================================
+   Touch optimizations for drag and drop
+   ============================================ */
+[data-draggable="true"],
+[role="button"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.dnd-scroll-lock {
+  overflow: hidden;
+  touch-action: none;
+}
+
+@media (max-width: 768px) {
+  .player-card-touch {
+    min-height: 44px;
+  }
+  * {
+    -webkit-touch-callout: none;
+  }
+}
+
+/* Hold-timer progress animation for long-press delete */
+@keyframes holdProgress {
+  from { stroke-dashoffset: 87.96; }
+  to { stroke-dashoffset: 0; }
 }
 
 /* Mobile side-by-side layout */
@@ -642,8 +330,290 @@ select option {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
-
   .mobile-team-col::-webkit-scrollbar {
     width: 2px;
   }
+}
+
+/* ============================================
+   LIGHT THEME – .lineup-light wrapper overrides
+   ============================================ */
+.lineup-light {
+  /* ---- Scrollbar ---- */
+  ::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.25); }
+  ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.03); }
+  select option { background-color: #f0f5f3; color: #111; }
+
+  /* ---- Generic text-white → dark equivalents ---- */
+  .text-white { color: #1a2332 !important; }
+  .text-white\/80 { color: rgba(26, 35, 50, 0.80) !important; }
+  .text-white\/70 { color: rgba(26, 35, 50, 0.70) !important; }
+  .text-white\/60 { color: rgba(26, 35, 50, 0.60) !important; }
+  .text-white\/50 { color: rgba(26, 35, 50, 0.50) !important; }
+  .text-white\/40 { color: rgba(26, 35, 50, 0.40) !important; }
+  .text-white\/35 { color: rgba(26, 35, 50, 0.35) !important; }
+  .text-white\/30 { color: rgba(26, 35, 50, 0.30) !important; }
+  .text-white\/25 { color: rgba(26, 35, 50, 0.25) !important; }
+  .text-white\/20 { color: rgba(26, 35, 50, 0.20) !important; }
+
+  /* ---- bg-white/XX → light gray equivalents ---- */
+  .bg-white\/5 { background-color: rgba(0, 0, 0, 0.04) !important; }
+  .bg-white\/8 { background-color: rgba(0, 0, 0, 0.06) !important; }
+  .bg-white\/10 { background-color: rgba(0, 0, 0, 0.07) !important; }
+  .bg-white\/15 { background-color: rgba(0, 0, 0, 0.10) !important; }
+  .bg-white\/20 { background-color: rgba(0, 0, 0, 0.12) !important; }
+
+  /* ---- hover:bg-white/XX ---- */
+  .hover\:bg-white\/5:hover { background-color: rgba(0, 0, 0, 0.04) !important; }
+  .hover\:bg-white\/10:hover { background-color: rgba(0, 0, 0, 0.07) !important; }
+  .hover\:bg-white\/15:hover { background-color: rgba(0, 0, 0, 0.10) !important; }
+  .hover\:bg-white\/20:hover { background-color: rgba(0, 0, 0, 0.12) !important; }
+
+  /* ---- hover:text-white/XX ---- */
+  .hover\:text-white:hover { color: #1a2332 !important; }
+  .hover\:text-white\/50:hover { color: rgba(26, 35, 50, 0.50) !important; }
+  .hover\:text-white\/60:hover { color: rgba(26, 35, 50, 0.60) !important; }
+  .hover\:text-white\/70:hover { color: rgba(26, 35, 50, 0.70) !important; }
+  .hover\:text-white\/80:hover { color: rgba(26, 35, 50, 0.80) !important; }
+
+  /* ---- border-white/XX → dark borders ---- */
+  .border-white\/8 { border-color: rgba(0, 0, 0, 0.08) !important; }
+  .border-white\/10 { border-color: rgba(0, 0, 0, 0.10) !important; }
+  .border-white\/15 { border-color: rgba(0, 0, 0, 0.12) !important; }
+  .border-white\/20 { border-color: rgba(0, 0, 0, 0.15) !important; }
+  .border-white\/30 { border-color: rgba(0, 0, 0, 0.18) !important; }
+  .border-white\/35 { border-color: rgba(0, 0, 0, 0.20) !important; }
+  .border-white\/40 { border-color: rgba(0, 0, 0, 0.22) !important; }
+  .border-white\/50 { border-color: rgba(0, 0, 0, 0.28) !important; }
+  .border-white\/60 { border-color: rgba(0, 0, 0, 0.32) !important; }
+
+  /* ---- hover:border-white/XX ---- */
+  .hover\:border-white\/15:hover { border-color: rgba(0, 0, 0, 0.12) !important; }
+  .hover\:border-white\/20:hover { border-color: rgba(0, 0, 0, 0.15) !important; }
+  .hover\:border-white\/30:hover { border-color: rgba(0, 0, 0, 0.18) !important; }
+
+  /* ---- ring-white/XX ---- */
+  .ring-white\/20 { --tw-ring-color: rgba(0, 0, 0, 0.12) !important; }
+  .ring-white\/30 { --tw-ring-color: rgba(0, 0, 0, 0.18) !important; }
+
+  /* ---- bg-black/XX → light equivalents ---- */
+  .bg-black\/25 { background-color: rgba(255, 255, 255, 0.75) !important; }
+  .bg-black\/30 { background-color: rgba(255, 255, 255, 0.70) !important; }
+
+  /* ---- Dark section backgrounds → light equivalents ---- */
+  .bg-amber-950\/10 { background-color: rgba(217, 181, 78, 0.12) !important; }
+  .bg-amber-950\/20 { background-color: rgba(217, 181, 78, 0.18) !important; }
+  .bg-blue-950\/10 { background-color: rgba(59, 130, 246, 0.10) !important; }
+  .bg-blue-950\/15 { background-color: rgba(59, 130, 246, 0.14) !important; }
+  .bg-blue-950\/20 { background-color: rgba(59, 130, 246, 0.18) !important; }
+  .bg-emerald-950\/10 { background-color: rgba(34, 197, 94, 0.10) !important; }
+  .bg-emerald-950\/15 { background-color: rgba(34, 197, 94, 0.14) !important; }
+  .bg-emerald-950\/20 { background-color: rgba(34, 197, 94, 0.18) !important; }
+  .bg-red-950\/10 { background-color: rgba(239, 68, 68, 0.10) !important; }
+  .bg-red-950\/15 { background-color: rgba(239, 68, 68, 0.14) !important; }
+  .bg-red-950\/20 { background-color: rgba(239, 68, 68, 0.18) !important; }
+  .bg-purple-950\/25 { background-color: rgba(168, 85, 247, 0.18) !important; }
+  .bg-violet-500\/10 { background-color: rgba(139, 92, 246, 0.12) !important; }
+
+  /* ---- Section header text → darker for readability ---- */
+  .text-amber-300 { color: #b45309 !important; }
+  .text-amber-400 { color: #a16207 !important; }
+  .text-blue-400 { color: #2563eb !important; }
+  .text-purple-400 { color: #7c3aed !important; }
+
+  /* ---- Muted colored text ---- */
+  .text-blue-400\/60 { color: rgba(37, 99, 235, 0.70) !important; }
+  .text-emerald-400\/60 { color: rgba(16, 185, 129, 0.70) !important; }
+  .text-red-400\/60 { color: rgba(239, 68, 68, 0.70) !important; }
+  .text-amber-400\/35 { color: rgba(180, 83, 9, 0.50) !important; }
+  .text-blue-400\/35 { color: rgba(37, 99, 235, 0.50) !important; }
+  .text-emerald-400\/35 { color: rgba(16, 185, 129, 0.50) !important; }
+  .text-red-400\/35 { color: rgba(239, 68, 68, 0.50) !important; }
+  .text-purple-400\/40 { color: rgba(124, 58, 237, 0.55) !important; }
+
+  /* ---- Modal / dialog backgrounds ---- */
+  .bg-gray-900 { background-color: #f8fafb !important; }
+
+  /* ---- Inputs: placeholder colors ---- */
+  .placeholder-white\/25::placeholder,
+  .placeholder-white\/30::placeholder {
+    color: rgba(26, 35, 50, 0.40) !important;
+  }
+
+  /* ---- Backdrop blur panels ---- */
+  .backdrop-blur-md { backdrop-filter: blur(12px) saturate(1.2); }
+  .backdrop-blur-sm { backdrop-filter: blur(6px) saturate(1.2); }
+
+  /* ---- Accent colors: deeper for light bg ---- */
+  .text-emerald-400 { color: #059669 !important; }
+  .text-emerald-300 { color: #047857 !important; }
+  .text-blue-300 { color: #2563eb !important; }
+  .text-purple-300 { color: #7c3aed !important; }
+  .text-red-400 { color: #dc2626 !important; }
+  .text-red-300 { color: #b91c1c !important; }
+  .text-red-400\/70 { color: rgba(220, 38, 38, 0.80) !important; }
+  .text-yellow-300 { color: #a16207 !important; }
+  .text-yellow-400 { color: #92400e !important; }
+  .text-orange-300 { color: #c2410c !important; }
+  .text-slate-200 { color: #334155 !important; }
+  .text-slate-300\/70 { color: rgba(51, 65, 85, 0.80) !important; }
+
+  /* ---- Badge backgrounds ---- */
+  .bg-amber-500\/15 { background-color: rgba(245, 158, 11, 0.18) !important; }
+  .bg-amber-500\/20 { background-color: rgba(245, 158, 11, 0.22) !important; }
+  .bg-blue-500\/20 { background-color: rgba(59, 130, 246, 0.20) !important; }
+  .bg-emerald-500\/20 { background-color: rgba(16, 185, 129, 0.20) !important; }
+  .bg-emerald-500\/30 { background-color: rgba(16, 185, 129, 0.28) !important; }
+  .bg-purple-500\/25 { background-color: rgba(168, 85, 247, 0.22) !important; }
+  .bg-red-500\/20 { background-color: rgba(239, 68, 68, 0.18) !important; }
+  .bg-yellow-400\/25 { background-color: rgba(250, 204, 21, 0.22) !important; }
+  .bg-yellow-500\/15 { background-color: rgba(234, 179, 8, 0.18) !important; }
+  .bg-orange-400\/25 { background-color: rgba(251, 146, 60, 0.22) !important; }
+
+  /* ---- Hover accent backgrounds ---- */
+  .hover\:bg-emerald-500\/10:hover { background-color: rgba(16, 185, 129, 0.12) !important; }
+  .hover\:bg-emerald-500\/20:hover { background-color: rgba(16, 185, 129, 0.20) !important; }
+  .hover\:bg-emerald-500\/30:hover { background-color: rgba(16, 185, 129, 0.28) !important; }
+  .hover\:bg-emerald-500\/35:hover { background-color: rgba(16, 185, 129, 0.32) !important; }
+  .hover\:bg-emerald-400\/20:hover { background-color: rgba(52, 211, 153, 0.20) !important; }
+  .hover\:bg-red-400\/20:hover { background-color: rgba(248, 113, 113, 0.20) !important; }
+  .hover\:bg-red-500\/10:hover { background-color: rgba(239, 68, 68, 0.12) !important; }
+  .hover\:bg-red-500\/35:hover { background-color: rgba(239, 68, 68, 0.32) !important; }
+  .hover\:bg-red-500\/50:hover { background-color: rgba(239, 68, 68, 0.45) !important; }
+  .hover\:bg-amber-500\/35:hover { background-color: rgba(245, 158, 11, 0.32) !important; }
+  .hover\:bg-blue-500\/15:hover { background-color: rgba(59, 130, 246, 0.15) !important; }
+  .hover\:bg-yellow-500\/10:hover { background-color: rgba(234, 179, 8, 0.12) !important; }
+
+  /* ---- Solid white → dark for light theme ---- */
+  .bg-white { background-color: #f8fafb !important; }
+
+  /* ---- Colored border overrides ---- */
+  .border-emerald-300\/60 { border-color: rgba(5, 150, 105, 0.50) !important; }
+  .border-emerald-400\/50 { border-color: rgba(5, 150, 105, 0.40) !important; }
+  .border-emerald-400\/60 { border-color: rgba(5, 150, 105, 0.50) !important; }
+  .border-emerald-400\/40 { border-color: rgba(5, 150, 105, 0.38) !important; }
+  .border-emerald-400\/30 { border-color: rgba(5, 150, 105, 0.30) !important; }
+  .border-emerald-400\/20 { border-color: rgba(5, 150, 105, 0.22) !important; }
+  .border-emerald-400\/15 { border-color: rgba(5, 150, 105, 0.18) !important; }
+  .border-emerald-400 { border-color: #059669 !important; }
+  .border-orange-400\/40 { border-color: rgba(234, 88, 12, 0.40) !important; }
+  .border-orange-400\/50 { border-color: rgba(234, 88, 12, 0.45) !important; }
+  .border-red-400\/20 { border-color: rgba(220, 38, 38, 0.22) !important; }
+  .border-red-400\/30 { border-color: rgba(220, 38, 38, 0.30) !important; }
+  .border-red-400\/40 { border-color: rgba(220, 38, 38, 0.40) !important; }
+  .border-red-400\/50 { border-color: rgba(220, 38, 38, 0.45) !important; }
+  .border-red-400\/60 { border-color: rgba(220, 38, 38, 0.50) !important; }
+  .border-yellow-400\/40 { border-color: rgba(202, 138, 4, 0.40) !important; }
+  .border-yellow-400\/50 { border-color: rgba(202, 138, 4, 0.45) !important; }
+  .border-sky-400\/20 { border-color: rgba(14, 165, 233, 0.22) !important; }
+  .border-sky-400\/40 { border-color: rgba(14, 165, 233, 0.40) !important; }
+  .border-violet-400\/20 { border-color: rgba(139, 92, 246, 0.22) !important; }
+  .border-slate-300\/20 { border-color: rgba(100, 116, 139, 0.20) !important; }
+  .border-slate-300\/50 { border-color: rgba(100, 116, 139, 0.40) !important; }
+  .border-slate-400\/30 { border-color: rgba(100, 116, 139, 0.30) !important; }
+  .border-amber-400\/20 { border-color: rgba(180, 83, 9, 0.22) !important; }
+  .border-amber-400\/25 { border-color: rgba(180, 83, 9, 0.28) !important; }
+  .border-amber-400\/30 { border-color: rgba(180, 83, 9, 0.30) !important; }
+  .border-amber-400\/40 { border-color: rgba(180, 83, 9, 0.40) !important; }
+  .border-blue-400\/15 { border-color: rgba(37, 99, 235, 0.18) !important; }
+  .border-blue-400\/20 { border-color: rgba(37, 99, 235, 0.22) !important; }
+  .border-blue-400\/40 { border-color: rgba(37, 99, 235, 0.40) !important; }
+  .border-purple-400\/50 { border-color: rgba(124, 58, 237, 0.45) !important; }
+
+  /* ---- Hover border colors ---- */
+  .hover\:border-emerald-400\/30:hover { border-color: rgba(5, 150, 105, 0.30) !important; }
+  .hover\:border-emerald-400\/40:hover { border-color: rgba(5, 150, 105, 0.38) !important; }
+
+  /* ---- Drop shadow on logos ---- */
+  .drop-shadow-lg { filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15)); }
+
+  /* ---- Design system light overrides ---- */
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.75) !important;
+    border: 1px solid rgba(0, 0, 0, 0.10) !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  }
+  .glass-panel-strong {
+    background: rgba(255, 255, 255, 0.88) !important;
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  }
+  .glass-header {
+    background: rgba(245, 247, 250, 0.85) !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.10) !important;
+    backdrop-filter: blur(16px) saturate(1.2);
+    -webkit-backdrop-filter: blur(16px) saturate(1.2);
+    box-shadow: none;
+  }
+  .glass-button {
+    background: rgba(0, 0, 0, 0.05) !important;
+    border: 1px solid rgba(0, 0, 0, 0.10) !important;
+  }
+  .glass-button:hover {
+    background: rgba(0, 0, 0, 0.10) !important;
+    border-color: rgba(0, 0, 0, 0.15) !important;
+  }
+  .player-row {
+    background: rgba(0, 0, 0, 0.03) !important;
+  }
+  .player-row:hover {
+    background: rgba(0, 0, 0, 0.06) !important;
+  }
+  .pos-badge {
+    color: white !important;
+  }
+  .roster-drawer {
+    background: rgba(248, 250, 251, 0.95) !important;
+    border-left: 1px solid rgba(0, 0, 0, 0.10) !important;
+  }
+
+  /* ---- bg-white/[0.0X] fractional opacities ---- */
+  .bg-white\/\[0\.02\] { background-color: rgba(0, 0, 0, 0.02) !important; }
+  .bg-white\/\[0\.03\] { background-color: rgba(0, 0, 0, 0.03) !important; }
+  .bg-white\/\[0\.04\] { background-color: rgba(0, 0, 0, 0.03) !important; }
+  .bg-white\/\[0\.05\] { background-color: rgba(0, 0, 0, 0.04) !important; }
+  .bg-white\/\[0\.06\] { background-color: rgba(0, 0, 0, 0.05) !important; }
+  .bg-white\/\[0\.08\] { background-color: rgba(0, 0, 0, 0.06) !important; }
+
+  /* ---- border-white/[0.0X] fractional opacities ---- */
+  .border-white\/\[0\.06\] { border-color: rgba(0, 0, 0, 0.06) !important; }
+  .border-white\/\[0\.08\] { border-color: rgba(0, 0, 0, 0.08) !important; }
+  .border-white\/\[0\.10\] { border-color: rgba(0, 0, 0, 0.10) !important; }
+  .border-white\/\[0\.12\] { border-color: rgba(0, 0, 0, 0.12) !important; }
+
+  /* ---- Additional colored backgrounds ---- */
+  .bg-emerald-500\/10 { background-color: rgba(16, 185, 129, 0.12) !important; }
+  .bg-emerald-500\/15 { background-color: rgba(16, 185, 129, 0.16) !important; }
+  .bg-emerald-500\/25 { background-color: rgba(16, 185, 129, 0.24) !important; }
+  .bg-red-400\/10 { background-color: rgba(248, 113, 113, 0.12) !important; }
+  .bg-red-400\/15 { background-color: rgba(248, 113, 113, 0.16) !important; }
+  .bg-red-400\/20 { background-color: rgba(248, 113, 113, 0.20) !important; }
+  .bg-red-400\/25 { background-color: rgba(248, 113, 113, 0.24) !important; }
+  .bg-red-500\/5 { background-color: rgba(239, 68, 68, 0.06) !important; }
+  .bg-red-500\/15 { background-color: rgba(239, 68, 68, 0.16) !important; }
+  .bg-red-500\/30 { background-color: rgba(239, 68, 68, 0.28) !important; }
+  .bg-red-500\/50 { background-color: rgba(239, 68, 68, 0.45) !important; }
+  .bg-sky-500\/10 { background-color: rgba(14, 165, 233, 0.12) !important; }
+  .bg-sky-500\/20 { background-color: rgba(14, 165, 233, 0.20) !important; }
+  .bg-sky-500\/30 { background-color: rgba(14, 165, 233, 0.28) !important; }
+  .bg-slate-300\/20 { background-color: rgba(148, 163, 184, 0.18) !important; }
+  .bg-slate-500\/15 { background-color: rgba(100, 116, 139, 0.15) !important; }
+  .bg-orange-400\/20 { background-color: rgba(251, 146, 60, 0.20) !important; }
+  .bg-yellow-400\/20 { background-color: rgba(250, 204, 21, 0.20) !important; }
+  .bg-emerald-400\/15 { background-color: rgba(52, 211, 153, 0.16) !important; }
+  .bg-emerald-400\/20 { background-color: rgba(52, 211, 153, 0.20) !important; }
+  .bg-emerald-400\/25 { background-color: rgba(52, 211, 153, 0.24) !important; }
+  .bg-emerald-900 { background-color: #d1fae5 !important; }
+  .bg-emerald-400 { background-color: #34d399 !important; }
+
+  /* ---- Text colors ---- */
+  .text-sky-300 { color: #0284c7 !important; }
+  .text-sky-300\/50 { color: rgba(2, 132, 199, 0.60) !important; }
+  .text-violet-400 { color: #7c3aed !important; }
+  .text-slate-300 { color: #475569 !important; }
+  .text-emerald-300\/70 { color: rgba(4, 120, 87, 0.80) !important; }
+  .text-emerald-400\/70 { color: rgba(5, 150, 105, 0.80) !important; }
+  .text-amber-300\/70 { color: rgba(146, 64, 14, 0.80) !important; }
+  .text-red-400\/50 { color: rgba(220, 38, 38, 0.55) !important; }
 }
