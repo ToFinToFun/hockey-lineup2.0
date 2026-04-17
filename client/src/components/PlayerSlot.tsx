@@ -69,10 +69,10 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact =
         ${dropHighlight}
       `}
     >
-      {/* Position badge — circle matching mockup */}
+      {/* Position badge — rounded rect matching mockup */}
       <span className={`
-        ${compact ? 'w-6 h-6 text-[8px]' : 'w-7 h-7 text-[10px]'}
-        font-black flex items-center justify-center shrink-0 rounded-full uppercase
+        ${compact ? 'min-w-[22px] h-5 px-1 text-[8px]' : 'min-w-[26px] h-6 px-1.5 text-[10px]'}
+        font-black flex items-center justify-center shrink-0 rounded uppercase
         ${accent.badge} ${accent.badgeText}
       `}>
         {slot.shortLabel}

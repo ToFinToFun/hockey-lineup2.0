@@ -1114,7 +1114,7 @@ export default function Home() {
     >
       {/* Solid dark background matching mockup */}
       <div
-        className={`min-h-screen w-full relative overflow-x-hidden ${isLineupDark ? 'bg-[#080c18]' : 'bg-gray-100'}`}
+        className={`min-h-screen w-full relative overflow-x-hidden ${isLineupDark ? 'bg-[#0b1120]' : 'bg-gray-100'}`}
       >
 
         {/* Glassmorphism background glow orbs */}
@@ -1160,8 +1160,8 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Toolbar buttons – matching mockup layout */}
-              <div className="flex items-center gap-1.5 flex-1">
+              {/* Toolbar buttons – centered matching mockup layout */}
+              <div className="flex items-center gap-1.5 flex-1 justify-center">
                 {/* SSE sync icon */}
                 <div className="flex items-center mr-0.5">
                   {sseConnected === null ? (
