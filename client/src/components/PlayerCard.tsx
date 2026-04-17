@@ -179,7 +179,7 @@ export function DraggablePlayerCard({
             }`}>{player.captainRole}</span>
           )}
           <TeamColorIndicator teamColor={player.teamColor ?? null} size={10} />
-          <span className={`text-[8px] font-bold min-w-[20px] h-5 px-1 flex items-center justify-center rounded shrink-0 ${getPositionBadgeColor(player.position, fc.badgeBg)}`}>
+          <span className={`pos-badge pos-badge-sm pos-badge-${player.position.toLowerCase()} shrink-0`}>
             {player.position}
           </span>
         </button>
@@ -193,7 +193,7 @@ export function DraggablePlayerCard({
             }`}>{player.captainRole}</span>
           )}
           <TeamColorIndicator teamColor={player.teamColor ?? null} size={10} />
-          <span className={`text-[8px] font-bold min-w-[20px] h-5 px-1 flex items-center justify-center rounded shrink-0 ${getPositionBadgeColor(player.position, fc.badgeBg)}`}>
+          <span className={`pos-badge pos-badge-sm pos-badge-${player.position.toLowerCase()} shrink-0`}>
             {player.position}
           </span>
         </div>
@@ -221,7 +221,7 @@ export function DraggablePlayerCard({
             }`}>{player.captainRole}</span>
           )}
           <TeamColorIndicator teamColor={player.teamColor ?? null} size={14} />
-          <span className={`text-[9px] font-bold min-w-[24px] h-6 px-1 flex items-center justify-center rounded shrink-0 ${getPositionBadgeColor(player.position, fc.badgeBg)}`}>
+          <span className={`pos-badge pos-badge-sm pos-badge-${player.position.toLowerCase()} shrink-0`}>
             {player.position}
           </span>
         </button>
@@ -235,7 +235,7 @@ export function DraggablePlayerCard({
             }`}>{player.captainRole}</span>
           )}
           <TeamColorIndicator teamColor={player.teamColor ?? null} size={14} />
-          <span className={`text-[9px] font-bold min-w-[24px] h-6 px-1 flex items-center justify-center rounded shrink-0 ${getPositionBadgeColor(player.position, fc.badgeBg)}`}>
+          <span className={`pos-badge pos-badge-sm pos-badge-${player.position.toLowerCase()} shrink-0`}>
             {player.position}
           </span>
         </div>
@@ -599,7 +599,7 @@ export function PlayerCardOverlay({ player }: { player: Player }) {
           {player.number}
         </span>
       )}
-      <span className={`text-[9px] font-bold min-w-[24px] h-6 px-1 flex items-center justify-center rounded shrink-0 ${getPositionBadgeColor(player.position, fc.badgeBg)}`}>
+      <span className={`pos-badge pos-badge-sm pos-badge-${player.position.toLowerCase()} shrink-0`}>
         {player.position}
       </span>
     </div>

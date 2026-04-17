@@ -5,7 +5,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { X, Search, Users, ChevronRight } from "lucide-react";
 import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
-import { getPositionBadgeColor } from "@/lib/players";
+// Position badge colors handled by CSS pos-badge classes
 import { useForwardColor } from "@/hooks/useForwardColor";
 
 interface MobileRosterDrawerProps {
@@ -103,7 +103,7 @@ export function MobileRosterDrawer({
         className={`
           fixed top-0 right-0 bottom-0 z-50
           w-[85vw] max-w-[360px]
-          roster-drawer
+          glass-panel
           transform transition-transform duration-300 ease-out
           ${open ? "translate-x-0" : "translate-x-full"}
           flex flex-col
@@ -193,7 +193,7 @@ export function MobileRosterDrawer({
                     }`} />
 
                     {/* Position badge */}
-                    <span className={`text-[8px] font-bold px-1 rounded ${getPositionBadgeColor(player.position, fc.badgeBg)}`}>
+                    <span className={`pos-badge pos-badge-sm pos-badge-${player.position.toLowerCase()}`}>
                       {player.position}
                     </span>
 

@@ -1,7 +1,4 @@
-// Hockey Lineup App – TeamPanel – Glassmorphism v2
-// Flat design: text-only section headers, no background boxes on sections/groups
-// Visible glass panel border, clean separator lines
-
+// Hockey Lineup App – TeamPanel – v3 (consistent design system)
 import { useMemo } from "react";
 import { Plus, Minus } from "lucide-react";
 import { PlayerSlot } from "./PlayerSlot";
@@ -28,7 +25,7 @@ interface TeamPanelProps {
   compact?: boolean;
 }
 
-/* Section header colors — TEXT ONLY, no background */
+/* Section header colors */
 const sectionColors: Record<string, string> = {
   goalkeeper: "text-amber-400",
   defense: "text-blue-400",
@@ -38,14 +35,9 @@ const groupColors: Record<string, string> = {
   defense: "text-blue-400/50",
 };
 
-/* ── GroupCard: just a label + slots, NO border/bg box ── */
+/* ── GroupCard ── */
 function GroupCard({
-  group,
-  lineup,
-  onRemovePlayer,
-  onChangePosition,
-  type,
-  compact,
+  group, lineup, onRemovePlayer, onChangePosition, type, compact,
 }: {
   group: { groupLabel: string; slots: Slot[] };
   lineup: Record<string, Player>;
@@ -115,12 +107,10 @@ export function TeamPanel({
 }: TeamPanelProps) {
   const logo = isWhite ? LOGO_WHITE : LOGO_GREEN;
   const accentColor = isWhite ? "text-slate-200" : "text-emerald-400";
-  const panelBorder = isWhite ? "border-slate-400/25" : "border-emerald-500/25";
-  const glowColor = isWhite ? "shadow-slate-300/8" : "shadow-emerald-400/8";
-  // Gradient glow overlay for team identity
-  const teamGradient = isWhite
-    ? "bg-gradient-to-b from-slate-300/[0.06] via-transparent to-transparent"
-    : "bg-gradient-to-b from-emerald-500/[0.08] via-transparent to-transparent";
+  // Subtle top border accent for team identity
+  const topBorderColor = isWhite
+    ? "border-t-2 border-t-slate-400/30"
+    : "border-t-2 border-t-emerald-500/40";
 
   const { colors: fc } = useForwardColor();
 
@@ -137,21 +127,17 @@ export function TeamPanel({
   return (
     <div
       className={`
-        flex flex-col rounded-xl relative
-        bg-[#0d1424]/80 backdrop-blur-xl
-        border ${panelBorder}
-        shadow-[0_0_40px_-8px] ${glowColor}
+        flex flex-col rounded-lg
+        glass-panel
+        ${topBorderColor}
       `}
     >
-      {/* Team color gradient overlay */}
-      <div className={`absolute inset-0 pointer-events-none ${teamGradient} rounded-xl`} />
-
       {/* ── Team header ── */}
-      <div className={`flex items-center gap-2 ${compact ? 'px-2 py-1.5' : 'px-3 py-2.5'} border-b border-white/[0.08] bg-white/[0.02] relative z-10`}>
+      <div className={`flex items-center gap-2 ${compact ? 'px-2 py-1.5' : 'px-3 py-2'} border-b border-white/[0.06]`}>
         <img
           src={logo}
           alt={teamName}
-          className={`${compact ? 'w-6 h-6' : 'w-9 h-9'} object-contain shrink-0 drop-shadow-lg`}
+          className={`${compact ? 'w-6 h-6' : 'w-8 h-8'} object-contain shrink-0`}
         />
         <div className="flex-1 min-w-0">
           <input
@@ -171,7 +157,7 @@ export function TeamPanel({
           {filledCount > 0 && !compact && (
             <button
               onClick={() => onClearTeam()}
-              className="text-[9px] font-bold px-2 py-0.5 rounded-md border border-red-400/25 text-red-400/60 hover:text-red-400 hover:border-red-400/50 hover:bg-red-400/10 transition-all uppercase tracking-wider"
+              className="text-[9px] font-bold px-2 py-0.5 rounded border border-red-400/25 text-red-400/60 hover:text-red-400 hover:border-red-400/50 hover:bg-red-400/10 transition-all uppercase tracking-wider"
               title="Rensa alla spelare från laget"
             >
               Rensa
@@ -190,7 +176,7 @@ export function TeamPanel({
       </div>
 
       {/* ── Slots content ── */}
-      <div className={`relative z-10 ${compact ? "p-1.5" : "p-3"}`}>
+      <div className={compact ? "p-1.5" : "p-2.5"}>
 
         {/* ── MÅLVAKTER ── */}
         <div className={compact ? "mb-2" : "mb-3"}>
@@ -218,7 +204,7 @@ export function TeamPanel({
         </div>
 
         {/* ── Separator ── */}
-        <div className={`border-t border-white/[0.06] ${compact ? 'mb-2' : 'mb-3'}`} />
+        <div className={`border-t border-white/[0.04] ${compact ? 'mb-2' : 'mb-3'}`} />
 
         {/* ── BACKAR ── */}
         <div className={compact ? "mb-2" : "mb-3"}>
@@ -242,7 +228,7 @@ export function TeamPanel({
         </div>
 
         {/* ── Separator ── */}
-        <div className={`border-t border-white/[0.06] ${compact ? 'mb-2' : 'mb-3'}`} />
+        <div className={`border-t border-white/[0.04] ${compact ? 'mb-2' : 'mb-3'}`} />
 
         {/* ── FORWARDS ── */}
         <div>

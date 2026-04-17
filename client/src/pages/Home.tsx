@@ -1114,18 +1114,8 @@ export default function Home() {
     >
       {/* Solid dark background matching mockup */}
       <div
-        className={`min-h-screen w-full relative overflow-x-hidden ${isLineupDark ? 'bg-[#0b1120]' : 'bg-gray-100'}`}
+        className={`min-h-screen w-full relative overflow-x-hidden ${isLineupDark ? 'bg-[#0f1923]' : 'bg-gray-100'}`}
       >
-
-        {/* Glassmorphism background glow orbs */}
-        {isLineupDark && (
-          <>
-            <div className="bg-orb bg-orb-emerald" style={{ width: '500px', height: '500px', top: '-10%', left: '-5%' }} />
-            <div className="bg-orb bg-orb-cyan" style={{ width: '400px', height: '400px', top: '30%', right: '-8%' }} />
-            <div className="bg-orb bg-orb-purple" style={{ width: '350px', height: '350px', bottom: '5%', left: '25%' }} />
-            <div className="bg-orb bg-orb-amber" style={{ width: '300px', height: '300px', top: '60%', right: '20%', opacity: 0.2 }} />
-          </>
-        )}
 
         <div
           className="relative flex flex-col min-h-screen"
