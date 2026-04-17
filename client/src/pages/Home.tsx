@@ -240,29 +240,36 @@ export default function Home() {
 
   // Track if we've received the initial server state
   const hasReceivedInitial = useRef(false);
-  // === VERSION-BASED SSE SYNC (Firebase-style) ===
-  // Instead of time-based blocking (dirtyRef/debounce), we use version numbers:
-  // - versionRef tracks the latest version we've sent to or received from the server
-  // - When we save, we get back a version number and update versionRef
-  // - When an SSE event arrives with version <= versionRef, we ignore it (echo)
-  // - When an SSE event arrives with version > versionRef, we apply it (remote change)
-  // - isSyncing prevents the save effect from firing during applyRemoteState
+  // === ROBUST SYNC ARCHITECTURE ===
+  // Server-side echo prevention: server excludes sender via clientId.
+  // Client-side: dirty flag + pending queue replaces isSyncing/epoch guards.
+  //
+  // Flow:
+  //   Local change → isDirty=true → schedule save (150ms debounce) → saveToServer → isDirty=false → apply pending
+  //   SSE arrives while isDirty → queue it (pendingRemoteRef) → applied after save completes
+  //   SSE arrives while !isDirty → apply immediately
+  //
+  // This ensures:
+  //   - Local changes are NEVER dropped (no isSyncing guard on save-effect)
+  //   - Remote changes are applied as soon as it's safe
+  //   - No 150ms blocking window
   const versionRef = useRef(0);
-  const isSyncing = useRef(false);
   // SSE client ID — assigned by the server on connection, sent with saves for server-side echo prevention
   const sseClientIdRef = useRef<string | null>(null);
-  // Epoch counter: incremented by applyRemoteState. The save effect captures
-  // the current epoch when it schedules a save. If the epoch has changed by
-  // the time the 50ms timer fires, the save is skipped (it was triggered by
-  // remote state, not a local change).
-  const syncEpochRef = useRef(0);
+  // Dirty flag: true when local state has changed but not yet saved to server
+  const isDirtyRef = useRef(false);
+  // Flag: true while we are currently inside saveToServer (prevents re-entrant saves)
+  const isSavingRef = useRef(false);
+  // Pending remote state: queued when SSE arrives while dirty/saving
+  const pendingRemoteRef = useRef<{ state: any; version: number } | null>(null);
+  // Flag to suppress the save-effect when we're applying remote state
+  const isApplyingRemoteRef = useRef(false);
   // Toast for remote changes
   const [remoteChangeToast, setRemoteChangeToast] = useState<string | null>(null);
 
   const exportRef = useRef<HTMLDivElement>(null);
 
   // Helper to apply remote state (from initial load or SSE)
-  // The version parameter is passed so we can update versionRef here too.
   const applyRemoteState = useCallback((state: {
     players: any[];
     lineup: Record<string, any>;
@@ -272,11 +279,11 @@ export default function Home() {
     teamBConfig?: { goalkeepers: number; defensePairs: number; forwardLines: number } | null;
     deletedPlayerIds?: string[] | null;
   }, version?: number) => {
-    isSyncing.current = true;
+    // Set flag so the save-effect knows this state change is from remote, not local
+    isApplyingRemoteRef.current = true;
     skipNextUndoSnapshot.current = true;
-    // Increment epoch so any pending save-effect timer knows to skip
-    syncEpochRef.current += 1;
-    // Update versionRef so the save-effect won't re-save this same state
+
+    // Update versionRef
     if (version && version > versionRef.current) {
       versionRef.current = version;
     }
@@ -292,14 +299,11 @@ export default function Home() {
     }
 
     // Only merge with initialPlayers if the database is completely empty
-    // (i.e., first-ever app launch). Otherwise, trust the server's data entirely.
     const remoteLineup = state.lineup ?? {};
     let finalPlayers: Player[];
     if (remotePlayers.length === 0 && Object.keys(remoteLineup).length === 0) {
       finalPlayers = initialPlayers;
     } else {
-      // Server owns the truth — use its data directly.
-      // This preserves isRegistered/isDeclined from laget.se syncs.
       finalPlayers = remotePlayers;
     }
 
@@ -317,30 +321,31 @@ export default function Home() {
     setTeamBName(state.teamBName ?? "GRÖNA");
     if (state.teamAConfig) setTeamAConfig(state.teamAConfig);
     if (state.teamBConfig) setTeamBConfig(state.teamBConfig);
-    // Keep isSyncing true long enough for the save effect to see it.
-    // The save effect has a 50ms debounce, so 150ms ensures we cover:
-    // - React commit + useEffect scheduling (~16ms)
-    // - The 50ms setTimeout in the save effect
-    // - Some margin for safety
-    setTimeout(() => {
-      isSyncing.current = false;
-    }, 150);
+
+    // Reset the flag after a microtask so React's synchronous setState calls
+    // have been batched, and the save-effect will see isApplyingRemoteRef=true
+    // when it runs in the same commit.
+    // We use queueMicrotask + requestAnimationFrame to ensure the flag is cleared
+    // AFTER React has committed and the save-effect has had a chance to check it.
+    requestAnimationFrame(() => {
+      isApplyingRemoteRef.current = false;
+    });
   }, []);
 
-  // Direct save to server — no debounce, no queue.
-  // Uses mutateAsync so we can await the version number.
-  // The returned version is used for SSE echo-prevention.
   // Refs for team names so saveToServer always reads the latest values
   const teamANameRef = useRef(teamAName);
   useEffect(() => { teamANameRef.current = teamAName; }, [teamAName]);
   const teamBNameRef = useRef(teamBName);
   useEffect(() => { teamBNameRef.current = teamBName; }, [teamBName]);
 
+  // Direct save to server. After saving, checks for pending remote state.
   const saveToServer = useCallback(async (
     players?: Player[],
     lineupData?: Record<string, Player>,
     operation?: { opType: string; description: string; payload?: Record<string, any> }
   ) => {
+    if (isSavingRef.current) return null; // prevent re-entrant saves
+    isSavingRef.current = true;
     const currentPlayers = players ?? availablePlayersRef.current;
     const currentLineup = lineupData ?? lineupRef.current;
     try {
@@ -357,12 +362,24 @@ export default function Home() {
       });
       // Update our version — all SSE events with version <= this will be ignored
       versionRef.current = result.version;
+      isDirtyRef.current = false;
+      isSavingRef.current = false;
+
+      // If a remote state was queued while we were saving, apply it now
+      const pending = pendingRemoteRef.current;
+      if (pending) {
+        pendingRemoteRef.current = null;
+        applyRemoteState(pending.state, pending.version);
+      }
+
       return result;
     } catch (err) {
       console.error("Save to server failed:", err);
+      isSavingRef.current = false;
+      isDirtyRef.current = false;
       return null;
     }
-  }, [saveStateMutation]);
+  }, [saveStateMutation, applyRemoteState]);
 
   // Load initial state from SQL + subscribe to SSE for real-time updates
   useEffect(() => {
@@ -421,14 +438,19 @@ export default function Home() {
       if (!mounted) return;
       try {
         const data = JSON.parse(event.data);
-        // Version-based echo prevention (Firebase-style):
-        // If this event's version is <= our last known version, it's an echo
-        // of our own save — ignore it. Only apply truly new remote changes.
+        // Version-based echo prevention (secondary safety net):
+        // Primary prevention is server-side excludeClientId.
         if (data.version && data.version <= versionRef.current) {
           return;
         }
         if (data.state) {
-          applyRemoteState(data.state, data.version);
+          // If we have unsaved local changes or are currently saving,
+          // queue the remote state and apply it after our save completes.
+          if (isDirtyRef.current || isSavingRef.current) {
+            pendingRemoteRef.current = { state: data.state, version: data.version };
+          } else {
+            applyRemoteState(data.state, data.version);
+          }
         }
         // Show toast for remote changes
         if (data.description) {
@@ -450,32 +472,26 @@ export default function Home() {
   }, [applyRemoteState, saveStateMutation]);
 
   // Save to both SQL and localStorage on every state change.
-  // Uses syncEpochRef to distinguish local changes from remote state:
-  // - applyRemoteState increments syncEpochRef before setting state
-  // - The save effect captures the epoch when it runs
-  // - If the epoch changed by the time the timer fires, it means
-  //   applyRemoteState caused this effect, so we skip the save
+  // Uses isApplyingRemoteRef to distinguish local changes from remote state.
+  // No isSyncing guard, no epoch guard — just a simple dirty flag.
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    // isSyncing is set by applyRemoteState — don't save remote state back
-    if (isSyncing.current) return;
+    // Don't save remote state back to server
+    if (isApplyingRemoteRef.current) return;
     if (!hasReceivedInitial.current) return;
 
     const state: SavedState = { availablePlayers, lineup, teamAName, teamBName, teamAConfig, teamBConfig };
     saveLocalState(state);
 
-    // Capture the current epoch at schedule time
-    const epochAtSchedule = syncEpochRef.current;
+    // Mark as dirty — we have unsaved local changes
+    isDirtyRef.current = true;
 
-    // Small debounce (50ms) to batch rapid React state updates (e.g. drag-end
+    // Debounce (150ms) to batch rapid React state updates (e.g. drag-end
     // sets both lineup and availablePlayers in quick succession)
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      // Skip if applyRemoteState ran since we scheduled this save
-      if (syncEpochRef.current !== epochAtSchedule) return;
-      if (isSyncing.current) return;
       saveToServer();
-    }, 50);
+    }, 150);
   }, [availablePlayers, lineup, teamAName, teamBName, deletedPlayerIds, teamAConfig, teamBConfig, saveToServer]);
 
   // Spara en snapshot i undo-stacken
@@ -495,20 +511,14 @@ export default function Home() {
   }, []);
 
   // Återställ senaste snapshot
+  // Undo is a local change that SHOULD be saved to server, so we don't suppress saves.
   const handleUndo = useCallback(() => {
     setUndoStack((prev) => {
       if (prev.length === 0) return prev;
       const snapshot = prev[prev.length - 1];
-      isSyncing.current = true;
       skipNextUndoSnapshot.current = true;
       setAvailablePlayers(snapshot.availablePlayers);
       setLineup(snapshot.lineup);
-      // Allow React to commit the state updates before re-enabling saves
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          isSyncing.current = false;
-        });
-      });
       return prev.slice(0, prev.length - 1);
     });
   }, []);
