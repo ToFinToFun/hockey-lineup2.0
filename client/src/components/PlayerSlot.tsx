@@ -45,13 +45,13 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact =
   const accent = accents[slot.role] ?? forwardAccent;
 
   const filledClasses = `
-    bg-white/[0.04] border border-white/[0.08] ${accent.border} border-l-2
-    hover:bg-white/[0.07] hover:border-white/[0.12]
+    bg-white/[0.06] border border-white/[0.10]
+    hover:bg-white/[0.10] hover:border-white/[0.15]
   `;
 
   const emptyClasses = `
-    border border-dashed border-white/[0.1] ${accent.border} border-l-2
-    bg-transparent
+    border border-dashed border-white/[0.08]
+    bg-white/[0.02]
   `;
 
   const dropHighlight = isOver
@@ -64,14 +64,14 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact =
       style={{ touchAction: "manipulation" }}
       className={`
         flex items-center gap-1.5 rounded-lg transition-all duration-150 overflow-visible
-        ${compact ? 'min-h-[26px] px-1 py-0.5' : 'min-h-[34px] px-2 py-1'}
+        ${compact ? 'min-h-[30px] px-1.5 py-0.5' : 'min-h-[38px] px-2.5 py-1.5'}
         ${player ? filledClasses : emptyClasses}
         ${dropHighlight}
       `}
     >
-      {/* Position badge — circle */}
+      {/* Position badge — circle matching mockup */}
       <span className={`
-        ${compact ? 'w-5 h-5 text-[7px]' : 'w-6 h-6 text-[9px]'}
+        ${compact ? 'w-6 h-6 text-[8px]' : 'w-7 h-7 text-[10px]'}
         font-black flex items-center justify-center shrink-0 rounded-full uppercase
         ${accent.badge} ${accent.badgeText}
       `}>
