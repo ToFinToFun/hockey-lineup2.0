@@ -1114,7 +1114,7 @@ export default function Home() {
     >
       {/* Solid dark background matching mockup */}
       <div
-        className={`min-h-screen w-full relative overflow-x-hidden ${isLineupDark ? 'bg-[#0f1923]' : 'bg-gray-100'}`}
+        className={`min-h-screen w-full relative overflow-x-hidden ${isLineupDark ? 'bg-[#0c1424]' : 'bg-gray-100'}`}
       >
 
         <div
