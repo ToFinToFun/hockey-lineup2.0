@@ -48,7 +48,7 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact =
       className={`
         flex items-center gap-1.5 transition-all duration-150 overflow-visible
         ${compact ? 'min-h-[28px] px-1' : 'min-h-[34px] px-1.5'}
-        ${player ? 'player-row' : ''}
+        player-row
         ${dropHighlight}
         rounded-md
       `}
