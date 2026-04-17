@@ -136,6 +136,12 @@ export default function Home() {
     local?.teamBConfig ?? { ...DEFAULT_TEAM_CONFIG }
   );
 
+  // Refs for config so saveToServer always reads the latest values
+  const teamAConfigRef = useRef(teamAConfig);
+  useEffect(() => { teamAConfigRef.current = teamAConfig; }, [teamAConfig]);
+  const teamBConfigRef = useRef(teamBConfig);
+  useEffect(() => { teamBConfigRef.current = teamBConfig; }, [teamBConfig]);
+
   // Generera slots dynamiskt baserat på config
   const TEAM_A_SLOTS = useMemo(() => createTeamSlots("team-a", teamAConfig), [teamAConfig]);
   const TEAM_B_SLOTS = useMemo(() => createTeamSlots("team-b", teamBConfig), [teamBConfig]);
@@ -322,6 +328,12 @@ export default function Home() {
   // Direct save to server — no debounce, no queue.
   // Uses mutateAsync so we can await the version number.
   // The returned version is used for SSE echo-prevention.
+  // Refs for team names so saveToServer always reads the latest values
+  const teamANameRef = useRef(teamAName);
+  useEffect(() => { teamANameRef.current = teamAName; }, [teamAName]);
+  const teamBNameRef = useRef(teamBName);
+  useEffect(() => { teamBNameRef.current = teamBName; }, [teamBName]);
+
   const saveToServer = useCallback(async (
     players?: Player[],
     lineupData?: Record<string, Player>,
@@ -333,11 +345,11 @@ export default function Home() {
       const result = await saveStateMutation.mutateAsync({
         players: currentPlayers,
         lineup: currentLineup,
-        teamAName,
-        teamBName,
+        teamAName: teamANameRef.current,
+        teamBName: teamBNameRef.current,
         deletedPlayerIds: Array.from(deletedPlayerIdsRef.current),
-        teamAConfig,
-        teamBConfig,
+        teamAConfig: teamAConfigRef.current,
+        teamBConfig: teamBConfigRef.current,
         operation,
       });
       // Update our version — all SSE events with version <= this will be ignored
@@ -347,7 +359,7 @@ export default function Home() {
       console.error("Save to server failed:", err);
       return null;
     }
-  }, [saveStateMutation, teamAName, teamBName, teamAConfig, teamBConfig]);
+  }, [saveStateMutation]);
 
   // Load initial state from SQL + subscribe to SSE for real-time updates
   useEffect(() => {
@@ -1496,6 +1508,7 @@ export default function Home() {
                       isWhite
                       config={teamAConfig}
                       onConfigChange={setTeamAConfig}
+                      otherConfig={teamBConfig}
                     />
 
                     {/* Lag B (GRÖNA) – höger */}
@@ -1511,6 +1524,7 @@ export default function Home() {
                       isWhite={false}
                       config={teamBConfig}
                       onConfigChange={setTeamBConfig}
+                      otherConfig={teamAConfig}
                     />
                   </div>
                 </div>
@@ -1535,6 +1549,7 @@ export default function Home() {
                     isWhite
                     config={teamAConfig}
                     onConfigChange={setTeamAConfig}
+                    otherConfig={teamBConfig}
                   />
 
                   {/* Spelarlista (mitten) */}
@@ -1582,6 +1597,7 @@ export default function Home() {
                     isWhite={false}
                     config={teamBConfig}
                     onConfigChange={setTeamBConfig}
+                    otherConfig={teamAConfig}
                   />
                 </div>
               )
@@ -1603,6 +1619,7 @@ export default function Home() {
                     config={teamAConfig}
                     onConfigChange={setTeamAConfig}
                     compact
+                    otherConfig={teamBConfig}
                   />
                 </div>
 
@@ -1621,6 +1638,7 @@ export default function Home() {
                     config={teamBConfig}
                     onConfigChange={setTeamBConfig}
                     compact
+                    otherConfig={teamAConfig}
                   />
                 </div>
               </div>

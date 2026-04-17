@@ -1,4 +1,4 @@
-// Hockey Lineup App – TeamPanel – v3 (consistent design system)
+// Hockey Lineup App – TeamPanel – v4 (section alignment with spacers)
 import { useMemo } from "react";
 import { Plus, Minus } from "lucide-react";
 import { PlayerSlot } from "./PlayerSlot";
@@ -23,6 +23,8 @@ interface TeamPanelProps {
   config: TeamConfig;
   onConfigChange: (config: TeamConfig) => void;
   compact?: boolean;
+  /** The other team's config — used to calculate spacers for section alignment */
+  otherConfig?: TeamConfig;
 }
 
 /* Section header colors */
@@ -73,6 +75,19 @@ function GroupCard({
   );
 }
 
+/* ── Spacer that mimics a defense pair (2 slots) or forward line (3 slots) ── */
+function SectionSpacer({ slotCount, compact }: { slotCount: number; compact?: boolean }) {
+  // Each slot has min-h of 28px (compact) or 34px (normal), plus spacing
+  const slotH = compact ? 28 : 34;
+  const gap = compact ? 2 : 4; // space-y-0.5 = 2px, space-y-1 = 4px
+  const groupMb = compact ? 6 : 8; // mb-1.5 = 6px, mb-2 = 8px
+  const labelH = compact ? 12 : 16; // group label height
+  const labelMb = compact ? 2 : 4; // mb-0.5 = 2px, mb-1 = 4px
+  // Total height for one group: labelH + labelMb + (slotCount * slotH) + ((slotCount-1) * gap) + groupMb
+  const totalH = labelH + labelMb + (slotCount * slotH) + ((slotCount - 1) * gap) + groupMb;
+  return <div style={{ height: `${totalH}px` }} />;
+}
+
 /* ── +/- buttons ── */
 function AddRemoveButtons({
   count, max, min, onAdd, onRemove, compact,
@@ -104,6 +119,7 @@ export function TeamPanel({
   teamId, teamName, slots, lineup,
   onRemovePlayer, onChangePosition, onRenameTeam, onClearTeam,
   isWhite = false, config, onConfigChange, compact = false,
+  otherConfig,
 }: TeamPanelProps) {
   const logo = isWhite ? LOGO_WHITE : LOGO_GREEN;
   const accentColor = isWhite ? "text-slate-200" : "text-emerald-400";
@@ -123,6 +139,25 @@ export function TeamPanel({
 
   const filledCount = Object.keys(lineup).length;
   const registeredInTeam = Object.values(lineup).filter((p) => p.isRegistered).length;
+
+  // Calculate spacers needed for alignment with the other team
+  const defenseSpacers = useMemo(() => {
+    if (!otherConfig) return 0;
+    const diff = otherConfig.defensePairs - config.defensePairs;
+    return diff > 0 ? diff : 0;
+  }, [config.defensePairs, otherConfig]);
+
+  const forwardSpacers = useMemo(() => {
+    if (!otherConfig) return 0;
+    const diff = otherConfig.forwardLines - config.forwardLines;
+    return diff > 0 ? diff : 0;
+  }, [config.forwardLines, otherConfig]);
+
+  const goalkeeperSpacers = useMemo(() => {
+    if (!otherConfig) return 0;
+    const diff = otherConfig.goalkeepers - config.goalkeepers;
+    return diff > 0 ? diff : 0;
+  }, [config.goalkeepers, otherConfig]);
 
   return (
     <div
@@ -201,6 +236,14 @@ export function TeamPanel({
               />
             ))}
           </div>
+          {/* Goalkeeper spacers */}
+          {goalkeeperSpacers > 0 && (
+            <div>
+              {Array.from({ length: goalkeeperSpacers }).map((_, i) => (
+                <SectionSpacer key={`gk-spacer-${i}`} slotCount={1} compact={compact} />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ── Separator ── */}
@@ -225,6 +268,14 @@ export function TeamPanel({
               type="defense" compact={compact}
             />
           ))}
+          {/* Defense spacers for alignment */}
+          {defenseSpacers > 0 && (
+            <div>
+              {Array.from({ length: defenseSpacers }).map((_, i) => (
+                <SectionSpacer key={`def-spacer-${i}`} slotCount={2} compact={compact} />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ── Separator ── */}
@@ -249,6 +300,14 @@ export function TeamPanel({
               type="forward" compact={compact}
             />
           ))}
+          {/* Forward spacers for alignment */}
+          {forwardSpacers > 0 && (
+            <div>
+              {Array.from({ length: forwardSpacers }).map((_, i) => (
+                <SectionSpacer key={`fwd-spacer-${i}`} slotCount={3} compact={compact} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
