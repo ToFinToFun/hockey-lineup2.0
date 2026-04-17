@@ -1,12 +1,10 @@
-// Hockey Lineup App – PlayerSlot – Glassmorphism v2
-// Flat design: thin left-colored border accent, minimal background
-// Empty slots: dashed border with placeholder text
+// Hockey Lineup App – PlayerSlot – v3 (consistent design system)
+// Badge is integrated into the row as a rounded-rect, matching mockup exactly
 
 import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard } from "./PlayerCard";
 import type { Player, Position } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
-import { useForwardColor } from "@/hooks/useForwardColor";
 
 interface PlayerSlotProps {
   slot: Slot;
@@ -16,46 +14,31 @@ interface PlayerSlotProps {
   compact?: boolean;
 }
 
-/* Role-specific accent colors for the left border and badge */
-const roleAccents: Record<string, { border: string; badge: string; badgeText: string; empty: string }> = {
-  gk:       { border: "border-l-amber-400",    badge: "bg-amber-500",    badgeText: "text-amber-950",   empty: "text-amber-400/30" },
-  "res-gk": { border: "border-l-amber-400/50", badge: "bg-amber-500/70", badgeText: "text-amber-950",   empty: "text-amber-400/20" },
-  def:      { border: "border-l-blue-400",     badge: "bg-blue-500",     badgeText: "text-blue-950",    empty: "text-blue-400/30" },
-  c:        { border: "border-l-purple-400",    badge: "bg-purple-500",   badgeText: "text-purple-950",  empty: "text-purple-400/30" },
-};
+/* Badge color mapping using CSS classes from design system */
+function getBadgeClass(role: string): string {
+  switch (role) {
+    case "gk":
+    case "res-gk":
+      return "pos-badge-mv";
+    case "def":
+      return "pos-badge-b";
+    case "lw":
+    case "rw":
+      return "pos-badge-f";
+    case "c":
+      return "pos-badge-c";
+    default:
+      return "pos-badge-f";
+  }
+}
 
 export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact = false }: PlayerSlotProps) {
   const { isOver, setNodeRef } = useDroppable({ id: slot.id });
-  const { colors: fc } = useForwardColor();
 
-  // Forward roles (lw, rw) use cyan
-  const forwardAccent = {
-    border: "border-l-cyan-400",
-    badge: "bg-cyan-500",
-    badgeText: "text-cyan-950",
-    empty: "text-cyan-400/30",
-  };
-
-  const accents: Record<string, typeof forwardAccent> = {
-    ...roleAccents,
-    lw: forwardAccent,
-    rw: forwardAccent,
-  };
-
-  const accent = accents[slot.role] ?? forwardAccent;
-
-  const filledClasses = `
-    bg-white/[0.06] border border-white/[0.10]
-    hover:bg-white/[0.10] hover:border-white/[0.15]
-  `;
-
-  const emptyClasses = `
-    border border-dashed border-white/[0.08]
-    bg-white/[0.02]
-  `;
+  const badgeClass = getBadgeClass(slot.role);
 
   const dropHighlight = isOver
-    ? "!bg-white/[0.08] !border-white/30 ring-1 ring-white/20 shadow-md"
+    ? "ring-1 ring-emerald-400/40 bg-emerald-400/[0.06]"
     : "";
 
   return (
@@ -63,18 +46,15 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact =
       ref={setNodeRef}
       style={{ touchAction: "manipulation" }}
       className={`
-        flex items-center gap-1.5 rounded-lg transition-all duration-150 overflow-visible
-        ${compact ? 'min-h-[30px] px-1.5 py-0.5' : 'min-h-[38px] px-2.5 py-1.5'}
-        ${player ? filledClasses : emptyClasses}
+        flex items-center gap-1.5 transition-all duration-150 overflow-visible
+        ${compact ? 'min-h-[28px] px-1' : 'min-h-[34px] px-1.5'}
+        ${player ? 'player-row' : ''}
         ${dropHighlight}
+        rounded-md
       `}
     >
-      {/* Position badge — rounded rect matching mockup */}
-      <span className={`
-        ${compact ? 'min-w-[22px] h-5 px-1 text-[8px]' : 'min-w-[26px] h-6 px-1.5 text-[10px]'}
-        font-black flex items-center justify-center shrink-0 rounded uppercase
-        ${accent.badge} ${accent.badgeText}
-      `}>
+      {/* Position badge — rounded rect, solid color, from design system */}
+      <span className={`pos-badge ${compact ? 'pos-badge-sm' : 'pos-badge-sm'} ${badgeClass}`}>
         {slot.shortLabel}
       </span>
 
@@ -89,8 +69,8 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact =
           />
         </div>
       ) : (
-        <span className={`${compact ? 'text-[9px]' : 'text-[11px]'} italic flex-1 ${accent.empty} ${isOver ? "!text-white/50" : ""}`}>
-          {isOver ? "Släpp här" : (compact ? slot.shortLabel : slot.label)}
+        <span className={`${compact ? 'text-[9px]' : 'text-[11px]'} italic flex-1 text-white/20 ${isOver ? "!text-white/50" : ""}`}>
+          {isOver ? "Släpp här" : ""}
         </span>
       )}
     </div>
