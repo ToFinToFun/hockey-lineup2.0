@@ -4,6 +4,7 @@ import { fetchAttendance, updateAttendance, type AttendingStatus } from "./laget
 import { saveLagetSeCredentials, getLagetSeCredentials, hasLagetSeCredentials } from "./secretsDb";
 import { scoreRouter } from "./routers/score";
 import { scoreStatsRouter } from "./routers/scoreStats";
+import { getAllMatchResults } from "./scoreDb";
 import {
   getLineupState,
   saveLineupState,
@@ -103,6 +104,60 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return getOperationsAfter(input.afterSeq);
       }),
+
+    /**
+     * Calculate the most-played position for each player from match history.
+     * Returns a map: playerKey -> { mostPlayed: "B", stats: { B: 10, C: 2, ... } }
+     */
+    positionHistory: publicProcedure.query(async () => {
+      const allMatches = await getAllMatchResults();
+      // playerKey -> { position -> count }
+      const positionCounts: Record<string, Record<string, number>> = {};
+
+      for (const match of allMatches) {
+        const lineup = match.lineup as any;
+        if (!lineup) continue;
+        const lineupEntries = lineup.lineup || {};
+
+        for (const [slotId, p] of Object.entries(lineupEntries)) {
+          if (!p || typeof p !== "object" || !(p as any).name) continue;
+          const pl = p as any;
+          const playerKey = pl.number ? `${pl.name} #${pl.number}` : pl.name;
+
+          // Extract position from slot ID
+          let position = "";
+          if (slotId.includes("-gk-")) {
+            position = "MV";
+          } else if (slotId.includes("-fwd-")) {
+            const parts = slotId.split("-");
+            const lastPart = parts[parts.length - 1];
+            position = lastPart === "c" ? "C" : lastPart === "lw" ? "LW" : lastPart === "rw" ? "RW" : "F";
+          } else if (slotId.includes("-def-")) {
+            position = "B";
+          }
+          if (!position) continue;
+
+          if (!positionCounts[playerKey]) positionCounts[playerKey] = {};
+          positionCounts[playerKey][position] = (positionCounts[playerKey][position] || 0) + 1;
+        }
+      }
+
+      // For each player, find the most-played position
+      const result: Record<string, { mostPlayed: string; stats: Record<string, number> }> = {};
+      for (const [playerKey, stats] of Object.entries(positionCounts)) {
+        let mostPlayed = "";
+        let maxCount = 0;
+        for (const [pos, count] of Object.entries(stats)) {
+          if (count > maxCount) {
+            maxCount = count;
+            mostPlayed = pos;
+          }
+        }
+        result[playerKey] = { mostPlayed, stats };
+      }
+
+      return result;
+    }),
   }),
 
   // ─── Saved Lineups ────────────────────────────────────────────────────────

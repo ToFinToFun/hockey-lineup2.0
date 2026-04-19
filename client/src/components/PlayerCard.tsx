@@ -209,7 +209,7 @@ export function DraggablePlayerCard({
             setNrValue(player.number ?? "");
             setShowEditPanel((v) => !v);
           }}
-          className="flex items-center gap-1.5 shrink-0 hover:ring-1 hover:ring-emerald-400/40 rounded px-0.5 py-0.5 transition-all cursor-pointer"
+          className="flex items-center gap-1 shrink-0 hover:ring-1 hover:ring-emerald-400/40 rounded px-0.5 py-0.5 transition-all cursor-pointer"
           title="Klicka för att redigera spelare"
         >
           {player.captainRole && (
@@ -219,13 +219,19 @@ export function DraggablePlayerCard({
                 : "bg-orange-400/20 text-orange-300 border-orange-400/40"
             }`}>{player.captainRole}</span>
           )}
-          <TeamColorIndicator teamColor={player.teamColor ?? null} size={14} />
+          <TeamColorIndicator teamColor={player.teamColor ?? null} size={12} />
           <span className={`pos-badge pos-badge-sm pos-badge-${player.position.toLowerCase()} shrink-0`}>
             {player.position}
           </span>
+          {player.mostPlayedPosition && player.mostPlayedPosition !== player.position && (
+            <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0`}
+              title={`Vanligaste position: ${player.mostPlayedPosition}`}>
+              {player.mostPlayedPosition}
+            </span>
+          )}
         </button>
       ) : !compact && !hideExtras ? (
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
           {player.captainRole && (
             <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${
               player.captainRole === "C"
@@ -233,10 +239,16 @@ export function DraggablePlayerCard({
                 : "bg-orange-400/20 text-orange-300 border-orange-400/40"
             }`}>{player.captainRole}</span>
           )}
-          <TeamColorIndicator teamColor={player.teamColor ?? null} size={14} />
+          <TeamColorIndicator teamColor={player.teamColor ?? null} size={12} />
           <span className={`pos-badge pos-badge-sm pos-badge-${player.position.toLowerCase()} shrink-0`}>
             {player.position}
           </span>
+          {player.mostPlayedPosition && player.mostPlayedPosition !== player.position && (
+            <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0`}
+              title={`Vanligaste position: ${player.mostPlayedPosition}`}>
+              {player.mostPlayedPosition}
+            </span>
+          )}
         </div>
       ) : null}
 

@@ -103,14 +103,40 @@ export function autoDistribute(
     } else if (teamBGoalkeepers.length < 2) {
       teamBGoalkeepers.push(gk);
     }
-    // Excess goalkeepers will go to remaining
+    // Excess goalkeepers handled below
+  }
+
+  // Handle excess goalkeepers: if a GK has mostPlayedPosition != MV,
+  // move them to outfield with that position instead of leaving them unplaced.
+  const allAssignedGk = new Set([
+    ...teamAGoalkeepers.map(t => t.player.id),
+    ...teamBGoalkeepers.map(t => t.player.id),
+  ]);
+  const excessGk = goalkeepers.filter(t => !allAssignedGk.has(t.player.id));
+
+  // Sort excess GK: those with non-MV mostPlayedPosition first (they can play outfield)
+  const gkToOutfield: TaggedPlayer[] = [];
+  for (const gk of excessGk) {
+    const mpp = gk.player.mostPlayedPosition;
+    if (mpp && mpp !== "MV") {
+      // Re-categorize based on most-played position
+      let newPosType: PosType = "flex";
+      if (mpp === "B") newPosType = "defense";
+      else if (mpp === "C") newPosType = "center";
+      else if (mpp === "F" || mpp === "LW" || mpp === "RW") newPosType = "forward";
+      gkToOutfield.push({ player: gk.player, posType: newPosType });
+    }
+    // Pure goalkeepers (no other experience) stay as excess → remaining
   }
 
   // ── Step 3: Distribute outfield players to teams ──
+  // Include excess goalkeepers re-categorized as outfield players
+  const allOutfield = [...outfield, ...gkToOutfield];
+
   // Separate by team color. C/A with teamColor are "locked" and cannot be shuffled.
-  const ofWhite = outfield.filter(t => t.player.teamColor === "white");
-  const ofGreen = outfield.filter(t => t.player.teamColor === "green");
-  const ofNeutral = outfield.filter(t => !t.player.teamColor);
+  const ofWhite = allOutfield.filter(t => t.player.teamColor === "white");
+  const ofGreen = allOutfield.filter(t => t.player.teamColor === "green");
+  const ofNeutral = allOutfield.filter(t => !t.player.teamColor);
 
   // Shuffle only non-locked neutrals (never shuffle C/A with teamColor)
   const neutralsToDistribute = options?.shuffle ? shuffleArray(ofNeutral) : [...ofNeutral];

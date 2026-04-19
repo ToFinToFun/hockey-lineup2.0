@@ -27,6 +27,7 @@ export interface Player {
   isRegistered?: boolean;   // Anmäld till dagens match ("Kommer")
   isDeclined?: boolean;     // Avböjt dagens match ("Kommer inte")
   gamesPlayed?: number;     // Antal matcher spelade
+  mostPlayedPosition?: string; // Vanligaste positionen baserat på matchhistorik
 }
 
 /** Formaterar spelarens visningsnamn: "C Jerry Paasovaara #63" eller "Linus Carbin #35" */

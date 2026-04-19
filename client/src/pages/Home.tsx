@@ -408,13 +408,50 @@ export default function Home() {
     let es: EventSource | null = null;
     let mounted = true;
 
-    // 1. Load initial state from server
-    fetch("/api/trpc/lineup.getState", { credentials: "include" })
+    // 1. Load initial state + position history in parallel
+    const statePromise = fetch("/api/trpc/lineup.getState", { credentials: "include" })
       .then(res => res.json())
       .then((json) => {
-        if (!mounted) return;
         const wrapped = json?.result?.data;
-        const state = wrapped?.json ?? wrapped;
+        return wrapped?.json ?? wrapped;
+      });
+
+    const posHistoryPromise = fetch("/api/trpc/lineup.positionHistory", { credentials: "include" })
+      .then(res => res.json())
+      .then((json) => {
+        const wrapped = json?.result?.data;
+        return (wrapped?.json ?? wrapped) as Record<string, { mostPlayed: string; stats: Record<string, number> }> | null;
+      })
+      .catch(() => null);
+
+    Promise.all([statePromise, posHistoryPromise])
+      .then(([state, posHistory]) => {
+        if (!mounted) return;
+
+        // Enrich players with mostPlayedPosition from match history
+        if (state && state.players && posHistory) {
+          state.players = (state.players as Player[]).map((p: Player) => {
+            const key = p.number ? `${p.name} #${p.number}` : p.name;
+            const hist = posHistory[key];
+            if (hist?.mostPlayed) {
+              return { ...p, mostPlayedPosition: hist.mostPlayed };
+            }
+            return p;
+          });
+          // Also enrich players in lineup
+          if (state.lineup) {
+            for (const [slotId, player] of Object.entries(state.lineup)) {
+              const p = player as Player;
+              if (!p?.name) continue;
+              const key = p.number ? `${p.name} #${p.number}` : p.name;
+              const hist = posHistory[key];
+              if (hist?.mostPlayed) {
+                state.lineup[slotId] = { ...p, mostPlayedPosition: hist.mostPlayed };
+              }
+            }
+          }
+        }
+
         if (state && state.players) {
           applyRemoteStateRef.current(state, state.version);
         } else if (!hasReceivedInitial.current) {
