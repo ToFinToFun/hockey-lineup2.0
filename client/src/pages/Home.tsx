@@ -264,6 +264,9 @@ export default function Home() {
   const pendingRemoteRef = useRef<{ state: any; version: number } | null>(null);
   // Flag to suppress the save-effect when we're applying remote state
   const isApplyingRemoteRef = useRef(false);
+  // Counter incremented by applyRemoteState; a useEffect watching this clears isApplyingRemoteRef
+  // AFTER the save-effect has run (React runs useEffects in declaration order).
+  const [remoteApplyCounter, setRemoteApplyCounter] = useState(0);
   // Toast for remote changes
   const [remoteChangeToast, setRemoteChangeToast] = useState<string | null>(null);
 
@@ -282,6 +285,8 @@ export default function Home() {
     // Set flag so the save-effect knows this state change is from remote, not local
     isApplyingRemoteRef.current = true;
     skipNextUndoSnapshot.current = true;
+    // Trigger the clearing effect (declared AFTER save-effect) to reset the flag
+    setRemoteApplyCounter(c => c + 1);
 
     // Update versionRef
     if (version && version > versionRef.current) {
@@ -322,14 +327,9 @@ export default function Home() {
     if (state.teamAConfig) setTeamAConfig(state.teamAConfig);
     if (state.teamBConfig) setTeamBConfig(state.teamBConfig);
 
-    // Reset the flag after a microtask so React's synchronous setState calls
-    // have been batched, and the save-effect will see isApplyingRemoteRef=true
-    // when it runs in the same commit.
-    // We use queueMicrotask + requestAnimationFrame to ensure the flag is cleared
-    // AFTER React has committed and the save-effect has had a chance to check it.
-    requestAnimationFrame(() => {
-      isApplyingRemoteRef.current = false;
-    });
+    // NOTE: isApplyingRemoteRef is cleared by a useEffect watching remoteApplyCounter,
+    // declared AFTER the save-effect. This guarantees the save-effect sees the flag as true
+    // before it gets cleared (React runs useEffects in declaration order).
   }, []);
 
   // Refs for team names so saveToServer always reads the latest values
@@ -493,6 +493,18 @@ export default function Home() {
       saveToServer();
     }, 150);
   }, [availablePlayers, lineup, teamAName, teamBName, deletedPlayerIds, teamAConfig, teamBConfig, saveToServer]);
+
+  // Clear isApplyingRemoteRef AFTER the save-effect has run.
+  // This useEffect is declared AFTER the save-effect, so React runs it second.
+  // In the same render commit where applyRemoteState set state:
+  //   1. save-effect runs → sees isApplyingRemoteRef=true → returns early ✓
+  //   2. THIS effect runs → sets isApplyingRemoteRef=false ✓
+  // This replaces the old requestAnimationFrame approach which ran BEFORE useEffect.
+  useEffect(() => {
+    if (remoteApplyCounter > 0) {
+      isApplyingRemoteRef.current = false;
+    }
+  }, [remoteApplyCounter]);
 
   // Spara en snapshot i undo-stacken
   const pushUndo = useCallback(() => {
