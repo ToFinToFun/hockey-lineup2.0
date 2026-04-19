@@ -290,6 +290,7 @@ export default function Home() {
     skipNextUndoSnapshot.current = true;
     // Increment the remote-apply counter (used by save-effect debounce guard)
     remoteApplyCounterRef.current += 1;
+    console.log('[SYNC] applyRemoteState called', { version, configA: state.teamAConfig, configB: state.teamBConfig, counter: remoteApplyCounterRef.current });
 
     // Update versionRef
     if (version && version > versionRef.current) {
@@ -329,6 +330,7 @@ export default function Home() {
     setTeamBName(state.teamBName ?? "GRÖNA");
     if (state.teamAConfig) setTeamAConfig(state.teamAConfig);
     if (state.teamBConfig) setTeamBConfig(state.teamBConfig);
+    console.log('[SYNC] applyRemoteState setState done, clearing flag via queueMicrotask');
 
     // Clear the flag synchronously after all setState calls.
     // The save-effect will still see isApplyingRemoteRef=true because React batches
@@ -353,10 +355,11 @@ export default function Home() {
     lineupData?: Record<string, Player>,
     operation?: { opType: string; description: string; payload?: Record<string, any> }
   ) => {
-    if (isSavingRef.current) return null; // prevent re-entrant saves
+    if (isSavingRef.current) { console.log('[SYNC] saveToServer BLOCKED (already saving)'); return null; }
     isSavingRef.current = true;
     const currentPlayers = players ?? availablePlayersRef.current;
     const currentLineup = lineupData ?? lineupRef.current;
+    console.log('[SYNC] saveToServer START', { configA: teamAConfigRef.current, configB: teamBConfigRef.current, clientId: sseClientIdRef.current });
     try {
       const result = await saveStateMutation.mutateAsync({
         players: currentPlayers,
@@ -373,6 +376,7 @@ export default function Home() {
       versionRef.current = result.version;
       isDirtyRef.current = false;
       isSavingRef.current = false;
+      console.log('[SYNC] saveToServer SUCCESS', { newVersion: result.version, hasPending: !!pendingRemoteRef.current });
 
       // If a remote state was queued while we were saving, apply it now
       const pending = pendingRemoteRef.current;
@@ -450,14 +454,18 @@ export default function Home() {
         // Version-based echo prevention (secondary safety net):
         // Primary prevention is server-side excludeClientId.
         if (data.version && data.version <= versionRef.current) {
+          console.log('[SYNC] SSE stateChange IGNORED (version <= ours)', { eventVersion: data.version, ourVersion: versionRef.current });
           return;
         }
+        console.log('[SYNC] SSE stateChange ACCEPTED', { eventVersion: data.version, ourVersion: versionRef.current, isDirty: isDirtyRef.current, isSaving: isSavingRef.current });
         if (data.state) {
           // If we have unsaved local changes or are currently saving,
           // queue the remote state and apply it after our save completes.
           if (isDirtyRef.current || isSavingRef.current) {
+            console.log('[SYNC] SSE stateChange QUEUED (dirty or saving)', { isDirty: isDirtyRef.current, isSaving: isSavingRef.current, configA: data.state?.teamAConfig });
             pendingRemoteRef.current = { state: data.state, version: data.version };
           } else {
+            console.log('[SYNC] SSE stateChange APPLYING immediately', { configA: data.state?.teamAConfig });
             applyRemoteState(data.state, data.version);
           }
         }
@@ -487,8 +495,15 @@ export default function Home() {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     // Layer 1: Don't save remote state back to server
-    if (isApplyingRemoteRef.current) return;
-    if (!hasReceivedInitial.current) return;
+    if (isApplyingRemoteRef.current) {
+      console.log('[SYNC] save-effect BLOCKED by isApplyingRemoteRef', { configA: teamAConfig, configB: teamBConfig });
+      return;
+    }
+    if (!hasReceivedInitial.current) {
+      console.log('[SYNC] save-effect BLOCKED by !hasReceivedInitial');
+      return;
+    }
+    console.log('[SYNC] save-effect PASSED guards', { configA: teamAConfig, configB: teamBConfig, counter: remoteApplyCounterRef.current });
 
     const state: SavedState = { availablePlayers, lineup, teamAName, teamBName, teamAConfig, teamBConfig };
     saveLocalState(state);
@@ -506,9 +521,11 @@ export default function Home() {
     saveTimerRef.current = setTimeout(() => {
       // Layer 2: If remote state was applied after we scheduled this save, abort
       if (remoteApplyCounterRef.current !== counterAtSchedule) {
+        console.log('[SYNC] save-timer ABORTED by counter change', { counterAtSchedule, current: remoteApplyCounterRef.current });
         isDirtyRef.current = false;
         return;
       }
+      console.log('[SYNC] save-timer FIRING saveToServer');
       saveToServer();
     }, 150);
   }, [availablePlayers, lineup, teamAName, teamBName, deletedPlayerIds, teamAConfig, teamBConfig, saveToServer]);
