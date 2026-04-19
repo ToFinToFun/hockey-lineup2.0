@@ -1,5 +1,6 @@
-// Hockey Lineup App – PlayerSlot – v3 (consistent design system)
-// Badge is integrated into the row as a rounded-rect, matching mockup exactly
+// Hockey Lineup App – PlayerSlot – v4 (mockup-matching layout)
+// Large slot-position badge fills full row height on the left.
+// Player's favorite position is shown as a small badge on the right (inside PlayerCard).
 
 import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard } from "./PlayerCard";
@@ -46,21 +47,21 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact =
       ref={setNodeRef}
       style={{ touchAction: "manipulation" }}
       className={`
-        flex items-center gap-1.5 transition-all duration-150 overflow-visible
-        ${compact ? 'min-h-[28px] px-1' : 'min-h-[34px] px-1.5'}
+        flex items-stretch transition-all duration-150 overflow-visible
+        ${compact ? 'min-h-[28px]' : 'min-h-[34px]'}
         player-row
         ${dropHighlight}
         rounded-md
       `}
     >
-      {/* Position badge — rounded rect, solid color, from design system */}
-      <span className={`pos-badge ${compact ? 'pos-badge-sm' : 'pos-badge-sm'} ${badgeClass}`}>
+      {/* Slot position badge — fills full row height, flush left with rounded left corners */}
+      <span className={`slot-badge ${badgeClass} ${compact ? 'slot-badge-compact' : ''}`}>
         {slot.shortLabel}
       </span>
 
       {/* Player card or empty placeholder */}
       {player ? (
-        <div className="flex-1 min-w-0 overflow-visible">
+        <div className="flex-1 min-w-0 overflow-visible flex items-center px-1.5">
           <DraggablePlayerCard
             player={player}
             onRemove={onRemove}
@@ -69,7 +70,7 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact =
           />
         </div>
       ) : (
-        <span className={`${compact ? 'text-[9px]' : 'text-[11px]'} italic flex-1 text-white/20 ${isOver ? "!text-white/50" : ""}`}>
+        <span className={`${compact ? 'text-[9px]' : 'text-[11px]'} italic flex-1 text-white/20 ${isOver ? "!text-white/50" : ""} flex items-center px-2`}>
           {isOver ? "Släpp här" : ""}
         </span>
       )}
