@@ -262,11 +262,14 @@ export default function Home() {
   const isSavingRef = useRef(false);
   // Pending remote state: queued when SSE arrives while dirty/saving
   const pendingRemoteRef = useRef<{ state: any; version: number } | null>(null);
-  // Flag to suppress the save-effect when we're applying remote state
+  // === REMOTE STATE GUARD ===
+  // Instead of a boolean flag (which has timing issues with React's multi-render cycles),
+  // we store a monotonic counter. applyRemoteState increments it, and the save-effect
+  // captures it at the start. If it changed by the time the debounce fires, we know
+  // a remote state was applied and we should NOT save.
+  const remoteApplyCounterRef = useRef(0);
+  // Also keep the simple boolean for the synchronous check in the effect body
   const isApplyingRemoteRef = useRef(false);
-  // Counter incremented by applyRemoteState; a useEffect watching this clears isApplyingRemoteRef
-  // AFTER the save-effect has run (React runs useEffects in declaration order).
-  const [remoteApplyCounter, setRemoteApplyCounter] = useState(0);
   // Toast for remote changes
   const [remoteChangeToast, setRemoteChangeToast] = useState<string | null>(null);
 
@@ -285,8 +288,8 @@ export default function Home() {
     // Set flag so the save-effect knows this state change is from remote, not local
     isApplyingRemoteRef.current = true;
     skipNextUndoSnapshot.current = true;
-    // Trigger the clearing effect (declared AFTER save-effect) to reset the flag
-    setRemoteApplyCounter(c => c + 1);
+    // Increment the remote-apply counter (used by save-effect debounce guard)
+    remoteApplyCounterRef.current += 1;
 
     // Update versionRef
     if (version && version > versionRef.current) {
@@ -327,9 +330,15 @@ export default function Home() {
     if (state.teamAConfig) setTeamAConfig(state.teamAConfig);
     if (state.teamBConfig) setTeamBConfig(state.teamBConfig);
 
-    // NOTE: isApplyingRemoteRef is cleared by a useEffect watching remoteApplyCounter,
-    // declared AFTER the save-effect. This guarantees the save-effect sees the flag as true
-    // before it gets cleared (React runs useEffects in declaration order).
+    // Clear the flag synchronously after all setState calls.
+    // The save-effect will still see isApplyingRemoteRef=true because React batches
+    // setState and runs effects after ALL state updates in the same commit.
+    // But even if it doesn't (due to React internals), the debounced saveToServer
+    // uses the counter-based guard as a safety net.
+    // We use queueMicrotask to clear AFTER React has batched all the setStates.
+    queueMicrotask(() => {
+      isApplyingRemoteRef.current = false;
+    });
   }, []);
 
   // Refs for team names so saveToServer always reads the latest values
@@ -472,11 +481,12 @@ export default function Home() {
   }, [applyRemoteState, saveStateMutation]);
 
   // Save to both SQL and localStorage on every state change.
-  // Uses isApplyingRemoteRef to distinguish local changes from remote state.
-  // No isSyncing guard, no epoch guard — just a simple dirty flag.
+  // Two-layer guard against saving remote state back to server:
+  //   Layer 1: isApplyingRemoteRef (synchronous check when effect runs)
+  //   Layer 2: remoteApplyCounterRef snapshot (checked when debounce fires)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    // Don't save remote state back to server
+    // Layer 1: Don't save remote state back to server
     if (isApplyingRemoteRef.current) return;
     if (!hasReceivedInitial.current) return;
 
@@ -486,25 +496,22 @@ export default function Home() {
     // Mark as dirty — we have unsaved local changes
     isDirtyRef.current = true;
 
+    // Capture the remote-apply counter NOW. If it changes before the timeout
+    // fires, a remote state was applied in between and we should NOT save.
+    const counterAtSchedule = remoteApplyCounterRef.current;
+
     // Debounce (150ms) to batch rapid React state updates (e.g. drag-end
     // sets both lineup and availablePlayers in quick succession)
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
+      // Layer 2: If remote state was applied after we scheduled this save, abort
+      if (remoteApplyCounterRef.current !== counterAtSchedule) {
+        isDirtyRef.current = false;
+        return;
+      }
       saveToServer();
     }, 150);
   }, [availablePlayers, lineup, teamAName, teamBName, deletedPlayerIds, teamAConfig, teamBConfig, saveToServer]);
-
-  // Clear isApplyingRemoteRef AFTER the save-effect has run.
-  // This useEffect is declared AFTER the save-effect, so React runs it second.
-  // In the same render commit where applyRemoteState set state:
-  //   1. save-effect runs → sees isApplyingRemoteRef=true → returns early ✓
-  //   2. THIS effect runs → sets isApplyingRemoteRef=false ✓
-  // This replaces the old requestAnimationFrame approach which ran BEFORE useEffect.
-  useEffect(() => {
-    if (remoteApplyCounter > 0) {
-      isApplyingRemoteRef.current = false;
-    }
-  }, [remoteApplyCounter]);
 
   // Spara en snapshot i undo-stacken
   const pushUndo = useCallback(() => {

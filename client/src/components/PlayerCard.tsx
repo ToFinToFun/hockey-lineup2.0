@@ -103,7 +103,7 @@ export function DraggablePlayerCard({
       ref={setNodeRef}
       style={{ ...style, touchAction: "manipulation" }}
       className={`
-        group relative flex items-center gap-1.5 rounded-md
+        group relative flex items-center gap-1.5 rounded-md w-full
         player-row
         transition-all duration-150 select-none
         ${compact ? "px-0.5 py-0.5 text-xs" : "px-1 py-1 text-sm"}
