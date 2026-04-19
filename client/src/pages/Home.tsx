@@ -783,6 +783,14 @@ export default function Home() {
       setLineup(newLineup);
       setAvailablePlayers((prev) => [...removedPlayers, ...prev]);
     }
+
+    // Reset config to defaults: 1 goalkeeper, 1 defense pair, 1 forward line
+    const defaultConfig = { goalkeepers: 1, defensePairs: 1, forwardLines: 1 };
+    if (teamPrefix === "team-a-") {
+      setTeamAConfig(defaultConfig);
+    } else {
+      setTeamBConfig(defaultConfig);
+    }
   }, [confirmClear, pushUndo]);
 
   // Ladda en sparad uppställning
