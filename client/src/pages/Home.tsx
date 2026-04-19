@@ -792,6 +792,27 @@ export default function Home() {
     // Guard against malformed saved lineups (lineup may be null/undefined in old entries)
     const safeLineup: Record<string, Player> = saved.lineup ?? {};
 
+    // Infer team configs from slot IDs in the saved lineup.
+    // Slot naming: team-a-gk-1, team-a-gk-2, team-a-def-{pair}-{1|2}, team-a-fwd-{chain}-{lw|c|rw}
+    const inferConfig = (teamId: string) => {
+      let goalkeepers = 1;
+      let defensePairs = 1;
+      let forwardLines = 1;
+      for (const slotId of Object.keys(safeLineup)) {
+        if (!slotId.startsWith(teamId)) continue;
+        const gkMatch = slotId.match(new RegExp(`^${teamId}-gk-(\\d+)$`));
+        if (gkMatch) goalkeepers = Math.max(goalkeepers, parseInt(gkMatch[1], 10));
+        const defMatch = slotId.match(new RegExp(`^${teamId}-def-(\\d+)-`));
+        if (defMatch) defensePairs = Math.max(defensePairs, parseInt(defMatch[1], 10));
+        const fwdMatch = slotId.match(new RegExp(`^${teamId}-fwd-(\\d+)-`));
+        if (fwdMatch) forwardLines = Math.max(forwardLines, parseInt(fwdMatch[1], 10));
+      }
+      return { goalkeepers: Math.min(goalkeepers, 2), defensePairs: Math.min(defensePairs, 4), forwardLines: Math.min(forwardLines, 4) };
+    };
+
+    const newConfigA = inferConfig("team-a");
+    const newConfigB = inferConfig("team-b");
+
     // Bygg ny spelartrupp: alla spelare som inte är i den sparade lineup
     const savedLineupIds = new Set(Object.values(safeLineup).map((p) => p.id));
     const allKnownPlayers = [
@@ -806,6 +827,8 @@ export default function Home() {
     });
     const newAvailable = allUnique.filter((p) => !savedLineupIds.has(p.id));
 
+    setTeamAConfig(newConfigA);
+    setTeamBConfig(newConfigB);
     setLineup(safeLineup);
     setAvailablePlayers(newAvailable);
     setTeamAName(saved.teamAName ?? "");
