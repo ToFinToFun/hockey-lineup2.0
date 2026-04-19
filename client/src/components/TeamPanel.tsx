@@ -76,14 +76,14 @@ function GroupCard({
 }
 
 /* ── Spacer that mimics a defense pair (2 slots) or forward line (3 slots) ── */
-function SectionSpacer({ slotCount, compact }: { slotCount: number; compact?: boolean }) {
+function SectionSpacer({ slotCount, compact, hasGroupLabel = true }: { slotCount: number; compact?: boolean; hasGroupLabel?: boolean }) {
   // Each slot has min-h of 28px (compact) or 34px (normal), plus spacing
   const slotH = compact ? 28 : 34;
   const gap = compact ? 2 : 4; // space-y-0.5 = 2px, space-y-1 = 4px
-  const groupMb = compact ? 6 : 8; // mb-1.5 = 6px, mb-2 = 8px
-  const labelH = compact ? 12 : 16; // group label height
-  const labelMb = compact ? 2 : 4; // mb-0.5 = 2px, mb-1 = 4px
-  // Total height for one group: labelH + labelMb + (slotCount * slotH) + ((slotCount-1) * gap) + groupMb
+  const groupMb = hasGroupLabel ? (compact ? 6 : 8) : 0; // mb-1.5 = 6px, mb-2 = 8px
+  const labelH = hasGroupLabel ? (compact ? 12 : 16) : 0; // group label height
+  const labelMb = hasGroupLabel ? (compact ? 2 : 4) : 0; // mb-0.5 = 2px, mb-1 = 4px
+  // Total height: labelH + labelMb + (slotCount * slotH) + ((slotCount-1) * gap) + groupMb
   const totalH = labelH + labelMb + (slotCount * slotH) + ((slotCount - 1) * gap) + groupMb;
   return <div style={{ height: `${totalH}px` }} />;
 }
@@ -236,11 +236,11 @@ export function TeamPanel({
               />
             ))}
           </div>
-          {/* Goalkeeper spacers */}
+          {/* Goalkeeper spacers — no group label, just bare slots */}
           {goalkeeperSpacers > 0 && (
-            <div>
+            <div className={compact ? "mt-0.5" : "mt-1"}>
               {Array.from({ length: goalkeeperSpacers }).map((_, i) => (
-                <SectionSpacer key={`gk-spacer-${i}`} slotCount={1} compact={compact} />
+                <SectionSpacer key={`gk-spacer-${i}`} slotCount={1} compact={compact} hasGroupLabel={false} />
               ))}
             </div>
           )}
