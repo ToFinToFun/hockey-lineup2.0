@@ -17,7 +17,9 @@ async function startServer() {
 
   // SSE endpoint for real-time lineup sync
   app.get("/api/sse/lineup", (req, res) => {
-    const clientId = crypto.randomUUID();
+    // Use client-provided clientId so echo prevention works correctly.
+    // The client sends the same clientId with saveState mutations.
+    const clientId = (req.query.clientId as string) || crypto.randomUUID();
     const lastSeq = parseInt(req.query.lastSeq as string) || 0;
     sseManager.addClient(clientId, res, lastSeq);
     req.on("close", () => {

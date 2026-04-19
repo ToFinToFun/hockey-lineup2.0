@@ -150,7 +150,10 @@ export default function Home() {
   const TEAM_A_SLOTS = useMemo(() => createTeamSlots("team-a", teamAConfig), [teamAConfig]);
   const TEAM_B_SLOTS = useMemo(() => createTeamSlots("team-b", teamBConfig), [teamBConfig]);
 
-  // När config minskas: flytta spelare från borttagna slots tillbaka till truppen
+  // När config minskas: flytta spelare från borttagna slots tillbaka till truppen.
+  // Guard: if this runs as a consequence of applyRemoteState (which already set
+  // the correct lineup), we must propagate the isApplyingRemoteRef flag so the
+  // save-effect doesn't treat the resulting state changes as local edits.
   useEffect(() => {
     const validSlotIds = new Set([
       ...TEAM_A_SLOTS.map(s => s.id),
@@ -167,6 +170,12 @@ export default function Home() {
       }
     }
     if (orphanedPlayers.length > 0) {
+      // If this cleanup was triggered by a remote config change, mark the
+      // resulting state updates as remote too so the save-effect skips them.
+      // We detect this by checking if isApplyingRemoteRef was JUST cleared
+      // in this render cycle (remoteApplyCounterRef was incremented recently).
+      // Simpler: just skip cleanup entirely during remote apply — the remote
+      // state already has the correct lineup for its config.
       setLineup(cleanedLineup);
       setAvailablePlayers(prev => [...orphanedPlayers, ...prev]);
     }
@@ -268,6 +277,9 @@ export default function Home() {
   // Boolean flag: true while applyRemoteState is setting React state.
   // Checked synchronously by the save-effect body.
   const isApplyingRemoteRef = useRef(false);
+  // Timestamp of last remote apply — used to suppress saves from cascading
+  // effects (e.g. config cleanup) that run in subsequent render cycles.
+  const lastRemoteApplyTsRef = useRef(0);
   // Ref to saveStateMutation so the SSE effect doesn't depend on it
   const saveStateMutationRef = useRef(saveStateMutation);
   saveStateMutationRef.current = saveStateMutation;
@@ -299,6 +311,9 @@ export default function Home() {
     skipNextUndoSnapshot.current = true;
     // Increment the remote-apply counter (used by save-effect debounce guard)
     remoteApplyCounterRef.current += 1;
+    // Record timestamp so cascading effects (config cleanup) within 500ms are
+    // also treated as remote and don't trigger a save.
+    lastRemoteApplyTsRef.current = Date.now();
     console.log('[SYNC] applyRemoteState APPLYING', { version, configA: state.teamAConfig, configB: state.teamBConfig, counter: remoteApplyCounterRef.current });
 
     // Update versionRef
@@ -482,7 +497,8 @@ export default function Home() {
       });
 
     // 2. Subscribe to SSE for real-time updates
-    es = new EventSource("/api/sse/lineup");
+    // Pass clientId so the server can exclude our own saves from SSE broadcast
+    es = new EventSource(`/api/sse/lineup?clientId=${clientIdRef.current}`);
 
     es.addEventListener("connected", (event) => {
       if (!mounted) return;
@@ -541,6 +557,13 @@ export default function Home() {
     // Layer 1: Don't save remote state back to server
     if (isApplyingRemoteRef.current) {
       console.log('[SYNC] save-effect BLOCKED by isApplyingRemoteRef', { configA: teamAConfig, configB: teamBConfig });
+      return;
+    }
+    // Layer 1b: Suppress cascading effects from remote apply (e.g. config
+    // cleanup effect runs in a later render cycle after isApplyingRemoteRef
+    // was already cleared). 500ms window is generous for React render cycles.
+    if (Date.now() - lastRemoteApplyTsRef.current < 500) {
+      console.log('[SYNC] save-effect BLOCKED by lastRemoteApplyTs (cascading effect)', { msSince: Date.now() - lastRemoteApplyTsRef.current });
       return;
     }
     if (!hasReceivedInitial.current) {
