@@ -240,42 +240,40 @@ export default function Home() {
 
   // Track if we've received the initial server state
   const hasReceivedInitial = useRef(false);
-  // === ROBUST SYNC ARCHITECTURE ===
-  // Server-side echo prevention: server excludes sender via clientId.
-  // Client-side: dirty flag + pending queue replaces isSyncing/epoch guards.
+  // === SYNC ARCHITECTURE v3 ===
+  // Root cause of previous bugs: useEffect for SSE had saveStateMutation in its
+  // dependency array. tRPC mutations can change identity on re-render, causing the
+  // effect to re-run, re-fetch initial state, re-open SSE (new clientId), and
+  // create an infinite loop of applyRemoteState → save-effect → saveToServer.
   //
-  // Flow:
-  //   Local change → isDirty=true → schedule save (150ms debounce) → saveToServer → isDirty=false → apply pending
-  //   SSE arrives while isDirty → queue it (pendingRemoteRef) → applied after save completes
-  //   SSE arrives while !isDirty → apply immediately
-  //
-  // This ensures:
-  //   - Local changes are NEVER dropped (no isSyncing guard on save-effect)
-  //   - Remote changes are applied as soon as it's safe
-  //   - No 150ms blocking window
+  // Fix: Use refs for everything the SSE effect needs, so it has ZERO dependencies
+  // that change. Generate a stable clientId on the client side.
   const versionRef = useRef(0);
-  // SSE client ID — assigned by the server on connection, sent with saves for server-side echo prevention
-  const sseClientIdRef = useRef<string | null>(null);
+  // Client-generated stable ID — survives SSE reconnects, used for server-side echo prevention
+  const clientIdRef = useRef<string>(crypto.randomUUID());
   // Dirty flag: true when local state has changed but not yet saved to server
   const isDirtyRef = useRef(false);
   // Flag: true while we are currently inside saveToServer (prevents re-entrant saves)
   const isSavingRef = useRef(false);
   // Pending remote state: queued when SSE arrives while dirty/saving
   const pendingRemoteRef = useRef<{ state: any; version: number } | null>(null);
-  // === REMOTE STATE GUARD ===
-  // Instead of a boolean flag (which has timing issues with React's multi-render cycles),
-  // we store a monotonic counter. applyRemoteState increments it, and the save-effect
-  // captures it at the start. If it changed by the time the debounce fires, we know
-  // a remote state was applied and we should NOT save.
+  // Monotonic counter incremented by applyRemoteState. The save-effect captures it
+  // at schedule time; if it changed when the debounce fires, a remote state was
+  // applied and we should NOT save.
   const remoteApplyCounterRef = useRef(0);
-  // Also keep the simple boolean for the synchronous check in the effect body
+  // Boolean flag: true while applyRemoteState is setting React state.
+  // Checked synchronously by the save-effect body.
   const isApplyingRemoteRef = useRef(false);
+  // Ref to saveStateMutation so the SSE effect doesn't depend on it
+  const saveStateMutationRef = useRef(saveStateMutation);
+  saveStateMutationRef.current = saveStateMutation;
   // Toast for remote changes
   const [remoteChangeToast, setRemoteChangeToast] = useState<string | null>(null);
 
   const exportRef = useRef<HTMLDivElement>(null);
 
-  // Helper to apply remote state (from initial load or SSE)
+  // Helper to apply remote state (from initial load or SSE).
+  // IDEMPOTENT: skips if version <= versionRef (except for initial load where version=0).
   const applyRemoteState = useCallback((state: {
     players: any[];
     lineup: Record<string, any>;
@@ -285,12 +283,19 @@ export default function Home() {
     teamBConfig?: { goalkeepers: number; defensePairs: number; forwardLines: number } | null;
     deletedPlayerIds?: string[] | null;
   }, version?: number) => {
+    // Idempotency: skip if we already have this version or newer
+    // (version=undefined is allowed for initial load)
+    if (version !== undefined && version > 0 && version <= versionRef.current) {
+      console.log('[SYNC] applyRemoteState SKIPPED (version <= current)', { version, current: versionRef.current });
+      return;
+    }
+
     // Set flag so the save-effect knows this state change is from remote, not local
     isApplyingRemoteRef.current = true;
     skipNextUndoSnapshot.current = true;
     // Increment the remote-apply counter (used by save-effect debounce guard)
     remoteApplyCounterRef.current += 1;
-    console.log('[SYNC] applyRemoteState called', { version, configA: state.teamAConfig, configB: state.teamBConfig, counter: remoteApplyCounterRef.current });
+    console.log('[SYNC] applyRemoteState APPLYING', { version, configA: state.teamAConfig, configB: state.teamBConfig, counter: remoteApplyCounterRef.current });
 
     // Update versionRef
     if (version && version > versionRef.current) {
@@ -330,18 +335,15 @@ export default function Home() {
     setTeamBName(state.teamBName ?? "GRÖNA");
     if (state.teamAConfig) setTeamAConfig(state.teamAConfig);
     if (state.teamBConfig) setTeamBConfig(state.teamBConfig);
-    console.log('[SYNC] applyRemoteState setState done, clearing flag via queueMicrotask');
 
-    // Clear the flag synchronously after all setState calls.
-    // The save-effect will still see isApplyingRemoteRef=true because React batches
-    // setState and runs effects after ALL state updates in the same commit.
-    // But even if it doesn't (due to React internals), the debounced saveToServer
-    // uses the counter-based guard as a safety net.
-    // We use queueMicrotask to clear AFTER React has batched all the setStates.
-    queueMicrotask(() => {
-      isApplyingRemoteRef.current = false;
-    });
+    // DO NOT clear isApplyingRemoteRef here. It will be cleared by a dedicated
+    // useEffect that runs AFTER the save-effect in the same React commit.
+    // This guarantees the save-effect always sees isApplyingRemoteRef=true.
   }, []);
+
+  // Ref to applyRemoteState so the SSE effect (which has [] deps) can call it
+  const applyRemoteStateRef = useRef(applyRemoteState);
+  applyRemoteStateRef.current = applyRemoteState;
 
   // Refs for team names so saveToServer always reads the latest values
   const teamANameRef = useRef(teamAName);
@@ -349,7 +351,7 @@ export default function Home() {
   const teamBNameRef = useRef(teamBName);
   useEffect(() => { teamBNameRef.current = teamBName; }, [teamBName]);
 
-  // Direct save to server. After saving, checks for pending remote state.
+  // Direct save to server. Uses refs for everything so it has stable identity.
   const saveToServer = useCallback(async (
     players?: Player[],
     lineupData?: Record<string, Player>,
@@ -359,9 +361,9 @@ export default function Home() {
     isSavingRef.current = true;
     const currentPlayers = players ?? availablePlayersRef.current;
     const currentLineup = lineupData ?? lineupRef.current;
-    console.log('[SYNC] saveToServer START', { configA: teamAConfigRef.current, configB: teamBConfigRef.current, clientId: sseClientIdRef.current });
+    console.log('[SYNC] saveToServer START', { configA: teamAConfigRef.current, configB: teamBConfigRef.current, clientId: clientIdRef.current });
     try {
-      const result = await saveStateMutation.mutateAsync({
+      const result = await saveStateMutationRef.current.mutateAsync({
         players: currentPlayers,
         lineup: currentLineup,
         teamAName: teamANameRef.current,
@@ -370,7 +372,7 @@ export default function Home() {
         teamAConfig: teamAConfigRef.current,
         teamBConfig: teamBConfigRef.current,
         operation,
-        clientId: sseClientIdRef.current ?? undefined,
+        clientId: clientIdRef.current,
       });
       // Update our version — all SSE events with version <= this will be ignored
       versionRef.current = result.version;
@@ -392,9 +394,12 @@ export default function Home() {
       isDirtyRef.current = false;
       return null;
     }
-  }, [saveStateMutation, applyRemoteState]);
+  }, [applyRemoteState]);
 
-  // Load initial state from SQL + subscribe to SSE for real-time updates
+  // Load initial state from SQL + subscribe to SSE for real-time updates.
+  // IMPORTANT: This effect has [] dependencies — it runs ONCE on mount.
+  // All mutable values are accessed via refs to avoid re-running.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     let es: EventSource | null = null;
     let mounted = true;
@@ -407,7 +412,7 @@ export default function Home() {
         const wrapped = json?.result?.data;
         const state = wrapped?.json ?? wrapped;
         if (state && state.players) {
-          applyRemoteState(state, state.version);
+          applyRemoteStateRef.current(state, state.version);
         } else if (!hasReceivedInitial.current) {
           // No data in SQL yet — push our local state up
           const localState = loadLocalState();
@@ -419,7 +424,7 @@ export default function Home() {
                 sanitizedLocalLineup[slotId] = player;
               }
             }
-            saveStateMutation.mutateAsync({
+            saveStateMutationRef.current.mutateAsync({
               players: localState.availablePlayers,
               lineup: sanitizedLocalLineup,
               teamAName: localState.teamAName,
@@ -441,8 +446,7 @@ export default function Home() {
     es.addEventListener("connected", (event) => {
       if (!mounted) return;
       try {
-        const data = JSON.parse(event.data);
-        if (data.clientId) sseClientIdRef.current = data.clientId;
+        JSON.parse(event.data); // validate
       } catch { /* ignore */ }
       setSseConnected(true);
     });
@@ -451,8 +455,7 @@ export default function Home() {
       if (!mounted) return;
       try {
         const data = JSON.parse(event.data);
-        // Version-based echo prevention (secondary safety net):
-        // Primary prevention is server-side excludeClientId.
+        // Version-based dedup: skip if we already have this version or newer
         if (data.version && data.version <= versionRef.current) {
           console.log('[SYNC] SSE stateChange IGNORED (version <= ours)', { eventVersion: data.version, ourVersion: versionRef.current });
           return;
@@ -466,7 +469,7 @@ export default function Home() {
             pendingRemoteRef.current = { state: data.state, version: data.version };
           } else {
             console.log('[SYNC] SSE stateChange APPLYING immediately', { configA: data.state?.teamAConfig });
-            applyRemoteState(data.state, data.version);
+            applyRemoteStateRef.current(data.state, data.version);
           }
         }
         // Show toast for remote changes
@@ -486,7 +489,7 @@ export default function Home() {
       mounted = false;
       es?.close();
     };
-  }, [applyRemoteState, saveStateMutation]);
+  }, []);
 
   // Save to both SQL and localStorage on every state change.
   // Two-layer guard against saving remote state back to server:
@@ -529,6 +532,16 @@ export default function Home() {
       saveToServer();
     }, 150);
   }, [availablePlayers, lineup, teamAName, teamBName, deletedPlayerIds, teamAConfig, teamBConfig, saveToServer]);
+
+  // CLEARING EFFECT: Runs AFTER the save-effect in the same React commit.
+  // React runs useEffects in declaration order, so this always executes after
+  // the save-effect above. This guarantees isApplyingRemoteRef=true is visible
+  // to the save-effect, then cleared here.
+  useEffect(() => {
+    if (isApplyingRemoteRef.current) {
+      isApplyingRemoteRef.current = false;
+    }
+  });
 
   // Spara en snapshot i undo-stacken
   const pushUndo = useCallback(() => {
