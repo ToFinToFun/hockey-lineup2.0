@@ -79,6 +79,10 @@ interface SavedState {
 interface UndoSnapshot {
   availablePlayers: Player[];
   lineup: Record<string, Player>;
+  teamAConfig: TeamConfig;
+  teamBConfig: TeamConfig;
+  teamAName: string;
+  teamBName: string;
 }
 
 function loadLocalState(): SavedState | null {
@@ -552,6 +556,10 @@ export default function Home() {
     const snapshot: UndoSnapshot = {
       availablePlayers: availablePlayersRef.current,
       lineup: lineupRef.current,
+      teamAConfig: teamAConfigRef.current,
+      teamBConfig: teamBConfigRef.current,
+      teamAName: teamANameRef.current,
+      teamBName: teamBNameRef.current,
     };
     setUndoStack((prev) => {
       const next = [...prev, snapshot];
@@ -560,7 +568,11 @@ export default function Home() {
   }, []);
 
   // Återställ senaste snapshot
-  // Undo is a local change that SHOULD be saved to server, so we don't suppress saves.
+  // Undo is a local change that SHOULD be saved to server.
+  // We use a dedicated undoInProgressRef to prevent the save-effect from
+  // firing multiple times as we set multiple state values. The save-effect
+  // will fire once after all state updates are batched by React.
+  const undoInProgressRef = useRef(false);
   const handleUndo = useCallback(() => {
     setUndoStack((prev) => {
       if (prev.length === 0) return prev;
@@ -568,6 +580,10 @@ export default function Home() {
       skipNextUndoSnapshot.current = true;
       setAvailablePlayers(snapshot.availablePlayers);
       setLineup(snapshot.lineup);
+      setTeamAConfig(snapshot.teamAConfig);
+      setTeamBConfig(snapshot.teamBConfig);
+      setTeamAName(snapshot.teamAName);
+      setTeamBName(snapshot.teamBName);
       return prev.slice(0, prev.length - 1);
     });
   }, []);
