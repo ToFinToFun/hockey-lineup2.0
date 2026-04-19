@@ -116,7 +116,7 @@ export function getPositionBadgeColor(position: Position, forwardBadgeBg?: strin
     case "B":  return "bg-blue-500 text-blue-950";
     case "F":  return forwardBadgeBg ?? "bg-cyan-500 text-cyan-950";
     case "C":  return "bg-purple-500 text-purple-950";
-    case "IB":  return "bg-slate-400 text-slate-950";
+    case "IB":  return "bg-[#a8b8c8] text-slate-900";
   }
 }
 
@@ -126,6 +126,6 @@ export function getPositionDotColor(position: Position, forwardDot?: string): st
     case "B":  return "bg-blue-400";
     case "F":  return forwardDot ?? "bg-cyan-400";
     case "C":  return "bg-purple-400";
-    case "IB":  return "bg-slate-400";
+    case "IB":  return "bg-[#a8b8c8]";
   }
 }

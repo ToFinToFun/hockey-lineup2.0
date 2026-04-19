@@ -1,6 +1,8 @@
-// Hockey Lineup App – PlayerSlot – v4 (mockup-matching layout)
+// Hockey Lineup App – PlayerSlot – v5
 // Large slot-position badge fills full row height on the left.
 // Player's favorite position is shown as a small badge on the right (inside PlayerCard).
+// When a goalkeeper (MV) is placed in an outfield slot, PlayerCard shows their
+// most-played outfield position instead of "MV".
 
 import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard } from "./PlayerCard";
@@ -66,6 +68,7 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact =
             player={player}
             onRemove={onRemove}
             onChangePosition={onChangePosition}
+            slotType={slot.type}
             compact
           />
         </div>

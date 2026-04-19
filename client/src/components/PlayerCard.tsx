@@ -33,6 +33,8 @@ interface PlayerCardProps {
   holdDuration?: number;
   compact?: boolean;
   hideExtras?: boolean;
+  /** Slot type when rendered inside a PlayerSlot (used for MV outfield display) */
+  slotType?: "goalkeeper" | "defense" | "forward";
 }
 
 export function DraggablePlayerCard({
@@ -54,11 +56,24 @@ export function DraggablePlayerCard({
   holdDuration = 3000,
   compact = false,
   hideExtras = false,
+  slotType,
 }: PlayerCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: player.id, data: { player } });
 
   const { colors: fc } = useForwardColor();
+
+  // Determine display position: if a goalkeeper (MV) is placed in an outfield
+  // slot, show their most-played outfield position instead of "MV".
+  const displayPosition = (() => {
+    if (slotType && slotType !== "goalkeeper" && player.position === "MV") {
+      if (player.mostPlayedPosition && player.mostPlayedPosition !== "MV") {
+        return player.mostPlayedPosition;
+      }
+      return "IB"; // fallback: unknown outfield position
+    }
+    return player.position;
+  })();
 
   const [showEditPanel, setShowEditPanel] = useState(false);
   const [nameValue, setNameValue] = useState("");
@@ -178,9 +193,15 @@ export function DraggablePlayerCard({
             }`}>{player.captainRole}</span>
           )}
           <TeamColorIndicator teamColor={player.teamColor ?? null} size={10} />
-          <span className={`pos-badge pos-badge-sm pos-badge-${player.position.toLowerCase()} shrink-0`}>
-            {player.position}
+          <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
+            {displayPosition}
           </span>
+          {player.mostPlayedPosition && player.mostPlayedPosition !== displayPosition && (
+            <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0`}
+              title={`Vanligaste position: ${player.mostPlayedPosition}`}>
+              {player.mostPlayedPosition}
+            </span>
+          )}
         </button>
       ) : compact && !hideExtras ? (
         <div className="flex items-center gap-1 shrink-0">
@@ -192,9 +213,15 @@ export function DraggablePlayerCard({
             }`}>{player.captainRole}</span>
           )}
           <TeamColorIndicator teamColor={player.teamColor ?? null} size={10} />
-          <span className={`pos-badge pos-badge-sm pos-badge-${player.position.toLowerCase()} shrink-0`}>
-            {player.position}
+          <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
+            {displayPosition}
           </span>
+          {player.mostPlayedPosition && player.mostPlayedPosition !== displayPosition && (
+            <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0`}
+              title={`Vanligaste position: ${player.mostPlayedPosition}`}>
+              {player.mostPlayedPosition}
+            </span>
+          )}
         </div>
       ) : null}
 
@@ -220,10 +247,10 @@ export function DraggablePlayerCard({
             }`}>{player.captainRole}</span>
           )}
           <TeamColorIndicator teamColor={player.teamColor ?? null} size={12} />
-          <span className={`pos-badge pos-badge-sm pos-badge-${player.position.toLowerCase()} shrink-0`}>
-            {player.position}
+          <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
+            {displayPosition}
           </span>
-          {player.mostPlayedPosition && player.mostPlayedPosition !== player.position && (
+          {player.mostPlayedPosition && player.mostPlayedPosition !== displayPosition && (
             <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0`}
               title={`Vanligaste position: ${player.mostPlayedPosition}`}>
               {player.mostPlayedPosition}
@@ -240,10 +267,10 @@ export function DraggablePlayerCard({
             }`}>{player.captainRole}</span>
           )}
           <TeamColorIndicator teamColor={player.teamColor ?? null} size={12} />
-          <span className={`pos-badge pos-badge-sm pos-badge-${player.position.toLowerCase()} shrink-0`}>
-            {player.position}
+          <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
+            {displayPosition}
           </span>
-          {player.mostPlayedPosition && player.mostPlayedPosition !== player.position && (
+          {player.mostPlayedPosition && player.mostPlayedPosition !== displayPosition && (
             <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0`}
               title={`Vanligaste position: ${player.mostPlayedPosition}`}>
               {player.mostPlayedPosition}
