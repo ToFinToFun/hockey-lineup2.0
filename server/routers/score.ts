@@ -104,6 +104,8 @@ export const scoreRouter = router({
           teamGreenScore: z.number(),
           goalHistory: z.any().optional(),
           matchStartTime: z.string().optional(),
+          matchEndTime: z.string().optional(),
+          createdAt: z.string().optional(),
           lineup: z.any().optional(),
         })
       )
@@ -114,7 +116,8 @@ export const scoreRouter = router({
           teamGreenScore: input.teamGreenScore,
           goalHistory: input.goalHistory ?? null,
           matchStartTime: input.matchStartTime ? new Date(input.matchStartTime) : null,
-          matchEndTime: new Date(),
+          matchEndTime: input.matchEndTime ? new Date(input.matchEndTime) : new Date(),
+          createdAt: input.createdAt ? new Date(input.createdAt) : undefined,
           lineup: input.lineup ?? null,
         });
         return { success: true };
