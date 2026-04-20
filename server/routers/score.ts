@@ -148,6 +148,8 @@ export const scoreRouter = router({
         const updateData: Record<string, any> = { ...data, editedAt: new Date() };
         if (matchEndTime) updateData.matchEndTime = new Date(matchEndTime);
         if (createdAt) updateData.createdAt = new Date(createdAt);
+        console.log('[score.match.update] id:', id, 'matchEndTime input:', matchEndTime, 'createdAt input:', createdAt);
+        console.log('[score.match.update] updateData keys:', Object.keys(updateData), 'matchEndTime value:', updateData.matchEndTime, 'createdAt value:', updateData.createdAt);
         await updateMatchResult(id, updateData);
         return { success: true };
       }),
