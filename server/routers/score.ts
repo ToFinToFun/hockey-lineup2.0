@@ -139,11 +139,16 @@ export const scoreRouter = router({
           teamGreenScore: z.number().optional(),
           goalHistory: z.any().optional(),
           lineup: z.any().optional(),
+          matchEndTime: z.string().optional(),
+          createdAt: z.string().optional(),
         })
       )
       .mutation(async ({ input }) => {
-        const { id, ...data } = input;
-        await updateMatchResult(id, { ...data, editedAt: new Date() });
+        const { id, matchEndTime, createdAt, ...data } = input;
+        const updateData: Record<string, any> = { ...data, editedAt: new Date() };
+        if (matchEndTime) updateData.matchEndTime = new Date(matchEndTime);
+        if (createdAt) updateData.createdAt = new Date(createdAt);
+        await updateMatchResult(id, updateData);
         return { success: true };
       }),
 
