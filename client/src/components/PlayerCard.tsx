@@ -65,12 +65,12 @@ export function DraggablePlayerCard({
 
   // Determine display position: if a goalkeeper (MV) is placed in an outfield
   // slot, show their most-played outfield position instead of "MV".
+  // If no outfield position is known, keep showing "MV" — never auto-assign IB.
   const displayPosition = (() => {
     if (slotType && slotType !== "goalkeeper" && player.position === "MV") {
       if (player.mostPlayedPosition && player.mostPlayedPosition !== "MV") {
         return player.mostPlayedPosition;
       }
-      return "IB"; // fallback: unknown outfield position
     }
     return player.position;
   })();
