@@ -6,6 +6,7 @@ import type { Player, Position } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
 import { groupSlots, MAX_TEAM_CONFIG, type TeamConfig } from "@/lib/lineup";
 import { useForwardColor } from "@/hooks/useForwardColor";
+import { calculateSlotIceTimes } from "@/lib/iceTimePerSlot";
 
 const LOGO_GREEN = "/images/logo-green.png";
 const LOGO_WHITE = "/images/logo-white.png";
@@ -39,7 +40,7 @@ const groupColors: Record<string, string> = {
 
 /* ── GroupCard ── */
 function GroupCard({
-  group, lineup, onRemovePlayer, onChangePosition, type, compact,
+  group, lineup, onRemovePlayer, onChangePosition, type, compact, iceTimeMap,
 }: {
   group: { groupLabel: string; slots: Slot[] };
   lineup: Record<string, Player>;
@@ -47,6 +48,7 @@ function GroupCard({
   onChangePosition: (playerId: string, pos: Position) => void;
   type: "defense" | "forward";
   compact?: boolean;
+  iceTimeMap?: Map<string, number>;
 }) {
   const { colors: fc } = useForwardColor();
   const labelColor = type === "defense" ? groupColors.defense : fc.groupHeader;
@@ -68,6 +70,7 @@ function GroupCard({
               if (p) onChangePosition(p.id, pos);
             }}
             compact={compact}
+            iceTimeMinutes={iceTimeMap?.get(slot.id)}
           />
         ))}
       </div>
@@ -136,6 +139,12 @@ export function TeamPanel({
 
   const defenseGroups = useMemo(() => groupSlots(defenseSlots), [defenseSlots]);
   const forwardGroups = useMemo(() => groupSlots(forwardSlots), [forwardSlots]);
+
+  // Calculate ice time per slot
+  const iceTimeMap = useMemo(
+    () => calculateSlotIceTimes(slots, lineup, config),
+    [slots, lineup, config],
+  );
 
   const filledCount = Object.keys(lineup).length;
   const registeredInTeam = Object.values(lineup).filter((p) => p.isRegistered).length;
@@ -233,6 +242,7 @@ export function TeamPanel({
                 onRemove={() => onRemovePlayer(slot.id)}
                 onChangePosition={(pos) => { const p = lineup[slot.id]; if (p) onChangePosition(p.id, pos); }}
                 compact={compact}
+                iceTimeMinutes={iceTimeMap.get(slot.id)}
               />
             ))}
           </div>
@@ -265,7 +275,7 @@ export function TeamPanel({
           {defenseGroups.map((group) => (
             <GroupCard key={group.groupLabel} group={group} lineup={lineup}
               onRemovePlayer={onRemovePlayer} onChangePosition={onChangePosition}
-              type="defense" compact={compact}
+              type="defense" compact={compact} iceTimeMap={iceTimeMap}
             />
           ))}
           {/* Defense spacers for alignment */}
@@ -297,7 +307,7 @@ export function TeamPanel({
           {forwardGroups.map((group) => (
             <GroupCard key={group.groupLabel} group={group} lineup={lineup}
               onRemovePlayer={onRemovePlayer} onChangePosition={onChangePosition}
-              type="forward" compact={compact}
+              type="forward" compact={compact} iceTimeMap={iceTimeMap}
             />
           ))}
           {/* Forward spacers for alignment */}

@@ -283,6 +283,35 @@
   .pos-badge-ib,
   .pos-badge-mi { background: #a8b8c8; } /* frosty ice — cool silvery-blue, distinct from cyan/white */
 
+  /* ---- ICE TIME BADGE ----
+     Small clock-style badge showing estimated minutes per slot.
+     Positioned at the far right of each player row. */
+  .ice-time-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+    height: 20px;
+    padding: 0 4px;
+    margin-right: 4px;
+    font-size: 9px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    color: rgba(148, 210, 255, 0.80);
+    background: rgba(56, 140, 220, 0.15);
+    border-radius: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .ice-time-badge-compact {
+    min-width: 22px;
+    height: 18px;
+    padding: 0 3px;
+    margin-right: 2px;
+    font-size: 8px;
+  }
+
   /* ---- MOBILE ROSTER DRAWER ---- */
   .roster-drawer {
     background: rgba(12, 20, 36, 0.95);

@@ -15,6 +15,8 @@ interface PlayerSlotProps {
   onRemove: () => void;
   onChangePosition: (pos: Position) => void;
   compact?: boolean;
+  /** Estimated ice time in minutes for this slot */
+  iceTimeMinutes?: number;
 }
 
 /* Badge color mapping using CSS classes from design system */
@@ -35,7 +37,7 @@ function getBadgeClass(role: string): string {
   }
 }
 
-export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact = false }: PlayerSlotProps) {
+export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact = false, iceTimeMinutes }: PlayerSlotProps) {
   const { isOver, setNodeRef } = useDroppable({ id: slot.id });
 
   const badgeClass = getBadgeClass(slot.role);
@@ -75,6 +77,16 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact =
       ) : (
         <span className={`${compact ? 'text-[9px]' : 'text-[11px]'} italic flex-1 text-white/20 ${isOver ? "!text-white/50" : ""} flex items-center px-2`}>
           {isOver ? "Släpp här" : ""}
+        </span>
+      )}
+
+      {/* Ice time badge */}
+      {player && iceTimeMinutes != null && (
+        <span
+          className={`ice-time-badge shrink-0 ${compact ? 'ice-time-badge-compact' : ''}`}
+          title={`Beräknad speltid: ${iceTimeMinutes} min`}
+        >
+          {iceTimeMinutes}ʼ
         </span>
       )}
     </div>
