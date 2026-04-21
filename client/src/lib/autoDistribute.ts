@@ -235,7 +235,7 @@ export function autoDistribute(
   const lineup: Record<string, Player> = {};
   const placed = new Set<string>();
 
-  function fillTeam(slots: Slot[], goalkeepers: TaggedPlayer[], outfield: TaggedPlayer[]) {
+  function fillTeam(slots: Slot[], goalkeepers: TaggedPlayer[], outfield: TaggedPlayer[], doShuffle: boolean) {
     // 5a: Place goalkeepers
     const gkSlots = slots.filter(s => s.type === "goalkeeper");
     const sortedGk = [...goalkeepers].sort((a, b) => captainSortKey(a.player) - captainSortKey(b.player));
@@ -244,19 +244,25 @@ export function autoDistribute(
       placed.add(sortedGk[i].player.id);
     }
 
-    // 5b: Separate outfield by preferred position, sort C/A first
-    const defenders = outfield
-      .filter(t => t.posType === "defense")
-      .sort((a, b) => captainSortKey(a.player) - captainSortKey(b.player));
-    const centers = outfield
-      .filter(t => t.posType === "center")
-      .sort((a, b) => captainSortKey(a.player) - captainSortKey(b.player));
-    const forwards = outfield
-      .filter(t => t.posType === "forward")
-      .sort((a, b) => captainSortKey(a.player) - captainSortKey(b.player));
-    const flexPlayers = outfield
-      .filter(t => t.posType === "flex")
-      .sort((a, b) => captainSortKey(a.player) - captainSortKey(b.player));
+    // 5b: Separate outfield by preferred position
+    // In shuffle mode: fully randomize within each position group
+    // In auto mode: sort C/A first for deterministic placement
+    let defenders = outfield.filter(t => t.posType === "defense");
+    let centers = outfield.filter(t => t.posType === "center");
+    let forwards = outfield.filter(t => t.posType === "forward");
+    let flexPlayers = outfield.filter(t => t.posType === "flex");
+
+    if (doShuffle) {
+      defenders = shuffleArray(defenders);
+      centers = shuffleArray(centers);
+      forwards = shuffleArray(forwards);
+      flexPlayers = shuffleArray(flexPlayers);
+    } else {
+      defenders.sort((a, b) => captainSortKey(a.player) - captainSortKey(b.player));
+      centers.sort((a, b) => captainSortKey(a.player) - captainSortKey(b.player));
+      forwards.sort((a, b) => captainSortKey(a.player) - captainSortKey(b.player));
+      flexPlayers.sort((a, b) => captainSortKey(a.player) - captainSortKey(b.player));
+    }
 
     // 5c: Place defenders on defense slots
     const defSlots = slots.filter(s => s.type === "defense");
@@ -284,8 +290,9 @@ export function autoDistribute(
     // ── 5f: Gap-filling with mostPlayedPosition ──
     // Check for empty critical slots and try to fill them with players
     // whose mostPlayedPosition matches, before doing generic overflow
-    const allUnplaced = [...flexPlayers, ...forwards, ...centers, ...defenders]
+    let allUnplaced = [...flexPlayers, ...forwards, ...centers, ...defenders]
       .filter(t => !placed.has(t.player.id));
+    if (doShuffle) allUnplaced = shuffleArray(allUnplaced);
 
     // Fill empty center slots with players whose mostPlayedPosition is C
     const emptyCenterSlots = centerSlots.filter(s => !lineup[s.id]);
@@ -330,7 +337,8 @@ export function autoDistribute(
     }
 
     // 5g: Fill remaining empty slots with any unplaced players (generic overflow)
-    const stillUnplaced = allUnplaced.filter(t => !placed.has(t.player.id));
+    let stillUnplaced = allUnplaced.filter(t => !placed.has(t.player.id));
+    if (doShuffle) stillUnplaced = shuffleArray(stillUnplaced);
 
     const allEmptySlots = [
       ...wingSlots.filter(s => !lineup[s.id]),
@@ -344,8 +352,9 @@ export function autoDistribute(
     }
   }
 
-  fillTeam(teamASlots, teamAGoalkeepers, teamAOutfield);
-  fillTeam(teamBSlots, teamBGoalkeepers, teamBOutfield);
+  const doShuffle = options?.shuffle ?? false;
+  fillTeam(teamASlots, teamAGoalkeepers, teamAOutfield, doShuffle);
+  fillTeam(teamBSlots, teamBGoalkeepers, teamBOutfield, doShuffle);
 
   // ── Step 6: Trim empty groups from config ──
   // If a defense pair or forward line has zero players placed, reduce the config
