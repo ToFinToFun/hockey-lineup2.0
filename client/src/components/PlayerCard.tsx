@@ -616,12 +616,14 @@ export function DraggablePlayerCard({
 
 // Team color indicator — solid circle
 export function TeamColorIndicator({ teamColor, size = 16 }: { teamColor: TeamColor; size?: number }) {
+  // Rounded-rect style matching position badges (border-radius ~4px)
+  const radius = Math.max(3, Math.round(size * 0.3));
   if (teamColor === "green") {
     return (
       <div
         title="Gröna"
-        style={{ width: size, height: size, flexShrink: 0 }}
-        className="rounded-full bg-emerald-400 border border-emerald-300/60 shrink-0"
+        style={{ width: size, height: size, flexShrink: 0, borderRadius: `${radius}px` }}
+        className="bg-emerald-400 border border-emerald-300/60 shrink-0"
       />
     );
   }
@@ -629,15 +631,15 @@ export function TeamColorIndicator({ teamColor, size = 16 }: { teamColor: TeamCo
     return (
       <div
         title="Vita"
-        style={{ width: size, height: size, flexShrink: 0 }}
-        className="rounded-full bg-white border border-white/60 shrink-0"
+        style={{ width: size, height: size, flexShrink: 0, borderRadius: `${radius}px` }}
+        className="bg-white border border-white/60 shrink-0"
       />
     );
   }
   return (
     <div
-      style={{ width: size, height: size }}
-      className="rounded-full border border-white/20 bg-white/5 shrink-0"
+      style={{ width: size, height: size, borderRadius: `${radius}px` }}
+      className="border border-white/20 bg-white/5 shrink-0"
     />
   );
 }
