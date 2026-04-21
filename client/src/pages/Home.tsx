@@ -1348,19 +1348,6 @@ export default function Home() {
                 </a>
                 </LongPressTooltip>
 
-                {/* SSE sync icon */}
-                <LongPressTooltip label={sseConnected === null ? "Ansluter..." : sseConnected ? "Synkroniserad" : "Ej ansluten"}>
-                <div className="flex items-center mr-0.5">
-                  {sseConnected === null ? (
-                    <span className={`text-[9px] ${isLineupDark ? 'text-white/30' : 'text-gray-400'}`}>...</span>
-                  ) : sseConnected ? (
-                    <Wifi className={`w-3.5 h-3.5 ${isLineupDark ? 'text-emerald-400/60' : 'text-emerald-600'}`} />
-                  ) : (
-                    <WifiOff className="w-3.5 h-3.5 text-red-400" />
-                  )}
-                </div>
-                </LongPressTooltip>
-
                 {/* Undo icon button */}
                 <LongPressTooltip label={`Ångra (${undoStack.length} steg)`}>
                 <button
@@ -1379,6 +1366,19 @@ export default function Home() {
                 >
                   <Undo2 className="w-4 h-4" />
                 </button>
+                </LongPressTooltip>
+
+                {/* SSE sync icon */}
+                <LongPressTooltip label={sseConnected === null ? "Ansluter..." : sseConnected ? "Synkroniserad" : "Ej ansluten"}>
+                <div className="flex items-center mr-0.5">
+                  {sseConnected === null ? (
+                    <span className={`text-[9px] ${isLineupDark ? 'text-white/30' : 'text-gray-400'}`}>...</span>
+                  ) : sseConnected ? (
+                    <Wifi className={`w-3.5 h-3.5 ${isLineupDark ? 'text-emerald-400/60' : 'text-emerald-600'}`} />
+                  ) : (
+                    <WifiOff className="w-3.5 h-3.5 text-red-400" />
+                  )}
+                </div>
                 </LongPressTooltip>
 
                 {/* Divider */}
