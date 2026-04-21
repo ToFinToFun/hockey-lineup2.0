@@ -1489,15 +1489,15 @@ export default function Home() {
 
               {/* Right: Help + Settings icons */}
               <div className="flex items-center gap-0.5 shrink-0">
-                {/* Help icon (placeholder) */}
-                <LongPressTooltip label="Hjälp">
-                <button
-                  title="Hjälp"
+                {/* Home link */}
+                <LongPressTooltip label="Hem">
+                <a
+                  href="https://app.stalstadens.se"
+                  title="Hem"
                   className={`p-1.5 rounded transition-all ${isLineupDark ? 'text-white/30 hover:text-white/60 hover:bg-white/8' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}
-                  onClick={() => {}}
                 >
-                  <HelpCircle className="w-4 h-4" />
-                </button>
+                  <HomeIcon className="w-4 h-4" />
+                </a>
                 </LongPressTooltip>
 
                 {/* Settings icon */}

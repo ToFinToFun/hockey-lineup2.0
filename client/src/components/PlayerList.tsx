@@ -270,15 +270,12 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
         </div>
 
         {/* Sort */}
-        <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto">
-          <span className="text-white/30 text-[9px] uppercase tracking-wider shrink-0">Sortera:</span>
-          <div className="flex gap-1 shrink-0">
+        <div className="flex items-center gap-1 min-w-0 flex-wrap">
             <SortBtn k="registered" label="Anmäld" />
             <SortBtn k="declined" label="Avböjd" />
             <SortBtn k="name" label="Namn" />
             <SortBtn k="number" label="Nr" />
             <SortBtn k="position" label="Pos" />
-          </div>
         </div>
       </div>
 
