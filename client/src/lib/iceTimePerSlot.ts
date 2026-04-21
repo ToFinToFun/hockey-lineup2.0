@@ -95,3 +95,57 @@ export function calculateSlotIceTimes(
 
   return result;
 }
+
+/**
+ * Generate a human-readable summary of ice time rotation for a team.
+ * Returns null if no outfield players are filled.
+ */
+export function generateIceTimeSummary(
+  slots: Slot[],
+  lineup: Record<string, Player>,
+  config: TeamConfig,
+  matchTime: number = 60,
+): string | null {
+  const defSlots = slots.filter(s => s.type === "defense");
+  const fwdSlots = slots.filter(s => s.type === "forward");
+
+  const filledDef = defSlots.filter(s => lineup[s.id]);
+  const filledCenters = fwdSlots.filter(s => s.role === "c" && lineup[s.id]);
+  const filledWings = fwdSlots.filter(s => (s.role === "lw" || s.role === "rw") && lineup[s.id]);
+
+  const totalDef = filledDef.length;
+  const totalCenters = filledCenters.length;
+  const totalWings = filledWings.length;
+  const totalFwdPool = totalCenters + totalWings;
+  const totalOutfield = totalDef + totalFwdPool;
+
+  if (totalOutfield === 0) return null;
+
+  // Fewer than 5 outfield players — everyone plays full time
+  if (totalOutfield < 5) {
+    return `Idag ${totalOutfield} utespelare \u2014 alla spelar hela matchen. K\u00c4MPA!`;
+  }
+
+  // Forward/Center pool logic
+  if (totalFwdPool < 6) {
+    // All in one pool
+    const poolTime = totalFwdPool > 0 ? Math.round((3 / totalFwdPool) * matchTime) : 0;
+    return `Idag ${totalFwdPool} forwards/centrar byter med varandra \u2014 ${poolTime} min speltid var`;
+  }
+
+  // Split pools: centers vs wings
+  const centerTime = totalCenters > 0 ? Math.round((1 / totalCenters) * matchTime) : 0;
+  const wingTime = totalWings > 0 ? Math.round((2 / totalWings) * matchTime) : 0;
+
+  // Check if even rotation is possible (centers and wings divide evenly per line)
+  const numLines = config.forwardLines;
+  const evenCenters = totalCenters % numLines === 0;
+  const evenWings = totalWings % (numLines * 2) === 0;
+  const isEvenRotation = evenCenters && evenWings;
+
+  if (isEvenRotation) {
+    return `Idag ${totalWings} forwards (${wingTime} min) och ${totalCenters} centrar (${centerTime} min). C byter med C, F med sin F p\u00e5 sin sida`;
+  }
+
+  return `Idag ${totalWings} forwards (${wingTime} min) och ${totalCenters} centrar (${centerTime} min). C byter med C, F med F p\u00e5 b\u00e5da sidorna`;
+}
