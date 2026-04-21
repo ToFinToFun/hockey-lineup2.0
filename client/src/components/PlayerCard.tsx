@@ -196,8 +196,10 @@ export function DraggablePlayerCard({
           <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
             {displayPosition}
           </span>
-          {player.mostPlayedPosition && player.mostPlayedPosition !== displayPosition && (
-            <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0`}
+          {player.mostPlayedPosition && (
+            <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0 ${
+              player.mostPlayedPosition === displayPosition ? 'opacity-40' : ''
+            }`}
               title={`Vanligaste position: ${player.mostPlayedPosition}`}>
               {player.mostPlayedPosition}
             </span>
@@ -216,8 +218,10 @@ export function DraggablePlayerCard({
           <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
             {displayPosition}
           </span>
-          {player.mostPlayedPosition && player.mostPlayedPosition !== displayPosition && (
-            <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0`}
+          {player.mostPlayedPosition && (
+            <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0 ${
+              player.mostPlayedPosition === displayPosition ? 'opacity-40' : ''
+            }`}
               title={`Vanligaste position: ${player.mostPlayedPosition}`}>
               {player.mostPlayedPosition}
             </span>
