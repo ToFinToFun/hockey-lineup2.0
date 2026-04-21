@@ -1,22 +1,20 @@
-// Auto-fördela v4: Smart placement med mostPlayedPosition
+// Auto-fördela v5: Smart placement med mostPlayedPosition
 //
-// Prioriteringsordning:
+// AUTO-läge (shuffle=false):
 // 1. Favoritposition – MV→MV, B→B, C→C, F→F, IB→resten
 // 2. mostPlayedPosition – Om en slot saknar spelare, leta efter spelare
 //    vars mostPlayedPosition matchar (t.ex. F med mostPlayed=C → C-slot)
-// 3. Lagfärg – white→team-a, green→team-b (MV låses till sin lagfärg)
-// 4. Kapten/Assisterande – C/A-spelare med lagfärg låses till sitt lag,
-//    prioriteras till första kedjan/backparet
+// 3. Lagfärg – white→team-a, green→team-b (alla med lagfärg låses)
+// 4. Kapten/Assisterande – C/A prioriteras till första kedjan/backparet
 // 5. Jämna lag – lika många spelare per lag (±1)
-// 6. Speltidsbalans – minimera skillnad i istid mellan positioner
 //
-// Regler:
-// - Bara MV-spelare kan placeras som målvakt
-// - MV med lagfärg låses och ändras aldrig
-// - C/A med lagfärg låses till sitt lag och placeras i första kedjan/backparet
-// - Config anpassas till faktiskt antal spelare per position (inga tomma grupper)
-// - Minimum per lag: 2B + 1C + 1LW + 1RW (om tillräckligt med spelare)
-// - Shuffle-läge: omfördelar neutrala icke-C/A spelare men behåller låsta
+// SLUMPA-läge (shuffle=true):
+// Samma smarta positionsplacering som Auto, MEN:
+// - Lagfärg ignoreras — alla spelare behandlas som neutrala
+// - UNDANTAG: Kapten (C) och Assisterande (A) med lagfärg är låsta till sitt lag
+// - Alla neutrala spelare shufflas med Fisher-Yates innan lagfördelning
+// - Inom varje lag shufflas positionsgrupperna för slotplacering
+// - Resultat: två jämna lag med rätt positioner, men spelarna blandas fritt
 
 import type { Player } from "./players";
 import type { Slot, TeamConfig } from "./lineup";
@@ -73,6 +71,11 @@ function captainSortKey(p: Player): number {
   return 2;
 }
 
+/** Is this player a captain (C or A) with a team color? */
+function isLockedCaptain(p: Player): boolean {
+  return !!(p.captainRole && (p.captainRole === "C" || p.captainRole === "A") && p.teamColor);
+}
+
 interface TaggedPlayer {
   player: Player;
   posType: PosType;
@@ -83,6 +86,8 @@ export function autoDistribute(
   _existingLineup: Record<string, Player>,
   options?: { shuffle?: boolean },
 ): DistributeResult {
+  const doShuffle = options?.shuffle ?? false;
+
   // ── Step 1: Collect registered players ──
   const playersInLineup = new Set(Object.values(_existingLineup).map(p => p.id));
   const registered = allPlayers.filter(p => p.isRegistered && !playersInLineup.has(p.id));
@@ -93,22 +98,40 @@ export function autoDistribute(
   const goalkeepers = tagged.filter(t => t.posType === "goalkeeper");
   const outfield = tagged.filter(t => t.posType !== "goalkeeper");
 
-  // Goalkeepers: locked by team color, then distribute neutrals
-  const gkWhite = goalkeepers.filter(t => t.player.teamColor === "white");
-  const gkGreen = goalkeepers.filter(t => t.player.teamColor === "green");
-  const gkNeutral = options?.shuffle
-    ? shuffleArray(goalkeepers.filter(t => !t.player.teamColor))
-    : goalkeepers.filter(t => !t.player.teamColor);
+  // In shuffle mode: only C/A captains are locked to their team color
+  // In auto mode: all players with team color are locked
+  const isGkLocked = (t: TaggedPlayer, color: "white" | "green") => {
+    if (doShuffle) {
+      return t.player.teamColor === color && isLockedCaptain(t.player);
+    }
+    return t.player.teamColor === color;
+  };
+
+  const isGkNeutral = (t: TaggedPlayer) => {
+    if (doShuffle) {
+      return !isLockedCaptain(t.player); // everyone except C/A captains is neutral
+    }
+    return !t.player.teamColor;
+  };
+
+  const gkWhite = goalkeepers.filter(t => isGkLocked(t, "white"));
+  const gkGreen = goalkeepers.filter(t => isGkLocked(t, "green"));
+  const gkNeutral = goalkeepers.filter(t => isGkNeutral(t));
+
+  // Shuffle neutral goalkeepers in shuffle mode
+  const gkNeutralOrdered = doShuffle ? shuffleArray(gkNeutral) : [...gkNeutral];
 
   // Sort neutral goalkeepers: pure goalkeepers first (no outfield experience),
   // then those with outfield experience (they can be placed as outfield instead)
-  const sortedGkNeutral = [...gkNeutral].sort((a, b) => {
-    const aHasOutfield = a.player.mostPlayedPosition && a.player.mostPlayedPosition !== "MV";
-    const bHasOutfield = b.player.mostPlayedPosition && b.player.mostPlayedPosition !== "MV";
-    if (!aHasOutfield && bHasOutfield) return -1;
-    if (aHasOutfield && !bHasOutfield) return 1;
-    return 0;
-  });
+  const sortedGkNeutral = doShuffle
+    ? gkNeutralOrdered // already shuffled, don't re-sort
+    : [...gkNeutralOrdered].sort((a, b) => {
+        const aHasOutfield = a.player.mostPlayedPosition && a.player.mostPlayedPosition !== "MV";
+        const bHasOutfield = b.player.mostPlayedPosition && b.player.mostPlayedPosition !== "MV";
+        if (!aHasOutfield && bHasOutfield) return -1;
+        if (aHasOutfield && !bHasOutfield) return 1;
+        return 0;
+      });
 
   // If multiple locked GKs on same team, keep only 1 (prefer pure GK over versatile)
   const sortByPureGk = (arr: TaggedPlayer[]) => [...arr].sort((a, b) => {
@@ -154,11 +177,28 @@ export function autoDistribute(
   // ── Step 3: Distribute outfield players to teams ──
   const allOutfield = [...outfield, ...gkToOutfield];
 
-  const ofWhite = allOutfield.filter(t => t.player.teamColor === "white");
-  const ofGreen = allOutfield.filter(t => t.player.teamColor === "green");
-  const ofNeutral = allOutfield.filter(t => !t.player.teamColor);
+  // In shuffle mode: only C/A captains are locked, everyone else is neutral
+  // In auto mode: all players with team color are locked
+  const isOfLocked = (t: TaggedPlayer, color: "white" | "green") => {
+    if (doShuffle) {
+      return t.player.teamColor === color && isLockedCaptain(t.player);
+    }
+    return t.player.teamColor === color;
+  };
 
-  const neutralsToDistribute = options?.shuffle ? shuffleArray(ofNeutral) : [...ofNeutral];
+  const isOfNeutral = (t: TaggedPlayer) => {
+    if (doShuffle) {
+      return !isLockedCaptain(t.player);
+    }
+    return !t.player.teamColor;
+  };
+
+  const ofWhite = allOutfield.filter(t => isOfLocked(t, "white"));
+  const ofGreen = allOutfield.filter(t => isOfLocked(t, "green"));
+  const ofNeutral = allOutfield.filter(t => isOfNeutral(t));
+
+  // Shuffle neutrals before distributing to teams
+  const neutralsToDistribute = doShuffle ? shuffleArray(ofNeutral) : [...ofNeutral];
 
   const teamAOutfield: TaggedPlayer[] = [...ofWhite];
   const teamBOutfield: TaggedPlayer[] = [...ofGreen];
@@ -175,9 +215,20 @@ export function autoDistribute(
   // Rebalance if teams are very unbalanced
   const rebalance = (bigger: TaggedPlayer[], smaller: TaggedPlayer[]) => {
     while (bigger.length - smaller.length > 1) {
-      const idx = bigger.findIndex(t => !t.player.teamColor && !t.player.captainRole);
+      // In shuffle mode: anyone who isn't a locked captain can be moved
+      // In auto mode: anyone without team color (and preferably without captain role) can be moved
+      const canMove = (t: TaggedPlayer) => {
+        if (doShuffle) return !isLockedCaptain(t.player);
+        return !t.player.teamColor && !t.player.captainRole;
+      };
+      const canMoveFallback = (t: TaggedPlayer) => {
+        if (doShuffle) return !isLockedCaptain(t.player);
+        return !t.player.teamColor;
+      };
+
+      const idx = bigger.findIndex(canMove);
       if (idx === -1) {
-        const idx2 = bigger.findIndex(t => !t.player.teamColor);
+        const idx2 = bigger.findIndex(canMoveFallback);
         if (idx2 === -1) break;
         smaller.push(bigger.splice(idx2, 1)[0]);
       } else {
@@ -235,7 +286,7 @@ export function autoDistribute(
   const lineup: Record<string, Player> = {};
   const placed = new Set<string>();
 
-  function fillTeam(slots: Slot[], goalkeepers: TaggedPlayer[], outfield: TaggedPlayer[], doShuffle: boolean) {
+  function fillTeam(slots: Slot[], goalkeepers: TaggedPlayer[], outfield: TaggedPlayer[]) {
     // 5a: Place goalkeepers
     const gkSlots = slots.filter(s => s.type === "goalkeeper");
     const sortedGk = [...goalkeepers].sort((a, b) => captainSortKey(a.player) - captainSortKey(b.player));
@@ -352,9 +403,8 @@ export function autoDistribute(
     }
   }
 
-  const doShuffle = options?.shuffle ?? false;
-  fillTeam(teamASlots, teamAGoalkeepers, teamAOutfield, doShuffle);
-  fillTeam(teamBSlots, teamBGoalkeepers, teamBOutfield, doShuffle);
+  fillTeam(teamASlots, teamAGoalkeepers, teamAOutfield);
+  fillTeam(teamBSlots, teamBGoalkeepers, teamBOutfield);
 
   // ── Step 6: Trim empty groups from config ──
   // If a defense pair or forward line has zero players placed, reduce the config
