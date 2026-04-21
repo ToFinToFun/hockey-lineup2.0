@@ -262,7 +262,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
               `}
             >
               {f.color !== null && (
-                <TeamColorIndicator teamColor={f.color} size={12} />
+                <TeamColorIndicator teamColor={f.color} compact />
               )}
               {f.label}
             </button>
@@ -458,7 +458,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                       : "bg-white/5 text-white/30 border-white/10 hover:bg-white/10 hover:text-white/50"
                   }`}
                 >
-                  <TeamColorIndicator teamColor={value} size={10} />
+                  <TeamColorIndicator teamColor={value} compact />
                   {label}
                 </button>
               ))}

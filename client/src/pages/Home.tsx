@@ -73,6 +73,7 @@ interface SavedState {
   teamBName: string;
   teamAConfig?: TeamConfig;
   teamBConfig?: TeamConfig;
+  matchTime?: number;
 }
 
 // En snapshot av det relevanta state som kan ångras
@@ -139,6 +140,9 @@ export default function Home() {
   const [teamBConfig, setTeamBConfig] = useState<TeamConfig>(
     local?.teamBConfig ?? { ...DEFAULT_TEAM_CONFIG }
   );
+
+  // Match duration in minutes for ice time calculation
+  const [matchTime, setMatchTime] = useState<number>(local?.matchTime ?? 60);
 
   // Refs for config so saveToServer always reads the latest values
   const teamAConfigRef = useRef(teamAConfig);
@@ -572,7 +576,7 @@ export default function Home() {
     }
     console.log('[SYNC] save-effect PASSED guards', { configA: teamAConfig, configB: teamBConfig, counter: remoteApplyCounterRef.current });
 
-    const state: SavedState = { availablePlayers, lineup, teamAName, teamBName, teamAConfig, teamBConfig };
+    const state: SavedState = { availablePlayers, lineup, teamAName, teamBName, teamAConfig, teamBConfig, matchTime };
     saveLocalState(state);
 
     // Mark as dirty — we have unsaved local changes
@@ -595,7 +599,7 @@ export default function Home() {
       console.log('[SYNC] save-timer FIRING saveToServer');
       saveToServer();
     }, 150);
-  }, [availablePlayers, lineup, teamAName, teamBName, deletedPlayerIds, teamAConfig, teamBConfig, saveToServer]);
+  }, [availablePlayers, lineup, teamAName, teamBName, deletedPlayerIds, teamAConfig, teamBConfig, matchTime, saveToServer]);
 
   // CLEARING EFFECT: Runs AFTER the save-effect in the same React commit.
   // React runs useEffects in declaration order, so this always executes after
@@ -1428,6 +1432,25 @@ export default function Home() {
                 </button>
                 </LongPressTooltip>
 
+                {/* Match time input */}
+                <LongPressTooltip label="Matchtid">
+                <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isLineupDark ? 'border border-white/15 text-white/50' : 'border border-gray-300 text-gray-500'}`}>
+                  <input
+                    type="number"
+                    min={10}
+                    max={120}
+                    value={matchTime}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (!isNaN(v) && v >= 1 && v <= 999) setMatchTime(v);
+                    }}
+                    className={`w-[28px] text-center bg-transparent outline-none font-bold tabular-nums ${isLineupDark ? 'text-white/70' : 'text-gray-700'}`}
+                    title="Matchtid i minuter"
+                  />
+                  <span className={`text-[9px] ${isLineupDark ? 'text-white/30' : 'text-gray-400'}`}>min</span>
+                </div>
+                </LongPressTooltip>
+
                 {/* DELA button - outlined style like mockup */}
                 <LongPressTooltip label="Dela länk">
                 <button
@@ -1684,6 +1707,7 @@ export default function Home() {
                       config={teamAConfig}
                       onConfigChange={setTeamAConfig}
                       otherConfig={teamBConfig}
+                      matchTime={matchTime}
                     />
 
                     {/* Lag B (GRÖNA) – höger */}
@@ -1700,6 +1724,7 @@ export default function Home() {
                       config={teamBConfig}
                       onConfigChange={setTeamBConfig}
                       otherConfig={teamAConfig}
+                      matchTime={matchTime}
                     />
                   </div>
                 </div>
@@ -1725,6 +1750,7 @@ export default function Home() {
                     config={teamAConfig}
                     onConfigChange={setTeamAConfig}
                     otherConfig={teamBConfig}
+                    matchTime={matchTime}
                   />
 
                   {/* Spelarlista (mitten) */}
@@ -1773,6 +1799,7 @@ export default function Home() {
                     config={teamBConfig}
                     onConfigChange={setTeamBConfig}
                     otherConfig={teamAConfig}
+                    matchTime={matchTime}
                   />
                 </div>
               )
@@ -1795,6 +1822,7 @@ export default function Home() {
                     onConfigChange={setTeamAConfig}
                     compact
                     otherConfig={teamBConfig}
+                    matchTime={matchTime}
                   />
                 </div>
 
@@ -1814,6 +1842,7 @@ export default function Home() {
                     onConfigChange={setTeamBConfig}
                     compact
                     otherConfig={teamAConfig}
+                    matchTime={matchTime}
                   />
                 </div>
               </div>
