@@ -121,7 +121,7 @@ export function DraggablePlayerCard({
         group relative rounded-md w-full
         player-row
         transition-all duration-150 select-none
-        ${compact ? "flex flex-col gap-0 px-0.5 py-0.5 text-xs" : "flex items-center gap-1.5 px-1 py-1 text-sm"}
+        ${compact ? "flex flex-wrap items-center gap-x-1 gap-y-0 px-0.5 py-0.5 text-xs" : "flex items-center gap-1.5 px-1 py-1 text-sm"}
         ${isDragging ? "shadow-2xl ring-2 ring-emerald-400/60" : ""}
         ${isHolding ? "ring-1 ring-red-400/60" : ""}
       `}
@@ -155,31 +155,18 @@ export function DraggablePlayerCard({
       )}
 
       {compact ? (
-        /* ---- COMPACT: two-row layout ---- */
+        /* ---- COMPACT: single row with flex-wrap fallback to two rows ---- */
         <>
-          {/* Row 1: name + number + remove button */}
-          <div className="flex items-center gap-1 w-full">
-            {!hideExtras && player.isRegistered && (
-              <span className="text-emerald-400 text-[8px] shrink-0" title="Anmäld">✓</span>
-            )}
-            {!hideExtras && player.isDeclined && !player.isRegistered && (
-              <span className="text-red-400 text-[8px] shrink-0" title="Avböjd">✗</span>
-            )}
-            <span className="text-white font-medium flex-1 leading-tight text-[11px] min-w-0 truncate">
-              {player.name}
-              {player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
-            </span>
-            {onRemove && (
-              <button
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => { e.stopPropagation(); onRemove(); }}
-                className="ml-0.5 text-red-400/50 hover:text-red-300 shrink-0 transition-colors"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            )}
-          </div>
-          {/* Row 2: badges */}
+          {!hideExtras && player.isRegistered && (
+            <span className="text-emerald-400 text-[8px] shrink-0" title="Anmäld">✓</span>
+          )}
+          {!hideExtras && player.isDeclined && !player.isRegistered && (
+            <span className="text-red-400 text-[8px] shrink-0" title="Avböjd">✗</span>
+          )}
+          <span className="text-white font-medium leading-tight text-[11px] min-w-0 truncate">
+            {player.name}
+            {player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
+          </span>
         </>
       ) : (
         /* ---- NON-COMPACT: single row ---- */
@@ -200,7 +187,7 @@ export function DraggablePlayerCard({
         </>
       )}
 
-      {/* Compact badges — clickable for edit */}
+      {/* Compact badges — clickable for edit, ml-auto pushes right on single row */}
       {compact && !hideExtras && onChangeName ? (
         <button
           ref={editBtnRef}
@@ -211,7 +198,7 @@ export function DraggablePlayerCard({
             setNrValue(player.number ?? "");
             setShowEditPanel((v) => !v);
           }}
-          className="flex items-center gap-1 shrink-0 hover:ring-1 hover:ring-emerald-400/40 rounded px-0.5 py-0.5 transition-all cursor-pointer"
+          className="flex items-center gap-1 shrink-0 ml-auto hover:ring-1 hover:ring-emerald-400/40 rounded px-0.5 py-0.5 transition-all cursor-pointer"
           title="Klicka för att redigera spelare"
         >
           {player.captainRole && (
@@ -235,7 +222,7 @@ export function DraggablePlayerCard({
           )}
         </button>
       ) : compact && !hideExtras ? (
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1 shrink-0 ml-auto">
           {player.captainRole && (
             <span className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 ${
               player.captainRole === "C"
@@ -613,8 +600,8 @@ export function DraggablePlayerCard({
           </PortalDropdown>
       )}
 
-      {/* Remove button (non-compact only, compact has it in row 1) */}
-      {!compact && onRemove && (
+      {/* Remove button — shown for both compact and non-compact */}
+      {onRemove && (
         <button
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); onRemove(); }}
