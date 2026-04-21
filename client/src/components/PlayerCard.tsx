@@ -208,7 +208,7 @@ export function DraggablePlayerCard({
                 : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
             }`}>{player.captainRole}</span>
           )}
-          <TeamColorIndicator teamColor={player.teamColor ?? null} size={10} />
+          <TeamColorIndicator teamColor={player.teamColor ?? null} compact />
           <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
             {displayPosition}
           </span>
@@ -230,7 +230,7 @@ export function DraggablePlayerCard({
                 : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
             }`}>{player.captainRole}</span>
           )}
-          <TeamColorIndicator teamColor={player.teamColor ?? null} size={10} />
+          <TeamColorIndicator teamColor={player.teamColor ?? null} compact />
           <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
             {displayPosition}
           </span>
@@ -266,7 +266,7 @@ export function DraggablePlayerCard({
                 : "bg-orange-400/20 text-orange-300 border-orange-400/40"
             }`}>{player.captainRole}</span>
           )}
-          <TeamColorIndicator teamColor={player.teamColor ?? null} size={12} />
+          <TeamColorIndicator teamColor={player.teamColor ?? null} />
           <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
             {displayPosition}
           </span>
@@ -288,7 +288,7 @@ export function DraggablePlayerCard({
                 : "bg-orange-400/20 text-orange-300 border-orange-400/40"
             }`}>{player.captainRole}</span>
           )}
-          <TeamColorIndicator teamColor={player.teamColor ?? null} size={12} />
+          <TeamColorIndicator teamColor={player.teamColor ?? null} />
           <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
             {displayPosition}
           </span>
@@ -367,7 +367,7 @@ export function DraggablePlayerCard({
                           : "bg-white/5 text-white/30 border-white/10 hover:bg-white/10 hover:text-white/50"
                       }`}
                     >
-                      <TeamColorIndicator teamColor={value} size={10} />
+                      <TeamColorIndicator teamColor={value} compact />
                       {label}
                     </button>
                   ))}
@@ -600,48 +600,25 @@ export function DraggablePlayerCard({
           </PortalDropdown>
       )}
 
-      {/* Remove button — shown for both compact and non-compact */}
-      {onRemove && (
-        <button
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); onRemove(); }}
-          className="ml-0.5 text-red-400/50 hover:text-red-300 shrink-0 transition-colors"
-        >
-          <X className="w-3 h-3" />
-        </button>
-      )}
+
     </div>
   );
 }
 
-// Team color indicator — solid circle
-export function TeamColorIndicator({ teamColor, size = 16 }: { teamColor: TeamColor; size?: number }) {
-  // Rounded-rect style matching position badges (border-radius ~4px)
-  const radius = Math.max(3, Math.round(size * 0.3));
+// Team color indicator — rounded-rect matching pos-badge-sm size
+export function TeamColorIndicator({ teamColor, compact }: { teamColor: TeamColor; compact?: boolean }) {
+  // Match pos-badge-sm: 20×18px normal, slightly smaller in compact
+  const cls = compact
+    ? "w-[16px] h-[16px] rounded-[4px] shrink-0"
+    : "w-[20px] h-[18px] rounded-[5px] shrink-0";
+
   if (teamColor === "green") {
-    return (
-      <div
-        title="Gröna"
-        style={{ width: size, height: size, flexShrink: 0, borderRadius: `${radius}px` }}
-        className="bg-emerald-400 border border-emerald-300/60 shrink-0"
-      />
-    );
+    return <div title="Gröna" className={`${cls} bg-emerald-400 border border-emerald-300/60`} />;
   }
   if (teamColor === "white") {
-    return (
-      <div
-        title="Vita"
-        style={{ width: size, height: size, flexShrink: 0, borderRadius: `${radius}px` }}
-        className="bg-white border border-white/60 shrink-0"
-      />
-    );
+    return <div title="Vita" className={`${cls} bg-white border border-white/60`} />;
   }
-  return (
-    <div
-      style={{ width: size, height: size, borderRadius: `${radius}px` }}
-      className="border border-white/20 bg-white/5 shrink-0"
-    />
-  );
+  return <div className={`${cls} border border-white/20 bg-white/5`} />;
 }
 
 // Drag overlay card
@@ -649,7 +626,7 @@ export function PlayerCardOverlay({ player }: { player: Player }) {
   const { colors: fc } = useForwardColor();
   return (
     <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm bg-[#0d1424]/95 border border-emerald-400/60 shadow-2xl shadow-emerald-500/20 ring-2 ring-emerald-400/40 cursor-grabbing select-none backdrop-blur-xl" style={{ minWidth: 160, maxWidth: 240 }}>
-      <TeamColorIndicator teamColor={player.teamColor ?? null} size={14} />
+      <TeamColorIndicator teamColor={player.teamColor ?? null} />
       {player.captainRole && (
         <span className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 border ${
           player.captainRole === "C"

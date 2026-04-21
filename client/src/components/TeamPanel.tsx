@@ -26,6 +26,8 @@ interface TeamPanelProps {
   compact?: boolean;
   /** The other team's config — used to calculate spacers for section alignment */
   otherConfig?: TeamConfig;
+  /** Match duration in minutes for ice time calculation (default 60) */
+  matchTime?: number;
 }
 
 /* Section header colors */
@@ -123,6 +125,7 @@ export function TeamPanel({
   onRemovePlayer, onChangePosition, onRenameTeam, onClearTeam,
   isWhite = false, config, onConfigChange, compact = false,
   otherConfig,
+  matchTime = 60,
 }: TeamPanelProps) {
   const logo = isWhite ? LOGO_WHITE : LOGO_GREEN;
   const accentColor = isWhite ? "text-slate-200" : "text-emerald-400";
@@ -142,14 +145,14 @@ export function TeamPanel({
 
   // Calculate ice time per slot
   const iceTimeMap = useMemo(
-    () => calculateSlotIceTimes(slots, lineup, config),
-    [slots, lineup, config],
+    () => calculateSlotIceTimes(slots, lineup, config, matchTime),
+    [slots, lineup, config, matchTime],
   );
 
   // Ice time rotation summary text
   const iceTimeSummary = useMemo(
-    () => generateIceTimeSummary(slots, lineup, config),
-    [slots, lineup, config],
+    () => generateIceTimeSummary(slots, lineup, config, matchTime),
+    [slots, lineup, config, matchTime],
   );
 
   const filledCount = Object.keys(lineup).length;
