@@ -163,7 +163,7 @@ export function DraggablePlayerCard({
       )}
 
       {/* Player name + number */}
-      <span className="text-white font-medium truncate flex-1 leading-tight text-[13px]">
+      <span className={`text-white font-medium flex-1 leading-tight text-[13px] min-w-0 ${compact ? 'truncate' : ''}`}>
         {player.name}
         {player.number ? <span className="text-white/40 font-normal ml-1.5">#{player.number}</span> : null}
         {!hideExtras && !compact && player.gamesPlayed != null && player.gamesPlayed > 0 && (
@@ -250,8 +250,10 @@ export function DraggablePlayerCard({
           <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
             {displayPosition}
           </span>
-          {player.mostPlayedPosition && player.mostPlayedPosition !== displayPosition && (
-            <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0`}
+          {player.mostPlayedPosition && (
+            <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0 ${
+              player.mostPlayedPosition === displayPosition ? 'opacity-40' : ''
+            }`}
               title={`Vanligaste position: ${player.mostPlayedPosition}`}>
               {player.mostPlayedPosition}
             </span>
@@ -270,8 +272,10 @@ export function DraggablePlayerCard({
           <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
             {displayPosition}
           </span>
-          {player.mostPlayedPosition && player.mostPlayedPosition !== displayPosition && (
-            <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0`}
+          {player.mostPlayedPosition && (
+            <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0 ${
+              player.mostPlayedPosition === displayPosition ? 'opacity-40' : ''
+            }`}
               title={`Vanligaste position: ${player.mostPlayedPosition}`}>
               {player.mostPlayedPosition}
             </span>
