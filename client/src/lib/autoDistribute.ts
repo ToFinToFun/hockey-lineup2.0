@@ -95,8 +95,19 @@ export function autoDistribute(
   const tagged: TaggedPlayer[] = registered.map(p => ({ player: p, posType: categorize(p) }));
 
   // ── Step 2: Separate goalkeepers ──
+  // Categorize goalkeepers:
+  //   "pure" = never played outfield (no mostPlayedPosition or mostPlayedPosition === "MV")
+  //   "versatile" = has played outfield (mostPlayedPosition !== "MV")
+  // Priority: pure MV MUST be goalkeeper (can't play outfield).
+  //           versatile MV can be placed as outfield if not needed as GK.
   const goalkeepers = tagged.filter(t => t.posType === "goalkeeper");
   const outfield = tagged.filter(t => t.posType !== "goalkeeper");
+
+  const isVersatileGk = (t: TaggedPlayer) =>
+    !!(t.player.mostPlayedPosition && t.player.mostPlayedPosition !== "MV");
+
+  const pureGk = goalkeepers.filter(t => !isVersatileGk(t));
+  const versatileGk = goalkeepers.filter(t => isVersatileGk(t));
 
   // In shuffle mode: only C/A captains are locked to their team color
   // In auto mode: all players with team color are locked
@@ -109,41 +120,37 @@ export function autoDistribute(
 
   const isGkNeutral = (t: TaggedPlayer) => {
     if (doShuffle) {
-      return !isLockedCaptain(t.player); // everyone except C/A captains is neutral
+      return !isLockedCaptain(t.player);
     }
     return !t.player.teamColor;
   };
 
-  const gkWhite = goalkeepers.filter(t => isGkLocked(t, "white"));
-  const gkGreen = goalkeepers.filter(t => isGkLocked(t, "green"));
-  const gkNeutral = goalkeepers.filter(t => isGkNeutral(t));
-
-  // Shuffle neutral goalkeepers in shuffle mode
-  const gkNeutralOrdered = doShuffle ? shuffleArray(gkNeutral) : [...gkNeutral];
-
-  // Sort neutral goalkeepers: pure goalkeepers first (no outfield experience),
-  // then those with outfield experience (they can be placed as outfield instead)
-  const sortedGkNeutral = doShuffle
-    ? gkNeutralOrdered // already shuffled, don't re-sort
-    : [...gkNeutralOrdered].sort((a, b) => {
-        const aHasOutfield = a.player.mostPlayedPosition && a.player.mostPlayedPosition !== "MV";
-        const bHasOutfield = b.player.mostPlayedPosition && b.player.mostPlayedPosition !== "MV";
-        if (!aHasOutfield && bHasOutfield) return -1;
-        if (aHasOutfield && !bHasOutfield) return 1;
-        return 0;
-      });
-
-  // If multiple locked GKs on same team, keep only 1 (prefer pure GK over versatile)
+  // Build team goalkeeper lists — prioritize pure GK over versatile
+  // Step 2a: Place locked goalkeepers first (prefer pure over versatile)
   const sortByPureGk = (arr: TaggedPlayer[]) => [...arr].sort((a, b) => {
-    const aHas = a.player.mostPlayedPosition && a.player.mostPlayedPosition !== "MV";
-    const bHas = b.player.mostPlayedPosition && b.player.mostPlayedPosition !== "MV";
-    if (!aHas && bHas) return -1;
-    if (aHas && !bHas) return 1;
+    const aVersatile = isVersatileGk(a);
+    const bVersatile = isVersatileGk(b);
+    if (!aVersatile && bVersatile) return -1; // pure first
+    if (aVersatile && !bVersatile) return 1;
     return 0;
   });
 
-  const teamAGoalkeepers: TaggedPlayer[] = sortByPureGk(gkWhite).slice(0, 1);
-  const teamBGoalkeepers: TaggedPlayer[] = sortByPureGk(gkGreen).slice(0, 1);
+  const gkWhiteLocked = sortByPureGk(goalkeepers.filter(t => isGkLocked(t, "white")));
+  const gkGreenLocked = sortByPureGk(goalkeepers.filter(t => isGkLocked(t, "green")));
+  const gkNeutralAll = goalkeepers.filter(t => isGkNeutral(t));
+
+  // Start with max 1 locked GK per team
+  const teamAGoalkeepers: TaggedPlayer[] = gkWhiteLocked.slice(0, 1);
+  const teamBGoalkeepers: TaggedPlayer[] = gkGreenLocked.slice(0, 1);
+
+  // Step 2b: Sort neutral GKs — pure first so they get GK spots
+  // In shuffle mode: shuffle within pure and versatile groups separately,
+  // but always try pure GKs first
+  const neutralPure = gkNeutralAll.filter(t => !isVersatileGk(t));
+  const neutralVersatile = gkNeutralAll.filter(t => isVersatileGk(t));
+  const sortedGkNeutral = doShuffle
+    ? [...shuffleArray(neutralPure), ...shuffleArray(neutralVersatile)]
+    : [...neutralPure, ...neutralVersatile];
 
   // Distribute neutral goalkeepers: max 1 per team
   for (const gk of sortedGkNeutral) {
@@ -154,24 +161,44 @@ export function autoDistribute(
     }
   }
 
-  // Handle excess goalkeepers: re-categorize as outfield if they have outfield experience
+  // Step 2c: Handle excess goalkeepers
   const allAssignedGk = new Set([
     ...teamAGoalkeepers.map(t => t.player.id),
     ...teamBGoalkeepers.map(t => t.player.id),
   ]);
   const excessGk = goalkeepers.filter(t => !allAssignedGk.has(t.player.id));
 
+  // Versatile excess GKs → re-categorize as outfield players
   const gkToOutfield: TaggedPlayer[] = [];
+  // Pure excess GKs → place as reserve goalkeeper (2nd GK slot)
+  const gkToReserve: TaggedPlayer[] = [];
+
   for (const gk of excessGk) {
-    const mpp = gk.player.mostPlayedPosition;
-    if (mpp && mpp !== "MV") {
+    if (isVersatileGk(gk)) {
+      const mpp = gk.player.mostPlayedPosition!;
       let newPosType: PosType = "flex";
       if (mpp === "B") newPosType = "defense";
       else if (mpp === "C") newPosType = "center";
       else if (mpp === "F" || mpp === "LW" || mpp === "RW") newPosType = "forward";
       gkToOutfield.push({ player: gk.player, posType: newPosType });
+    } else {
+      // Pure GK with no outfield experience → try to place as reserve MV
+      gkToReserve.push(gk);
     }
-    // Pure goalkeepers (no outfield experience) stay as excess → remaining
+  }
+
+  // Distribute reserve GKs: add as 2nd goalkeeper to teams that only have 1
+  const reserveOrder = doShuffle ? shuffleArray(gkToReserve) : [...gkToReserve];
+  for (const gk of reserveOrder) {
+    // Prefer the team with fewer goalkeepers
+    if (teamAGoalkeepers.length <= teamBGoalkeepers.length && teamAGoalkeepers.length < 2) {
+      teamAGoalkeepers.push(gk);
+      allAssignedGk.add(gk.player.id);
+    } else if (teamBGoalkeepers.length < 2) {
+      teamBGoalkeepers.push(gk);
+      allAssignedGk.add(gk.player.id);
+    }
+    // If both teams already have 2 GKs, this pure GK stays unplaced → remaining
   }
 
   // ── Step 3: Distribute outfield players to teams ──
