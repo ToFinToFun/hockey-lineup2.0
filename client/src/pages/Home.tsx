@@ -1308,7 +1308,7 @@ export default function Home() {
           {/* Header – compact toolbar matching mockup exactly */}
           <header className="shrink-0">
             <div className="glass-header px-3 py-2">
-              <div className="flex items-center gap-3 max-w-[1400px] mx-auto">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 max-w-[1400px] mx-auto">
               {/* Left: Logo + title + event info */}
               <div className="flex items-center gap-2 shrink-0">
                 <Link href="/">
@@ -1335,8 +1335,8 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Toolbar buttons – centered matching mockup layout */}
-              <div className="flex items-center gap-1.5 flex-1 justify-center">
+              {/* Toolbar buttons – centered, wraps to second row on mobile */}
+              <div className="flex items-center gap-1.5 flex-1 justify-center flex-wrap order-last sm:order-none w-full sm:w-auto">
                 {/* Home link */}
                 <LongPressTooltip label="Hem">
                 <a
@@ -1501,7 +1501,7 @@ export default function Home() {
               </div>
 
               {/* Right: Settings icon */}
-              <div className="flex items-center gap-0.5 shrink-0">
+              <div className="flex items-center gap-0.5 shrink-0 ml-auto sm:ml-0">
                 {/* Settings icon */}
                 <LongPressTooltip label="Inställningar">
                 <button
