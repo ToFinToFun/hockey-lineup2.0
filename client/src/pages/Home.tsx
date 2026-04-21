@@ -1337,6 +1337,17 @@ export default function Home() {
 
               {/* Toolbar buttons – centered matching mockup layout */}
               <div className="flex items-center gap-1.5 flex-1 justify-center">
+                {/* Home link */}
+                <LongPressTooltip label="Hem">
+                <a
+                  href="https://app.stalstadens.se"
+                  title="Hem"
+                  className={`p-1.5 rounded transition-all ${isLineupDark ? 'text-white/30 hover:text-white/60 hover:bg-white/8' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}
+                >
+                  <HomeIcon className="w-4 h-4" />
+                </a>
+                </LongPressTooltip>
+
                 {/* SSE sync icon */}
                 <LongPressTooltip label={sseConnected === null ? "Ansluter..." : sseConnected ? "Synkroniserad" : "Ej ansluten"}>
                 <div className="flex items-center mr-0.5">
@@ -1489,19 +1500,8 @@ export default function Home() {
                 </LongPressTooltip>
               </div>
 
-              {/* Right: Help + Settings icons */}
+              {/* Right: Settings icon */}
               <div className="flex items-center gap-0.5 shrink-0">
-                {/* Home link */}
-                <LongPressTooltip label="Hem">
-                <a
-                  href="https://app.stalstadens.se"
-                  title="Hem"
-                  className={`p-1.5 rounded transition-all ${isLineupDark ? 'text-white/30 hover:text-white/60 hover:bg-white/8' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}
-                >
-                  <HomeIcon className="w-4 h-4" />
-                </a>
-                </LongPressTooltip>
-
                 {/* Settings icon */}
                 <LongPressTooltip label="Inställningar">
                 <button
