@@ -1338,6 +1338,7 @@ export default function Home() {
               {/* Toolbar buttons – centered matching mockup layout */}
               <div className="flex items-center gap-1.5 flex-1 justify-center">
                 {/* SSE sync icon */}
+                <LongPressTooltip label={sseConnected === null ? "Ansluter..." : sseConnected ? "Synkroniserad" : "Ej ansluten"}>
                 <div className="flex items-center mr-0.5">
                   {sseConnected === null ? (
                     <span className={`text-[9px] ${isLineupDark ? 'text-white/30' : 'text-gray-400'}`}>...</span>
@@ -1347,6 +1348,7 @@ export default function Home() {
                     <WifiOff className="w-3.5 h-3.5 text-red-400" />
                   )}
                 </div>
+                </LongPressTooltip>
 
                 {/* Undo icon button */}
                 <LongPressTooltip label={`Ångra (${undoStack.length} steg)`}>
