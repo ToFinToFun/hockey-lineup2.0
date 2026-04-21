@@ -6,7 +6,7 @@ import type { Player, Position } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
 import { groupSlots, MAX_TEAM_CONFIG, type TeamConfig } from "@/lib/lineup";
 import { useForwardColor } from "@/hooks/useForwardColor";
-import { calculateSlotIceTimes } from "@/lib/iceTimePerSlot";
+import { calculateSlotIceTimes, generateIceTimeSummary } from "@/lib/iceTimePerSlot";
 
 const LOGO_GREEN = "/images/logo-green.png";
 const LOGO_WHITE = "/images/logo-white.png";
@@ -143,6 +143,12 @@ export function TeamPanel({
   // Calculate ice time per slot
   const iceTimeMap = useMemo(
     () => calculateSlotIceTimes(slots, lineup, config),
+    [slots, lineup, config],
+  );
+
+  // Ice time rotation summary text
+  const iceTimeSummary = useMemo(
+    () => generateIceTimeSummary(slots, lineup, config),
     [slots, lineup, config],
   );
 
@@ -319,6 +325,15 @@ export function TeamPanel({
             </div>
           )}
         </div>
+
+        {/* ── Ice time rotation summary ── */}
+        {iceTimeSummary && (
+          <div className={`border-t border-white/[0.04] ${compact ? 'mt-1.5 pt-1.5 px-0.5' : 'mt-2 pt-2 px-1'}`}>
+            <p className={`${compact ? 'text-[7px]' : 'text-[9px]'} italic text-white/25 leading-relaxed`}>
+              {iceTimeSummary}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
