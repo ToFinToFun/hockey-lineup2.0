@@ -72,21 +72,12 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact =
             onChangePosition={onChangePosition}
             slotType={slot.type}
             compact
+            iceTimeMinutes={iceTimeMinutes}
           />
         </div>
       ) : (
         <span className={`${compact ? 'text-[9px]' : 'text-[11px]'} italic flex-1 text-white/20 ${isOver ? "!text-white/50" : ""} flex items-center px-2`}>
           {isOver ? "Släpp här" : ""}
-        </span>
-      )}
-
-      {/* Ice time badge — outside PlayerCard */}
-      {player && iceTimeMinutes != null && (
-        <span
-          className={`ice-time-badge shrink-0 self-center ${compact ? 'ice-time-badge-compact' : ''}`}
-          title={`Beräknad speltid: ${iceTimeMinutes} min`}
-        >
-          {iceTimeMinutes}ʼ
         </span>
       )}
     </div>

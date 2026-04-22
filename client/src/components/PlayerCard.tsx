@@ -35,6 +35,8 @@ interface PlayerCardProps {
   hideExtras?: boolean;
   /** Slot type when rendered inside a PlayerSlot (used for MV outfield display) */
   slotType?: "goalkeeper" | "defense" | "forward";
+  /** Estimated ice time in minutes for this slot */
+  iceTimeMinutes?: number;
 }
 
 export function DraggablePlayerCard({
@@ -57,6 +59,7 @@ export function DraggablePlayerCard({
   compact = false,
   hideExtras = false,
   slotType,
+  iceTimeMinutes,
 }: PlayerCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: player.id, data: { player } });
@@ -220,6 +223,11 @@ export function DraggablePlayerCard({
               {player.mostPlayedPosition}
             </span>
           )}
+          {iceTimeMinutes != null && (
+            <span className="ice-time-badge ice-time-badge-compact shrink-0" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
+              {iceTimeMinutes}ʼ
+            </span>
+          )}
         </button>
       ) : compact && !hideExtras ? (
         <div className="flex items-center gap-1 shrink-0 ml-auto">
@@ -246,6 +254,11 @@ export function DraggablePlayerCard({
             }`}
               title={`Vanligaste position: ${player.mostPlayedPosition}`}>
               {player.mostPlayedPosition}
+            </span>
+          )}
+          {iceTimeMinutes != null && (
+            <span className="ice-time-badge ice-time-badge-compact shrink-0" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
+              {iceTimeMinutes}ʼ
             </span>
           )}
         </div>
@@ -284,6 +297,11 @@ export function DraggablePlayerCard({
               {player.mostPlayedPosition}
             </span>
           )}
+          {iceTimeMinutes != null && (
+            <span className="ice-time-badge shrink-0" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
+              {iceTimeMinutes}ʼ
+            </span>
+          )}
         </button>
       ) : !compact && !hideExtras ? (
         <div className="flex items-center gap-1 shrink-0">
@@ -304,6 +322,11 @@ export function DraggablePlayerCard({
             }`}
               title={`Vanligaste position: ${player.mostPlayedPosition}`}>
               {player.mostPlayedPosition}
+            </span>
+          )}
+          {iceTimeMinutes != null && (
+            <span className="ice-time-badge shrink-0" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
+              {iceTimeMinutes}ʼ
             </span>
           )}
         </div>
