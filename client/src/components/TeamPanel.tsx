@@ -94,7 +94,7 @@ function SectionSpacer({ slotCount, compact, hasGroupLabel = true }: { slotCount
         {Array.from({ length: slotCount }).map((_, i) => (
           <div
             key={i}
-            className={`flex items-stretch ${compact ? 'min-h-[28px]' : 'min-h-[34px]'} player-row rounded-md invisible`}
+            className={`flex items-stretch ${compact ? 'h-[28px]' : 'min-h-[34px]'} player-row rounded-md invisible`}
           >
             <span className={`slot-badge ${compact ? 'slot-badge-compact' : ''}`}>&nbsp;</span>
             <span className="flex-1" />

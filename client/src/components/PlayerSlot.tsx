@@ -52,7 +52,7 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact =
       style={{ touchAction: "manipulation" }}
       className={`
         flex items-stretch transition-all duration-150 overflow-visible
-        ${compact ? 'min-h-[28px]' : 'min-h-[34px]'}
+        ${compact ? 'h-[28px]' : 'min-h-[34px]'}
         player-row
         ${dropHighlight}
         rounded-md
