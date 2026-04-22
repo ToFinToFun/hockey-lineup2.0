@@ -34,7 +34,7 @@ import { MobileRosterDrawer } from "@/components/MobileRosterDrawer";
 import { LongPressTooltip } from "@/components/LongPressTooltip";
 import { trpc } from "@/lib/trpc";
 import type { Player as PlayerType } from "@/lib/players";
-import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Settings, Sun, Moon, Home as HomeIcon, Users, HelpCircle } from "lucide-react";
+import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Settings, Sun, Moon, Home as HomeIcon, Users, HelpCircle, FlaskConical } from "lucide-react";
 import { useLineupTheme } from "@/hooks/useLineupTheme";
 import { useForwardColor } from "@/hooks/useForwardColor";
 import { Link } from "wouter";
@@ -188,6 +188,8 @@ export default function Home() {
   const [activePlayer, setActivePlayer] = useState<Player | null>(null);
   const [showExport, setShowExport] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [demoCount, setDemoCount] = useState(16);
+  const [demoActive, setDemoActive] = useState(false);
   const [sseConnected, setSseConnected] = useState<boolean | null>(null);
   const [shareState, setShareState] = useState<"idle" | "saving" | "copied">("idle");
 
@@ -839,6 +841,111 @@ export default function Home() {
     const remaining = allPlayers.filter(p => !placedIds.has(p.id));
     setAvailablePlayers(remaining);
   }, [teamAName, teamBName]);
+
+  // Demo: simulera X anmälda spelare och kör auto-fördela
+  const handleDemo = useCallback(() => {
+    if (demoActive) {
+      // Avaktivera demo: nollställ alla isRegistered och rensa lagen
+      const currentLineup = lineupRef.current;
+      const removedPlayers: Player[] = [];
+      for (const [, player] of Object.entries(currentLineup)) {
+        removedPlayers.push(player);
+      }
+      const allPlayers = [...availablePlayersRef.current, ...removedPlayers]
+        .map(p => ({ ...p, isRegistered: false, isDeclined: false }));
+      setLineup({});
+      setAvailablePlayers(allPlayers);
+      setTeamAConfig({ goalkeepers: 1, defensePairs: 1, forwardLines: 1 });
+      setTeamBConfig({ goalkeepers: 1, defensePairs: 1, forwardLines: 1 });
+      setDemoActive(false);
+      return;
+    }
+
+    // Samla alla spelare
+    const currentLineup = lineupRef.current;
+    const removedPlayers: Player[] = [];
+    for (const [, player] of Object.entries(currentLineup)) {
+      removedPlayers.push(player);
+    }
+    const allPlayers = [...availablePlayersRef.current, ...removedPlayers]
+      .map(p => ({ ...p, isRegistered: false, isDeclined: false }));
+
+    // Separera efter position
+    const goalkeepers = allPlayers.filter(p => p.position === "MV");
+    const defenders = allPlayers.filter(p => p.position === "B");
+    const centers = allPlayers.filter(p => p.position === "C");
+    const forwards = allPlayers.filter(p => p.position === "F");
+    const others = allPlayers.filter(p => p.position === "IB");
+
+    // Fisher-Yates shuffle
+    const shuffle = <T,>(arr: T[]): T[] => {
+      const s = [...arr];
+      for (let i = s.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [s[i], s[j]] = [s[j], s[i]];
+      }
+      return s;
+    };
+
+    const count = Math.min(demoCount, allPlayers.length);
+    const selected = new Set<string>();
+
+    // Garantera minst 1 MV (om det finns)
+    if (goalkeepers.length > 0) {
+      const gk = shuffle(goalkeepers);
+      // Ta 1-2 MV beroende på count
+      const mvCount = count >= 20 ? Math.min(2, gk.length) : Math.min(1, gk.length);
+      for (let i = 0; i < mvCount; i++) selected.add(gk[i].id);
+    }
+
+    // Garantera backar (ca 30% av utespelare)
+    const outfieldNeeded = count - selected.size;
+    const defNeeded = Math.min(Math.max(2, Math.round(outfieldNeeded * 0.3)), defenders.length);
+    const shuffledDef = shuffle(defenders);
+    for (let i = 0; i < defNeeded && selected.size < count; i++) selected.add(shuffledDef[i].id);
+
+    // Garantera centrar (ca 15% av utespelare)
+    const cNeeded = Math.min(Math.max(1, Math.round(outfieldNeeded * 0.15)), centers.length);
+    const shuffledC = shuffle(centers);
+    for (let i = 0; i < cNeeded && selected.size < count; i++) selected.add(shuffledC[i].id);
+
+    // Fyll med forwards
+    const shuffledF = shuffle(forwards);
+    for (const f of shuffledF) {
+      if (selected.size >= count) break;
+      selected.add(f.id);
+    }
+
+    // Fyll resten med IB/övriga
+    const shuffledOthers = shuffle(others);
+    for (const o of shuffledOthers) {
+      if (selected.size >= count) break;
+      selected.add(o.id);
+    }
+
+    // Markera valda som anmälda
+    const updatedPlayers = allPlayers.map(p => ({
+      ...p,
+      isRegistered: selected.has(p.id),
+      isDeclined: false,
+    }));
+
+    // Uppdatera state
+    setLineup({});
+    setAvailablePlayers(updatedPlayers);
+    setDemoActive(true);
+
+    // Kör auto-fördela efter en tick så state hinner uppdateras
+    setTimeout(() => {
+      const result = autoDistribute(updatedPlayers, {}, { shuffle: false });
+      setTeamAConfig(result.teamAConfig);
+      setTeamBConfig(result.teamBConfig);
+      setLineup(result.lineup);
+      const placedIds = new Set(Object.values(result.lineup).map(p => p.id));
+      const remaining = updatedPlayers.filter(p => !placedIds.has(p.id));
+      setAvailablePlayers(remaining);
+    }, 0);
+  }, [demoCount, demoActive]);
 
   // Utför Rensa efter bekräftelse
   const handleConfirmClearTeam = useCallback(() => {
@@ -1523,8 +1630,45 @@ export default function Home() {
                 </LongPressTooltip>
               </div>
 
-              {/* Right: Settings icon */}
+              {/* Right: Demo + Settings icons */}
               <div className="flex items-center gap-0.5 shrink-0 ml-auto sm:ml-0">
+                {/* Demo button */}
+                <div className="flex items-center gap-0">
+                  <LongPressTooltip label="Demo">
+                  <button
+                    onClick={handleDemo}
+                    title={demoActive ? "Avsluta demo" : `Demo: simulera ${demoCount} anmälda`}
+                    className={`p-1.5 rounded transition-all ${
+                      demoActive
+                        ? isLineupDark
+                          ? 'text-amber-300 bg-amber-500/20 hover:bg-amber-500/30'
+                          : 'text-amber-600 bg-amber-100 hover:bg-amber-200'
+                        : isLineupDark
+                          ? 'text-white/30 hover:text-white/60 hover:bg-white/8'
+                          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    <FlaskConical className="w-4 h-4" />
+                  </button>
+                  </LongPressTooltip>
+                  {/* Demo count input — only visible when NOT active */}
+                  {!demoActive && (
+                    <input
+                      type="number"
+                      min={4}
+                      max={50}
+                      value={demoCount}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        if (!isNaN(v) && v >= 1 && v <= 99) setDemoCount(v);
+                      }}
+                      className={`w-[22px] text-center bg-transparent outline-none text-[10px] font-bold tabular-nums ${
+                        isLineupDark ? 'text-white/40' : 'text-gray-400'
+                      }`}
+                      title="Antal spelare att simulera"
+                    />
+                  )}
+                </div>
                 {/* Settings icon */}
                 <LongPressTooltip label="Inställningar">
                 <button
