@@ -701,25 +701,15 @@ export default function Home() {
     setActivePlayer(null);
     document.body.classList.remove("dnd-scroll-lock");
     const { active, over } = event;
-    if (!over) return;
-
     const playerId = active.id as string;
-    const targetId = over.id as string;
-
-    if (!ALL_SLOT_IDS.has(targetId) && targetId !== "player-list") return;
-
     const sourceSlot = findPlayerSlot(playerId);
 
-    const player =
-      sourceSlot
-        ? lineup[sourceSlot]
-        : availablePlayers.find((p) => p.id === playerId);
-    if (!player) return;
-
-    pushUndo(); // spara snapshot innan drag-ändringen
-
-    if (targetId === "player-list") {
-      if (!sourceSlot) return;
+    // Dropped outside any target or on player-list → remove from slot
+    if (!over || over.id === "player-list" || (over && !ALL_SLOT_IDS.has(over.id as string) && over.id !== "player-list")) {
+      if (!sourceSlot) return; // was from trupp, nothing to do
+      const player = lineup[sourceSlot];
+      if (!player) return;
+      pushUndo();
       setLineup((prev) => {
         const next = { ...prev };
         delete next[sourceSlot];
@@ -728,6 +718,18 @@ export default function Home() {
       setAvailablePlayers((prev) => [player, ...prev]);
       return;
     }
+
+    const targetId = over.id as string;
+
+    if (!ALL_SLOT_IDS.has(targetId)) return;
+
+    const player =
+      sourceSlot
+        ? lineup[sourceSlot]
+        : availablePlayers.find((p) => p.id === playerId);
+    if (!player) return;
+
+    pushUndo(); // spara snapshot innan drag-ändringen
 
     const existingInTarget = lineup[targetId];
 

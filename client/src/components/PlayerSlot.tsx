@@ -6,7 +6,6 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard } from "./PlayerCard";
-import { X } from "lucide-react";
 import type { Player, Position } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
 
@@ -81,26 +80,14 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact =
         </span>
       )}
 
-      {/* Ice time badge + Remove button — outside PlayerCard */}
-      {player && (
-        <div className={`shrink-0 ${compact ? 'flex flex-col items-center gap-0' : 'flex items-center gap-0.5'}`}>
-          {iceTimeMinutes != null && (
-            <span
-              className={`ice-time-badge shrink-0 ${compact ? 'ice-time-badge-compact' : ''}`}
-              title={`Beräknad speltid: ${iceTimeMinutes} min`}
-            >
-              {iceTimeMinutes}ʼ
-            </span>
-          )}
-          <button
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => { e.stopPropagation(); onRemove(); }}
-            className={`text-red-400/40 hover:text-red-300 shrink-0 transition-colors ${compact ? 'p-0 leading-none' : 'p-0.5'}`}
-            title="Ta bort från slot"
-          >
-            <X className={compact ? 'w-2 h-2' : 'w-3 h-3'} />
-          </button>
-        </div>
+      {/* Ice time badge — outside PlayerCard */}
+      {player && iceTimeMinutes != null && (
+        <span
+          className={`ice-time-badge shrink-0 self-center ${compact ? 'ice-time-badge-compact' : ''}`}
+          title={`Beräknad speltid: ${iceTimeMinutes} min`}
+        >
+          {iceTimeMinutes}ʼ
+        </span>
       )}
     </div>
   );
