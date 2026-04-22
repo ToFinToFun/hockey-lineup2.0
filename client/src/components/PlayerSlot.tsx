@@ -83,7 +83,7 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact =
 
       {/* Ice time badge + Remove button — outside PlayerCard */}
       {player && (
-        <div className="flex items-center shrink-0 gap-0.5">
+        <div className={`shrink-0 ${compact ? 'flex flex-col items-center gap-0' : 'flex items-center gap-0.5'}`}>
           {iceTimeMinutes != null && (
             <span
               className={`ice-time-badge shrink-0 ${compact ? 'ice-time-badge-compact' : ''}`}
@@ -95,10 +95,10 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact =
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onRemove(); }}
-            className="text-red-400/40 hover:text-red-300 shrink-0 transition-colors p-0.5"
+            className={`text-red-400/40 hover:text-red-300 shrink-0 transition-colors ${compact ? 'p-0 leading-none' : 'p-0.5'}`}
             title="Ta bort från slot"
           >
-            <X className={compact ? 'w-2.5 h-2.5' : 'w-3 h-3'} />
+            <X className={compact ? 'w-2 h-2' : 'w-3 h-3'} />
           </button>
         </div>
       )}
