@@ -628,10 +628,17 @@ export function TeamColorIndicator({ teamColor, compact }: { teamColor: TeamColo
 }
 
 // Drag overlay card
-export function PlayerCardOverlay({ player }: { player: Player }) {
+export function PlayerCardOverlay({ player, isRemoving = false }: { player: Player; isRemoving?: boolean }) {
   const { colors: fc } = useForwardColor();
   return (
-    <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm bg-[#0d1424]/95 border border-emerald-400/60 shadow-2xl shadow-emerald-500/20 ring-2 ring-emerald-400/40 cursor-grabbing select-none backdrop-blur-xl" style={{ minWidth: 160, maxWidth: 240 }}>
+    <div
+      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm cursor-grabbing select-none backdrop-blur-xl transition-all duration-200 ${
+        isRemoving
+          ? 'bg-red-950/90 border border-red-400/60 shadow-2xl shadow-red-500/30 ring-2 ring-red-400/50'
+          : 'bg-[#0d1424]/95 border border-emerald-400/60 shadow-2xl shadow-emerald-500/20 ring-2 ring-emerald-400/40'
+      }`}
+      style={{ minWidth: 160, maxWidth: 240 }}
+    >
       <TeamColorIndicator teamColor={player.teamColor ?? null} />
       {player.captainRole && (
         <span className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 border ${
