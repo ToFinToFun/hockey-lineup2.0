@@ -82,15 +82,27 @@ function GroupCard({
 
 /* ── Spacer that mimics a defense pair (2 slots) or forward line (3 slots) ── */
 function SectionSpacer({ slotCount, compact, hasGroupLabel = true }: { slotCount: number; compact?: boolean; hasGroupLabel?: boolean }) {
-  // Each slot has min-h of 28px (compact) or 34px (normal), plus spacing
-  const slotH = compact ? 28 : 34;
-  const gap = compact ? 2 : 4; // space-y-0.5 = 2px, space-y-1 = 4px
-  const groupMb = hasGroupLabel ? (compact ? 6 : 8) : 0; // mb-1.5 = 6px, mb-2 = 8px
-  const labelH = hasGroupLabel ? (compact ? 12 : 16) : 0; // group label height
-  const labelMb = hasGroupLabel ? (compact ? 2 : 4) : 0; // mb-0.5 = 2px, mb-1 = 4px
-  // Total height: labelH + labelMb + (slotCount * slotH) + ((slotCount-1) * gap) + groupMb
-  const totalH = labelH + labelMb + (slotCount * slotH) + ((slotCount - 1) * gap) + groupMb;
-  return <div style={{ height: `${totalH}px` }} />;
+  // Render invisible real slots so height matches exactly regardless of content wrapping
+  return (
+    <div className={compact ? 'mb-1.5' : 'mb-2'} aria-hidden>
+      {hasGroupLabel && (
+        <div className={`${compact ? 'text-[7px] mb-0.5 px-0.5' : 'text-[9px] mb-1 px-1'} font-bold uppercase tracking-wider invisible`}>
+          &nbsp;
+        </div>
+      )}
+      <div className={compact ? 'space-y-0.5' : 'space-y-1'}>
+        {Array.from({ length: slotCount }).map((_, i) => (
+          <div
+            key={i}
+            className={`flex items-stretch ${compact ? 'min-h-[28px]' : 'min-h-[34px]'} player-row rounded-md invisible`}
+          >
+            <span className={`slot-badge ${compact ? 'slot-badge-compact' : ''}`}>&nbsp;</span>
+            <span className="flex-1" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 /* ── +/- buttons ── */
