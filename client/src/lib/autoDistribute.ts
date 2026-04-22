@@ -288,18 +288,25 @@ export function autoDistribute(
 
     const result = calculateDistributions(count, 60);
     if (result.best) {
+      // result.best.forwards = only wings (2 ice slots)
+      // result.best.centers = centers (1 ice slot)
+      // forwardLines must accommodate BOTH centers and wings
+      // Each forward line has 3 slots: 1 center + 2 wings
+      const totalForwardLinePlayers = result.best.centers + result.best.forwards;
       return {
         goalkeepers: Math.min(gkCount, 1),
         defensePairs: Math.max(1, Math.ceil(result.best.backs / 2)),
-        forwardLines: Math.max(1, Math.ceil(result.best.forwards / 3)),
+        forwardLines: Math.max(1, Math.ceil(totalForwardLinePlayers / 3)),
       };
     }
 
-    // Fallback
+    // Fallback: use 40% for defense, 60% for forwards
+    const defCount = Math.round(count * 0.4);
+    const fwdCount = count - defCount;
     return {
       goalkeepers: Math.min(gkCount, 1),
-      defensePairs: Math.max(1, Math.ceil(count * 0.4 / 2)),
-      forwardLines: Math.max(1, Math.ceil(count * 0.4 / 3)),
+      defensePairs: Math.max(1, Math.ceil(defCount / 2)),
+      forwardLines: Math.max(1, Math.ceil(fwdCount / 3)),
     };
   }
 
