@@ -1493,23 +1493,6 @@ export default function Home() {
                     <Dices className="w-3.5 h-3.5" />
                   </button>
 
-                  {/* Match time compact */}
-                  <div className={`flex items-center gap-0 px-1 py-0.5 rounded-full text-[9px] font-bold ${isLineupDark ? 'border border-white/15 text-white/50' : 'border border-gray-300 text-gray-500'}`}>
-                    <input
-                      type="number"
-                      min={10}
-                      max={120}
-                      value={matchTime}
-                      onChange={(e) => {
-                        const v = parseInt(e.target.value, 10);
-                        if (!isNaN(v) && v >= 1 && v <= 999) setMatchTime(v);
-                      }}
-                      className={`w-[24px] text-center bg-transparent outline-none font-bold tabular-nums text-[9px] ${isLineupDark ? 'text-white/70' : 'text-gray-700'}`}
-                      title="Matchtid"
-                    />
-                    <span className="text-[7px] text-white/25">m</span>
-                  </div>
-
                   {/* Overflow menu trigger */}
                   <div className="relative">
                     <button
@@ -1536,6 +1519,51 @@ export default function Home() {
                             ? 'bg-[#1a2744] border-white/10'
                             : 'bg-white border-gray-200'
                         }`}>
+                          {/* Hämta anmälningar från laget.se */}
+                          <button
+                            onClick={() => {
+                              handleBulkRegister(true).then((result) => {
+                                if (result.eventTitle) {
+                                  setEventInfo({ title: result.eventTitle, date: result.eventDate || "" });
+                                }
+                              });
+                              setShowHeaderMenu(false);
+                            }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
+                              isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            <CalendarDays className="w-4 h-4" />
+                            <span>Hämta anmälningar</span>
+                          </button>
+
+                          {/* Matchtid */}
+                          <div className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] ${
+                            isLineupDark ? 'text-white/60' : 'text-gray-600'
+                          }`}>
+                            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            <span>Matchtid</span>
+                            <div className="ml-auto flex items-center gap-0.5">
+                              <input
+                                type="number"
+                                min={10}
+                                max={120}
+                                value={matchTime}
+                                onChange={(e) => {
+                                  const v = parseInt(e.target.value, 10);
+                                  if (!isNaN(v) && v >= 1 && v <= 999) setMatchTime(v);
+                                }}
+                                className={`w-[36px] text-center bg-transparent outline-none font-bold tabular-nums text-[11px] rounded border ${
+                                  isLineupDark ? 'text-white/70 border-white/15' : 'text-gray-700 border-gray-300'
+                                }`}
+                              />
+                              <span className={`text-[9px] ${isLineupDark ? 'text-white/30' : 'text-gray-400'}`}>min</span>
+                            </div>
+                          </div>
+
+                          {/* Separator */}
+                          <div className={`my-1 border-t ${isLineupDark ? 'border-white/5' : 'border-gray-100'}`} />
+
                           {/* Sidoläge */}
                           <button
                             onClick={() => { toggleSideLayout(); setShowHeaderMenu(false); }}
