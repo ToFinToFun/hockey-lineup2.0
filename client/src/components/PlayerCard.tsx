@@ -157,12 +157,6 @@ export function DraggablePlayerCard({
       {compact ? (
         /* ---- COMPACT: single row with flex-wrap fallback to two rows ---- */
         <>
-          {!hideExtras && player.isRegistered && (
-            <span className="text-emerald-400 text-[8px] shrink-0" title="Anmäld">✓</span>
-          )}
-          {!hideExtras && player.isDeclined && !player.isRegistered && (
-            <span className="text-red-400 text-[8px] shrink-0" title="Avböjd">✗</span>
-          )}
           <span className="text-white font-medium leading-tight text-[11px] min-w-0 truncate">
             {player.name}
             {player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
@@ -201,6 +195,12 @@ export function DraggablePlayerCard({
           className="flex items-center gap-1 shrink-0 ml-auto hover:ring-1 hover:ring-emerald-400/40 rounded px-0.5 py-0.5 transition-all cursor-pointer"
           title="Klicka för att redigera spelare"
         >
+          {!hideExtras && player.isRegistered && (
+            <span className="text-emerald-400 text-[8px] shrink-0" title="Anmäld">✓</span>
+          )}
+          {!hideExtras && player.isDeclined && !player.isRegistered && (
+            <span className="text-red-400 text-[8px] shrink-0" title="Avböjd">✗</span>
+          )}
           {player.captainRole && (
             <span className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 ${
               player.captainRole === "C"
@@ -223,6 +223,12 @@ export function DraggablePlayerCard({
         </button>
       ) : compact && !hideExtras ? (
         <div className="flex items-center gap-1 shrink-0 ml-auto">
+          {player.isRegistered && (
+            <span className="text-emerald-400 text-[8px] shrink-0" title="Anmäld">✓</span>
+          )}
+          {player.isDeclined && !player.isRegistered && (
+            <span className="text-red-400 text-[8px] shrink-0" title="Avböjd">✗</span>
+          )}
           {player.captainRole && (
             <span className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 ${
               player.captainRole === "C"
