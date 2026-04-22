@@ -124,7 +124,7 @@ export function DraggablePlayerCard({
         group relative rounded-md w-full
         player-row
         transition-all duration-150 select-none
-        ${compact ? "flex flex-wrap items-center gap-x-1 gap-y-0 px-0.5 py-0.5 text-xs" : "flex items-center gap-1.5 px-1 py-1 text-sm"}
+        ${compact ? "flex items-center gap-x-1 px-0.5 py-0.5 text-xs overflow-hidden" : "flex items-center gap-1.5 px-1 py-1 text-sm"}
         ${isDragging ? "shadow-2xl ring-2 ring-emerald-400/60" : ""}
         ${isHolding ? "ring-1 ring-red-400/60" : ""}
       `}
