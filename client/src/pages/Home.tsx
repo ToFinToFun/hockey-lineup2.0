@@ -19,6 +19,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
   type DragMoveEvent,
+  type DragOverEvent,
   type CollisionDetection,
 } from "@dnd-kit/core";
 import { initialPlayers, type Player, type Position, type TeamColor, type CaptainRole } from "@/lib/players";
@@ -186,6 +187,7 @@ export default function Home() {
   }, [TEAM_A_SLOTS, TEAM_B_SLOTS]);
 
   const [activePlayer, setActivePlayer] = useState<Player | null>(null);
+  const [isDragOutside, setIsDragOutside] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [demoCount, setDemoCount] = useState(16);
@@ -699,6 +701,7 @@ export default function Home() {
 
   const handleDragEnd = (event: DragEndEvent) => {
     setActivePlayer(null);
+    setIsDragOutside(false);
     document.body.classList.remove("dnd-scroll-lock");
     const { active, over } = event;
     const playerId = active.id as string;
@@ -1397,7 +1400,19 @@ export default function Home() {
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
       autoScroll={{ enabled: true, threshold: { x: 0.15, y: 0.15 } }}
       onDragStart={handleDragStart}
-      onDragMove={handleDragMove}
+      onDragMove={(e) => {
+        handleDragMove(e);
+        // Track if dragging from a slot and currently not over any valid target
+        const playerId = e.active.id as string;
+        const sourceSlot = findPlayerSlot(playerId);
+        if (sourceSlot) {
+          // Check collision: is the pointer over any droppable?
+          const overAny = e.over;
+          setIsDragOutside(!overAny);
+        } else {
+          setIsDragOutside(false);
+        }
+      }}
       onDragEnd={(e) => {
         // Rensa flik-hover-timer vid drag-slut
         if (tabHoverTimerRef.current) {
@@ -1998,7 +2013,7 @@ export default function Home() {
 
         {/* Drag overlay – inuti DndContext, position:fixed så den alltid syns över allt */}
         <DragOverlay style={{ zIndex: 99999, pointerEvents: "none" }} modifiers={[snapCenterToCursor]}>
-          {activePlayer ? <PlayerCardOverlay player={activePlayer} /> : null}
+          {activePlayer ? <PlayerCardOverlay player={activePlayer} isRemoving={isDragOutside} /> : null}
         </DragOverlay>
       </div>
 
