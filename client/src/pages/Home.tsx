@@ -35,7 +35,7 @@ import { MobileRosterDrawer } from "@/components/MobileRosterDrawer";
 import { LongPressTooltip } from "@/components/LongPressTooltip";
 import { trpc } from "@/lib/trpc";
 import type { Player as PlayerType } from "@/lib/players";
-import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Settings, Sun, Moon, Home as HomeIcon, Users, HelpCircle, FlaskConical } from "lucide-react";
+import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Settings, Sun, Moon, Home as HomeIcon, Users, HelpCircle, FlaskConical, MoreVertical, X as XIcon } from "lucide-react";
 import { useLineupTheme } from "@/hooks/useLineupTheme";
 import { useForwardColor } from "@/hooks/useForwardColor";
 import { Link } from "wouter";
@@ -190,6 +190,7 @@ export default function Home() {
   const [isDragOutside, setIsDragOutside] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [demoCount, setDemoCount] = useState(16);
   const [demoActive, setDemoActive] = useState(false);
   const [sseConnected, setSseConnected] = useState<boolean | null>(null);
@@ -1435,36 +1436,232 @@ export default function Home() {
         >
           {/* Header – compact toolbar matching mockup exactly */}
           <header className="shrink-0">
-            <div className="glass-header px-3 py-2">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 max-w-[1400px] mx-auto">
+            <div className="glass-header px-3 py-1.5 sm:py-2">
+              <div className="flex items-center gap-2 sm:gap-x-3 sm:gap-y-1.5 sm:flex-wrap max-w-[1400px] mx-auto">
               {/* Left: Logo + title + event info */}
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-0">
                 <Link href="/">
-                  <img src="/images/logo-green.png" alt="Stålstadens" className="w-7 h-7 object-contain" />
+                  <img src="/images/logo-green.png" alt="Stålstadens" className="w-6 h-6 sm:w-7 sm:h-7 object-contain shrink-0" />
                 </Link>
-                <div className="leading-tight">
+                <div className="leading-tight min-w-0">
                   <h1
-                    className={`text-sm font-black tracking-widest uppercase ${isLineupDark ? 'text-white' : 'text-gray-900'}`}
+                    className={`text-xs sm:text-sm font-black tracking-widest uppercase truncate ${isLineupDark ? 'text-white' : 'text-gray-900'}`}
                     style={{ fontFamily: "'Oswald', sans-serif" }}
                   >
-                    Stålstadens SF
+                    {isMobile ? 'SSF' : 'Stålstadens SF'}
                   </h1>
                   {eventInfo ? (
-                    <p className={`flex items-center gap-1 text-[9px] font-medium ${isLineupDark ? 'text-sky-300/70' : 'text-sky-600'}`}>
-                      <CalendarDays className="w-2.5 h-2.5" />
-                      {eventInfo.title}{eventInfo.date ? ` · ${eventInfo.date}` : ""}
-                      {lastSyncTime && (
-                        <span className={`ml-1 ${isLineupDark ? 'text-white/25' : 'text-gray-400'}`}>· {lastSyncTime}</span>
-                      )}
+                    <p className={`flex items-center gap-1 text-[8px] sm:text-[9px] font-medium truncate ${isLineupDark ? 'text-sky-300/70' : 'text-sky-600'}`}>
+                      <CalendarDays className="w-2.5 h-2.5 shrink-0" />
+                      <span className="truncate">{eventInfo.title}{eventInfo.date ? ` · ${eventInfo.date}` : ""}</span>
                     </p>
                   ) : (
-                    <p className={`text-[9px] ${isLineupDark ? 'text-white/30' : 'text-gray-400'}`}>Formations-verktyg</p>
+                    <p className={`text-[8px] sm:text-[9px] ${isLineupDark ? 'text-white/30' : 'text-gray-400'}`}>Formations-verktyg</p>
                   )}
                 </div>
               </div>
 
-              {/* Toolbar buttons – centered, wraps to second row on mobile */}
-              <div className="flex items-center gap-1.5 flex-1 justify-center flex-wrap order-last sm:order-none w-full sm:w-auto">
+              {/* ── MOBILE TOOLBAR (single compact row) ── */}
+              {isMobile ? (
+                <div className="flex items-center gap-1 flex-1 justify-end">
+                  {/* SSE sync dot */}
+                  <div className="flex items-center mr-0.5">
+                    {sseConnected === null ? (
+                      <span className="text-[8px] text-white/30">...</span>
+                    ) : sseConnected ? (
+                      <Wifi className="w-3 h-3 text-emerald-400/60" />
+                    ) : (
+                      <WifiOff className="w-3 h-3 text-red-400" />
+                    )}
+                  </div>
+
+                  {/* AUTO icon-only */}
+                  <button
+                    onClick={() => setConfirmAutoDistribute(true)}
+                    title="Auto"
+                    className="p-1 rounded-full bg-emerald-500 text-white hover:bg-emerald-400"
+                  >
+                    <Shuffle className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* SLUMPA icon-only */}
+                  <button
+                    onClick={() => handleAutoDistribute(true)}
+                    title="Slumpa"
+                    className="p-1 rounded-full bg-amber-500 text-white hover:bg-amber-400"
+                  >
+                    <Dices className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* Match time compact */}
+                  <div className={`flex items-center gap-0 px-1 py-0.5 rounded-full text-[9px] font-bold ${isLineupDark ? 'border border-white/15 text-white/50' : 'border border-gray-300 text-gray-500'}`}>
+                    <input
+                      type="number"
+                      min={10}
+                      max={120}
+                      value={matchTime}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        if (!isNaN(v) && v >= 1 && v <= 999) setMatchTime(v);
+                      }}
+                      className={`w-[24px] text-center bg-transparent outline-none font-bold tabular-nums text-[9px] ${isLineupDark ? 'text-white/70' : 'text-gray-700'}`}
+                      title="Matchtid"
+                    />
+                    <span className="text-[7px] text-white/25">m</span>
+                  </div>
+
+                  {/* Undo */}
+                  <button
+                    onClick={handleUndo}
+                    disabled={undoStack.length === 0}
+                    title="Ångra"
+                    className={`p-1 rounded transition-all ${
+                      undoStack.length > 0
+                        ? 'text-white/50 hover:text-white hover:bg-white/10'
+                        : 'text-white/15 cursor-not-allowed'
+                    }`}
+                  >
+                    <Undo2 className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* Overflow menu trigger */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowHeaderMenu((v) => !v)}
+                      title="Fler alternativ"
+                      className={`p-1 rounded transition-all ${
+                        showHeaderMenu
+                          ? 'text-white bg-white/15'
+                          : isLineupDark
+                            ? 'text-white/40 hover:text-white/70 hover:bg-white/8'
+                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+
+                    {/* Dropdown menu */}
+                    {showHeaderMenu && (
+                      <>
+                        {/* Backdrop */}
+                        <div className="fixed inset-0 z-40" onClick={() => setShowHeaderMenu(false)} />
+                        <div className={`absolute right-0 top-full mt-1 z-50 rounded-lg shadow-xl border min-w-[180px] py-1 ${
+                          isLineupDark
+                            ? 'bg-[#1a2744] border-white/10'
+                            : 'bg-white border-gray-200'
+                        }`}>
+                          {/* Sidoläge */}
+                          <button
+                            onClick={() => { toggleSideLayout(); setShowHeaderMenu(false); }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
+                              sideLayout
+                                ? 'text-violet-300 bg-violet-500/10'
+                                : isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            {sideLayout ? <Columns3 className="w-4 h-4" /> : <PanelLeft className="w-4 h-4" />}
+                            <span>{sideLayout ? 'Standard-layout' : 'Sidoläge'}</span>
+                          </button>
+
+                          {/* Dela */}
+                          <button
+                            onClick={() => { handleShare(); setShowHeaderMenu(false); }}
+                            disabled={shareState === 'saving'}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
+                              shareState === 'copied'
+                                ? 'text-emerald-300'
+                                : isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            {shareState === 'copied' ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+                            <span>{shareState === 'copied' ? 'Kopierad!' : 'Dela länk'}</span>
+                          </button>
+
+                          {/* Separator */}
+                          <div className={`my-1 border-t ${isLineupDark ? 'border-white/5' : 'border-gray-100'}`} />
+
+                          {/* Stats */}
+                          <button
+                            onClick={() => { setShowStats((v) => !v); setShowHeaderMenu(false); }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
+                              showStats
+                                ? 'text-sky-300 bg-sky-500/10'
+                                : isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            <BarChart3 className="w-4 h-4" />
+                            <span>Statistik</span>
+                          </button>
+
+                          {/* Theme */}
+                          <button
+                            onClick={() => { toggleLineupTheme(); setShowHeaderMenu(false); }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
+                              isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            {isLineupDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                            <span>{isLineupDark ? 'Ljust tema' : 'Mörkt tema'}</span>
+                          </button>
+
+                          {/* Export */}
+                          <button
+                            onClick={() => { setShowExport(true); setShowHeaderMenu(false); }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
+                              isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            <Download className="w-4 h-4" />
+                            <span>Exportera</span>
+                          </button>
+
+                          {/* Separator */}
+                          <div className={`my-1 border-t ${isLineupDark ? 'border-white/5' : 'border-gray-100'}`} />
+
+                          {/* Demo */}
+                          <button
+                            onClick={() => { handleDemo(); setShowHeaderMenu(false); }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
+                              demoActive
+                                ? 'text-amber-300 bg-amber-500/10'
+                                : isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            <FlaskConical className="w-4 h-4" />
+                            <span>{demoActive ? 'Avsluta demo' : `Demo (${demoCount} spelare)`}</span>
+                          </button>
+
+                          {/* Settings */}
+                          <button
+                            onClick={() => { setShowSettings(true); setShowHeaderMenu(false); }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
+                              isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            <Settings className="w-4 h-4" />
+                            <span>Inställningar</span>
+                          </button>
+
+                          {/* Hem */}
+                          <a
+                            href="https://app.stalstadens.se"
+                            onClick={() => setShowHeaderMenu(false)}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
+                              isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            <HomeIcon className="w-4 h-4" />
+                            <span>Hem</span>
+                          </a>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* ── DESKTOP TOOLBAR (full layout, unchanged) ── */
+                <>
+              <div className="flex items-center gap-1.5 flex-1 justify-center flex-wrap">
                 {/* Home link */}
                 <LongPressTooltip label="Hem">
                 <a
@@ -1512,7 +1709,7 @@ export default function Home() {
                 {/* Divider */}
                 <div className={`w-px h-5 ${isLineupDark ? 'bg-white/10' : 'bg-gray-300'} mx-0.5`} />
 
-                {/* SIDOLÄGE button - outlined like mockup */}
+                {/* SIDOLÄGE button */}
                 <LongPressTooltip label={sideLayout ? "Standard" : "Sidoläge"}>
                 <button
                   onClick={toggleSideLayout}
@@ -1532,7 +1729,7 @@ export default function Home() {
                 </button>
                 </LongPressTooltip>
 
-                {/* AUTO green pill button - solid bg like mockup */}
+                {/* AUTO green pill button */}
                 <LongPressTooltip label="Autofördela">
                 <button
                   onClick={() => setConfirmAutoDistribute(true)}
@@ -1544,7 +1741,7 @@ export default function Home() {
                 </button>
                 </LongPressTooltip>
 
-                {/* SLUMPA yellow/amber pill button - solid bg like mockup */}
+                {/* SLUMPA yellow/amber pill button */}
                 <LongPressTooltip label="Slumpa">
                 <button
                   onClick={() => handleAutoDistribute(true)}
@@ -1575,7 +1772,7 @@ export default function Home() {
                 </div>
                 </LongPressTooltip>
 
-                {/* DELA button - outlined style like mockup */}
+                {/* DELA button */}
                 <LongPressTooltip label="Dela länk">
                 <button
                   onClick={handleShare}
@@ -1648,7 +1845,7 @@ export default function Home() {
               </div>
 
               {/* Right: Demo + Settings icons */}
-              <div className="flex items-center gap-0.5 shrink-0 ml-auto sm:ml-0">
+              <div className="flex items-center gap-0.5 shrink-0">
                 {/* Demo button */}
                 <div className="flex items-center gap-0">
                   <LongPressTooltip label="Demo">
@@ -1668,7 +1865,6 @@ export default function Home() {
                     <FlaskConical className="w-4 h-4" />
                   </button>
                   </LongPressTooltip>
-                  {/* Demo count input — only visible when NOT active */}
                   {!demoActive && (
                     <input
                       type="number"
@@ -1702,6 +1898,8 @@ export default function Home() {
                 </button>
                 </LongPressTooltip>
               </div>
+                </>
+              )}
               </div>
             </div>
           </header>
