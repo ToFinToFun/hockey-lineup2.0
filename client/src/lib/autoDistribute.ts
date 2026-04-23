@@ -84,9 +84,10 @@ interface TaggedPlayer {
 export function autoDistribute(
   allPlayers: Player[],
   _existingLineup: Record<string, Player>,
-  options?: { shuffle?: boolean },
+  options?: { shuffle?: boolean; useForBalance?: boolean },
 ): DistributeResult {
   const doShuffle = options?.shuffle ?? false;
+  const usePirForBalance = options?.useForBalance ?? true;
 
   // ── Step 1: Collect registered players ──
   const playersInLineup = new Set(Object.values(_existingLineup).map(p => p.id));
@@ -235,7 +236,7 @@ export function autoDistribute(
     team.reduce((sum, t) => sum + (t.player.pir ?? 1000), 0);
 
   // Check if any neutral has PIR data — if so, use PIR-balanced distribution
-  const hasPirData = neutralsToDistribute.some(t => t.player.pir != null);
+  const hasPirData = usePirForBalance && neutralsToDistribute.some(t => t.player.pir != null);
 
   if (hasPirData) {
     // Sort neutrals by PIR descending (strongest first) for greedy balancing

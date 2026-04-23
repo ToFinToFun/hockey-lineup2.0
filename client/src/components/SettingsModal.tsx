@@ -1,20 +1,21 @@
 /**
- * SettingsModal – Dold inställningssida för att konfigurera laget.se-inloggning
- * och admin-funktioner som PIR (Player Impact Rating).
+ * SettingsModal – Inställningssida för att konfigurera laget.se-inloggning
+ * och admin-funktioner som PIR (Player Impact Rating) med granulära toggles.
  * Öppnas via kugghjulsikon i headern.
  */
 import React, { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
-import { X, Settings, Eye, EyeOff, CheckCircle2, XCircle, Loader2, TrendingUp, Lock } from "lucide-react";
+import type { PirSettings } from "@/hooks/usePirEnabled";
+import { X, Settings, Eye, EyeOff, CheckCircle2, XCircle, Loader2, TrendingUp, Lock, BarChart3, ArrowUpDown, Target, Scale } from "lucide-react";
 
 interface SettingsModalProps {
   open: boolean;
   onClose: () => void;
-  pirEnabled?: boolean;
-  onPirEnabledChange?: (enabled: boolean) => void;
+  pirSettings: PirSettings;
+  onPirSettingsChange: (settings: PirSettings) => void;
 }
 
-export function SettingsModal({ open, onClose, pirEnabled = false, onPirEnabledChange }: SettingsModalProps) {
+export function SettingsModal({ open, onClose, pirSettings, onPirSettingsChange }: SettingsModalProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -31,6 +32,7 @@ export function SettingsModal({ open, onClose, pirEnabled = false, onPirEnabledC
 
   // PIR admin state
   const [pirPassword, setPirPassword] = useState("");
+  const [pirUnlocked, setPirUnlocked] = useState(false);
   const [pirSaving, setPirSaving] = useState(false);
   const [pirResult, setPirResult] = useState<{
     success: boolean;
@@ -60,6 +62,7 @@ export function SettingsModal({ open, onClose, pirEnabled = false, onPirEnabledC
       setTestResult(null);
       setSaveResult(null);
       setPirPassword("");
+      setPirUnlocked(false);
       setPirResult(null);
     }
   }, [open]);
@@ -106,27 +109,35 @@ export function SettingsModal({ open, onClose, pirEnabled = false, onPirEnabledC
     }
   };
 
-  const handleTogglePir = async () => {
+  const handleUnlockPir = async () => {
     if (!pirPassword.trim()) return;
+    if (pirPassword.trim() === "Styrelsen") {
+      setPirUnlocked(true);
+      setPirResult(null);
+    } else {
+      setPirResult({ success: false, message: "Fel lösenord" });
+    }
+  };
+
+  const handlePirToggle = async (key: keyof PirSettings, value: boolean) => {
     setPirSaving(true);
     setPirResult(null);
     try {
-      const res = await fetch("/api/trpc/settings.setPirEnabled", {
+      const res = await fetch("/api/trpc/settings.setPirSettings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ json: { enabled: !pirEnabled, password: pirPassword.trim() } }),
+        body: JSON.stringify({ json: { password: pirPassword.trim(), [key]: value } }),
       });
       const json = await res.json();
       const data = json?.result?.data;
       const result = data?.json ?? data;
       if (result?.success) {
-        const newVal = !pirEnabled;
-        onPirEnabledChange?.(newVal);
-        setPirResult({ success: true, message: newVal ? "PIR aktiverat! Rating visas nu på spelarkorten." : "PIR avaktiverat." });
-        setPirPassword("");
+        const newSettings = { ...pirSettings, [key]: value };
+        onPirSettingsChange(newSettings);
+        setPirResult({ success: true, message: "Inställningen sparad!" });
       } else {
-        setPirResult({ success: false, message: result?.error || "Kunde inte ändra inställningen" });
+        setPirResult({ success: false, message: result?.error || "Kunde inte spara" });
       }
     } catch (err: any) {
       setPirResult({ success: false, message: err.message || "Okänt fel" });
@@ -136,6 +147,51 @@ export function SettingsModal({ open, onClose, pirEnabled = false, onPirEnabledC
   };
 
   if (!open) return null;
+
+  const pirToggles: { key: keyof PirSettings; label: string; description: string; icon: React.ReactNode; color: string }[] = [
+    {
+      key: "enabled",
+      label: "PIR aktiverat",
+      description: "Master-toggle. Beräknar alltid i bakgrunden men styr om data visas.",
+      icon: <TrendingUp className="w-3.5 h-3.5" />,
+      color: "amber",
+    },
+    {
+      key: "showRating",
+      label: "Visa PIR-siffra",
+      description: "Visar spelarens rating-siffra på spelarkorten.",
+      icon: <BarChart3 className="w-3.5 h-3.5" />,
+      color: "sky",
+    },
+    {
+      key: "showTrend",
+      label: "Visa trend-pil",
+      description: "Visar om spelaren är i stigande eller fallande form.",
+      icon: <ArrowUpDown className="w-3.5 h-3.5" />,
+      color: "emerald",
+    },
+    {
+      key: "showTeamStrength",
+      label: "Visa lagstyrka",
+      description: "Visar total PIR-summa och snitt i lagheadern.",
+      icon: <Target className="w-3.5 h-3.5" />,
+      color: "purple",
+    },
+    {
+      key: "showPrediction",
+      label: "Visa matchprediktion",
+      description: "Visar förväntad vinstprocent baserat på lagstyrka.",
+      icon: <Scale className="w-3.5 h-3.5" />,
+      color: "rose",
+    },
+    {
+      key: "useForBalance",
+      label: "Använd för lagbalansering",
+      description: "Auto-fördelning använder PIR för att skapa jämna lag.",
+      icon: <Scale className="w-3.5 h-3.5" />,
+      color: "teal",
+    },
+  ];
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
@@ -297,72 +353,102 @@ export function SettingsModal({ open, onClose, pirEnabled = false, onPirEnabledC
             </div>
             <p className="text-[11px] text-white/40 mb-3">
               Elo-baserat ratingsystem som mäter spelarnas bidrag till lagets vinster.
-              Justeras för lagstyrka och motståndarstyrka. Kräver lösenord för att aktivera/avaktivera.
+              Justeras för lagstyrka, motståndarstyrka, tidsviktning och form.
+              Kräver admin-lösenord för att ändra inställningar.
             </p>
 
-            {/* Current status */}
-            <div className={`flex items-center gap-2 text-xs mb-3 px-3 py-2 rounded-lg ${
-              pirEnabled
-                ? "bg-amber-500/10 border border-amber-500/20 text-amber-400"
-                : "bg-white/5 border border-white/10 text-white/40"
-            }`}>
-              {pirEnabled ? (
-                <>
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  <span>PIR är <strong>aktiverat</strong> — rating visas på spelarkorten</span>
-                </>
-              ) : (
-                <>
+            {!pirUnlocked ? (
+              <>
+                {/* Lock screen */}
+                <div className="flex items-center gap-2 text-xs mb-3 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white/40">
                   <Lock className="w-3.5 h-3.5" />
-                  <span>PIR är <strong>avaktiverat</strong> — rating dold</span>
-                </>
-              )}
-            </div>
+                  <span>Ange admin-lösenord för att visa och ändra PIR-inställningar</span>
+                </div>
 
-            {/* Admin password */}
-            <div className="space-y-1.5 mb-3">
-              <label className="text-[11px] text-white/50 font-medium uppercase tracking-wider">
-                Admin-lösenord
-              </label>
-              <input
-                type="password"
-                value={pirPassword}
-                onChange={(e) => setPirPassword(e.target.value)}
-                placeholder="Ange lösenord för att ändra"
-                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-amber-400/50 focus:ring-1 focus:ring-amber-400/20 transition-colors"
-                onKeyDown={(e) => { if (e.key === "Enter" && pirPassword.trim()) handleTogglePir(); }}
-              />
-            </div>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={pirPassword}
+                    onChange={(e) => setPirPassword(e.target.value)}
+                    placeholder="Admin-lösenord"
+                    className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-amber-400/50 focus:ring-1 focus:ring-amber-400/20 transition-colors"
+                    onKeyDown={(e) => { if (e.key === "Enter") handleUnlockPir(); }}
+                  />
+                  <button
+                    onClick={handleUnlockPir}
+                    disabled={!pirPassword.trim()}
+                    className="px-4 py-2 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-300 text-sm font-bold hover:bg-amber-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  >
+                    Lås upp
+                  </button>
+                </div>
 
-            {/* Toggle button */}
-            <button
-              onClick={handleTogglePir}
-              disabled={pirSaving || !pirPassword.trim()}
-              className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-                pirEnabled
-                  ? "bg-red-500/20 border border-red-400/40 text-red-300 hover:bg-red-500/30"
-                  : "bg-amber-500/20 border border-amber-400/40 text-amber-300 hover:bg-amber-500/30"
-              }`}
-            >
-              {pirSaving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : pirEnabled ? (
-                "Avaktivera PIR"
-              ) : (
-                "Aktivera PIR"
-              )}
-            </button>
+                {pirResult && !pirResult.success && (
+                  <div className="mt-3 flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
+                    <XCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{pirResult.message}</span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {/* Unlocked — show granular toggles */}
+                <div className="space-y-2">
+                  {pirToggles.map((toggle) => {
+                    const isOn = pirSettings[toggle.key];
+                    const isDisabled = pirSaving || (toggle.key !== "enabled" && toggle.key !== "useForBalance" && !pirSettings.enabled);
+                    return (
+                      <div
+                        key={toggle.key}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all ${
+                          isOn
+                            ? `bg-${toggle.color}-500/10 border-${toggle.color}-500/20`
+                            : "bg-white/3 border-white/8"
+                        } ${isDisabled && toggle.key !== "enabled" && toggle.key !== "useForBalance" ? "opacity-40" : ""}`}
+                      >
+                        <div className={`shrink-0 ${isOn ? `text-${toggle.color}-400` : "text-white/30"}`}>
+                          {toggle.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold text-white/90">{toggle.label}</div>
+                          <div className="text-[10px] text-white/40 leading-tight">{toggle.description}</div>
+                        </div>
+                        <button
+                          onClick={() => handlePirToggle(toggle.key, !isOn)}
+                          disabled={isDisabled && toggle.key !== "enabled" && toggle.key !== "useForBalance"}
+                          className={`shrink-0 w-10 h-5 rounded-full relative transition-all duration-200 ${
+                            isOn
+                              ? "bg-emerald-500/60"
+                              : "bg-white/10"
+                          } ${isDisabled && toggle.key !== "enabled" && toggle.key !== "useForBalance" ? "cursor-not-allowed" : "cursor-pointer hover:opacity-80"}`}
+                        >
+                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all duration-200 ${
+                            isOn ? "left-5.5" : "left-0.5"
+                          }`} style={{ left: isOn ? "22px" : "2px" }} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
 
-            {/* PIR result */}
-            {pirResult && (
-              <div className={`mt-3 flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${
-                pirResult.success
-                  ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
-                  : "bg-red-500/10 border border-red-500/20 text-red-400"
-              }`}>
-                {pirResult.success ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <XCircle className="w-3.5 h-3.5 shrink-0" />}
-                <span>{pirResult.message}</span>
-              </div>
+                {/* Note about balance */}
+                <p className="text-[10px] text-white/30 mt-2 italic">
+                  "Använd för lagbalansering" fungerar oberoende av om PIR-data visas.
+                  Övriga visnings-toggles kräver att "PIR aktiverat" är på.
+                </p>
+
+                {/* Result feedback */}
+                {pirResult && (
+                  <div className={`mt-3 flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${
+                    pirResult.success
+                      ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
+                      : "bg-red-500/10 border border-red-500/20 text-red-400"
+                  }`}>
+                    {pirResult.success ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <XCircle className="w-3.5 h-3.5 shrink-0" />}
+                    <span>{pirResult.message}</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

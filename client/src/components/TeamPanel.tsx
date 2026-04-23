@@ -6,6 +6,7 @@ import type { Player, Position } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
 import { groupSlots, MAX_TEAM_CONFIG, type TeamConfig } from "@/lib/lineup";
 import { useForwardColor } from "@/hooks/useForwardColor";
+import { usePirSettings } from "@/hooks/usePirEnabled";
 import { calculateSlotIceTimes, generateIceTimeSummary } from "@/lib/iceTimePerSlot";
 
 const LOGO_GREEN = "/images/logo-green.png";
@@ -170,6 +171,16 @@ export function TeamPanel({
   const filledCount = Object.keys(lineup).length;
   const registeredInTeam = Object.values(lineup).filter((p) => p.isRegistered).length;
 
+  // PIR team strength
+  const pirSettings = usePirSettings();
+  const teamPirData = useMemo(() => {
+    const players = Object.values(lineup).filter(p => p.pir != null && (p.pirMatchesPlayed ?? 0) >= 3);
+    if (players.length === 0) return null;
+    const sum = players.reduce((s, p) => s + (p.pir ?? 0), 0);
+    const avg = Math.round(sum / players.length);
+    return { sum: Math.round(sum), avg, count: players.length };
+  }, [lineup]);
+
   // Calculate spacers needed for alignment with the other team
   const defenseSpacers = useMemo(() => {
     if (!otherConfig) return 0;
@@ -244,6 +255,17 @@ export function TeamPanel({
           )}
         </div>
       </div>
+
+      {/* ── Team PIR strength bar ── */}
+      {pirSettings.enabled && pirSettings.showTeamStrength && teamPirData && (
+        <div className="flex items-center justify-center gap-2 px-2 py-1 border-b border-white/[0.04] text-[9px] text-white/30">
+          <span title="Total PIR-summa">\u03A3 {teamPirData.sum}</span>
+          <span className="text-white/10">|</span>
+          <span title="Genomsnittlig PIR">ø {teamPirData.avg}</span>
+          <span className="text-white/10">|</span>
+          <span title="Antal spelare med PIR-data">{teamPirData.count} spelare</span>
+        </div>
+      )}
 
       {/* ── Slots content ── */}
       <div className={compact ? "p-1.5" : "p-2.5"}>

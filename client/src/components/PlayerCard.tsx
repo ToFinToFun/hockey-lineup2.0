@@ -10,7 +10,7 @@ import { getPositionBadgeColor, ALL_POSITIONS } from "@/lib/players";
 import { useState, useRef } from "react";
 import { PortalDropdown } from "./PortalDropdown";
 import { useForwardColor } from "@/hooks/useForwardColor";
-import { usePirEnabled } from "@/hooks/usePirEnabled";
+import { usePirSettings } from "@/hooks/usePirEnabled";
 
 const LOGO_GREEN = "/images/logo-green.png";
 const LOGO_WHITE = "/images/logo-white.png";
@@ -79,7 +79,8 @@ export function DraggablePlayerCard({
     return player.position;
   })();
 
-  const pirEnabled = usePirEnabled();
+  const pirSettings = usePirSettings();
+  const pirEnabled = pirSettings.enabled;
 
   const [showEditPanel, setShowEditPanel] = useState(false);
   const [nameValue, setNameValue] = useState("");
@@ -168,16 +169,32 @@ export function DraggablePlayerCard({
               {player.name}
               {player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
             </span>
-            {pirEnabled && player.pir != null && (
+            {pirEnabled && pirSettings.showRating && player.pir != null && (player.pirMatchesPlayed ?? 0) >= 3 && (
               <span
                 className={`text-[9px] font-bold px-1 py-px rounded shrink-0 border ${
                   player.pir >= 1050 ? 'bg-amber-400/15 text-amber-300 border-amber-400/30'
                   : player.pir >= 1000 ? 'bg-white/5 text-white/50 border-white/15'
                   : 'bg-sky-400/10 text-sky-300/60 border-sky-400/20'
                 }`}
-                title={`PIR: ${player.pir}${player.pirConfidence != null ? ` (konfidens: ${Math.round(player.pirConfidence * 100)}%)` : ''}`}
+                title={`PIR: ${player.pir} | Senaste: ${player.pirRecent ?? '?'} | Matcher: ${player.pirMatchesPlayed ?? '?'}${player.pirConfidence != null ? ` | Konfidens: ${Math.round(player.pirConfidence * 100)}%` : ''}`}
               >
                 {player.pir}
+              </span>
+            )}
+            {pirEnabled && pirSettings.showTrend && player.pirTrendLabel && (player.pirMatchesPlayed ?? 0) >= 3 && player.pirTrendLabel !== 'stable' && (
+              <span
+                className={`text-[9px] shrink-0 ${
+                  player.pirTrendLabel === 'rising' ? 'text-emerald-400'
+                  : player.pirTrendLabel === 'slightly_rising' ? 'text-emerald-400/60'
+                  : player.pirTrendLabel === 'slightly_falling' ? 'text-red-400/60'
+                  : 'text-red-400'
+                }`}
+                title={`Trend: ${player.pirTrend != null ? (player.pirTrend > 0 ? '+' : '') + player.pirTrend : '?'} (senaste matcher vs totalt)`}
+              >
+                {player.pirTrendLabel === 'rising' ? '\u2191'
+                  : player.pirTrendLabel === 'slightly_rising' ? '\u2197'
+                  : player.pirTrendLabel === 'slightly_falling' ? '\u2198'
+                  : '\u2193'}
               </span>
             )}
           </div>
@@ -198,16 +215,32 @@ export function DraggablePlayerCard({
               <span className="ml-1 text-white/25 text-[9px]" title="Matcher spelade">({player.gamesPlayed})</span>
             )}
           </span>
-          {pirEnabled && player.pir != null && (
+          {pirEnabled && pirSettings.showRating && player.pir != null && (player.pirMatchesPlayed ?? 0) >= 3 && (
             <span
               className={`text-[9px] font-bold px-1 py-0.5 rounded shrink-0 border ${
                 player.pir >= 1050 ? 'bg-amber-400/15 text-amber-300 border-amber-400/30'
                 : player.pir >= 1000 ? 'bg-white/5 text-white/50 border-white/15'
                 : 'bg-sky-400/10 text-sky-300/60 border-sky-400/20'
               }`}
-              title={`PIR: ${player.pir}${player.pirConfidence != null ? ` (konfidens: ${Math.round(player.pirConfidence * 100)}%)` : ''}`}
+              title={`PIR: ${player.pir} | Senaste: ${player.pirRecent ?? '?'} | Matcher: ${player.pirMatchesPlayed ?? '?'}${player.pirConfidence != null ? ` | Konfidens: ${Math.round(player.pirConfidence * 100)}%` : ''}`}
             >
               {player.pir}
+            </span>
+          )}
+          {pirEnabled && pirSettings.showTrend && player.pirTrendLabel && (player.pirMatchesPlayed ?? 0) >= 3 && player.pirTrendLabel !== 'stable' && (
+            <span
+              className={`text-[10px] shrink-0 ${
+                player.pirTrendLabel === 'rising' ? 'text-emerald-400'
+                : player.pirTrendLabel === 'slightly_rising' ? 'text-emerald-400/60'
+                : player.pirTrendLabel === 'slightly_falling' ? 'text-red-400/60'
+                : 'text-red-400'
+              }`}
+              title={`Trend: ${player.pirTrend != null ? (player.pirTrend > 0 ? '+' : '') + player.pirTrend : '?'}`}
+            >
+              {player.pirTrendLabel === 'rising' ? '\u2191'
+                : player.pirTrendLabel === 'slightly_rising' ? '\u2197'
+                : player.pirTrendLabel === 'slightly_falling' ? '\u2198'
+                : '\u2193'}
             </span>
           )}
         </>
