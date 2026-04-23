@@ -10,6 +10,7 @@ import { getPositionBadgeColor, ALL_POSITIONS } from "@/lib/players";
 import { useState, useRef } from "react";
 import { PortalDropdown } from "./PortalDropdown";
 import { useForwardColor } from "@/hooks/useForwardColor";
+import { usePirEnabled } from "@/hooks/usePirEnabled";
 
 const LOGO_GREEN = "/images/logo-green.png";
 const LOGO_WHITE = "/images/logo-white.png";
@@ -77,6 +78,8 @@ export function DraggablePlayerCard({
     }
     return player.position;
   })();
+
+  const pirEnabled = usePirEnabled();
 
   const [showEditPanel, setShowEditPanel] = useState(false);
   const [nameValue, setNameValue] = useState("");
@@ -160,10 +163,24 @@ export function DraggablePlayerCard({
       {compact ? (
         /* ---- COMPACT: always 2 rows — name top, badges bottom ---- */
         <>
-          <span className="text-white font-semibold leading-snug text-[13px] min-w-0 truncate w-full py-0.5">
-            {player.name}
-            {player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
-          </span>
+          <div className="flex items-center gap-1 w-full py-0.5">
+            <span className="text-white font-semibold leading-snug text-[13px] min-w-0 truncate">
+              {player.name}
+              {player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
+            </span>
+            {pirEnabled && player.pir != null && (
+              <span
+                className={`text-[9px] font-bold px-1 py-px rounded shrink-0 border ${
+                  player.pir >= 1050 ? 'bg-amber-400/15 text-amber-300 border-amber-400/30'
+                  : player.pir >= 1000 ? 'bg-white/5 text-white/50 border-white/15'
+                  : 'bg-sky-400/10 text-sky-300/60 border-sky-400/20'
+                }`}
+                title={`PIR: ${player.pir}${player.pirConfidence != null ? ` (konfidens: ${Math.round(player.pirConfidence * 100)}%)` : ''}`}
+              >
+                {player.pir}
+              </span>
+            )}
+          </div>
         </>
       ) : (
         /* ---- NON-COMPACT: single row ---- */
@@ -181,6 +198,18 @@ export function DraggablePlayerCard({
               <span className="ml-1 text-white/25 text-[9px]" title="Matcher spelade">({player.gamesPlayed})</span>
             )}
           </span>
+          {pirEnabled && player.pir != null && (
+            <span
+              className={`text-[9px] font-bold px-1 py-0.5 rounded shrink-0 border ${
+                player.pir >= 1050 ? 'bg-amber-400/15 text-amber-300 border-amber-400/30'
+                : player.pir >= 1000 ? 'bg-white/5 text-white/50 border-white/15'
+                : 'bg-sky-400/10 text-sky-300/60 border-sky-400/20'
+              }`}
+              title={`PIR: ${player.pir}${player.pirConfidence != null ? ` (konfidens: ${Math.round(player.pirConfidence * 100)}%)` : ''}`}
+            >
+              {player.pir}
+            </span>
+          )}
         </>
       )}
 

@@ -29,6 +29,10 @@ export interface Player {
   gamesPlayed?: number;     // Antal matcher spelade
   mostPlayedPosition?: string; // Vanligaste positionen baserat på matchhistorik
   mostPlayedTeam?: "green" | "white"; // Vanligaste laget baserat på matchhistorik
+  /** Player Impact Rating (Elo-like) */
+  pir?: number;
+  /** PIR confidence (0-1 based on matches played) */
+  pirConfidence?: number;
 }
 
 /** Formaterar spelarens visningsnamn: "C Jerry Paasovaara #63" eller "Linus Carbin #35" */
