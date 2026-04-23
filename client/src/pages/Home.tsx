@@ -501,9 +501,10 @@ export default function Home() {
         if (state && state.players) {
           state.players = (state.players as Player[]).map((p: Player) => {
             const key = p.number ? `${p.name} #${p.number}` : p.name;
+            const nameOnly = p.name.trim();
             const enriched: any = { ...p };
             if (posHistory) {
-              const hist = posHistory[key];
+              const hist = posHistory[key] ?? posHistory[nameOnly];
               if (hist?.mostPlayed) {
                 enriched.mostPlayedPosition = hist.mostPlayed;
                 if (hist.mostPlayedTeam === "green" || hist.mostPlayedTeam === "white") {
@@ -512,7 +513,7 @@ export default function Home() {
               }
             }
             if (pirMap) {
-              const pir = pirMap[key];
+              const pir = pirMap[key] ?? pirMap[nameOnly];
               if (pir) {
                 enriched.pir = pir.rating;
                 enriched.pirConfidence = pir.confidence;
@@ -530,9 +531,10 @@ export default function Home() {
               const p = player as Player;
               if (!p?.name) continue;
               const key = p.number ? `${p.name} #${p.number}` : p.name;
+              const nameOnly = p.name.trim();
               const enriched: any = { ...p };
               if (posHistory) {
-                const hist = posHistory[key];
+                const hist = posHistory[key] ?? posHistory[nameOnly];
                 if (hist?.mostPlayed) {
                   enriched.mostPlayedPosition = hist.mostPlayed;
                   if (hist.mostPlayedTeam === "green" || hist.mostPlayedTeam === "white") {
@@ -541,7 +543,7 @@ export default function Home() {
                 }
               }
               if (pirMap) {
-                const pir = pirMap[key];
+                const pir = pirMap[key] ?? pirMap[nameOnly];
                 if (pir) {
                   enriched.pir = pir.rating;
                   enriched.pirConfidence = pir.confidence;

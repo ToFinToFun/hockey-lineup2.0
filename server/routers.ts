@@ -125,7 +125,8 @@ export const appRouter = router({
         for (const [slotId, p] of Object.entries(lineupEntries)) {
           if (!p || typeof p !== "object" || !(p as any).name) continue;
           const pl = p as any;
-          const playerKey = pl.number ? `${pl.name} #${pl.number}` : pl.name;
+          // Use just the name as key to consolidate across matches
+          const playerKey = (pl.name as string).trim();
 
           // Extract position from slot ID
           let position = "";

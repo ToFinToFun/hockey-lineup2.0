@@ -116,7 +116,9 @@ function extractMatchData(matches: MatchResult[]): MatchPlayerData[] {
     for (const [slotId, p] of Object.entries(lineupEntries)) {
       if (!p || typeof p !== "object" || !(p as any).name) continue;
       const pl = p as any;
-      const playerKey = pl.number ? `${pl.name} #${pl.number}` : pl.name;
+      // Use just the name as key to consolidate players across matches
+      // where they may have had different or missing numbers
+      const playerKey = (pl.name as string).trim();
 
       if (slotId.startsWith("team-a")) {
         if (isTeamAWhite) whiteTeam.push(playerKey);
