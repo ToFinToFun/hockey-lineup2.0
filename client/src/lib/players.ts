@@ -28,6 +28,7 @@ export interface Player {
   isDeclined?: boolean;     // Avböjt dagens match ("Kommer inte")
   gamesPlayed?: number;     // Antal matcher spelade
   mostPlayedPosition?: string; // Vanligaste positionen baserat på matchhistorik
+  mostPlayedTeam?: "green" | "white"; // Vanligaste laget baserat på matchhistorik
 }
 
 /** Formaterar spelarens visningsnamn: "C Jerry Paasovaara #63" eller "Linus Carbin #35" */

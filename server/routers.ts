@@ -113,6 +113,8 @@ export const appRouter = router({
       const allMatches = await getAllMatchResults();
       // playerKey -> { position -> count }
       const positionCounts: Record<string, Record<string, number>> = {};
+      // playerKey -> { team -> count }
+      const teamCounts: Record<string, Record<string, number>> = {};
 
       for (const match of allMatches) {
         const lineup = match.lineup as any;
@@ -139,11 +141,20 @@ export const appRouter = router({
 
           if (!positionCounts[playerKey]) positionCounts[playerKey] = {};
           positionCounts[playerKey][position] = (positionCounts[playerKey][position] || 0) + 1;
+
+          // Extract team from slot ID (team-a = white, team-b = green)
+          let team = "";
+          if (slotId.startsWith("team-a-")) team = "white";
+          else if (slotId.startsWith("team-b-")) team = "green";
+          if (team) {
+            if (!teamCounts[playerKey]) teamCounts[playerKey] = {};
+            teamCounts[playerKey][team] = (teamCounts[playerKey][team] || 0) + 1;
+          }
         }
       }
 
-      // For each player, find the most-played position
-      const result: Record<string, { mostPlayed: string; stats: Record<string, number> }> = {};
+      // For each player, find the most-played position and team
+      const result: Record<string, { mostPlayed: string; stats: Record<string, number>; mostPlayedTeam?: string; teamStats?: Record<string, number> }> = {};
       for (const [playerKey, stats] of Object.entries(positionCounts)) {
         let mostPlayed = "";
         let maxCount = 0;
@@ -153,7 +164,21 @@ export const appRouter = router({
             mostPlayed = pos;
           }
         }
-        result[playerKey] = { mostPlayed, stats };
+
+        // Most played team
+        let mostPlayedTeam: string | undefined;
+        const tStats = teamCounts[playerKey];
+        if (tStats) {
+          let maxTeamCount = 0;
+          for (const [team, count] of Object.entries(tStats)) {
+            if (count > maxTeamCount) {
+              maxTeamCount = count;
+              mostPlayedTeam = team;
+            }
+          }
+        }
+
+        result[playerKey] = { mostPlayed, stats, mostPlayedTeam, teamStats: tStats };
       }
 
       return result;
