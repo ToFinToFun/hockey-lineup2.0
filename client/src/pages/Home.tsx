@@ -2341,6 +2341,12 @@ export default function Home() {
                     compact
                     otherConfig={teamBConfig}
                     matchTime={matchTime}
+                    onChangeName={handleChangeName}
+                    onChangeNumber={handleChangeNumber}
+                    onChangeTeamColor={handleChangeTeamColor}
+                    onChangeCaptainRole={handleChangeCaptainRole}
+                    onChangeRegistered={handleChangeRegistered}
+                    onDeletePlayer={handleDeletePlayer}
                   />
                 </div>
 
@@ -2361,6 +2367,12 @@ export default function Home() {
                     compact
                     otherConfig={teamAConfig}
                     matchTime={matchTime}
+                    onChangeName={handleChangeName}
+                    onChangeNumber={handleChangeNumber}
+                    onChangeTeamColor={handleChangeTeamColor}
+                    onChangeCaptainRole={handleChangeCaptainRole}
+                    onChangeRegistered={handleChangeRegistered}
+                    onDeletePlayer={handleDeletePlayer}
                   />
                 </div>
               </div>

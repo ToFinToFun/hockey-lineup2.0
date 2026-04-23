@@ -1,12 +1,12 @@
-// Hockey Lineup App – PlayerSlot – v5
+// Hockey Lineup App – PlayerSlot – v6
 // Large slot-position badge fills full row height on the left.
 // Player's favorite position is shown as a small badge on the right (inside PlayerCard).
 // When a goalkeeper (MV) is placed in an outfield slot, PlayerCard shows their
 // most-played outfield position instead of "MV".
-
+// Edit props forwarded to DraggablePlayerCard for inline editing.
 import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard } from "./PlayerCard";
-import type { Player, Position } from "@/lib/players";
+import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
 
 interface PlayerSlotProps {
@@ -17,6 +17,13 @@ interface PlayerSlotProps {
   compact?: boolean;
   /** Estimated ice time in minutes for this slot */
   iceTimeMinutes?: number;
+  /** Edit props — forwarded to DraggablePlayerCard */
+  onChangeName?: (name: string) => void;
+  onChangeNumber?: (number: string) => void;
+  onChangeTeamColor?: (color: TeamColor) => void;
+  onChangeCaptainRole?: (role: CaptainRole) => void;
+  onChangeRegistered?: (isRegistered: boolean) => void;
+  onDelete?: () => void;
 }
 
 /* Badge color mapping using CSS classes from design system */
@@ -37,7 +44,10 @@ function getBadgeClass(role: string): string {
   }
 }
 
-export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact = false, iceTimeMinutes }: PlayerSlotProps) {
+export function PlayerSlot({
+  slot, player, onRemove, onChangePosition, compact = false, iceTimeMinutes,
+  onChangeName, onChangeNumber, onChangeTeamColor, onChangeCaptainRole, onChangeRegistered, onDelete,
+}: PlayerSlotProps) {
   const { isOver, setNodeRef } = useDroppable({ id: slot.id });
 
   const badgeClass = getBadgeClass(slot.role);
@@ -70,6 +80,12 @@ export function PlayerSlot({ slot, player, onRemove, onChangePosition, compact =
             player={player}
             onRemove={onRemove}
             onChangePosition={onChangePosition}
+            onChangeName={onChangeName}
+            onChangeNumber={onChangeNumber}
+            onChangeTeamColor={onChangeTeamColor}
+            onChangeCaptainRole={onChangeCaptainRole}
+            onChangeRegistered={onChangeRegistered}
+            onDelete={onDelete}
             slotType={slot.type}
             compact
             iceTimeMinutes={iceTimeMinutes}
