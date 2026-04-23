@@ -2120,9 +2120,9 @@ export default function Home() {
               ) : (
                 /* Standard-layout: Vita | Trupp | Gröna */
                 <div
-                  className="grid gap-1 md:gap-1.5 w-full max-w-full"
+                  className="grid gap-1.5 md:gap-2 mx-auto"
                   style={{
-                    gridTemplateColumns: "minmax(200px, 1fr) minmax(280px, 1.4fr) minmax(200px, 1fr)",
+                    gridTemplateColumns: "max-content minmax(240px, 380px) max-content",
                   }}
                 >
                   {/* Lag A (VITA) – vänster */}
