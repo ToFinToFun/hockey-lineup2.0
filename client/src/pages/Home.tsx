@@ -1568,7 +1568,7 @@ export default function Home() {
                     className={`text-xs sm:text-sm font-black tracking-widest uppercase truncate ${isLineupDark ? 'text-white' : 'text-gray-900'}`}
                     style={{ fontFamily: "'Oswald', sans-serif" }}
                   >
-                    {isMobile ? 'SSF' : 'Stålstadens SF'}
+                    Stålstadens SF
                   </h1>
                   {eventInfo ? (
                     <p className={`flex items-center gap-1 text-[8px] sm:text-[9px] font-medium truncate ${isLineupDark ? 'text-sky-300/70' : 'text-sky-600'}`}>
@@ -1584,6 +1584,15 @@ export default function Home() {
               {/* ── MOBILE TOOLBAR (single compact row) ── */}
               {isMobile ? (
                 <div className="flex items-center gap-1 flex-1 justify-end">
+                  {/* Home icon-only */}
+                  <a
+                    href="https://app.stalstadens.se"
+                    title="Hem"
+                    className={`p-1 rounded transition-all ${isLineupDark ? 'text-white/40 hover:text-white/70 hover:bg-white/8' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}
+                  >
+                    <HomeIcon className="w-3.5 h-3.5" />
+                  </a>
+
                   {/* SSE sync dot */}
                   <div className="flex items-center mr-0.5">
                     {sseConnected === null ? (
@@ -1790,17 +1799,7 @@ export default function Home() {
                             <span>Inställningar</span>
                           </button>
 
-                          {/* Hem */}
-                          <a
-                            href="https://app.stalstadens.se"
-                            onClick={() => setShowHeaderMenu(false)}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
-                              isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
-                            }`}
-                          >
-                            <HomeIcon className="w-4 h-4" />
-                            <span>Hem</span>
-                          </a>
+
                         </div>
                       </>
                     )}
