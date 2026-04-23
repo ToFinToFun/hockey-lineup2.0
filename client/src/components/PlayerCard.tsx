@@ -649,12 +649,13 @@ export function TeamColorIndicator({ teamColor, compact, mostPlayedTeam }: { tea
   }
 
   // Ghost variant: show faded most-played team color for unassigned players
+  // Solid colored border + colored diagonal stripes on transparent background
   if (mostPlayedTeam === "green") {
     return (
       <div
         title="Oftast Gröna"
-        className={`${cls} border border-dashed border-emerald-400/50`}
-        style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(52,211,153,0.15) 2px, rgba(52,211,153,0.15) 4px)' }}
+        className={`${cls} border border-emerald-400/70`}
+        style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(52,211,153,0.35) 2px, rgba(52,211,153,0.35) 4px)' }}
       />
     );
   }
@@ -662,8 +663,8 @@ export function TeamColorIndicator({ teamColor, compact, mostPlayedTeam }: { tea
     return (
       <div
         title="Oftast Vita"
-        className={`${cls} border border-dashed border-white/40`}
-        style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(255,255,255,0.12) 2px, rgba(255,255,255,0.12) 4px)' }}
+        className={`${cls} border border-white/60`}
+        style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(255,255,255,0.25) 2px, rgba(255,255,255,0.25) 4px)' }}
       />
     );
   }
