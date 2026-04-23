@@ -2122,7 +2122,7 @@ export default function Home() {
                 <div
                   className="grid gap-1 md:gap-1.5 w-full max-w-full"
                   style={{
-                    gridTemplateColumns: "1fr minmax(240px, 280px) 1fr",
+                    gridTemplateColumns: "minmax(200px, 1fr) minmax(280px, 1.4fr) minmax(200px, 1fr)",
                   }}
                 >
                   {/* Lag A (VITA) – vänster */}
@@ -2140,6 +2140,7 @@ export default function Home() {
                     onConfigChange={setTeamAConfig}
                     otherConfig={teamBConfig}
                     matchTime={matchTime}
+                    compact
                   />
 
                   {/* Spelarlista (mitten) */}
@@ -2189,6 +2190,7 @@ export default function Home() {
                     onConfigChange={setTeamBConfig}
                     otherConfig={teamAConfig}
                     matchTime={matchTime}
+                    compact
                   />
                 </div>
               )
