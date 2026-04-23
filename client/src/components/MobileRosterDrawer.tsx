@@ -1,12 +1,16 @@
 // Hockey Lineup App – MobileRosterDrawer
 // Trupp-overlay som glider in från höger på mobil
 // Visar spelarlistan med sök, filter och stöd för tap-to-assign med slot-picker
+// 3-cell grid layout: name+number | badges | edit icon
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, Search, Users, ChevronRight, ChevronLeft, ClipboardCheck, Plus } from "lucide-react";
+import { X, Search, Users, ChevronRight, ChevronLeft, ClipboardCheck, Plus, Pencil, Trash2 } from "lucide-react";
 import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
+import { ALL_POSITIONS, getPositionBadgeColor } from "@/lib/players";
 import type { Slot, TeamConfig } from "@/lib/lineup";
 import { useForwardColor } from "@/hooks/useForwardColor";
+import { usePirSettings, usePirEnabled } from "@/hooks/usePirEnabled";
+import { TeamColorIndicator } from "@/components/PlayerCard";
 
 interface MobileRosterDrawerProps {
   open: boolean;
@@ -19,7 +23,7 @@ interface MobileRosterDrawerProps {
   onChangeNumber?: (id: string, num: string) => void;
   onChangeName?: (id: string, name: string) => void;
   onChangeCaptainRole?: (id: string, role: CaptainRole) => void;
-  onChangeRegistered?: (id: string, registered: boolean, declined: boolean) => void;
+  onChangeRegistered?: (id: string, registered: boolean) => void;
   onBulkRegister?: (forceRefresh?: boolean) => Promise<{ matched: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string; noEvent?: boolean }>;
   onEventInfoUpdate?: (info: { title: string; date: string } | null) => void;
   totalRegistered?: number;
@@ -49,6 +53,13 @@ export function MobileRosterDrawer({
   open,
   onClose,
   players,
+  onDeletePlayer,
+  onChangePosition,
+  onChangeTeamColor,
+  onChangeNumber,
+  onChangeName,
+  onChangeCaptainRole,
+  onChangeRegistered,
   onBulkRegister,
   onEventInfoUpdate,
   totalRegistered = 0,
@@ -76,15 +87,32 @@ export function MobileRosterDrawer({
   const drawerRef = useRef<HTMLDivElement>(null);
   const { colors: fc } = useForwardColor();
 
+  // Edit sheet state
+  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editNumber, setEditNumber] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // PIR settings
+  const pirEnabled = usePirEnabled();
+  const pirSettings = usePirSettings();
+
   // Stäng med Escape
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        if (editingPlayer) {
+          setEditingPlayer(null);
+          setConfirmDelete(false);
+        } else {
+          onClose();
+        }
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open, onClose]);
+  }, [open, onClose, editingPlayer]);
 
   // Reset selection when closing
   useEffect(() => {
@@ -94,6 +122,8 @@ export function MobileRosterDrawer({
       setSelectedTeam(null);
       setSearch("");
       setFeedback(null);
+      setEditingPlayer(null);
+      setConfirmDelete(false);
     }
   }, [open]);
 
@@ -190,6 +220,21 @@ export function MobileRosterDrawer({
     }
   }, [onBulkRegister, isLoadingAttendance, onEventInfoUpdate]);
 
+  // Open edit sheet for a player
+  const handleOpenEdit = useCallback((player: Player, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingPlayer(player);
+    setEditName(player.name);
+    setEditNumber(player.number ?? "");
+    setConfirmDelete(false);
+  }, []);
+
+  // Close edit sheet
+  const handleCloseEdit = useCallback(() => {
+    setEditingPlayer(null);
+    setConfirmDelete(false);
+  }, []);
+
   // Get available slots for selected team
   const getAvailableSlots = () => {
     if (!selectedTeam) return { empty: [], occupied: [], canAddDefense: false, canAddForward: false };
@@ -242,6 +287,9 @@ export function MobileRosterDrawer({
   const teamName = selectedTeam === "team-a" ? teamAName : teamBName;
   const { empty: emptySlots, canAddDefense, canAddForward } = getAvailableSlots();
 
+  // Determine if we have edit capabilities
+  const hasEdit = !!(onChangeName || onChangeNumber || onChangePosition || onChangeTeamColor || onChangeCaptainRole || onChangeRegistered || onDeletePlayer);
+
   return (
     <>
       {/* Backdrop */}
@@ -282,6 +330,7 @@ export function MobileRosterDrawer({
             {assignStep === "select-player" && (
               <span className="text-[10px] text-white/40">
                 {totalRegistered}/{totalPlayers} anmälda
+                {totalDeclined > 0 && <> · <span className="text-red-400/60">{totalDeclined} nej</span></>}
               </span>
             )}
           </div>
@@ -402,47 +451,112 @@ export function MobileRosterDrawer({
               </div>
             )}
 
-            {/* Spelarlista */}
+            {/* Spelarlista — 3-cell grid layout */}
             <div className="flex-1 overflow-y-auto px-2 py-1.5">
               <div className="space-y-0.5">
                 {filteredPlayers.map((player) => {
                   const isSelected = selectedPlayer?.id === player.id;
+                  const displayPosition = player.position;
+                  const iceTimeMinutes = player.gamesPlayed != null && player.gamesPlayed > 0 ? player.gamesPlayed : null;
                   return (
-                    <button
+                    <div
                       key={player.id}
-                      onClick={() => handlePlayerTap(player)}
-                      data-draggable="true"
                       className={`
-                        w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-left transition-all
+                        grid items-center gap-1 px-2 py-1.5 rounded-lg transition-all
                         ${isSelected
                           ? "bg-emerald-500/20 border border-emerald-400/40 ring-1 ring-emerald-400/20"
                           : "bg-white/3 border border-transparent hover:bg-white/5"
                         }
                       `}
+                      style={{ gridTemplateColumns: "1fr auto auto" }}
                     >
-                      {/* Anmäld-indikator */}
-                      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                        player.isRegistered ? "bg-emerald-400" : player.isDeclined ? "bg-red-400" : "bg-white/15"
-                      }`} />
+                      {/* Cell 1: Status dot + Name #number — clickable for tap-to-assign */}
+                      <button
+                        onClick={() => handlePlayerTap(player)}
+                        className="flex items-center gap-1.5 min-w-0 text-left"
+                      >
+                        {/* Anmäld-indikator */}
+                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                          player.isRegistered ? "bg-emerald-400" : player.isDeclined ? "bg-red-400" : "bg-white/15"
+                        }`} />
 
-                      {/* Position badge */}
-                      <span className={`pos-badge pos-badge-sm pos-badge-${player.position.toLowerCase()}`}>
-                        {player.position}
-                      </span>
+                        {/* Namn + nummer */}
+                        <span className="text-[11px] text-white/80 font-medium truncate">
+                          {player.name}
+                          {player.number && <span className="text-white/30 font-mono ml-1">#{player.number}</span>}
+                        </span>
 
-                      {/* Namn */}
-                      <span className="text-[11px] text-white/80 font-medium truncate flex-1">
-                        {player.name}
-                      </span>
+                        {/* Pil om vald */}
+                        {isSelected && <ChevronRight className="w-3 h-3 text-emerald-400 shrink-0" />}
+                      </button>
 
-                      {/* Nummer */}
-                      {player.number && (
-                        <span className="text-[9px] text-white/30 font-mono">#{player.number}</span>
+                      {/* Cell 2: Badges — fixed width, vertically aligned across rows */}
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <TeamColorIndicator teamColor={player.teamColor ?? null} compact mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />
+                        <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
+                          {displayPosition}
+                        </span>
+                        {player.mostPlayedPosition && (
+                          <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0 ${
+                            player.mostPlayedPosition === displayPosition ? 'opacity-30' : ''
+                          }`}
+                            title={`Vanligaste position: ${player.mostPlayedPosition}`}>
+                            {player.mostPlayedPosition}
+                          </span>
+                        )}
+                        {iceTimeMinutes != null && (
+                          <span className="ice-time-badge ice-time-badge-compact shrink-0" title={`Matcher: ${iceTimeMinutes}`}>
+                            {iceTimeMinutes}ʼ
+                          </span>
+                        )}
+                        {player.captainRole && (
+                          <span className={`text-[8px] font-black px-1 py-0.5 rounded shrink-0 ${
+                            player.captainRole === "C"
+                              ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/40"
+                              : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
+                          }`}>{player.captainRole}</span>
+                        )}
+                        {pirEnabled && pirSettings.showRating && player.pir != null && (
+                          <span
+                            className={`text-[8px] font-bold px-1 py-0.5 rounded shrink-0 border ${
+                              player.pir >= 1050 ? 'bg-amber-400/15 text-amber-300 border-amber-400/30'
+                              : player.pir >= 1000 ? 'bg-white/5 text-white/50 border-white/15'
+                              : 'bg-sky-400/10 text-sky-300/60 border-sky-400/20'
+                            }`}
+                            title={`PIR: ${player.pir}`}
+                          >
+                            {player.pir}
+                          </span>
+                        )}
+                        {pirEnabled && pirSettings.showTrend && player.pirTrendLabel && player.pirTrendLabel !== 'stable' && (
+                          <span
+                            className={`text-[9px] shrink-0 ${
+                              player.pirTrendLabel === 'rising' ? 'text-emerald-400'
+                              : player.pirTrendLabel === 'slightly_rising' ? 'text-emerald-400/60'
+                              : player.pirTrendLabel === 'slightly_falling' ? 'text-red-400/60'
+                              : 'text-red-400'
+                            }`}
+                            title={`Trend: ${player.pirTrend != null ? (player.pirTrend > 0 ? '+' : '') + player.pirTrend : '?'}`}
+                          >
+                            {player.pirTrendLabel === 'rising' ? '\u2191'
+                              : player.pirTrendLabel === 'slightly_rising' ? '\u2197'
+                              : player.pirTrendLabel === 'slightly_falling' ? '\u2198'
+                              : '\u2193'}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Cell 3: Edit icon */}
+                      {hasEdit && (
+                        <button
+                          onClick={(e) => handleOpenEdit(player, e)}
+                          className="p-1 rounded text-white/25 hover:text-white/60 hover:bg-white/10 transition-all shrink-0"
+                          title="Redigera spelare"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
                       )}
-
-                      {/* Pil om vald */}
-                      {isSelected && <ChevronRight className="w-3 h-3 text-emerald-400 shrink-0" />}
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -610,6 +724,246 @@ export function MobileRosterDrawer({
           </div>
         )}
       </div>
+
+      {/* ── Edit Sheet (slides up from bottom) ── */}
+      {editingPlayer && (
+        <>
+          {/* Edit sheet backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 z-[60] transition-opacity"
+            onClick={handleCloseEdit}
+          />
+          {/* Edit sheet panel */}
+          <div
+            className="fixed bottom-0 left-0 right-0 z-[61] glass-panel-strong rounded-t-2xl shadow-2xl animate-in slide-in-from-bottom duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Handle bar */}
+            <div className="flex justify-center pt-2 pb-1">
+              <div className="w-10 h-1 rounded-full bg-white/20" />
+            </div>
+
+            {/* Player header */}
+            <div className="flex items-center justify-between px-4 pb-2">
+              <div className="flex items-center gap-2">
+                <span className={`pos-badge pos-badge-sm pos-badge-${editingPlayer.position.toLowerCase()}`}>
+                  {editingPlayer.position}
+                </span>
+                <span className="text-white font-bold text-sm">
+                  {editingPlayer.name}
+                  {editingPlayer.number && <span className="text-white/40 font-normal ml-1">#{editingPlayer.number}</span>}
+                </span>
+              </div>
+              <button
+                onClick={handleCloseEdit}
+                className="p-1.5 rounded-lg glass-button text-white/60 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Edit form */}
+            <div className="px-4 pb-6 space-y-3">
+              {/* Name field */}
+              {onChangeName && (
+                <div className="flex items-center gap-2">
+                  <span className="text-white/40 text-[10px] w-8 shrink-0">Namn:</span>
+                  <input
+                    type="text"
+                    value={editName}
+                    maxLength={40}
+                    placeholder="Spelarens namn"
+                    onChange={(e) => setEditName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && editName.trim()) {
+                        onChangeName(editingPlayer.id, editName.trim());
+                        // Update local reference
+                        setEditingPlayer({ ...editingPlayer, name: editName.trim() });
+                      }
+                    }}
+                    onBlur={() => {
+                      if (editName.trim() && editName.trim() !== editingPlayer.name) {
+                        onChangeName(editingPlayer.id, editName.trim());
+                        setEditingPlayer({ ...editingPlayer, name: editName.trim() });
+                      }
+                    }}
+                    className="flex-1 bg-white/10 border border-emerald-400/40 rounded px-2 py-1.5 text-xs text-white outline-none focus:border-emerald-400"
+                  />
+                </div>
+              )}
+
+              {/* Number field */}
+              {onChangeNumber && (
+                <div className="flex items-center gap-2">
+                  <span className="text-white/40 text-[10px] w-8 shrink-0">Nr:</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-white/50 text-xs">#</span>
+                    <input
+                      type="text"
+                      value={editNumber}
+                      maxLength={3}
+                      placeholder="—"
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/\D/g, "");
+                        setEditNumber(v);
+                        onChangeNumber(editingPlayer.id, v);
+                      }}
+                      className="w-14 bg-white/10 border border-emerald-400/40 rounded px-2 py-1.5 text-xs text-white text-center outline-none focus:border-emerald-400"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Team color */}
+              {onChangeTeamColor && (
+                <div className="flex items-center gap-2">
+                  <span className="text-white/40 text-[10px] w-8 shrink-0">Lag:</span>
+                  <div className="flex items-center gap-1.5">
+                    {([
+                      { value: "white" as TeamColor, label: "Vita" },
+                      { value: "green" as TeamColor, label: "Gröna" },
+                      { value: null, label: "Waivers" },
+                    ] as { value: TeamColor; label: string }[]).map(({ value, label }) => (
+                      <button
+                        key={String(value)}
+                        onClick={() => {
+                          onChangeTeamColor(editingPlayer.id, value);
+                          setEditingPlayer({ ...editingPlayer, teamColor: value });
+                        }}
+                        className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1.5 rounded border transition-all ${
+                          (editingPlayer.teamColor ?? null) === value
+                            ? "bg-white/15 text-white/80 border-white/30 ring-1 ring-white/20"
+                            : "bg-white/5 text-white/30 border-white/10 hover:bg-white/10 hover:text-white/50"
+                        }`}
+                      >
+                        <TeamColorIndicator teamColor={value} compact />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Position */}
+              {onChangePosition && (
+                <div className="flex items-center gap-2">
+                  <span className="text-white/40 text-[10px] w-8 shrink-0">Pos:</span>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {ALL_POSITIONS.map((pos) => (
+                      <button
+                        key={pos}
+                        onClick={() => {
+                          onChangePosition(editingPlayer.id, pos);
+                          setEditingPlayer({ ...editingPlayer, position: pos });
+                        }}
+                        className={`text-[10px] font-bold px-2 py-1 rounded transition-all ${
+                          editingPlayer.position === pos
+                            ? `${getPositionBadgeColor(pos, fc.badgeBg)} ring-1 ring-white/30`
+                            : "bg-white/5 text-white/30 border border-white/10 hover:bg-white/10 hover:text-white/50"
+                        }`}
+                      >
+                        {pos}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Captain role */}
+              {onChangeCaptainRole && (
+                <div className="flex items-center gap-2">
+                  <span className="text-white/40 text-[10px] w-8 shrink-0">Roll:</span>
+                  <div className="flex items-center gap-1.5">
+                    {([
+                      { value: "C" as CaptainRole, label: "C" },
+                      { value: "A" as CaptainRole, label: "A" },
+                      { value: null, label: "—" },
+                    ] as { value: CaptainRole; label: string }[]).map(({ value, label }) => (
+                      <button
+                        key={String(value)}
+                        onClick={() => {
+                          onChangeCaptainRole(editingPlayer.id, value);
+                          setEditingPlayer({ ...editingPlayer, captainRole: value });
+                        }}
+                        className={`text-[10px] font-black px-2.5 py-1.5 rounded border transition-all ${
+                          editingPlayer.captainRole === value
+                            ? value === "C"
+                              ? "bg-yellow-400/25 text-yellow-300 border-yellow-400/50 ring-1 ring-yellow-400/30"
+                              : value === "A"
+                              ? "bg-orange-400/25 text-orange-300 border-orange-400/50 ring-1 ring-orange-400/30"
+                              : "bg-white/15 text-white/60 border-white/30 ring-1 ring-white/20"
+                            : "bg-white/5 text-white/30 border-white/10 hover:bg-white/10 hover:text-white/50"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Registered toggle */}
+              {onChangeRegistered && (
+                <div className="flex items-center gap-2">
+                  <span className="text-white/40 text-[10px] w-8 shrink-0">Anm:</span>
+                  <button
+                    onClick={() => {
+                      const newVal = !editingPlayer.isRegistered;
+                      onChangeRegistered(editingPlayer.id, newVal);
+                      setEditingPlayer({ ...editingPlayer, isRegistered: newVal });
+                    }}
+                    className={`text-[10px] font-bold px-3 py-1.5 rounded border transition-all ${
+                      editingPlayer.isRegistered
+                        ? "bg-emerald-400/25 text-emerald-300 border-emerald-400/50 ring-1 ring-emerald-400/30"
+                        : "bg-white/5 text-white/30 border-white/10 hover:bg-white/10 hover:text-white/50"
+                    }`}
+                  >
+                    {editingPlayer.isRegistered ? "✓ Anmäld" : "Ej anmäld"}
+                  </button>
+                </div>
+              )}
+
+              {/* Delete player */}
+              {onDeletePlayer && (
+                <div className="pt-2 border-t border-white/10">
+                  {!confirmDelete ? (
+                    <button
+                      onClick={() => setConfirmDelete(true)}
+                      className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-red-400/70 hover:text-red-400 bg-red-500/5 hover:bg-red-500/15 border border-red-400/20 hover:border-red-400/40 transition-all"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Ta bort spelare
+                    </button>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <p className="text-[10px] text-red-300 text-center font-medium">
+                        Är du säker på att ta bort {editingPlayer.name}?
+                      </p>
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => {
+                            onDeletePlayer(editingPlayer.id);
+                            handleCloseEdit();
+                          }}
+                          className="flex-1 py-2 rounded-lg text-xs font-bold bg-red-500/25 text-red-300 border border-red-400/50 hover:bg-red-500/40 transition-all"
+                        >
+                          Ja, ta bort
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete(false)}
+                          className="flex-1 py-2 rounded-lg text-xs font-bold bg-white/5 text-white/50 border border-white/10 hover:bg-white/10 transition-all"
+                        >
+                          Avbryt
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }
