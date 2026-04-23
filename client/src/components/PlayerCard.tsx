@@ -124,7 +124,7 @@ export function DraggablePlayerCard({
         group relative rounded-md w-full
         player-row
         transition-all duration-150 select-none
-        ${compact ? "flex items-center gap-x-1 px-0.5 py-0.5 text-xs overflow-hidden" : "flex items-center gap-1.5 px-1 py-1 text-sm"}
+        ${compact ? "flex flex-col px-0.5 py-0.5 text-xs" : "flex items-center gap-1.5 px-1 py-1 text-sm"}
         ${isDragging ? "shadow-2xl ring-2 ring-emerald-400/60" : ""}
         ${isHolding ? "ring-1 ring-red-400/60" : ""}
       `}
@@ -158,9 +158,9 @@ export function DraggablePlayerCard({
       )}
 
       {compact ? (
-        /* ---- COMPACT: single row with flex-wrap fallback to two rows ---- */
+        /* ---- COMPACT: always 2 rows — name top, badges bottom ---- */
         <>
-          <span className="text-white font-medium leading-tight text-[11px] min-w-0 truncate">
+          <span className="text-white font-medium leading-tight text-[11px] min-w-0 truncate w-full">
             {player.name}
             {player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
           </span>
@@ -184,7 +184,7 @@ export function DraggablePlayerCard({
         </>
       )}
 
-      {/* Compact badges — clickable for edit, ml-auto pushes right on single row */}
+      {/* Compact badges — row 2, always visible */}
       {compact && !hideExtras && onChangeName ? (
         <button
           ref={editBtnRef}
@@ -195,7 +195,7 @@ export function DraggablePlayerCard({
             setNrValue(player.number ?? "");
             setShowEditPanel((v) => !v);
           }}
-          className="flex items-center gap-1 shrink-0 ml-auto hover:ring-1 hover:ring-emerald-400/40 rounded px-0.5 py-0.5 transition-all cursor-pointer"
+          className="flex items-center gap-1 w-full hover:ring-1 hover:ring-emerald-400/40 rounded px-0.5 transition-all cursor-pointer"
           title="Klicka för att redigera spelare"
         >
           {!hideExtras && player.isRegistered && (
@@ -230,7 +230,7 @@ export function DraggablePlayerCard({
           )}
         </button>
       ) : compact && !hideExtras ? (
-        <div className="flex items-center gap-1 shrink-0 ml-auto">
+        <div className="flex items-center gap-1 w-full">
           {player.isRegistered && (
             <span className="text-emerald-400 text-[8px] shrink-0" title="Anmäld">✓</span>
           )}
