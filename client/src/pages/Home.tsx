@@ -445,7 +445,7 @@ export default function Home() {
       .then(res => res.json())
       .then((json) => {
         const wrapped = json?.result?.data;
-        return (wrapped?.json ?? wrapped) as Record<string, { mostPlayed: string; stats: Record<string, number> }> | null;
+        return (wrapped?.json ?? wrapped) as Record<string, { mostPlayed: string; stats: Record<string, number>; mostPlayedTeam?: string; teamStats?: Record<string, number> }> | null;
       })
       .catch(() => null);
 
@@ -459,7 +459,11 @@ export default function Home() {
             const key = p.number ? `${p.name} #${p.number}` : p.name;
             const hist = posHistory[key];
             if (hist?.mostPlayed) {
-              return { ...p, mostPlayedPosition: hist.mostPlayed };
+              const enriched: any = { ...p, mostPlayedPosition: hist.mostPlayed };
+              if (hist.mostPlayedTeam === "green" || hist.mostPlayedTeam === "white") {
+                enriched.mostPlayedTeam = hist.mostPlayedTeam;
+              }
+              return enriched as Player;
             }
             return p;
           });
@@ -471,7 +475,11 @@ export default function Home() {
               const key = p.number ? `${p.name} #${p.number}` : p.name;
               const hist = posHistory[key];
               if (hist?.mostPlayed) {
-                state.lineup[slotId] = { ...p, mostPlayedPosition: hist.mostPlayed };
+                const enriched: any = { ...p, mostPlayedPosition: hist.mostPlayed };
+                if (hist.mostPlayedTeam === "green" || hist.mostPlayedTeam === "white") {
+                  enriched.mostPlayedTeam = hist.mostPlayedTeam;
+                }
+                state.lineup[slotId] = enriched as Player;
               }
             }
           }

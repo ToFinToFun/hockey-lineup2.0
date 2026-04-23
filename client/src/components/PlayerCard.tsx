@@ -204,7 +204,7 @@ export function DraggablePlayerCard({
           {!hideExtras && player.isDeclined && !player.isRegistered && (
             <span className="text-red-400 text-[7px] shrink-0" title="Avböjd">✗</span>
           )}
-          <TeamColorIndicator teamColor={player.teamColor ?? null} compact />
+          <TeamColorIndicator teamColor={player.teamColor ?? null} compact mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />
           <span className={`pos-badge pos-badge-xs pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
             {displayPosition}
           </span>
@@ -237,7 +237,7 @@ export function DraggablePlayerCard({
           {player.isDeclined && !player.isRegistered && (
             <span className="text-red-400 text-[7px] shrink-0" title="Avböjd">✗</span>
           )}
-          <TeamColorIndicator teamColor={player.teamColor ?? null} compact />
+          <TeamColorIndicator teamColor={player.teamColor ?? null} compact mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />
           <span className={`pos-badge pos-badge-xs pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
             {displayPosition}
           </span>
@@ -285,7 +285,7 @@ export function DraggablePlayerCard({
                 : "bg-orange-400/20 text-orange-300 border-orange-400/40"
             }`}>{player.captainRole}</span>
           )}
-          <TeamColorIndicator teamColor={player.teamColor ?? null} />
+          <TeamColorIndicator teamColor={player.teamColor ?? null} mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />
           <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
             {displayPosition}
           </span>
@@ -312,7 +312,7 @@ export function DraggablePlayerCard({
                 : "bg-orange-400/20 text-orange-300 border-orange-400/40"
             }`}>{player.captainRole}</span>
           )}
-          <TeamColorIndicator teamColor={player.teamColor ?? null} />
+          <TeamColorIndicator teamColor={player.teamColor ?? null} mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />
           <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
             {displayPosition}
           </span>
@@ -635,7 +635,7 @@ export function DraggablePlayerCard({
 }
 
 // Team color indicator — rounded-rect matching pos-badge-sm size
-export function TeamColorIndicator({ teamColor, compact }: { teamColor: TeamColor; compact?: boolean }) {
+export function TeamColorIndicator({ teamColor, compact, mostPlayedTeam }: { teamColor: TeamColor; compact?: boolean; mostPlayedTeam?: "green" | "white" }) {
   // Match pos-badge-sm: 20×18px normal, slightly smaller in compact
   const cls = compact
     ? "w-[16px] h-[16px] rounded-[4px] shrink-0"
@@ -647,6 +647,27 @@ export function TeamColorIndicator({ teamColor, compact }: { teamColor: TeamColo
   if (teamColor === "white") {
     return <div title="Vita" className={`${cls} bg-white border border-white/60`} />;
   }
+
+  // Ghost variant: show faded most-played team color for unassigned players
+  if (mostPlayedTeam === "green") {
+    return (
+      <div
+        title="Oftast Gröna"
+        className={`${cls} border border-dashed border-emerald-400/50`}
+        style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(52,211,153,0.15) 2px, rgba(52,211,153,0.15) 4px)' }}
+      />
+    );
+  }
+  if (mostPlayedTeam === "white") {
+    return (
+      <div
+        title="Oftast Vita"
+        className={`${cls} border border-dashed border-white/40`}
+        style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(255,255,255,0.12) 2px, rgba(255,255,255,0.12) 4px)' }}
+      />
+    );
+  }
+
   return <div className={`${cls} border border-white/20 bg-white/5`} />;
 }
 
@@ -662,7 +683,7 @@ export function PlayerCardOverlay({ player, isRemoving = false }: { player: Play
       }`}
       style={{ minWidth: 160, maxWidth: 240 }}
     >
-      <TeamColorIndicator teamColor={player.teamColor ?? null} />
+      <TeamColorIndicator teamColor={player.teamColor ?? null} mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />
       {player.captainRole && (
         <span className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 border ${
           player.captainRole === "C"
