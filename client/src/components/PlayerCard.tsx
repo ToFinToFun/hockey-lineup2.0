@@ -204,13 +204,6 @@ export function DraggablePlayerCard({
           {!hideExtras && player.isDeclined && !player.isRegistered && (
             <span className="text-red-400 text-[8px] shrink-0" title="Avböjd">✗</span>
           )}
-          {player.captainRole && (
-            <span className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 ${
-              player.captainRole === "C"
-                ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/40"
-                : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
-            }`}>{player.captainRole}</span>
-          )}
           <TeamColorIndicator teamColor={player.teamColor ?? null} compact />
           <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
             {displayPosition}
@@ -227,6 +220,13 @@ export function DraggablePlayerCard({
             <span className="ice-time-badge ice-time-badge-compact shrink-0" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
               {iceTimeMinutes}ʼ
             </span>
+          )}
+          {player.captainRole && (
+            <span className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 ${
+              player.captainRole === "C"
+                ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/40"
+                : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
+            }`}>{player.captainRole}</span>
           )}
         </button>
       ) : compact && !hideExtras ? (
@@ -237,13 +237,6 @@ export function DraggablePlayerCard({
           {player.isDeclined && !player.isRegistered && (
             <span className="text-red-400 text-[8px] shrink-0" title="Avböjd">✗</span>
           )}
-          {player.captainRole && (
-            <span className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 ${
-              player.captainRole === "C"
-                ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/40"
-                : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
-            }`}>{player.captainRole}</span>
-          )}
           <TeamColorIndicator teamColor={player.teamColor ?? null} compact />
           <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
             {displayPosition}
@@ -260,6 +253,13 @@ export function DraggablePlayerCard({
             <span className="ice-time-badge ice-time-badge-compact shrink-0" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
               {iceTimeMinutes}ʼ
             </span>
+          )}
+          {player.captainRole && (
+            <span className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 ${
+              player.captainRole === "C"
+                ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/40"
+                : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
+            }`}>{player.captainRole}</span>
           )}
         </div>
       ) : null}
