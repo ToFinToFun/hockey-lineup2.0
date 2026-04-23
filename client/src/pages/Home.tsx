@@ -2194,7 +2194,17 @@ export default function Home() {
                   />
                 </div>
               )
-            ) : (
+            ) : null}
+
+            {/* Desktop inline remove drop zone – directly below the lineup */}
+            {!isMobile && (
+              <RemoveDropZone
+                isDragging={!!activePlayer}
+                isFromSlot={!!activePlayer && !!findPlayerSlot(activePlayer.id)}
+              />
+            )}
+
+            {isMobile ? (
               /* Mobilvy – Side-by-side: båda lagen synliga + trupp-drawer */
               <div className="flex gap-1 min-h-0">
                 {/* Lag A (VITA) – vänster kolumn */}
@@ -2237,7 +2247,7 @@ export default function Home() {
                   />
                 </div>
               </div>
-            )}
+            ) : null}
           </main>
         </div>
 
@@ -2246,11 +2256,14 @@ export default function Home() {
           {activePlayer ? <PlayerCardOverlay player={activePlayer} isRemoving={isDragOutside} /> : null}
         </DragOverlay>
 
-        {/* Visible remove drop zone – appears at bottom when dragging a slotted player */}
-        <RemoveDropZone
-          isDragging={!!activePlayer}
-          isFromSlot={!!activePlayer && !!findPlayerSlot(activePlayer.id)}
-        />
+        {/* Visible remove drop zone – mobile: fixed at bottom; desktop: inline (rendered inside main) */}
+        {isMobile && (
+          <RemoveDropZone
+            isDragging={!!activePlayer}
+            isFromSlot={!!activePlayer && !!findPlayerSlot(activePlayer.id)}
+            isMobile
+          />
+        )}
       </div>
 
       {/* Export-modal */}
