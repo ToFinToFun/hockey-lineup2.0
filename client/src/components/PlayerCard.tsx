@@ -169,7 +169,7 @@ export function DraggablePlayerCard({
               {player.name}
               {player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
             </span>
-            {pirEnabled && pirSettings.showRating && player.pir != null && (player.pirMatchesPlayed ?? 0) >= 3 && (
+            {pirEnabled && pirSettings.showRating && player.pir != null && (
               <span
                 className={`text-[9px] font-bold px-1 py-px rounded shrink-0 border ${
                   player.pir >= 1050 ? 'bg-amber-400/15 text-amber-300 border-amber-400/30'
@@ -181,7 +181,7 @@ export function DraggablePlayerCard({
                 {player.pir}
               </span>
             )}
-            {pirEnabled && pirSettings.showTrend && player.pirTrendLabel && (player.pirMatchesPlayed ?? 0) >= 3 && player.pirTrendLabel !== 'stable' && (
+            {pirEnabled && pirSettings.showTrend && player.pirTrendLabel && player.pirTrendLabel !== 'stable' && (
               <span
                 className={`text-[9px] shrink-0 ${
                   player.pirTrendLabel === 'rising' ? 'text-emerald-400'
@@ -215,7 +215,7 @@ export function DraggablePlayerCard({
               <span className="ml-1 text-white/25 text-[9px]" title="Matcher spelade">({player.gamesPlayed})</span>
             )}
           </span>
-          {pirEnabled && pirSettings.showRating && player.pir != null && (player.pirMatchesPlayed ?? 0) >= 3 && (
+          {pirEnabled && pirSettings.showRating && player.pir != null && (
             <span
               className={`text-[9px] font-bold px-1 py-0.5 rounded shrink-0 border ${
                 player.pir >= 1050 ? 'bg-amber-400/15 text-amber-300 border-amber-400/30'
@@ -227,7 +227,7 @@ export function DraggablePlayerCard({
               {player.pir}
             </span>
           )}
-          {pirEnabled && pirSettings.showTrend && player.pirTrendLabel && (player.pirMatchesPlayed ?? 0) >= 3 && player.pirTrendLabel !== 'stable' && (
+          {pirEnabled && pirSettings.showTrend && player.pirTrendLabel && player.pirTrendLabel !== 'stable' && (
             <span
               className={`text-[10px] shrink-0 ${
                 player.pirTrendLabel === 'rising' ? 'text-emerald-400'
