@@ -1,20 +1,51 @@
 /**
- * PIR (Player Impact Rating) visibility context.
- * Allows any component to check if PIR display is enabled
- * without prop-drilling through the component tree.
+ * PIR (Player Impact Rating) settings context.
+ * Provides granular control over what PIR data is visible.
+ * All components can check individual settings without prop-drilling.
  */
 import React, { createContext, useContext } from "react";
 
-const PirEnabledContext = createContext<boolean>(false);
+export interface PirSettings {
+  /** Master toggle — PIR system enabled */
+  enabled: boolean;
+  /** Show PIR rating number on player cards */
+  showRating: boolean;
+  /** Show trend arrow on player cards */
+  showTrend: boolean;
+  /** Show team strength in team panel headers */
+  showTeamStrength: boolean;
+  /** Show predicted match outcome */
+  showPrediction: boolean;
+  /** Use PIR for auto-balance (always true by default, separate from display) */
+  useForBalance: boolean;
+}
 
-export function PirEnabledProvider({ enabled, children }: { enabled: boolean; children: React.ReactNode }) {
+const defaultSettings: PirSettings = {
+  enabled: false,
+  showRating: true,
+  showTrend: true,
+  showTeamStrength: true,
+  showPrediction: true,
+  useForBalance: true,
+};
+
+const PirSettingsContext = createContext<PirSettings>(defaultSettings);
+
+export function PirSettingsProvider({ settings, children }: { settings: PirSettings; children: React.ReactNode }) {
   return (
-    <PirEnabledContext.Provider value={enabled}>
+    <PirSettingsContext.Provider value={settings}>
       {children}
-    </PirEnabledContext.Provider>
+    </PirSettingsContext.Provider>
   );
 }
 
+/** Get all PIR settings */
+export function usePirSettings(): PirSettings {
+  return useContext(PirSettingsContext);
+}
+
+/** Backward compat: simple boolean check if PIR is enabled */
 export function usePirEnabled(): boolean {
-  return useContext(PirEnabledContext);
+  const settings = useContext(PirSettingsContext);
+  return settings.enabled;
 }

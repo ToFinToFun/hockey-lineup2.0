@@ -31,8 +31,16 @@ export interface Player {
   mostPlayedTeam?: "green" | "white"; // Vanligaste laget baserat på matchhistorik
   /** Player Impact Rating (Elo-like) */
   pir?: number;
-  /** PIR confidence (0-1 based on matches played) */
+  /** PIR confidence (0-1 based on matches played + recency) */
   pirConfidence?: number;
+  /** Recent form rating (last N matches) */
+  pirRecent?: number;
+  /** Trend: pirRecent - pir. Positive = improving */
+  pirTrend?: number;
+  /** Trend label */
+  pirTrendLabel?: "rising" | "slightly_rising" | "stable" | "slightly_falling" | "falling";
+  /** Total matches played (for PIR) */
+  pirMatchesPlayed?: number;
 }
 
 /** Formaterar spelarens visningsnamn: "C Jerry Paasovaara #63" eller "Linus Carbin #35" */

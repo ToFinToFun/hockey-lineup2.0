@@ -296,24 +296,63 @@ export const appRouter = router({
       }
     }),
 
-    /** Check if PIR is enabled */
-    getPirEnabled: publicProcedure.query(async () => {
-      const val = await getConfigValue("pir_enabled");
-      return { enabled: val === "true" };
+    /** Get PIR settings (all granular toggles) */
+    getPirSettings: publicProcedure.query(async () => {
+      const [enabled, showRating, showTrend, showTeamStrength, showPrediction, useForBalance] = await Promise.all([
+        getConfigValue("pir_enabled"),
+        getConfigValue("pir_show_rating"),
+        getConfigValue("pir_show_trend"),
+        getConfigValue("pir_show_team_strength"),
+        getConfigValue("pir_show_prediction"),
+        getConfigValue("pir_use_for_balance"),
+      ]);
+      return {
+        enabled: enabled === "true",
+        showRating: showRating !== "false",       // default true when PIR enabled
+        showTrend: showTrend !== "false",         // default true when PIR enabled
+        showTeamStrength: showTeamStrength !== "false", // default true
+        showPrediction: showPrediction !== "false",     // default true
+        useForBalance: useForBalance !== "false",       // default true (always use for balance)
+      };
     }),
 
-    /** Toggle PIR visibility (requires admin password) */
-    setPirEnabled: publicProcedure
+    /** Update PIR settings (requires admin password) */
+    setPirSettings: publicProcedure
       .input(
         z.object({
-          enabled: z.boolean(),
           password: z.string(),
+          enabled: z.boolean().optional(),
+          showRating: z.boolean().optional(),
+          showTrend: z.boolean().optional(),
+          showTeamStrength: z.boolean().optional(),
+          showPrediction: z.boolean().optional(),
+          useForBalance: z.boolean().optional(),
         })
       )
       .mutation(async ({ input }) => {
         if (input.password !== "Styrelsen") {
           return { success: false, error: "Fel lösenord" };
         }
+        const updates: Promise<void>[] = [];
+        if (input.enabled !== undefined) updates.push(setConfigValue("pir_enabled", input.enabled ? "true" : "false"));
+        if (input.showRating !== undefined) updates.push(setConfigValue("pir_show_rating", input.showRating ? "true" : "false"));
+        if (input.showTrend !== undefined) updates.push(setConfigValue("pir_show_trend", input.showTrend ? "true" : "false"));
+        if (input.showTeamStrength !== undefined) updates.push(setConfigValue("pir_show_team_strength", input.showTeamStrength ? "true" : "false"));
+        if (input.showPrediction !== undefined) updates.push(setConfigValue("pir_show_prediction", input.showPrediction ? "true" : "false"));
+        if (input.useForBalance !== undefined) updates.push(setConfigValue("pir_use_for_balance", input.useForBalance ? "true" : "false"));
+        await Promise.all(updates);
+        return { success: true };
+      }),
+
+    // Keep backward compat aliases
+    getPirEnabled: publicProcedure.query(async () => {
+      const val = await getConfigValue("pir_enabled");
+      return { enabled: val === "true" };
+    }),
+    setPirEnabled: publicProcedure
+      .input(z.object({ enabled: z.boolean(), password: z.string() }))
+      .mutation(async ({ input }) => {
+        if (input.password !== "Styrelsen") return { success: false, error: "Fel lösenord" };
         await setConfigValue("pir_enabled", input.enabled ? "true" : "false");
         return { success: true };
       }),
@@ -322,7 +361,7 @@ export const appRouter = router({
   // ─── PIR (Player Impact Rating) ──────────────────────────────────────────
 
   pir: router({
-    /** Get PIR ratings for all players */
+    /** Get PIR ratings for all players (enhanced with trend, confidence, etc.) */
     getRatings: publicProcedure.query(async () => {
       const matches = await getAllMatchResults();
       return calculatePIR(matches);

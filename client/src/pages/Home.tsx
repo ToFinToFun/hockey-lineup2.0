@@ -46,7 +46,7 @@ import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { useSwipe } from "@/hooks/useSwipe";
 import { autoDistribute } from "@/lib/autoDistribute";
 import { RemoveDropZone } from "@/components/RemoveDropZone";
-import { PirEnabledProvider } from "@/hooks/usePirEnabled";
+import { PirSettingsProvider, type PirSettings } from "@/hooks/usePirEnabled";
 
 type MobileTab = "vita" | "trupp" | "grona";
 
@@ -264,6 +264,10 @@ export default function Home() {
 
   // PIR visibility (admin-controlled)
   const [pirEnabled, setPirEnabled] = useState(false);
+  const [pirSettings, setPirSettings] = useState<PirSettings>({
+    enabled: false, showRating: true, showTrend: true,
+    showTeamStrength: true, showPrediction: true, useForBalance: true,
+  });
 
   // Track if we've received the initial server state
   const hasReceivedInitial = useRef(false);
@@ -453,13 +457,16 @@ export default function Home() {
       })
       .catch(() => null);
 
-    // Check if PIR is enabled
-    fetch("/api/trpc/settings.getPirEnabled", { credentials: "include" })
+    // Fetch PIR settings (granular toggles)
+    fetch("/api/trpc/settings.getPirSettings", { credentials: "include" })
       .then(res => res.json())
       .then((json) => {
         const data = json?.result?.data;
         const result = data?.json ?? data;
-        if (result?.enabled) setPirEnabled(true);
+        if (result) {
+          setPirSettings(result);
+          setPirEnabled(result.enabled === true);
+        }
       })
       .catch(() => {});
 
@@ -467,10 +474,21 @@ export default function Home() {
       .then(res => res.json())
       .then((json) => {
         const wrapped = json?.result?.data;
-        const arr = (wrapped?.json ?? wrapped) as Array<{ playerKey: string; rating: number; confidence: number }> | null;
+        const arr = (wrapped?.json ?? wrapped) as Array<{
+          playerKey: string; rating: number; recentRating: number;
+          trend: number; trendLabel: string; confidence: number;
+          matchesPlayed: number;
+        }> | null;
         if (!arr) return null;
-        const map: Record<string, { rating: number; confidence: number }> = {};
-        for (const r of arr) map[r.playerKey] = { rating: r.rating, confidence: r.confidence };
+        const map: Record<string, {
+          rating: number; recentRating: number; trend: number;
+          trendLabel: string; confidence: number; matchesPlayed: number;
+        }> = {};
+        for (const r of arr) map[r.playerKey] = {
+          rating: r.rating, recentRating: r.recentRating,
+          trend: r.trend, trendLabel: r.trendLabel,
+          confidence: r.confidence, matchesPlayed: r.matchesPlayed,
+        };
         return map;
       })
       .catch(() => null);
@@ -498,6 +516,10 @@ export default function Home() {
               if (pir) {
                 enriched.pir = pir.rating;
                 enriched.pirConfidence = pir.confidence;
+                enriched.pirRecent = pir.recentRating;
+                enriched.pirTrend = pir.trend;
+                enriched.pirTrendLabel = pir.trendLabel;
+                enriched.pirMatchesPlayed = pir.matchesPlayed;
               }
             }
             return enriched as Player;
@@ -523,6 +545,10 @@ export default function Home() {
                 if (pir) {
                   enriched.pir = pir.rating;
                   enriched.pirConfidence = pir.confidence;
+                  enriched.pirRecent = pir.recentRating;
+                  enriched.pirTrend = pir.trend;
+                  enriched.pirTrendLabel = pir.trendLabel;
+                  enriched.pirMatchesPlayed = pir.matchesPlayed;
                 }
               }
               state.lineup[slotId] = enriched as Player;
@@ -887,7 +913,7 @@ export default function Home() {
     const allPlayers = [...availablePlayersRef.current, ...removedPlayers];
 
     // Kör auto-fördela (med eller utan shuffle)
-    const result = autoDistribute(allPlayers, {}, { shuffle });
+    const result = autoDistribute(allPlayers, {}, { shuffle, useForBalance: pirSettings.useForBalance });
 
     // Uppdatera configs
     setTeamAConfig(result.teamAConfig);
@@ -997,7 +1023,7 @@ export default function Home() {
 
     // Kör auto-fördela efter en tick så state hinner uppdateras
     setTimeout(() => {
-      const result = autoDistribute(updatedPlayers, {}, { shuffle: false });
+      const result = autoDistribute(updatedPlayers, {}, { shuffle: false, useForBalance: pirSettings.useForBalance });
       setTeamAConfig(result.teamAConfig);
       setTeamBConfig(result.teamBConfig);
       setLineup(result.lineup);
@@ -1448,7 +1474,7 @@ export default function Home() {
   };
 
   return (
-    <PirEnabledProvider enabled={pirEnabled}>
+    <PirSettingsProvider settings={pirSettings}>
     <div className={`overflow-x-hidden max-w-[100vw] ${isLineupDark ? '' : 'lineup-light'}`}>
     <DndContext
       sensors={sensors}
@@ -2338,7 +2364,7 @@ export default function Home() {
       )}
 
       {/* Inställningar-modal */}
-      <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} pirEnabled={pirEnabled} onPirEnabledChange={setPirEnabled} />
+      <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} pirSettings={pirSettings} onPirSettingsChange={(s) => { setPirSettings(s); setPirEnabled(s.enabled); }} />
 
       {/* Bekäftelsedialog för Rensa */}
       {confirmClear && (
@@ -2392,6 +2418,6 @@ export default function Home() {
       )}
     </DndContext>
     </div>
-    </PirEnabledProvider>
+    </PirSettingsProvider>
   );
 }
