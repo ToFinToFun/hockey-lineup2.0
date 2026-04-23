@@ -2037,7 +2037,11 @@ export default function Home() {
                 <Users className="w-3.5 h-3.5" />
                 Trupp ({totalRegistered}/{totalPlayers})
               </button>
-
+              <div className="flex items-center gap-1 text-[10px] text-white/30">
+                <span className="text-slate-200">{teamAName} {teamARegistered}/{teamACount}</span>
+                <span>|</span>
+                <span className="text-emerald-400">{teamBName} {teamBRegistered}/{teamBCount}</span>
+              </div>
             </div>
           )}
 
