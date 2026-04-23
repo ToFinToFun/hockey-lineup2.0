@@ -2436,6 +2436,13 @@ export default function Home() {
           open={mobileDrawerOpen}
           onClose={() => setMobileDrawerOpen(false)}
           players={availablePlayers}
+          onDeletePlayer={handleDeletePlayer}
+          onChangePosition={handleChangePosition}
+          onChangeTeamColor={handleChangeTeamColor}
+          onChangeNumber={handleChangeNumber}
+          onChangeName={handleChangeName}
+          onChangeCaptainRole={handleChangeCaptainRole}
+          onChangeRegistered={handleChangeRegistered}
           onBulkRegister={handleBulkRegister}
           onEventInfoUpdate={(info) => setEventInfo(info)}
           totalRegistered={totalRegistered}
