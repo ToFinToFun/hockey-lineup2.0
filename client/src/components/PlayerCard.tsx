@@ -654,8 +654,8 @@ export function TeamColorIndicator({ teamColor, compact, mostPlayedTeam }: { tea
     return (
       <div
         title="Oftast Gröna"
-        className={`${cls} border border-emerald-400/70`}
-        style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(52,211,153,0.35) 2px, rgba(52,211,153,0.35) 4px)' }}
+        className={`${cls} border border-emerald-400`}
+        style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgb(52,211,153) 2px, rgb(52,211,153) 4px)' }}
       />
     );
   }
@@ -663,8 +663,8 @@ export function TeamColorIndicator({ teamColor, compact, mostPlayedTeam }: { tea
     return (
       <div
         title="Oftast Vita"
-        className={`${cls} border border-white/60`}
-        style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(255,255,255,0.25) 2px, rgba(255,255,255,0.25) 4px)' }}
+        className={`${cls} border border-white`}
+        style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgb(255,255,255) 2px, rgb(255,255,255) 4px)' }}
       />
     );
   }
