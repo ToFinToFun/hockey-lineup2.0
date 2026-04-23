@@ -46,6 +46,7 @@ import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { useSwipe } from "@/hooks/useSwipe";
 import { autoDistribute } from "@/lib/autoDistribute";
 import { RemoveDropZone } from "@/components/RemoveDropZone";
+import { PirEnabledProvider } from "@/hooks/usePirEnabled";
 
 type MobileTab = "vita" | "trupp" | "grona";
 
@@ -261,6 +262,9 @@ export default function Home() {
   // Statistik-panel toggle
   const [showStats, setShowStats] = useState(false);
 
+  // PIR visibility (admin-controlled)
+  const [pirEnabled, setPirEnabled] = useState(false);
+
   // Track if we've received the initial server state
   const hasReceivedInitial = useRef(false);
   // === SYNC ARCHITECTURE v3 ===
@@ -449,23 +453,54 @@ export default function Home() {
       })
       .catch(() => null);
 
-    Promise.all([statePromise, posHistoryPromise])
-      .then(([state, posHistory]) => {
+    // Check if PIR is enabled
+    fetch("/api/trpc/settings.getPirEnabled", { credentials: "include" })
+      .then(res => res.json())
+      .then((json) => {
+        const data = json?.result?.data;
+        const result = data?.json ?? data;
+        if (result?.enabled) setPirEnabled(true);
+      })
+      .catch(() => {});
+
+    const pirPromise = fetch("/api/trpc/pir.getRatings", { credentials: "include" })
+      .then(res => res.json())
+      .then((json) => {
+        const wrapped = json?.result?.data;
+        const arr = (wrapped?.json ?? wrapped) as Array<{ playerKey: string; rating: number; confidence: number }> | null;
+        if (!arr) return null;
+        const map: Record<string, { rating: number; confidence: number }> = {};
+        for (const r of arr) map[r.playerKey] = { rating: r.rating, confidence: r.confidence };
+        return map;
+      })
+      .catch(() => null);
+
+    Promise.all([statePromise, posHistoryPromise, pirPromise])
+      .then(([state, posHistory, pirMap]) => {
         if (!mounted) return;
 
-        // Enrich players with mostPlayedPosition from match history
-        if (state && state.players && posHistory) {
+        // Enrich players with mostPlayedPosition + PIR from match history
+        if (state && state.players) {
           state.players = (state.players as Player[]).map((p: Player) => {
             const key = p.number ? `${p.name} #${p.number}` : p.name;
-            const hist = posHistory[key];
-            if (hist?.mostPlayed) {
-              const enriched: any = { ...p, mostPlayedPosition: hist.mostPlayed };
-              if (hist.mostPlayedTeam === "green" || hist.mostPlayedTeam === "white") {
-                enriched.mostPlayedTeam = hist.mostPlayedTeam;
+            const enriched: any = { ...p };
+            if (posHistory) {
+              const hist = posHistory[key];
+              if (hist?.mostPlayed) {
+                enriched.mostPlayedPosition = hist.mostPlayed;
+                if (hist.mostPlayedTeam === "green" || hist.mostPlayedTeam === "white") {
+                  enriched.mostPlayedTeam = hist.mostPlayedTeam;
+                }
               }
-              return enriched as Player;
             }
-            return p;
+            if (pirMap) {
+              const pir = pirMap[key];
+              if (pir) {
+                enriched.pir = pir.rating;
+                enriched.pirConfidence = pir.confidence;
+              }
+            }
+            return enriched as Player;
           });
           // Also enrich players in lineup
           if (state.lineup) {
@@ -473,14 +508,24 @@ export default function Home() {
               const p = player as Player;
               if (!p?.name) continue;
               const key = p.number ? `${p.name} #${p.number}` : p.name;
-              const hist = posHistory[key];
-              if (hist?.mostPlayed) {
-                const enriched: any = { ...p, mostPlayedPosition: hist.mostPlayed };
-                if (hist.mostPlayedTeam === "green" || hist.mostPlayedTeam === "white") {
-                  enriched.mostPlayedTeam = hist.mostPlayedTeam;
+              const enriched: any = { ...p };
+              if (posHistory) {
+                const hist = posHistory[key];
+                if (hist?.mostPlayed) {
+                  enriched.mostPlayedPosition = hist.mostPlayed;
+                  if (hist.mostPlayedTeam === "green" || hist.mostPlayedTeam === "white") {
+                    enriched.mostPlayedTeam = hist.mostPlayedTeam;
+                  }
                 }
-                state.lineup[slotId] = enriched as Player;
               }
+              if (pirMap) {
+                const pir = pirMap[key];
+                if (pir) {
+                  enriched.pir = pir.rating;
+                  enriched.pirConfidence = pir.confidence;
+                }
+              }
+              state.lineup[slotId] = enriched as Player;
             }
           }
         }
@@ -1403,6 +1448,7 @@ export default function Home() {
   };
 
   return (
+    <PirEnabledProvider enabled={pirEnabled}>
     <div className={`overflow-x-hidden max-w-[100vw] ${isLineupDark ? '' : 'lineup-light'}`}>
     <DndContext
       sensors={sensors}
@@ -2292,7 +2338,7 @@ export default function Home() {
       )}
 
       {/* Inställningar-modal */}
-      <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} />
+      <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} pirEnabled={pirEnabled} onPirEnabledChange={setPirEnabled} />
 
       {/* Bekäftelsedialog för Rensa */}
       {confirmClear && (
@@ -2346,5 +2392,6 @@ export default function Home() {
       )}
     </DndContext>
     </div>
+    </PirEnabledProvider>
   );
 }

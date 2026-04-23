@@ -230,20 +230,46 @@ export function autoDistribute(
   const teamAOutfield: TaggedPlayer[] = [...ofWhite];
   const teamBOutfield: TaggedPlayer[] = [...ofGreen];
 
-  // Distribute neutrals to balance teams
-  for (const np of neutralsToDistribute) {
-    if (teamAOutfield.length <= teamBOutfield.length) {
-      teamAOutfield.push(np);
-    } else {
-      teamBOutfield.push(np);
+  // Helper: sum of PIR for a team (default 1000 for players without PIR)
+  const teamPirSum = (team: TaggedPlayer[]) =>
+    team.reduce((sum, t) => sum + (t.player.pir ?? 1000), 0);
+
+  // Check if any neutral has PIR data — if so, use PIR-balanced distribution
+  const hasPirData = neutralsToDistribute.some(t => t.player.pir != null);
+
+  if (hasPirData) {
+    // Sort neutrals by PIR descending (strongest first) for greedy balancing
+    const sorted = [...neutralsToDistribute].sort((a, b) => (b.player.pir ?? 1000) - (a.player.pir ?? 1000));
+    for (const np of sorted) {
+      const sumA = teamPirSum(teamAOutfield);
+      const sumB = teamPirSum(teamBOutfield);
+      // Assign to the team with lower total PIR, but also keep count balanced (max ±1)
+      const countDiff = teamAOutfield.length - teamBOutfield.length;
+      if (countDiff > 1) {
+        teamBOutfield.push(np);
+      } else if (countDiff < -1) {
+        teamAOutfield.push(np);
+      } else if (sumA <= sumB) {
+        teamAOutfield.push(np);
+      } else {
+        teamBOutfield.push(np);
+      }
+    }
+  } else {
+    // Fallback: simple count-based distribution
+    for (const np of neutralsToDistribute) {
+      if (teamAOutfield.length <= teamBOutfield.length) {
+        teamAOutfield.push(np);
+      } else {
+        teamBOutfield.push(np);
+      }
     }
   }
 
-  // Rebalance if teams are very unbalanced
+  // Rebalance if teams are very unbalanced (count-wise)
+  // When PIR data exists, also try to balance PIR sum by swapping movable players
   const rebalance = (bigger: TaggedPlayer[], smaller: TaggedPlayer[]) => {
     while (bigger.length - smaller.length > 1) {
-      // In shuffle mode: anyone who isn't a locked captain can be moved
-      // In auto mode: anyone without team color (and preferably without captain role) can be moved
       const canMove = (t: TaggedPlayer) => {
         if (doShuffle) return !isLockedCaptain(t.player);
         return !t.player.teamColor && !t.player.captainRole;
@@ -253,13 +279,35 @@ export function autoDistribute(
         return !t.player.teamColor;
       };
 
-      const idx = bigger.findIndex(canMove);
-      if (idx === -1) {
-        const idx2 = bigger.findIndex(canMoveFallback);
-        if (idx2 === -1) break;
-        smaller.push(bigger.splice(idx2, 1)[0]);
+      // If PIR data exists, pick the movable player that best balances PIR
+      if (hasPirData) {
+        const movable = bigger
+          .map((t, i) => ({ t, i, canMove: canMove(t) || canMoveFallback(t) }))
+          .filter(x => x.canMove);
+        if (movable.length === 0) break;
+
+        const targetDiff = 0; // ideal PIR difference
+        let bestIdx = movable[0].i;
+        let bestScore = Infinity;
+        for (const m of movable) {
+          const newBigSum = teamPirSum(bigger) - (m.t.player.pir ?? 1000);
+          const newSmallSum = teamPirSum(smaller) + (m.t.player.pir ?? 1000);
+          const score = Math.abs(newBigSum - newSmallSum - targetDiff);
+          if (score < bestScore) {
+            bestScore = score;
+            bestIdx = m.i;
+          }
+        }
+        smaller.push(bigger.splice(bestIdx, 1)[0]);
       } else {
-        smaller.push(bigger.splice(idx, 1)[0]);
+        const idx = bigger.findIndex(canMove);
+        if (idx === -1) {
+          const idx2 = bigger.findIndex(canMoveFallback);
+          if (idx2 === -1) break;
+          smaller.push(bigger.splice(idx2, 1)[0]);
+        } else {
+          smaller.push(bigger.splice(idx, 1)[0]);
+        }
       }
     }
   };

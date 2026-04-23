@@ -1,17 +1,20 @@
 /**
- * SettingsModal – Dold inställningssida för att konfigurera laget.se-inloggning.
+ * SettingsModal – Dold inställningssida för att konfigurera laget.se-inloggning
+ * och admin-funktioner som PIR (Player Impact Rating).
  * Öppnas via kugghjulsikon i headern.
  */
 import React, { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
-import { X, Settings, Eye, EyeOff, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { X, Settings, Eye, EyeOff, CheckCircle2, XCircle, Loader2, TrendingUp, Lock } from "lucide-react";
 
 interface SettingsModalProps {
   open: boolean;
   onClose: () => void;
+  pirEnabled?: boolean;
+  onPirEnabledChange?: (enabled: boolean) => void;
 }
 
-export function SettingsModal({ open, onClose }: SettingsModalProps) {
+export function SettingsModal({ open, onClose, pirEnabled = false, onPirEnabledChange }: SettingsModalProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -22,6 +25,14 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
     message: string;
   } | null>(null);
   const [saveResult, setSaveResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
+
+  // PIR admin state
+  const [pirPassword, setPirPassword] = useState("");
+  const [pirSaving, setPirSaving] = useState(false);
+  const [pirResult, setPirResult] = useState<{
     success: boolean;
     message: string;
   } | null>(null);
@@ -48,6 +59,8 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
       setShowPassword(false);
       setTestResult(null);
       setSaveResult(null);
+      setPirPassword("");
+      setPirResult(null);
     }
   }, [open]);
 
@@ -93,6 +106,35 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
     }
   };
 
+  const handleTogglePir = async () => {
+    if (!pirPassword.trim()) return;
+    setPirSaving(true);
+    setPirResult(null);
+    try {
+      const res = await fetch("/api/trpc/settings.setPirEnabled", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ json: { enabled: !pirEnabled, password: pirPassword.trim() } }),
+      });
+      const json = await res.json();
+      const data = json?.result?.data;
+      const result = data?.json ?? data;
+      if (result?.success) {
+        const newVal = !pirEnabled;
+        onPirEnabledChange?.(newVal);
+        setPirResult({ success: true, message: newVal ? "PIR aktiverat! Rating visas nu på spelarkorten." : "PIR avaktiverat." });
+        setPirPassword("");
+      } else {
+        setPirResult({ success: false, message: result?.error || "Kunde inte ändra inställningen" });
+      }
+    } catch (err: any) {
+      setPirResult({ success: false, message: err.message || "Okänt fel" });
+    } finally {
+      setPirSaving(false);
+    }
+  };
+
   if (!open) return null;
 
   return (
@@ -101,7 +143,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md glass-panel-strong rounded-xl shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-md glass-panel-strong rounded-xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
           <div className="flex items-center gap-2">
@@ -238,6 +280,88 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
               }`}>
                 {testResult.success ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" /> : <XCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
                 <span>{testResult.message}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-white/8" />
+
+          {/* PIR section */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingUp className="w-4 h-4 text-amber-400" />
+              <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider">
+                Player Impact Rating (PIR)
+              </h3>
+            </div>
+            <p className="text-[11px] text-white/40 mb-3">
+              Elo-baserat ratingsystem som mäter spelarnas bidrag till lagets vinster.
+              Justeras för lagstyrka och motståndarstyrka. Kräver lösenord för att aktivera/avaktivera.
+            </p>
+
+            {/* Current status */}
+            <div className={`flex items-center gap-2 text-xs mb-3 px-3 py-2 rounded-lg ${
+              pirEnabled
+                ? "bg-amber-500/10 border border-amber-500/20 text-amber-400"
+                : "bg-white/5 border border-white/10 text-white/40"
+            }`}>
+              {pirEnabled ? (
+                <>
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  <span>PIR är <strong>aktiverat</strong> — rating visas på spelarkorten</span>
+                </>
+              ) : (
+                <>
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>PIR är <strong>avaktiverat</strong> — rating dold</span>
+                </>
+              )}
+            </div>
+
+            {/* Admin password */}
+            <div className="space-y-1.5 mb-3">
+              <label className="text-[11px] text-white/50 font-medium uppercase tracking-wider">
+                Admin-lösenord
+              </label>
+              <input
+                type="password"
+                value={pirPassword}
+                onChange={(e) => setPirPassword(e.target.value)}
+                placeholder="Ange lösenord för att ändra"
+                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-amber-400/50 focus:ring-1 focus:ring-amber-400/20 transition-colors"
+                onKeyDown={(e) => { if (e.key === "Enter" && pirPassword.trim()) handleTogglePir(); }}
+              />
+            </div>
+
+            {/* Toggle button */}
+            <button
+              onClick={handleTogglePir}
+              disabled={pirSaving || !pirPassword.trim()}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                pirEnabled
+                  ? "bg-red-500/20 border border-red-400/40 text-red-300 hover:bg-red-500/30"
+                  : "bg-amber-500/20 border border-amber-400/40 text-amber-300 hover:bg-amber-500/30"
+              }`}
+            >
+              {pirSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : pirEnabled ? (
+                "Avaktivera PIR"
+              ) : (
+                "Aktivera PIR"
+              )}
+            </button>
+
+            {/* PIR result */}
+            {pirResult && (
+              <div className={`mt-3 flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${
+                pirResult.success
+                  ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
+                  : "bg-red-500/10 border border-red-500/20 text-red-400"
+              }`}>
+                {pirResult.success ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <XCircle className="w-3.5 h-3.5 shrink-0" />}
+                <span>{pirResult.message}</span>
               </div>
             )}
           </div>

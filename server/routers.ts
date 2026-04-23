@@ -4,7 +4,8 @@ import { fetchAttendance, updateAttendance, type AttendingStatus } from "./laget
 import { saveLagetSeCredentials, getLagetSeCredentials, hasLagetSeCredentials } from "./secretsDb";
 import { scoreRouter } from "./routers/score";
 import { scoreStatsRouter } from "./routers/scoreStats";
-import { getAllMatchResults } from "./scoreDb";
+import { getAllMatchResults, getConfigValue, setConfigValue } from "./scoreDb";
+import { calculatePIR } from "./pir";
 import {
   getLineupState,
   saveLineupState,
@@ -293,6 +294,38 @@ export const appRouter = router({
       } catch (err: any) {
         return { success: false, error: err.message || "Okänt fel" };
       }
+    }),
+
+    /** Check if PIR is enabled */
+    getPirEnabled: publicProcedure.query(async () => {
+      const val = await getConfigValue("pir_enabled");
+      return { enabled: val === "true" };
+    }),
+
+    /** Toggle PIR visibility (requires admin password) */
+    setPirEnabled: publicProcedure
+      .input(
+        z.object({
+          enabled: z.boolean(),
+          password: z.string(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        if (input.password !== "Styrelsen") {
+          return { success: false, error: "Fel lösenord" };
+        }
+        await setConfigValue("pir_enabled", input.enabled ? "true" : "false");
+        return { success: true };
+      }),
+  }),
+
+  // ─── PIR (Player Impact Rating) ──────────────────────────────────────────
+
+  pir: router({
+    /** Get PIR ratings for all players */
+    getRatings: publicProcedure.query(async () => {
+      const matches = await getAllMatchResults();
+      return calculatePIR(matches);
     }),
   }),
 });
