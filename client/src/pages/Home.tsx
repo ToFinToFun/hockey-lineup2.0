@@ -1582,6 +1582,20 @@ export default function Home() {
                     )}
                   </div>
 
+                  {/* Undo icon-only */}
+                  <button
+                    onClick={handleUndo}
+                    disabled={undoStack.length === 0}
+                    title={`Ångra (${undoStack.length} steg)`}
+                    className={`p-1 rounded transition-all ${
+                      undoStack.length > 0
+                        ? 'text-white/60 hover:text-white hover:bg-white/10'
+                        : 'text-white/15 cursor-not-allowed'
+                    }`}
+                  >
+                    <Undo2 className="w-3.5 h-3.5" />
+                  </button>
+
                   {/* AUTO icon-only */}
                   <button
                     onClick={() => setConfirmAutoDistribute(true)}
@@ -1682,20 +1696,6 @@ export default function Home() {
                           >
                             {sideLayout ? <Columns3 className="w-4 h-4" /> : <PanelLeft className="w-4 h-4" />}
                             <span>{sideLayout ? 'Standard-layout' : 'Sidoläge'}</span>
-                          </button>
-
-                          {/* Ångra */}
-                          <button
-                            onClick={() => { handleUndo(); setShowHeaderMenu(false); }}
-                            disabled={undoStack.length === 0}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
-                              undoStack.length > 0
-                                ? isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
-                                : isLineupDark ? 'text-white/20 cursor-not-allowed' : 'text-gray-300 cursor-not-allowed'
-                            }`}
-                          >
-                            <Undo2 className="w-4 h-4" />
-                            <span>Ångra{undoStack.length > 0 ? ` (${undoStack.length})` : ''}</span>
                           </button>
 
                           {/* Dela */}
