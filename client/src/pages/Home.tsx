@@ -2323,13 +2323,8 @@ export default function Home() {
           open={mobileDrawerOpen}
           onClose={() => setMobileDrawerOpen(false)}
           players={availablePlayers}
-          onBulkRegister={() => {
-            handleBulkRegister().then((result) => {
-              if (result.eventTitle) {
-                setEventInfo({ title: result.eventTitle, date: result.eventDate || "" });
-              }
-            });
-          }}
+          onBulkRegister={handleBulkRegister}
+          onEventInfoUpdate={(info) => setEventInfo(info)}
           totalRegistered={totalRegistered}
           totalDeclined={totalDeclined}
           totalPlayers={totalPlayers}
