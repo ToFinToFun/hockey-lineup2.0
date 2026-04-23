@@ -45,6 +45,7 @@ import { createPortal } from "react-dom"; // används av PlayerList context-meny
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { useSwipe } from "@/hooks/useSwipe";
 import { autoDistribute } from "@/lib/autoDistribute";
+import { RemoveDropZone } from "@/components/RemoveDropZone";
 
 type MobileTab = "vita" | "trupp" | "grona";
 
@@ -708,8 +709,8 @@ export default function Home() {
     const playerId = active.id as string;
     const sourceSlot = findPlayerSlot(playerId);
 
-    // Dropped outside any target or on player-list → remove from slot
-    if (!over || over.id === "player-list" || (over && !ALL_SLOT_IDS.has(over.id as string) && over.id !== "player-list")) {
+    // Dropped on remove-zone, outside any target, or on player-list → remove from slot
+    if (!over || over.id === "player-list" || over.id === "remove-zone" || (over && !ALL_SLOT_IDS.has(over.id as string) && over.id !== "player-list")) {
       if (!sourceSlot) return; // was from trupp, nothing to do
       const player = lineup[sourceSlot];
       if (!player) return;
@@ -1409,7 +1410,8 @@ export default function Home() {
         if (sourceSlot) {
           // Check collision: is the pointer over any droppable?
           const overAny = e.over;
-          setIsDragOutside(!overAny);
+          const overRemoveZone = overAny && overAny.id === "remove-zone";
+          setIsDragOutside(!overAny || !!overRemoveZone);
         } else {
           setIsDragOutside(false);
         }
@@ -2241,6 +2243,12 @@ export default function Home() {
         <DragOverlay style={{ zIndex: 99999, pointerEvents: "none" }} modifiers={[snapCenterToCursor]}>
           {activePlayer ? <PlayerCardOverlay player={activePlayer} isRemoving={isDragOutside} /> : null}
         </DragOverlay>
+
+        {/* Visible remove drop zone – appears at bottom when dragging a slotted player */}
+        <RemoveDropZone
+          isDragging={!!activePlayer}
+          isFromSlot={!!activePlayer && !!findPlayerSlot(activePlayer.id)}
+        />
       </div>
 
       {/* Export-modal */}
