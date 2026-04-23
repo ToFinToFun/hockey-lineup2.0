@@ -199,30 +199,30 @@ export function DraggablePlayerCard({
           title="Klicka för att redigera spelare"
         >
           {!hideExtras && player.isRegistered && (
-            <span className="text-emerald-400 text-[7px] shrink-0" title="Anmäld">✓</span>
+            <span className="text-emerald-400 text-[8px] shrink-0" title="Anmäld">✓</span>
           )}
           {!hideExtras && player.isDeclined && !player.isRegistered && (
-            <span className="text-red-400 text-[7px] shrink-0" title="Avböjd">✗</span>
+            <span className="text-red-400 text-[8px] shrink-0" title="Avböjd">✗</span>
           )}
           <TeamColorIndicator teamColor={player.teamColor ?? null} compact mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />
-          <span className={`pos-badge pos-badge-xs pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
+          <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
             {displayPosition}
           </span>
           {player.mostPlayedPosition && (
-            <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0 opacity-50 ${
-              player.mostPlayedPosition === displayPosition ? '!opacity-30' : ''
+            <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0 ${
+              player.mostPlayedPosition === displayPosition ? 'opacity-30' : ''
             }`}
               title={`Vanligaste position: ${player.mostPlayedPosition}`}>
               {player.mostPlayedPosition}
             </span>
           )}
           {iceTimeMinutes != null && (
-            <span className="ice-time-badge ice-time-badge-compact shrink-0 text-[7px]" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
+            <span className="ice-time-badge ice-time-badge-compact shrink-0" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
               {iceTimeMinutes}ʼ
             </span>
           )}
           {player.captainRole && (
-            <span className={`text-[8px] font-black px-0.5 py-px rounded shrink-0 ${
+            <span className={`text-[8px] font-black px-1 py-0.5 rounded shrink-0 ${
               player.captainRole === "C"
                 ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/40"
                 : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
@@ -232,30 +232,30 @@ export function DraggablePlayerCard({
       ) : compact && !hideExtras ? (
         <div className="flex items-center gap-0.5 w-full leading-none">
           {player.isRegistered && (
-            <span className="text-emerald-400 text-[7px] shrink-0" title="Anmäld">✓</span>
+            <span className="text-emerald-400 text-[8px] shrink-0" title="Anmäld">✓</span>
           )}
           {player.isDeclined && !player.isRegistered && (
-            <span className="text-red-400 text-[7px] shrink-0" title="Avböjd">✗</span>
+            <span className="text-red-400 text-[8px] shrink-0" title="Avböjd">✗</span>
           )}
           <TeamColorIndicator teamColor={player.teamColor ?? null} compact mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />
-          <span className={`pos-badge pos-badge-xs pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
+          <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
             {displayPosition}
           </span>
           {player.mostPlayedPosition && (
-            <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0 opacity-50 ${
-              player.mostPlayedPosition === displayPosition ? '!opacity-30' : ''
+            <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0 ${
+              player.mostPlayedPosition === displayPosition ? 'opacity-30' : ''
             }`}
               title={`Vanligaste position: ${player.mostPlayedPosition}`}>
               {player.mostPlayedPosition}
             </span>
           )}
           {iceTimeMinutes != null && (
-            <span className="ice-time-badge ice-time-badge-compact shrink-0 text-[7px]" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
+            <span className="ice-time-badge ice-time-badge-compact shrink-0" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
               {iceTimeMinutes}ʼ
             </span>
           )}
           {player.captainRole && (
-            <span className={`text-[8px] font-black px-0.5 py-px rounded shrink-0 ${
+            <span className={`text-[8px] font-black px-1 py-0.5 rounded shrink-0 ${
               player.captainRole === "C"
                 ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/40"
                 : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
