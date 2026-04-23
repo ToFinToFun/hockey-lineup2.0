@@ -1326,6 +1326,31 @@ export default function Home() {
     setLineup(prev => ({ ...prev, [emptySlot.id]: player }));
   }, [TEAM_A_SLOTS, TEAM_B_SLOTS, pushUndo]);
 
+  // Tap-to-assign to a specific slot (mobile slot picker)
+  const handleTapAssignToSlot = useCallback((player: Player, slotId: string) => {
+    pushUndo();
+    setAvailablePlayers(prev => prev.filter(p => p.id !== player.id));
+    setLineup(prev => ({ ...prev, [slotId]: player }));
+  }, [pushUndo]);
+
+  // Add defense pair for a team (mobile slot picker)
+  const handleAddDefensePair = useCallback((team: "team-a" | "team-b") => {
+    const setter = team === "team-a" ? setTeamAConfig : setTeamBConfig;
+    setter(prev => ({
+      ...prev,
+      defensePairs: Math.min(prev.defensePairs + 1, MAX_TEAM_CONFIG.defensePairs),
+    }));
+  }, []);
+
+  // Add forward line for a team (mobile slot picker)
+  const handleAddForwardLine = useCallback((team: "team-a" | "team-b") => {
+    const setter = team === "team-a" ? setTeamAConfig : setTeamBConfig;
+    setter(prev => ({
+      ...prev,
+      forwardLines: Math.min(prev.forwardLines + 1, MAX_TEAM_CONFIG.forwardLines),
+    }));
+  }, []);
+
   // Wrapper med haptic feedback vid flikbyte
   const setMobileTab = useCallback((valOrFn: MobileTab | ((prev: MobileTab) => MobileTab)) => {
     setMobileTabRaw((prev) => {
@@ -2404,9 +2429,16 @@ export default function Home() {
           totalRegistered={totalRegistered}
           totalDeclined={totalDeclined}
           totalPlayers={totalPlayers}
-          onTapAssign={handleTapAssign}
+          onTapAssignToSlot={handleTapAssignToSlot}
+          onAddDefensePair={handleAddDefensePair}
+          onAddForwardLine={handleAddForwardLine}
           teamAName={teamAName}
           teamBName={teamBName}
+          teamASlots={TEAM_A_SLOTS}
+          teamBSlots={TEAM_B_SLOTS}
+          teamAConfig={teamAConfig}
+          teamBConfig={teamBConfig}
+          lineup={lineup}
         />
       )}
 
