@@ -1,5 +1,5 @@
 // Hockey Lineup App – TeamPanel – v4 (section alignment with spacers)
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Plus, Minus } from "lucide-react";
 import { PlayerSlot } from "./PlayerSlot";
 import type { Player, Position } from "@/lib/players";
@@ -132,6 +132,39 @@ function AddRemoveButtons({
   );
 }
 
+/* ── Confirm remove dialog ── */
+function ConfirmRemoveDialog({
+  open, onConfirm, onCancel, message,
+}: {
+  open: boolean; onConfirm: () => void; onCancel: () => void; message: string;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60" onClick={onCancel}>
+      <div
+        className="glass-panel-strong mx-4 p-4 rounded-xl max-w-xs w-full shadow-2xl border border-white/10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-xs text-white/80 mb-3 leading-relaxed">{message}</p>
+        <div className="flex gap-2">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 transition-all"
+          >
+            Avbryt
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-red-500/20 border border-red-400/30 text-red-300 hover:bg-red-500/30 transition-all"
+          >
+            Ta bort
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Main TeamPanel ── */
 export function TeamPanel({
   teamId, teamName, slots, lineup,
@@ -200,7 +233,74 @@ export function TeamPanel({
     return diff > 0 ? diff : 0;
   }, [config.goalkeepers, otherConfig]);
 
+  // Confirm dialog for removing occupied pairs/lines
+  const [confirmRemove, setConfirmRemove] = useState<{ type: 'defense' | 'forward' | 'goalkeeper'; message: string } | null>(null);
+
+  const handleRemoveDefensePair = () => {
+    // Check if the last defense pair has players
+    const lastPair = config.defensePairs;
+    const lastPairSlots = [`${teamId}-def-${lastPair}-1`, `${teamId}-def-${lastPair}-2`];
+    const hasPlayers = lastPairSlots.some(id => lineup[id]);
+    const playerNames = lastPairSlots.map(id => lineup[id]?.name).filter(Boolean);
+    if (hasPlayers) {
+      setConfirmRemove({
+        type: 'defense',
+        message: `Backpar ${lastPair} har spelare (${playerNames.join(', ')}). Vill du ta bort paret? Spelarna flyttas tillbaka till truppen.`,
+      });
+    } else {
+      onConfigChange({ ...config, defensePairs: config.defensePairs - 1 });
+    }
+  };
+
+  const handleRemoveForwardLine = () => {
+    // Check if the last forward line has players
+    const lastLine = config.forwardLines;
+    const lastLineSlots = [`${teamId}-fwd-${lastLine}-lw`, `${teamId}-fwd-${lastLine}-c`, `${teamId}-fwd-${lastLine}-rw`];
+    const hasPlayers = lastLineSlots.some(id => lineup[id]);
+    const playerNames = lastLineSlots.map(id => lineup[id]?.name).filter(Boolean);
+    if (hasPlayers) {
+      setConfirmRemove({
+        type: 'forward',
+        message: `${lastLine}:a kedjan har spelare (${playerNames.join(', ')}). Vill du ta bort kedjan? Spelarna flyttas tillbaka till truppen.`,
+      });
+    } else {
+      onConfigChange({ ...config, forwardLines: config.forwardLines - 1 });
+    }
+  };
+
+  const handleRemoveGoalkeeper = () => {
+    const gk2Slot = `${teamId}-gk-2`;
+    const hasPlayer = !!lineup[gk2Slot];
+    if (hasPlayer) {
+      setConfirmRemove({
+        type: 'goalkeeper',
+        message: `Reservmålvaktsplatsen har ${lineup[gk2Slot]?.name}. Vill du ta bort platsen? Spelaren flyttas tillbaka till truppen.`,
+      });
+    } else {
+      onConfigChange({ ...config, goalkeepers: config.goalkeepers - 1 });
+    }
+  };
+
+  const handleConfirmRemove = () => {
+    if (!confirmRemove) return;
+    if (confirmRemove.type === 'defense') {
+      onConfigChange({ ...config, defensePairs: config.defensePairs - 1 });
+    } else if (confirmRemove.type === 'forward') {
+      onConfigChange({ ...config, forwardLines: config.forwardLines - 1 });
+    } else if (confirmRemove.type === 'goalkeeper') {
+      onConfigChange({ ...config, goalkeepers: config.goalkeepers - 1 });
+    }
+    setConfirmRemove(null);
+  };
+
   return (
+    <>
+    <ConfirmRemoveDialog
+      open={!!confirmRemove}
+      message={confirmRemove?.message ?? ''}
+      onConfirm={handleConfirmRemove}
+      onCancel={() => setConfirmRemove(null)}
+    />
     <div
       className={`
         flex flex-col rounded-lg
@@ -279,7 +379,7 @@ export function TeamPanel({
             <AddRemoveButtons
               count={config.goalkeepers} max={MAX_TEAM_CONFIG.goalkeepers} min={1}
               onAdd={() => onConfigChange({ ...config, goalkeepers: config.goalkeepers + 1 })}
-              onRemove={() => onConfigChange({ ...config, goalkeepers: config.goalkeepers - 1 })}
+              onRemove={handleRemoveGoalkeeper}
               compact={compact}
             />
           </div>
@@ -316,7 +416,7 @@ export function TeamPanel({
             <AddRemoveButtons
               count={config.defensePairs} max={MAX_TEAM_CONFIG.defensePairs} min={1}
               onAdd={() => onConfigChange({ ...config, defensePairs: config.defensePairs + 1 })}
-              onRemove={() => onConfigChange({ ...config, defensePairs: config.defensePairs - 1 })}
+              onRemove={handleRemoveDefensePair}
               compact={compact}
             />
           </div>
@@ -348,7 +448,7 @@ export function TeamPanel({
             <AddRemoveButtons
               count={config.forwardLines} max={MAX_TEAM_CONFIG.forwardLines} min={1}
               onAdd={() => onConfigChange({ ...config, forwardLines: config.forwardLines + 1 })}
-              onRemove={() => onConfigChange({ ...config, forwardLines: config.forwardLines - 1 })}
+              onRemove={handleRemoveForwardLine}
               compact={compact}
             />
           </div>
@@ -378,5 +478,6 @@ export function TeamPanel({
         )}
       </div>
     </div>
+    </>
   );
 }
