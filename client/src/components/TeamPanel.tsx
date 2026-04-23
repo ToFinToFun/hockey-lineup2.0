@@ -2,7 +2,7 @@
 import { useMemo, useState } from "react";
 import { Plus, Minus } from "lucide-react";
 import { PlayerSlot } from "./PlayerSlot";
-import type { Player, Position } from "@/lib/players";
+import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
 import { groupSlots, MAX_TEAM_CONFIG, type TeamConfig } from "@/lib/lineup";
 import { useForwardColor } from "@/hooks/useForwardColor";
@@ -29,6 +29,13 @@ interface TeamPanelProps {
   otherConfig?: TeamConfig;
   /** Match duration in minutes for ice time calculation (default 60) */
   matchTime?: number;
+  /** Edit props — forwarded through PlayerSlot to DraggablePlayerCard */
+  onChangeName?: (playerId: string, name: string) => void;
+  onChangeNumber?: (playerId: string, number: string) => void;
+  onChangeTeamColor?: (playerId: string, color: TeamColor) => void;
+  onChangeCaptainRole?: (playerId: string, role: CaptainRole) => void;
+  onChangeRegistered?: (playerId: string, isRegistered: boolean) => void;
+  onDeletePlayer?: (playerId: string) => void;
 }
 
 /* Section header colors */
@@ -44,6 +51,7 @@ const groupColors: Record<string, string> = {
 /* ── GroupCard ── */
 function GroupCard({
   group, lineup, onRemovePlayer, onChangePosition, type, compact, iceTimeMap,
+  onChangeName, onChangeNumber, onChangeTeamColor, onChangeCaptainRole, onChangeRegistered, onDeletePlayer,
 }: {
   group: { groupLabel: string; slots: Slot[] };
   lineup: Record<string, Player>;
@@ -52,6 +60,12 @@ function GroupCard({
   type: "defense" | "forward";
   compact?: boolean;
   iceTimeMap?: Map<string, number>;
+  onChangeName?: (playerId: string, name: string) => void;
+  onChangeNumber?: (playerId: string, number: string) => void;
+  onChangeTeamColor?: (playerId: string, color: TeamColor) => void;
+  onChangeCaptainRole?: (playerId: string, role: CaptainRole) => void;
+  onChangeRegistered?: (playerId: string, isRegistered: boolean) => void;
+  onDeletePlayer?: (playerId: string) => void;
 }) {
   const { colors: fc } = useForwardColor();
   const labelColor = type === "defense" ? groupColors.defense : fc.groupHeader;
@@ -62,20 +76,26 @@ function GroupCard({
         {group.groupLabel}
       </div>
       <div className={compact ? "space-y-0.5" : "space-y-1"}>
-        {group.slots.map((slot) => (
-          <PlayerSlot
-            key={slot.id}
-            slot={slot}
-            player={lineup[slot.id] ?? null}
-            onRemove={() => onRemovePlayer(slot.id)}
-            onChangePosition={(pos) => {
-              const p = lineup[slot.id];
-              if (p) onChangePosition(p.id, pos);
-            }}
-            compact={compact}
-            iceTimeMinutes={iceTimeMap?.get(slot.id)}
-          />
-        ))}
+        {group.slots.map((slot) => {
+          const p = lineup[slot.id];
+          return (
+            <PlayerSlot
+              key={slot.id}
+              slot={slot}
+              player={p ?? null}
+              onRemove={() => onRemovePlayer(slot.id)}
+              onChangePosition={(pos) => { if (p) onChangePosition(p.id, pos); }}
+              compact={compact}
+              iceTimeMinutes={iceTimeMap?.get(slot.id)}
+              onChangeName={p && onChangeName ? (name) => onChangeName(p.id, name) : undefined}
+              onChangeNumber={p && onChangeNumber ? (num) => onChangeNumber(p.id, num) : undefined}
+              onChangeTeamColor={p && onChangeTeamColor ? (color) => onChangeTeamColor(p.id, color) : undefined}
+              onChangeCaptainRole={p && onChangeCaptainRole ? (role) => onChangeCaptainRole(p.id, role) : undefined}
+              onChangeRegistered={p && onChangeRegistered ? (val) => onChangeRegistered(p.id, val) : undefined}
+              onDelete={p && onDeletePlayer ? () => onDeletePlayer(p.id) : undefined}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -172,6 +192,7 @@ export function TeamPanel({
   isWhite = false, config, onConfigChange, compact = false,
   otherConfig,
   matchTime = 60,
+  onChangeName, onChangeNumber, onChangeTeamColor, onChangeCaptainRole, onChangeRegistered, onDeletePlayer,
 }: TeamPanelProps) {
   const logo = isWhite ? LOGO_WHITE : LOGO_GREEN;
   const accentColor = isWhite ? "text-slate-200" : "text-emerald-400";
@@ -384,15 +405,24 @@ export function TeamPanel({
             />
           </div>
           <div className={compact ? "space-y-0.5" : "space-y-1"}>
-            {goalkeeperSlots.map((slot) => (
-              <PlayerSlot
-                key={slot.id} slot={slot} player={lineup[slot.id] ?? null}
-                onRemove={() => onRemovePlayer(slot.id)}
-                onChangePosition={(pos) => { const p = lineup[slot.id]; if (p) onChangePosition(p.id, pos); }}
-                compact={compact}
-                iceTimeMinutes={iceTimeMap.get(slot.id)}
-              />
-            ))}
+            {goalkeeperSlots.map((slot) => {
+              const p = lineup[slot.id];
+              return (
+                <PlayerSlot
+                  key={slot.id} slot={slot} player={p ?? null}
+                  onRemove={() => onRemovePlayer(slot.id)}
+                  onChangePosition={(pos) => { if (p) onChangePosition(p.id, pos); }}
+                  compact={compact}
+                  iceTimeMinutes={iceTimeMap.get(slot.id)}
+                  onChangeName={p && onChangeName ? (name) => onChangeName(p.id, name) : undefined}
+                  onChangeNumber={p && onChangeNumber ? (num) => onChangeNumber(p.id, num) : undefined}
+                  onChangeTeamColor={p && onChangeTeamColor ? (color) => onChangeTeamColor(p.id, color) : undefined}
+                  onChangeCaptainRole={p && onChangeCaptainRole ? (role) => onChangeCaptainRole(p.id, role) : undefined}
+                  onChangeRegistered={p && onChangeRegistered ? (val) => onChangeRegistered(p.id, val) : undefined}
+                  onDelete={p && onDeletePlayer ? () => onDeletePlayer(p.id) : undefined}
+                />
+              );
+            })}
           </div>
           {/* Goalkeeper spacers — no group label, just bare slots */}
           {goalkeeperSpacers > 0 && (
@@ -424,6 +454,9 @@ export function TeamPanel({
             <GroupCard key={group.groupLabel} group={group} lineup={lineup}
               onRemovePlayer={onRemovePlayer} onChangePosition={onChangePosition}
               type="defense" compact={compact} iceTimeMap={iceTimeMap}
+              onChangeName={onChangeName} onChangeNumber={onChangeNumber}
+              onChangeTeamColor={onChangeTeamColor} onChangeCaptainRole={onChangeCaptainRole}
+              onChangeRegistered={onChangeRegistered} onDeletePlayer={onDeletePlayer}
             />
           ))}
           {/* Defense spacers for alignment */}
@@ -456,6 +489,9 @@ export function TeamPanel({
             <GroupCard key={group.groupLabel} group={group} lineup={lineup}
               onRemovePlayer={onRemovePlayer} onChangePosition={onChangePosition}
               type="forward" compact={compact} iceTimeMap={iceTimeMap}
+              onChangeName={onChangeName} onChangeNumber={onChangeNumber}
+              onChangeTeamColor={onChangeTeamColor} onChangeCaptainRole={onChangeCaptainRole}
+              onChangeRegistered={onChangeRegistered} onDeletePlayer={onDeletePlayer}
             />
           ))}
           {/* Forward spacers for alignment */}
