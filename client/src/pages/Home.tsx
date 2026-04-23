@@ -521,6 +521,12 @@ export default function Home() {
                 enriched.pirTrend = pir.trend;
                 enriched.pirTrendLabel = pir.trendLabel;
                 enriched.pirMatchesPlayed = pir.matchesPlayed;
+              } else {
+                // Default PIR for players without match history
+                enriched.pir = 1000;
+                enriched.pirConfidence = 0;
+                enriched.pirMatchesPlayed = 0;
+                enriched.pirTrendLabel = 'stable';
               }
             }
             return enriched as Player;
@@ -551,6 +557,11 @@ export default function Home() {
                   enriched.pirTrend = pir.trend;
                   enriched.pirTrendLabel = pir.trendLabel;
                   enriched.pirMatchesPlayed = pir.matchesPlayed;
+                } else {
+                  enriched.pir = 1000;
+                  enriched.pirConfidence = 0;
+                  enriched.pirMatchesPlayed = 0;
+                  enriched.pirTrendLabel = 'stable';
                 }
               }
               state.lineup[slotId] = enriched as Player;
