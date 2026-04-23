@@ -216,8 +216,11 @@ export function TeamPanel({
           />
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <span className={`text-white/30 ${compact ? 'text-[8px]' : 'text-[10px]'}`}>
-            {registeredInTeam} anm. av {filledCount}
+          <span
+            className={`text-white/40 font-bold ${compact ? 'text-[10px]' : 'text-xs'}`}
+            title="Antal spelare i laguppställningen"
+          >
+            {filledCount}
           </span>
           {filledCount > 0 && !compact && (
             <button
