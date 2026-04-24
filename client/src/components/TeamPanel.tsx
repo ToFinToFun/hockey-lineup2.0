@@ -228,11 +228,19 @@ export function TeamPanel({
   // PIR team strength
   const pirSettings = usePirSettings();
   const teamPirData = useMemo(() => {
-    const players = Object.values(lineup).filter(p => p.pir != null && (p.pirMatchesPlayed ?? 0) >= 3);
-    if (players.length === 0) return null;
-    const sum = players.reduce((s, p) => s + (p.pir ?? 0), 0);
-    const avg = Math.round(sum / players.length);
-    return { sum: Math.round(sum), avg, count: players.length };
+    // Use role-aware PIR: for each placed player, check their slot to determine
+    // if they're a goalkeeper or outfield, and use the appropriate PIR.
+    const entries = Object.entries(lineup).filter(([_, p]) => p.pir != null && (p.pirMatchesPlayed ?? 0) >= 3);
+    if (entries.length === 0) return null;
+    const sum = entries.reduce((s, [slotId, p]) => {
+      const isGkSlot = slotId.includes('-gk-');
+      const effectivePir = isGkSlot && p.pirGoalkeeper != null ? p.pirGoalkeeper
+        : !isGkSlot && p.pirOutfield != null ? p.pirOutfield
+        : (p.pir ?? 0);
+      return s + effectivePir;
+    }, 0);
+    const avg = Math.round(sum / entries.length);
+    return { sum: Math.round(sum), avg, count: entries.length };
   }, [lineup]);
 
   // Calculate spacers needed for alignment with the other team

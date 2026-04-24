@@ -82,6 +82,49 @@ export function DraggablePlayerCard({
   const pirSettings = usePirSettings();
   const pirEnabled = pirSettings.enabled;
 
+  // Dual PIR: select the correct PIR based on slot context or player position.
+  // When placed in a goalkeeper slot → use goalkeeper PIR (if available).
+  // When placed in an outfield slot → use outfield PIR (if available).
+  // When not placed (roster) → use based on player.position.
+  // Falls back to overall PIR if role-specific PIR is not available.
+  const activePir = (() => {
+    const isGkContext = slotType === "goalkeeper" || (!slotType && player.position === "MV");
+    const isOutContext = slotType ? slotType !== "goalkeeper" : player.position !== "MV";
+
+    if (isGkContext && player.pirGoalkeeper != null) {
+      return {
+        rating: player.pirGoalkeeper,
+        trend: player.pirGoalkeeperTrend ?? null,
+        trendLabel: player.pirGoalkeeperTrendLabel ?? 'stable' as const,
+        matchesPlayed: player.pirGoalkeeperMatchesPlayed ?? 0,
+        confidence: player.pirGoalkeeperConfidence ?? 0,
+        recent: null as number | null,
+        label: 'MV',
+      };
+    }
+    if (isOutContext && player.pirOutfield != null) {
+      return {
+        rating: player.pirOutfield,
+        trend: player.pirOutfieldTrend ?? null,
+        trendLabel: player.pirOutfieldTrendLabel ?? 'stable' as const,
+        matchesPlayed: player.pirOutfieldMatchesPlayed ?? 0,
+        confidence: player.pirOutfieldConfidence ?? 0,
+        recent: null as number | null,
+        label: 'UT',
+      };
+    }
+    // Fallback to overall PIR
+    return {
+      rating: player.pir ?? null,
+      trend: player.pirTrend ?? null,
+      trendLabel: player.pirTrendLabel ?? 'stable' as const,
+      matchesPlayed: player.pirMatchesPlayed ?? 0,
+      confidence: player.pirConfidence ?? 0,
+      recent: player.pirRecent ?? null,
+      label: null as string | null,
+    };
+  })();
+
   const [showEditPanel, setShowEditPanel] = useState(false);
   const [nameValue, setNameValue] = useState("");
   const [nrValue, setNrValue] = useState("");
@@ -169,31 +212,31 @@ export function DraggablePlayerCard({
               {player.name}
               {player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
             </span>
-            {pirEnabled && pirSettings.showRating && player.pir != null && (
+            {pirEnabled && pirSettings.showRating && activePir.rating != null && (
               <span
                 className={`text-[9px] font-bold px-1 py-px rounded shrink-0 border ${
-                  player.pir >= 1050 ? 'bg-amber-400/15 text-amber-300 border-amber-400/30'
-                  : player.pir >= 1000 ? 'bg-white/5 text-white/50 border-white/15'
+                  activePir.rating >= 1050 ? 'bg-amber-400/15 text-amber-300 border-amber-400/30'
+                  : activePir.rating >= 1000 ? 'bg-white/5 text-white/50 border-white/15'
                   : 'bg-sky-400/10 text-sky-300/60 border-sky-400/20'
                 }`}
-                title={`PIR: ${player.pir} | Senaste: ${player.pirRecent ?? '?'} | Matcher: ${player.pirMatchesPlayed ?? '?'}${player.pirConfidence != null ? ` | Konfidens: ${Math.round(player.pirConfidence * 100)}%` : ''}`}
+                title={`PIR${activePir.label ? ` (${activePir.label})` : ''}: ${activePir.rating} | Matcher: ${activePir.matchesPlayed}${activePir.confidence != null ? ` | Konfidens: ${Math.round(activePir.confidence * 100)}%` : ''}${player.pirGoalkeeper != null && player.pirOutfield != null ? ` | MV: ${player.pirGoalkeeper} | Ute: ${player.pirOutfield}` : ''}`}
               >
-                {player.pir}
+                {activePir.rating}{activePir.label ? <span className="text-[7px] opacity-50 ml-px">{activePir.label}</span> : null}
               </span>
             )}
-            {pirEnabled && pirSettings.showTrend && player.pirTrendLabel && player.pirTrendLabel !== 'stable' && (
+            {pirEnabled && pirSettings.showTrend && activePir.trendLabel && activePir.trendLabel !== 'stable' && (
               <span
                 className={`text-[9px] shrink-0 ${
-                  player.pirTrendLabel === 'rising' ? 'text-emerald-400'
-                  : player.pirTrendLabel === 'slightly_rising' ? 'text-emerald-400/60'
-                  : player.pirTrendLabel === 'slightly_falling' ? 'text-red-400/60'
+                  activePir.trendLabel === 'rising' ? 'text-emerald-400'
+                  : activePir.trendLabel === 'slightly_rising' ? 'text-emerald-400/60'
+                  : activePir.trendLabel === 'slightly_falling' ? 'text-red-400/60'
                   : 'text-red-400'
                 }`}
-                title={`Trend: ${player.pirTrend != null ? (player.pirTrend > 0 ? '+' : '') + player.pirTrend : '?'} (senaste matcher vs totalt)`}
+                title={`Trend: ${activePir.trend != null ? (activePir.trend > 0 ? '+' : '') + activePir.trend : '?'} (senaste matcher vs totalt)`}
               >
-                {player.pirTrendLabel === 'rising' ? '\u2191'
-                  : player.pirTrendLabel === 'slightly_rising' ? '\u2197'
-                  : player.pirTrendLabel === 'slightly_falling' ? '\u2198'
+                {activePir.trendLabel === 'rising' ? '\u2191'
+                  : activePir.trendLabel === 'slightly_rising' ? '\u2197'
+                  : activePir.trendLabel === 'slightly_falling' ? '\u2198'
                   : '\u2193'}
               </span>
             )}
@@ -215,31 +258,31 @@ export function DraggablePlayerCard({
               <span className="ml-1 text-white/25 text-[9px]" title="Matcher spelade">({player.gamesPlayed})</span>
             )}
           </span>
-          {pirEnabled && pirSettings.showRating && player.pir != null && (
+          {pirEnabled && pirSettings.showRating && activePir.rating != null && (
             <span
               className={`text-[9px] font-bold px-1 py-0.5 rounded shrink-0 border ${
-                player.pir >= 1050 ? 'bg-amber-400/15 text-amber-300 border-amber-400/30'
-                : player.pir >= 1000 ? 'bg-white/5 text-white/50 border-white/15'
+                activePir.rating >= 1050 ? 'bg-amber-400/15 text-amber-300 border-amber-400/30'
+                : activePir.rating >= 1000 ? 'bg-white/5 text-white/50 border-white/15'
                 : 'bg-sky-400/10 text-sky-300/60 border-sky-400/20'
               }`}
-              title={`PIR: ${player.pir} | Senaste: ${player.pirRecent ?? '?'} | Matcher: ${player.pirMatchesPlayed ?? '?'}${player.pirConfidence != null ? ` | Konfidens: ${Math.round(player.pirConfidence * 100)}%` : ''}`}
+              title={`PIR${activePir.label ? ` (${activePir.label})` : ''}: ${activePir.rating} | Matcher: ${activePir.matchesPlayed}${activePir.confidence != null ? ` | Konfidens: ${Math.round(activePir.confidence * 100)}%` : ''}${player.pirGoalkeeper != null && player.pirOutfield != null ? ` | MV: ${player.pirGoalkeeper} | Ute: ${player.pirOutfield}` : ''}`}
             >
-              {player.pir}
+              {activePir.rating}{activePir.label ? <span className="text-[7px] opacity-50 ml-px">{activePir.label}</span> : null}
             </span>
           )}
-          {pirEnabled && pirSettings.showTrend && player.pirTrendLabel && player.pirTrendLabel !== 'stable' && (
+          {pirEnabled && pirSettings.showTrend && activePir.trendLabel && activePir.trendLabel !== 'stable' && (
             <span
               className={`text-[10px] shrink-0 ${
-                player.pirTrendLabel === 'rising' ? 'text-emerald-400'
-                : player.pirTrendLabel === 'slightly_rising' ? 'text-emerald-400/60'
-                : player.pirTrendLabel === 'slightly_falling' ? 'text-red-400/60'
+                activePir.trendLabel === 'rising' ? 'text-emerald-400'
+                : activePir.trendLabel === 'slightly_rising' ? 'text-emerald-400/60'
+                : activePir.trendLabel === 'slightly_falling' ? 'text-red-400/60'
                 : 'text-red-400'
               }`}
-              title={`Trend: ${player.pirTrend != null ? (player.pirTrend > 0 ? '+' : '') + player.pirTrend : '?'}`}
+              title={`Trend: ${activePir.trend != null ? (activePir.trend > 0 ? '+' : '') + activePir.trend : '?'}`}
             >
-              {player.pirTrendLabel === 'rising' ? '\u2191'
-                : player.pirTrendLabel === 'slightly_rising' ? '\u2197'
-                : player.pirTrendLabel === 'slightly_falling' ? '\u2198'
+              {activePir.trendLabel === 'rising' ? '\u2191'
+                : activePir.trendLabel === 'slightly_rising' ? '\u2197'
+                : activePir.trendLabel === 'slightly_falling' ? '\u2198'
                 : '\u2193'}
             </span>
           )}

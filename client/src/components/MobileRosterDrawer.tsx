@@ -516,34 +516,47 @@ export function MobileRosterDrawer({
                               : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
                           }`}>{player.captainRole}</span>
                         )}
-                        {pirEnabled && pirSettings.showRating && player.pir != null && (
-                          <span
-                            className={`text-[8px] font-bold px-1 py-0.5 rounded shrink-0 border ${
-                              player.pir >= 1050 ? 'bg-amber-400/15 text-amber-300 border-amber-400/30'
-                              : player.pir >= 1000 ? 'bg-white/5 text-white/50 border-white/15'
-                              : 'bg-sky-400/10 text-sky-300/60 border-sky-400/20'
-                            }`}
-                            title={`PIR: ${player.pir}`}
-                          >
-                            {player.pir}
-                          </span>
-                        )}
-                        {pirEnabled && pirSettings.showTrend && player.pirTrendLabel && player.pirTrendLabel !== 'stable' && (
-                          <span
-                            className={`text-[9px] shrink-0 ${
-                              player.pirTrendLabel === 'rising' ? 'text-emerald-400'
-                              : player.pirTrendLabel === 'slightly_rising' ? 'text-emerald-400/60'
-                              : player.pirTrendLabel === 'slightly_falling' ? 'text-red-400/60'
-                              : 'text-red-400'
-                            }`}
-                            title={`Trend: ${player.pirTrend != null ? (player.pirTrend > 0 ? '+' : '') + player.pirTrend : '?'}`}
-                          >
-                            {player.pirTrendLabel === 'rising' ? '\u2191'
-                              : player.pirTrendLabel === 'slightly_rising' ? '\u2197'
-                              : player.pirTrendLabel === 'slightly_falling' ? '\u2198'
-                              : '\u2193'}
-                          </span>
-                        )}
+                        {(() => {
+                          // Dual PIR: select based on player's registered position
+                          const isGk = player.position === 'MV';
+                          const rPir = isGk && player.pirGoalkeeper != null
+                            ? { rating: player.pirGoalkeeper, trend: player.pirGoalkeeperTrend, trendLabel: player.pirGoalkeeperTrendLabel, label: 'MV' }
+                            : !isGk && player.pirOutfield != null
+                            ? { rating: player.pirOutfield, trend: player.pirOutfieldTrend, trendLabel: player.pirOutfieldTrendLabel, label: 'UT' }
+                            : { rating: player.pir, trend: player.pirTrend, trendLabel: player.pirTrendLabel, label: null };
+                          return (
+                            <>
+                              {pirEnabled && pirSettings.showRating && rPir.rating != null && (
+                                <span
+                                  className={`text-[8px] font-bold px-1 py-0.5 rounded shrink-0 border ${
+                                    rPir.rating >= 1050 ? 'bg-amber-400/15 text-amber-300 border-amber-400/30'
+                                    : rPir.rating >= 1000 ? 'bg-white/5 text-white/50 border-white/15'
+                                    : 'bg-sky-400/10 text-sky-300/60 border-sky-400/20'
+                                  }`}
+                                  title={`PIR${rPir.label ? ` (${rPir.label})` : ''}: ${rPir.rating}${player.pirGoalkeeper != null && player.pirOutfield != null ? ` | MV: ${player.pirGoalkeeper} | Ute: ${player.pirOutfield}` : ''}`}
+                                >
+                                  {rPir.rating}{rPir.label ? <span className="text-[7px] opacity-50 ml-px">{rPir.label}</span> : null}
+                                </span>
+                              )}
+                              {pirEnabled && pirSettings.showTrend && rPir.trendLabel && rPir.trendLabel !== 'stable' && (
+                                <span
+                                  className={`text-[9px] shrink-0 ${
+                                    rPir.trendLabel === 'rising' ? 'text-emerald-400'
+                                    : rPir.trendLabel === 'slightly_rising' ? 'text-emerald-400/60'
+                                    : rPir.trendLabel === 'slightly_falling' ? 'text-red-400/60'
+                                    : 'text-red-400'
+                                  }`}
+                                  title={`Trend: ${rPir.trend != null ? (rPir.trend > 0 ? '+' : '') + rPir.trend : '?'}`}
+                                >
+                                  {rPir.trendLabel === 'rising' ? '\u2191'
+                                    : rPir.trendLabel === 'slightly_rising' ? '\u2197'
+                                    : rPir.trendLabel === 'slightly_falling' ? '\u2198'
+                                    : '\u2193'}
+                                </span>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
 
                       {/* Cell 3: Edit icon */}
