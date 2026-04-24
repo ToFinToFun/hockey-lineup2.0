@@ -478,16 +478,34 @@ export default function Home() {
           playerKey: string; rating: number; recentRating: number;
           trend: number; trendLabel: string; confidence: number;
           matchesPlayed: number;
+          goalkeeperRating: number | null; goalkeeperTrend: number | null;
+          goalkeeperTrendLabel: string | null; goalkeeperMatchesPlayed: number;
+          goalkeeperConfidence: number;
+          outfieldRating: number | null; outfieldTrend: number | null;
+          outfieldTrendLabel: string | null; outfieldMatchesPlayed: number;
+          outfieldConfidence: number;
         }> | null;
         if (!arr) return null;
         const map: Record<string, {
           rating: number; recentRating: number; trend: number;
           trendLabel: string; confidence: number; matchesPlayed: number;
+          goalkeeperRating: number | null; goalkeeperTrend: number | null;
+          goalkeeperTrendLabel: string | null; goalkeeperMatchesPlayed: number;
+          goalkeeperConfidence: number;
+          outfieldRating: number | null; outfieldTrend: number | null;
+          outfieldTrendLabel: string | null; outfieldMatchesPlayed: number;
+          outfieldConfidence: number;
         }> = {};
         for (const r of arr) map[r.playerKey] = {
           rating: r.rating, recentRating: r.recentRating,
           trend: r.trend, trendLabel: r.trendLabel,
           confidence: r.confidence, matchesPlayed: r.matchesPlayed,
+          goalkeeperRating: r.goalkeeperRating, goalkeeperTrend: r.goalkeeperTrend,
+          goalkeeperTrendLabel: r.goalkeeperTrendLabel, goalkeeperMatchesPlayed: r.goalkeeperMatchesPlayed,
+          goalkeeperConfidence: r.goalkeeperConfidence,
+          outfieldRating: r.outfieldRating, outfieldTrend: r.outfieldTrend,
+          outfieldTrendLabel: r.outfieldTrendLabel, outfieldMatchesPlayed: r.outfieldMatchesPlayed,
+          outfieldConfidence: r.outfieldConfidence,
         };
         return map;
       })
@@ -521,6 +539,17 @@ export default function Home() {
                 enriched.pirTrend = pir.trend;
                 enriched.pirTrendLabel = pir.trendLabel;
                 enriched.pirMatchesPlayed = pir.matchesPlayed;
+                // Dual PIR: goalkeeper and outfield
+                enriched.pirGoalkeeper = pir.goalkeeperRating;
+                enriched.pirGoalkeeperTrend = pir.goalkeeperTrend;
+                enriched.pirGoalkeeperTrendLabel = pir.goalkeeperTrendLabel ?? 'stable';
+                enriched.pirGoalkeeperMatchesPlayed = pir.goalkeeperMatchesPlayed;
+                enriched.pirGoalkeeperConfidence = pir.goalkeeperConfidence;
+                enriched.pirOutfield = pir.outfieldRating;
+                enriched.pirOutfieldTrend = pir.outfieldTrend;
+                enriched.pirOutfieldTrendLabel = pir.outfieldTrendLabel ?? 'stable';
+                enriched.pirOutfieldMatchesPlayed = pir.outfieldMatchesPlayed;
+                enriched.pirOutfieldConfidence = pir.outfieldConfidence;
               } else {
                 // Default PIR for players without match history
                 enriched.pir = 1000;
@@ -557,6 +586,17 @@ export default function Home() {
                   enriched.pirTrend = pir.trend;
                   enriched.pirTrendLabel = pir.trendLabel;
                   enriched.pirMatchesPlayed = pir.matchesPlayed;
+                  // Dual PIR: goalkeeper and outfield
+                  enriched.pirGoalkeeper = pir.goalkeeperRating;
+                  enriched.pirGoalkeeperTrend = pir.goalkeeperTrend;
+                  enriched.pirGoalkeeperTrendLabel = pir.goalkeeperTrendLabel ?? 'stable';
+                  enriched.pirGoalkeeperMatchesPlayed = pir.goalkeeperMatchesPlayed;
+                  enriched.pirGoalkeeperConfidence = pir.goalkeeperConfidence;
+                  enriched.pirOutfield = pir.outfieldRating;
+                  enriched.pirOutfieldTrend = pir.outfieldTrend;
+                  enriched.pirOutfieldTrendLabel = pir.outfieldTrendLabel ?? 'stable';
+                  enriched.pirOutfieldMatchesPlayed = pir.outfieldMatchesPlayed;
+                  enriched.pirOutfieldConfidence = pir.outfieldConfidence;
                 } else {
                   enriched.pir = 1000;
                   enriched.pirConfidence = 0;

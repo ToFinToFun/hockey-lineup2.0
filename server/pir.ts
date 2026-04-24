@@ -9,6 +9,7 @@
  * 5. Inactivity decay: players who haven't played recently drift toward 1000
  * 6. Score margin bonus: bigger wins = slightly more impact
  * 7. Team strength adjustment: winning with weaker team = more credit
+ * 8. Dual PIR: separate goalkeeper and outfield ratings based on slot placement
  *
  * Algorithm:
  * 1. Start all players at rating 1000
@@ -18,6 +19,7 @@
  * 5. Apply time-decay weighting to each match
  * 6. Iterate multiple times until ratings converge
  * 7. Compute trend from recent matches vs overall
+ * 8. Run separate calculations for goalkeeper-only and outfield-only appearances
  */
 
 import type { MatchResult } from "../drizzle/schema";
@@ -44,7 +46,24 @@ export interface PIRResult {
   confidence: number;
   /** Days since last match */
   daysSinceLastMatch: number | null;
+
+  /** PIR when playing as goalkeeper */
+  goalkeeperRating: number | null;
+  goalkeeperTrend: number | null;
+  goalkeeperTrendLabel: "rising" | "slightly_rising" | "stable" | "slightly_falling" | "falling" | null;
+  goalkeeperMatchesPlayed: number;
+  goalkeeperConfidence: number;
+
+  /** PIR when playing as outfield */
+  outfieldRating: number | null;
+  outfieldTrend: number | null;
+  outfieldTrendLabel: "rising" | "slightly_rising" | "stable" | "slightly_falling" | "falling" | null;
+  outfieldMatchesPlayed: number;
+  outfieldConfidence: number;
 }
+
+/** Role a player had in a specific match */
+type MatchRole = "goalkeeper" | "outfield";
 
 interface MatchPlayerData {
   matchId: number;
@@ -53,6 +72,8 @@ interface MatchPlayerData {
   greenTeam: string[];
   whiteScore: number;
   greenScore: number;
+  /** Per-player role in this match (goalkeeper or outfield) */
+  playerRoles: Map<string, MatchRole>;
 }
 
 // ─── Constants ─────────────────────────────────────────────────────
@@ -96,8 +117,17 @@ const MAX_INACTIVITY_DECAY = 100;
 // ─── Helpers ───────────────────────────────────────────────────────
 
 /**
+ * Determine if a slot ID represents a goalkeeper position.
+ * Slot IDs follow pattern: team-a-gk-1, team-b-gk-2, etc.
+ */
+function isGoalkeeperSlot(slotId: string): boolean {
+  return slotId.includes("-gk-");
+}
+
+/**
  * Extract structured match data from raw match results.
  * Sorted chronologically (oldest first).
+ * Now also tracks each player's role (goalkeeper vs outfield) per match.
  */
 function extractMatchData(matches: MatchResult[]): MatchPlayerData[] {
   const result: MatchPlayerData[] = [];
@@ -112,6 +142,7 @@ function extractMatchData(matches: MatchResult[]): MatchPlayerData[] {
 
     const whiteTeam: string[] = [];
     const greenTeam: string[] = [];
+    const playerRoles = new Map<string, MatchRole>();
 
     for (const [slotId, p] of Object.entries(lineupEntries)) {
       if (!p || typeof p !== "object" || !(p as any).name) continue;
@@ -119,6 +150,10 @@ function extractMatchData(matches: MatchResult[]): MatchPlayerData[] {
       // Use just the name as key to consolidate players across matches
       // where they may have had different or missing numbers
       const playerKey = (pl.name as string).trim();
+
+      // Determine role from slot ID
+      const role: MatchRole = isGoalkeeperSlot(slotId) ? "goalkeeper" : "outfield";
+      playerRoles.set(playerKey, role);
 
       if (slotId.startsWith("team-a")) {
         if (isTeamAWhite) whiteTeam.push(playerKey);
@@ -140,6 +175,7 @@ function extractMatchData(matches: MatchResult[]): MatchPlayerData[] {
         greenTeam,
         whiteScore: match.teamWhiteScore,
         greenScore: match.teamGreenScore,
+        playerRoles,
       });
     }
   }
@@ -292,11 +328,40 @@ function runEloIterations(
   return ratings;
 }
 
+/**
+ * Filter match data to only include matches where a player had a specific role.
+ * For role-specific calculations, we still include ALL players in each match
+ * (so team averages are correct), but we only track the filtered player set.
+ */
+function filterMatchesByRole(
+  matchData: MatchPlayerData[],
+  role: MatchRole,
+): { matches: MatchPlayerData[]; players: Set<string> } {
+  const players = new Set<string>();
+  const matchIds = new Set<number>();
+
+  // Find all matches where at least one player had this role
+  for (const m of matchData) {
+    for (const [playerKey, playerRole] of m.playerRoles) {
+      if (playerRole === role) {
+        players.add(playerKey);
+        matchIds.add(m.matchId);
+      }
+    }
+  }
+
+  // Return only matches that contained players in this role
+  const matches = matchData.filter((m) => matchIds.has(m.matchId));
+
+  return { matches, players };
+}
+
 // ─── Main PIR Calculation ──────────────────────────────────────────
 
 /**
  * Calculate Player Impact Ratings from match history.
- * Enhanced with time-decay, trend, newcomer K-factor, and inactivity decay.
+ * Enhanced with time-decay, trend, newcomer K-factor, inactivity decay,
+ * and dual goalkeeper/outfield ratings.
  */
 export function calculatePIR(matches: MatchResult[]): PIRResult[] {
   const matchData = extractMatchData(matches);
@@ -318,6 +383,12 @@ export function calculatePIR(matches: MatchResult[]): PIRResult[] {
     stats.set(p, { played: 0, wins: 0, losses: 0, draws: 0, lastMatchDate: new Date(0) });
   }
 
+  // Per-role stats
+  const roleStats = new Map<string, { gkPlayed: number; outPlayed: number; gkLastMatch: Date; outLastMatch: Date }>();
+  for (const p of allPlayers) {
+    roleStats.set(p, { gkPlayed: 0, outPlayed: 0, gkLastMatch: new Date(0), outLastMatch: new Date(0) });
+  }
+
   for (const m of matchData) {
     const isDraw = m.whiteScore === m.greenScore;
     const whiteWin = m.whiteScore > m.greenScore;
@@ -329,6 +400,17 @@ export function calculatePIR(matches: MatchResult[]): PIRResult[] {
       if (isDraw) s.draws++;
       else if (whiteWin) s.wins++;
       else s.losses++;
+
+      // Track role stats
+      const rs = roleStats.get(p)!;
+      const role = m.playerRoles.get(p);
+      if (role === "goalkeeper") {
+        rs.gkPlayed++;
+        if (m.matchDate > rs.gkLastMatch) rs.gkLastMatch = m.matchDate;
+      } else {
+        rs.outPlayed++;
+        if (m.matchDate > rs.outLastMatch) rs.outLastMatch = m.matchDate;
+      }
     }
     for (const p of m.greenTeam) {
       const s = stats.get(p)!;
@@ -338,6 +420,17 @@ export function calculatePIR(matches: MatchResult[]): PIRResult[] {
       else if (!whiteWin && !isDraw) s.wins++;
       else if (whiteWin) s.losses++;
       else s.draws++;
+
+      // Track role stats
+      const rs = roleStats.get(p)!;
+      const role = m.playerRoles.get(p);
+      if (role === "goalkeeper") {
+        rs.gkPlayed++;
+        if (m.matchDate > rs.gkLastMatch) rs.gkLastMatch = m.matchDate;
+      } else {
+        rs.outPlayed++;
+        if (m.matchDate > rs.outLastMatch) rs.outLastMatch = m.matchDate;
+      }
     }
   }
 
@@ -380,6 +473,48 @@ export function calculatePIR(matches: MatchResult[]): PIRResult[] {
   }
   const recentRatings = runEloIterations(recentMatches, allPlayers, now, false, matchCountMap);
 
+  // ── Role-specific PIR calculations ──
+
+  // Goalkeeper PIR: only matches where the player was in a goalkeeper slot
+  const gkRoleMatchCountMap = new Map<string, number>();
+  for (const [p, rs] of roleStats) {
+    gkRoleMatchCountMap.set(p, rs.gkPlayed);
+  }
+
+  // Build goalkeeper-only match data: for each match, only include players who
+  // were goalkeepers in the team arrays (but keep the full team for Elo calculation)
+  // Actually, we need to run the full Elo on ALL matches but only extract ratings
+  // for players who played as goalkeeper. The team averages should still use all players.
+  // So we run the normal Elo on all matches, but separately track goalkeeper appearances.
+
+  // For role-specific ratings, we run Elo on matches where the player appeared in that role.
+  // We include all team members in those matches for correct team strength calculation.
+  const gkData = filterMatchesByRole(matchData, "goalkeeper");
+  const outData = filterMatchesByRole(matchData, "outfield");
+
+  // Goalkeeper ratings (only if there are goalkeeper appearances)
+  let gkOverallRatings: Map<string, number> | null = null;
+  let gkRecentRatings: Map<string, number> | null = null;
+  if (gkData.matches.length > 0) {
+    gkOverallRatings = runEloIterations(gkData.matches, allPlayers, now, true, gkRoleMatchCountMap);
+    const gkRecentMatches = gkData.matches.slice(-Math.min(gkData.matches.length, RECENT_MATCHES_COUNT * 2));
+    gkRecentRatings = runEloIterations(gkRecentMatches, allPlayers, now, false, gkRoleMatchCountMap);
+  }
+
+  // Outfield ratings
+  const outRoleMatchCountMap = new Map<string, number>();
+  for (const [p, rs] of roleStats) {
+    outRoleMatchCountMap.set(p, rs.outPlayed);
+  }
+
+  let outOverallRatings: Map<string, number> | null = null;
+  let outRecentRatings: Map<string, number> | null = null;
+  if (outData.matches.length > 0) {
+    outOverallRatings = runEloIterations(outData.matches, allPlayers, now, true, outRoleMatchCountMap);
+    const outRecentMatches = outData.matches.slice(-Math.min(outData.matches.length, RECENT_MATCHES_COUNT * 2));
+    outRecentRatings = runEloIterations(outRecentMatches, allPlayers, now, false, outRoleMatchCountMap);
+  }
+
   // ── Apply inactivity decay ──
   for (const p of allPlayers) {
     const s = stats.get(p)!;
@@ -405,6 +540,7 @@ export function calculatePIR(matches: MatchResult[]): PIRResult[] {
   const results: PIRResult[] = [];
   for (const p of allPlayers) {
     const s = stats.get(p)!;
+    const rs = roleStats.get(p)!;
     const rating = Math.round(overallRatings.get(p) ?? INITIAL_RATING);
     const recentRating = Math.round(recentRatings.get(p) ?? INITIAL_RATING);
     const trend = recentRating - rating;
@@ -421,6 +557,34 @@ export function calculatePIR(matches: MatchResult[]): PIRResult[] {
 
     const winRate = s.played > 0 ? s.wins / s.played : 0;
 
+    // Goalkeeper role-specific PIR
+    let goalkeeperRating: number | null = null;
+    let goalkeeperTrend: number | null = null;
+    let goalkeeperTrendLabel: PIRResult["goalkeeperTrendLabel"] = null;
+    let goalkeeperConfidence = 0;
+
+    if (rs.gkPlayed >= MIN_MATCHES_SHOW && gkOverallRatings && gkRecentRatings) {
+      goalkeeperRating = Math.round(gkOverallRatings.get(p) ?? INITIAL_RATING);
+      const gkRecent = Math.round(gkRecentRatings.get(p) ?? INITIAL_RATING);
+      goalkeeperTrend = gkRecent - goalkeeperRating;
+      goalkeeperTrendLabel = getTrendLabel(goalkeeperTrend);
+      goalkeeperConfidence = Math.min(rs.gkPlayed / MIN_MATCHES_FULL_CONFIDENCE, 1);
+    }
+
+    // Outfield role-specific PIR
+    let outfieldRating: number | null = null;
+    let outfieldTrend: number | null = null;
+    let outfieldTrendLabel: PIRResult["outfieldTrendLabel"] = null;
+    let outfieldConfidence = 0;
+
+    if (rs.outPlayed >= MIN_MATCHES_SHOW && outOverallRatings && outRecentRatings) {
+      outfieldRating = Math.round(outOverallRatings.get(p) ?? INITIAL_RATING);
+      const outRecent = Math.round(outRecentRatings.get(p) ?? INITIAL_RATING);
+      outfieldTrend = outRecent - outfieldRating;
+      outfieldTrendLabel = getTrendLabel(outfieldTrend);
+      outfieldConfidence = Math.min(rs.outPlayed / MIN_MATCHES_FULL_CONFIDENCE, 1);
+    }
+
     results.push({
       playerKey: p,
       rating,
@@ -435,6 +599,16 @@ export function calculatePIR(matches: MatchResult[]): PIRResult[] {
       winRate,
       confidence,
       daysSinceLastMatch: daysSince,
+      goalkeeperRating,
+      goalkeeperTrend,
+      goalkeeperTrendLabel,
+      goalkeeperMatchesPlayed: rs.gkPlayed,
+      goalkeeperConfidence,
+      outfieldRating,
+      outfieldTrend,
+      outfieldTrendLabel,
+      outfieldMatchesPlayed: rs.outPlayed,
+      outfieldConfidence,
     });
   }
 

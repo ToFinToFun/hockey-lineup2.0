@@ -29,7 +29,7 @@ export interface Player {
   gamesPlayed?: number;     // Antal matcher spelade
   mostPlayedPosition?: string; // Vanligaste positionen baserat på matchhistorik
   mostPlayedTeam?: "green" | "white"; // Vanligaste laget baserat på matchhistorik
-  /** Player Impact Rating (Elo-like) */
+  /** Player Impact Rating (Elo-like) — overall (all matches) */
   pir?: number;
   /** PIR confidence (0-1 based on matches played + recency) */
   pirConfidence?: number;
@@ -41,6 +41,20 @@ export interface Player {
   pirTrendLabel?: "rising" | "slightly_rising" | "stable" | "slightly_falling" | "falling";
   /** Total matches played (for PIR) */
   pirMatchesPlayed?: number;
+
+  /** PIR when playing as goalkeeper */
+  pirGoalkeeper?: number;
+  pirGoalkeeperTrend?: number;
+  pirGoalkeeperTrendLabel?: "rising" | "slightly_rising" | "stable" | "slightly_falling" | "falling";
+  pirGoalkeeperMatchesPlayed?: number;
+  pirGoalkeeperConfidence?: number;
+
+  /** PIR when playing as outfield (back/forward/center) */
+  pirOutfield?: number;
+  pirOutfieldTrend?: number;
+  pirOutfieldTrendLabel?: "rising" | "slightly_rising" | "stable" | "slightly_falling" | "falling";
+  pirOutfieldMatchesPlayed?: number;
+  pirOutfieldConfidence?: number;
 }
 
 /** Formaterar spelarens visningsnamn: "C Jerry Paasovaara #63" eller "Linus Carbin #35" */

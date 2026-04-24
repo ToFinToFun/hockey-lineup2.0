@@ -231,16 +231,24 @@ export function autoDistribute(
   const teamAOutfield: TaggedPlayer[] = [...ofWhite];
   const teamBOutfield: TaggedPlayer[] = [...ofGreen];
 
-  // Helper: sum of PIR for a team (default 1000 for players without PIR)
+  // Helper: get role-aware PIR for a player (goalkeeper PIR for MV, outfield PIR for others, fallback to overall)
+  const getEffectivePir = (t: TaggedPlayer): number => {
+    const p = t.player;
+    if (t.posType === 'goalkeeper' && p.pirGoalkeeper != null) return p.pirGoalkeeper;
+    if (t.posType !== 'goalkeeper' && p.pirOutfield != null) return p.pirOutfield;
+    return p.pir ?? 1000;
+  };
+
+  // Helper: sum of PIR for a team (using role-aware PIR)
   const teamPirSum = (team: TaggedPlayer[]) =>
-    team.reduce((sum, t) => sum + (t.player.pir ?? 1000), 0);
+    team.reduce((sum, t) => sum + getEffectivePir(t), 0);
 
   // Check if any neutral has PIR data — if so, use PIR-balanced distribution
-  const hasPirData = usePirForBalance && neutralsToDistribute.some(t => t.player.pir != null);
+  const hasPirData = usePirForBalance && neutralsToDistribute.some(t => t.player.pir != null || t.player.pirOutfield != null);
 
   if (hasPirData) {
     // Sort neutrals by PIR descending (strongest first) for greedy balancing
-    const sorted = [...neutralsToDistribute].sort((a, b) => (b.player.pir ?? 1000) - (a.player.pir ?? 1000));
+    const sorted = [...neutralsToDistribute].sort((a, b) => getEffectivePir(b) - getEffectivePir(a));
     for (const np of sorted) {
       const sumA = teamPirSum(teamAOutfield);
       const sumB = teamPirSum(teamBOutfield);
@@ -291,8 +299,8 @@ export function autoDistribute(
         let bestIdx = movable[0].i;
         let bestScore = Infinity;
         for (const m of movable) {
-          const newBigSum = teamPirSum(bigger) - (m.t.player.pir ?? 1000);
-          const newSmallSum = teamPirSum(smaller) + (m.t.player.pir ?? 1000);
+          const newBigSum = teamPirSum(bigger) - getEffectivePir(m.t);
+          const newSmallSum = teamPirSum(smaller) + getEffectivePir(m.t);
           const score = Math.abs(newBigSum - newSmallSum - targetDiff);
           if (score < bestScore) {
             bestScore = score;
