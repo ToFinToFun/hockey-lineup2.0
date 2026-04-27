@@ -1147,8 +1147,7 @@ export default function Home() {
     const newConfigA = inferConfig("team-a");
     const newConfigB = inferConfig("team-b");
 
-    // Bygg ny spelartrupp: alla spelare som inte är i den sparade lineup
-    const savedLineupIds = new Set(Object.values(safeLineup).map((p) => p.id));
+    // Build a map of current player data (live registration status, PIR, etc.)
     const allKnownPlayers = [
       ...availablePlayersRef.current,
       ...Object.values(lineupRef.current),
@@ -1159,11 +1158,51 @@ export default function Home() {
       seen.add(p.id);
       return true;
     });
+    const currentPlayerMap = new Map(allUnique.map((p) => [p.id, p]));
+
+    // Merge saved lineup with current live data: keep slot placement from saved,
+    // but preserve current isRegistered, isDeclined, PIR, gamesPlayed, etc.
+    const mergedLineup: Record<string, Player> = {};
+    for (const [slotId, savedPlayer] of Object.entries(safeLineup)) {
+      const current = currentPlayerMap.get(savedPlayer.id);
+      if (current) {
+        // Use saved placement but merge in live status fields
+        mergedLineup[slotId] = {
+          ...savedPlayer,
+          isRegistered: current.isRegistered,
+          isDeclined: current.isDeclined,
+          pir: current.pir,
+          pirRecent: current.pirRecent,
+          pirTrend: current.pirTrend,
+          pirTrendLabel: current.pirTrendLabel,
+          pirMatchesPlayed: current.pirMatchesPlayed,
+          pirConfidence: current.pirConfidence,
+          pirGoalkeeper: current.pirGoalkeeper,
+          pirGoalkeeperTrend: current.pirGoalkeeperTrend,
+          pirGoalkeeperTrendLabel: current.pirGoalkeeperTrendLabel,
+          pirGoalkeeperMatchesPlayed: current.pirGoalkeeperMatchesPlayed,
+          pirGoalkeeperConfidence: current.pirGoalkeeperConfidence,
+          pirOutfield: current.pirOutfield,
+          pirOutfieldTrend: current.pirOutfieldTrend,
+          pirOutfieldTrendLabel: current.pirOutfieldTrendLabel,
+          pirOutfieldMatchesPlayed: current.pirOutfieldMatchesPlayed,
+          pirOutfieldConfidence: current.pirOutfieldConfidence,
+          gamesPlayed: current.gamesPlayed,
+          mostPlayedPosition: current.mostPlayedPosition,
+          mostPlayedTeam: current.mostPlayedTeam,
+        };
+      } else {
+        // Player no longer exists in current roster — keep saved data as-is
+        mergedLineup[slotId] = savedPlayer;
+      }
+    }
+
+    const savedLineupIds = new Set(Object.values(safeLineup).map((p) => p.id));
     const newAvailable = allUnique.filter((p) => !savedLineupIds.has(p.id));
 
     setTeamAConfig(newConfigA);
     setTeamBConfig(newConfigB);
-    setLineup(safeLineup);
+    setLineup(mergedLineup);
     setAvailablePlayers(newAvailable);
     setTeamAName(saved.teamAName ?? "");
     setTeamBName(saved.teamBName ?? "");
