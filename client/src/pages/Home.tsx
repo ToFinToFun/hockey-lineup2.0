@@ -2277,7 +2277,7 @@ export default function Home() {
               ) : (
                 /* Standard-layout: Vita | Trupp | Gröna */
                 <div
-                  className="grid gap-1.5 md:gap-2 mx-auto"
+                  className="grid gap-1.5 md:gap-2 mx-auto w-full justify-center"
                   style={{
                     gridTemplateColumns: "max-content minmax(240px, 380px) max-content",
                   }}
