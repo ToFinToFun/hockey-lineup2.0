@@ -2,11 +2,10 @@
  * StatsAdminPanel – Admin settings for stats visibility
  */
 import { useState, useEffect } from "react";
-import { X, Settings, Eye, EyeOff, Shield, Save, Loader2 } from "lucide-react";
+import { X, Settings, Eye, EyeOff, Shield, Save, Loader2, Lock } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
 interface StatsAdminPanelProps {
-  open: boolean;
   onClose: () => void;
 }
 
@@ -17,7 +16,7 @@ interface VisibilitySettings {
   players: boolean;
   teams: boolean;
   showPir: boolean;
-  minMatchesForLeaders: number;
+  minMatchesForStats: number;
 }
 
 const SECTION_LABELS: Record<string, { label: string; description: string }> = {
@@ -28,57 +27,68 @@ const SECTION_LABELS: Record<string, { label: string; description: string }> = {
   teams: { label: "Lag", description: "Vita vs Gröna jämförelse" },
 };
 
-export default function StatsAdminPanel({ open, onClose }: StatsAdminPanelProps) {
+export default function StatsAdminPanel({ onClose }: StatsAdminPanelProps) {
   const [settings, setSettings] = useState<VisibilitySettings>({
     overview: true,
     leaders: true,
     awards: true,
     players: true,
     teams: true,
-    showPir: true,
-    minMatchesForLeaders: 3,
+    showPir: false,
+    minMatchesForStats: 3,
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
-  const { data: serverSettings } = trpc.statsVisibility.get.useQuery();
-  const mutation = trpc.statsVisibility.set.useMutation();
+  const { data: serverSettings } = trpc.statsConfig.getVisibility.useQuery();
+  const mutation = trpc.statsConfig.setVisibility.useMutation();
 
   useEffect(() => {
     if (serverSettings) {
       setSettings({
-        overview: serverSettings.stats_overview !== "false",
-        leaders: serverSettings.stats_leaders !== "false",
-        awards: serverSettings.stats_awards !== "false",
-        players: serverSettings.stats_players !== "false",
-        teams: serverSettings.stats_teams !== "false",
-        showPir: serverSettings.stats_show_pir !== "false",
-        minMatchesForLeaders: parseInt(serverSettings.stats_min_matches || "3") || 3,
+        overview: serverSettings.overview ?? true,
+        leaders: serverSettings.leaders ?? true,
+        awards: serverSettings.awards ?? true,
+        players: serverSettings.players ?? true,
+        teams: serverSettings.teams ?? true,
+        showPir: serverSettings.showPir ?? false,
+        minMatchesForStats: serverSettings.minMatchesForStats ?? 3,
       });
     }
   }, [serverSettings]);
 
   const handleSave = async () => {
+    if (!password) {
+      setError("Ange lösenord");
+      return;
+    }
     setSaving(true);
+    setError("");
     try {
-      await mutation.mutateAsync({
-        stats_overview: String(settings.overview),
-        stats_leaders: String(settings.leaders),
-        stats_awards: String(settings.awards),
-        stats_players: String(settings.players),
-        stats_teams: String(settings.teams),
-        stats_show_pir: String(settings.showPir),
-        stats_min_matches: String(settings.minMatchesForLeaders),
+      const result = await mutation.mutateAsync({
+        password,
+        overview: settings.overview,
+        leaders: settings.leaders,
+        awards: settings.awards,
+        players: settings.players,
+        teams: settings.teams,
+        showPir: settings.showPir,
+        minMatchesForStats: settings.minMatchesForStats,
       });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      if (result && "error" in result && result.error) {
+        setError(result.error as string);
+      } else {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      }
     } catch (e) {
       console.error("Failed to save stats settings", e);
+      setError("Kunde inte spara");
     }
     setSaving(false);
   };
-
-  if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -201,15 +211,31 @@ export default function StatsAdminPanel({ open, onClose }: StatsAdminPanelProps)
               type="number"
               min={1}
               max={50}
-              value={settings.minMatchesForLeaders}
+              value={settings.minMatchesForStats}
               onChange={(e) =>
                 setSettings((s) => ({
                   ...s,
-                  minMatchesForLeaders: Math.max(1, parseInt(e.target.value) || 1),
+                  minMatchesForStats: Math.max(1, parseInt(e.target.value) || 1),
                 }))
               }
               className="w-20 px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-[#ECEDEE] text-sm text-center focus:outline-none focus:border-[#0a7ea4]/50"
             />
+          </div>
+
+          {/* Password */}
+          <div>
+            <h3 className="text-[#ECEDEE] text-sm font-semibold mb-1 flex items-center gap-2">
+              <Lock size={14} className="text-[#687076]" />
+              Lösenord
+            </h3>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setError(""); }}
+              placeholder="Admin-lösenord..."
+              className="w-full px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-[#ECEDEE] text-sm focus:outline-none focus:border-[#0a7ea4]/50"
+            />
+            {error && <p className="text-red-400 text-[10px] mt-1">{error}</p>}
           </div>
         </div>
 

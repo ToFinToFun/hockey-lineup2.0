@@ -10,6 +10,7 @@ import ShareView from "./pages/ShareView";
 import ScoreApp from "./pages/score/ScoreApp";
 import IceTimeApp from "./pages/icetime/IceTimeApp";
 import StatsApp from "./pages/stats/StatsApp";
+import CardsApp from "./pages/cards/CardsApp";
 
 function Router() {
   return (
@@ -30,6 +31,9 @@ function Router() {
 
       {/* Stats app */}
       <Route path="/stats" component={StatsApp} />
+
+      {/* Hockey Cards app */}
+      <Route path="/cards" component={CardsApp} />
 
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

@@ -91,7 +91,6 @@ export default function StatsApp() {
 
   // Period config from DB
   const { data: periodConfig } = trpc.score.config.getPeriods.useQuery();
-  const { data: visibility } = trpc.statsConfig.getVisibility.useQuery();
 
   const dateFilter = useMemo((): { from?: string; to?: string } => {
     if (periodPreset === "all") return {};
@@ -257,7 +256,6 @@ export default function StatsApp() {
       {showAdmin && (
         <StatsAdminPanel
           onClose={() => setShowAdmin(false)}
-          visibility={visibility}
         />
       )}
     </div>

@@ -32,6 +32,7 @@ import { ExportModal } from "@/components/ExportModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { MobileRosterDrawer } from "@/components/MobileRosterDrawer";
+import { MobileSlotPicker } from "@/components/MobileSlotPicker";
 import { LongPressTooltip } from "@/components/LongPressTooltip";
 import { trpc } from "@/lib/trpc";
 import type { Player as PlayerType } from "@/lib/players";
@@ -1395,6 +1396,19 @@ export default function Home() {
   // Mobile roster drawer state
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
+  // Mobile empty slot picker state
+  const [mobileSlotPicker, setMobileSlotPicker] = useState<{ slotId: string; slotType: string; teamId: string; teamName: string; slotLabel: string } | null>(null);
+
+  const handleEmptySlotClickA = useCallback((slotId: string, slotType: string) => {
+    const slot = TEAM_A_SLOTS.find(s => s.id === slotId);
+    setMobileSlotPicker({ slotId, slotType, teamId: "team-a", teamName: teamAName, slotLabel: slot?.shortLabel ?? slotType });
+  }, [TEAM_A_SLOTS, teamAName]);
+
+  const handleEmptySlotClickB = useCallback((slotId: string, slotType: string) => {
+    const slot = TEAM_B_SLOTS.find(s => s.id === slotId);
+    setMobileSlotPicker({ slotId, slotType, teamId: "team-b", teamName: teamBName, slotLabel: slot?.shortLabel ?? slotType });
+  }, [TEAM_B_SLOTS, teamBName]);
+
   // Tap-to-assign: placera en spelare i nästa lediga slot i valt lag
   const handleTapAssign = useCallback((player: Player, team: "team-a" | "team-b") => {
     const slots = team === "team-a" ? TEAM_A_SLOTS : TEAM_B_SLOTS;
@@ -2391,6 +2405,7 @@ export default function Home() {
                     onChangeCaptainRole={handleChangeCaptainRole}
                     onChangeRegistered={handleChangeRegistered}
                     onDeletePlayer={handleDeletePlayer}
+                    onEmptySlotClick={handleEmptySlotClickA}
                   />
                 </div>
 
@@ -2417,6 +2432,7 @@ export default function Home() {
                     onChangeCaptainRole={handleChangeCaptainRole}
                     onChangeRegistered={handleChangeRegistered}
                     onDeletePlayer={handleDeletePlayer}
+                    onEmptySlotClick={handleEmptySlotClickB}
                   />
                 </div>
               </div>
@@ -2514,6 +2530,23 @@ export default function Home() {
           teamAConfig={teamAConfig}
           teamBConfig={teamBConfig}
           lineup={lineup}
+        />
+      )}
+
+      {/* Mobile slot picker */}
+      {mobileSlotPicker && (
+        <MobileSlotPicker
+          open={!!mobileSlotPicker}
+          onClose={() => setMobileSlotPicker(null)}
+          players={availablePlayers}
+          slotType={mobileSlotPicker.slotType}
+          slotId={mobileSlotPicker.slotId}
+          teamName={mobileSlotPicker.teamName}
+          slotLabel={mobileSlotPicker.slotLabel}
+          onSelectPlayer={(player, slotId) => {
+            handleTapAssignToSlot(player, slotId);
+            setMobileSlotPicker(null);
+          }}
         />
       )}
 

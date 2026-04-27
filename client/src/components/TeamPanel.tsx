@@ -36,6 +36,8 @@ interface TeamPanelProps {
   onChangeCaptainRole?: (playerId: string, role: CaptainRole) => void;
   onChangeRegistered?: (playerId: string, isRegistered: boolean) => void;
   onDeletePlayer?: (playerId: string) => void;
+  /** Called when an empty slot is tapped (mobile) */
+  onEmptySlotClick?: (slotId: string, slotType: string) => void;
 }
 
 /* Section header colors */
@@ -52,6 +54,7 @@ const groupColors: Record<string, string> = {
 function GroupCard({
   group, lineup, onRemovePlayer, onChangePosition, type, compact, iceTimeMap,
   onChangeName, onChangeNumber, onChangeTeamColor, onChangeCaptainRole, onChangeRegistered, onDeletePlayer,
+  onEmptySlotClick,
 }: {
   group: { groupLabel: string; slots: Slot[] };
   lineup: Record<string, Player>;
@@ -66,6 +69,7 @@ function GroupCard({
   onChangeCaptainRole?: (playerId: string, role: CaptainRole) => void;
   onChangeRegistered?: (playerId: string, isRegistered: boolean) => void;
   onDeletePlayer?: (playerId: string) => void;
+  onEmptySlotClick?: (slotId: string, slotType: string) => void;
 }) {
   const { colors: fc } = useForwardColor();
   const labelColor = type === "defense" ? groupColors.defense : fc.groupHeader;
@@ -93,6 +97,7 @@ function GroupCard({
               onChangeCaptainRole={p && onChangeCaptainRole ? (role) => onChangeCaptainRole(p.id, role) : undefined}
               onChangeRegistered={p && onChangeRegistered ? (val) => onChangeRegistered(p.id, val) : undefined}
               onDelete={p && onDeletePlayer ? () => onDeletePlayer(p.id) : undefined}
+              onEmptySlotClick={!p && onEmptySlotClick ? () => onEmptySlotClick(slot.id, slot.type) : undefined}
             />
           );
         })}
@@ -193,6 +198,7 @@ export function TeamPanel({
   otherConfig,
   matchTime = 60,
   onChangeName, onChangeNumber, onChangeTeamColor, onChangeCaptainRole, onChangeRegistered, onDeletePlayer,
+  onEmptySlotClick,
 }: TeamPanelProps) {
   const logo = isWhite ? LOGO_WHITE : LOGO_GREEN;
   const accentColor = isWhite ? "text-slate-200" : "text-emerald-400";
@@ -428,6 +434,7 @@ export function TeamPanel({
                   onChangeCaptainRole={p && onChangeCaptainRole ? (role) => onChangeCaptainRole(p.id, role) : undefined}
                   onChangeRegistered={p && onChangeRegistered ? (val) => onChangeRegistered(p.id, val) : undefined}
                   onDelete={p && onDeletePlayer ? () => onDeletePlayer(p.id) : undefined}
+                  onEmptySlotClick={!p && onEmptySlotClick ? () => onEmptySlotClick(slot.id, slot.type) : undefined}
                 />
               );
             })}
@@ -465,6 +472,7 @@ export function TeamPanel({
               onChangeName={onChangeName} onChangeNumber={onChangeNumber}
               onChangeTeamColor={onChangeTeamColor} onChangeCaptainRole={onChangeCaptainRole}
               onChangeRegistered={onChangeRegistered} onDeletePlayer={onDeletePlayer}
+              onEmptySlotClick={onEmptySlotClick}
             />
           ))}
           {/* Defense spacers for alignment */}
@@ -500,6 +508,7 @@ export function TeamPanel({
               onChangeName={onChangeName} onChangeNumber={onChangeNumber}
               onChangeTeamColor={onChangeTeamColor} onChangeCaptainRole={onChangeCaptainRole}
               onChangeRegistered={onChangeRegistered} onDeletePlayer={onDeletePlayer}
+              onEmptySlotClick={onEmptySlotClick}
             />
           ))}
           {/* Forward spacers for alignment */}
