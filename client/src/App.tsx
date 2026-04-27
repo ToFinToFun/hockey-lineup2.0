@@ -9,6 +9,7 @@ import Home from "./pages/Home";
 import ShareView from "./pages/ShareView";
 import ScoreApp from "./pages/score/ScoreApp";
 import IceTimeApp from "./pages/icetime/IceTimeApp";
+import StatsApp from "./pages/stats/StatsApp";
 
 function Router() {
   return (
@@ -26,6 +27,9 @@ function Router() {
       {/* IceTime app */}
       <Route path="/icetime" component={IceTimeApp} />
       <Route path="/icetime/oversikt" component={IceTimeApp} />
+
+      {/* Stats app */}
+      <Route path="/stats" component={StatsApp} />
 
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
