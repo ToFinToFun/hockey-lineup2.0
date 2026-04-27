@@ -368,6 +368,60 @@ export const appRouter = router({
       return calculatePIR(matches);
     }),
   }),
+
+  // ─── Stats Visibility ────────────────────────────────────────────────────
+
+  statsConfig: router({
+    /** Get stats visibility settings */
+    getVisibility: publicProcedure.query(async () => {
+      const raw = await getConfigValue("stats_visibility");
+      const defaults = {
+        overview: true,
+        leaders: true,
+        awards: true,
+        players: true,
+        teams: true,
+        showPir: false,
+        minMatchesForStats: 3,
+      };
+      if (!raw) return defaults;
+      try {
+        return { ...defaults, ...JSON.parse(raw) };
+      } catch {
+        return defaults;
+      }
+    }),
+
+    /** Update stats visibility settings (requires admin password) */
+    setVisibility: publicProcedure
+      .input(
+        z.object({
+          password: z.string(),
+          overview: z.boolean().optional(),
+          leaders: z.boolean().optional(),
+          awards: z.boolean().optional(),
+          players: z.boolean().optional(),
+          teams: z.boolean().optional(),
+          showPir: z.boolean().optional(),
+          minMatchesForStats: z.number().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        if (input.password !== "Styrelsen") {
+          return { success: false, error: "Fel lösenord" };
+        }
+        const { password, ...settings } = input;
+        // Merge with existing
+        const raw = await getConfigValue("stats_visibility");
+        let current: Record<string, any> = {};
+        if (raw) {
+          try { current = JSON.parse(raw); } catch { /* ignore */ }
+        }
+        const merged = { ...current, ...settings };
+        await setConfigValue("stats_visibility", JSON.stringify(merged));
+        return { success: true };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
