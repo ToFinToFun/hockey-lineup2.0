@@ -24,6 +24,8 @@ interface PlayerSlotProps {
   onChangeCaptainRole?: (role: CaptainRole) => void;
   onChangeRegistered?: (isRegistered: boolean) => void;
   onDelete?: () => void;
+  /** Called when an empty slot is tapped (mobile) */
+  onEmptySlotClick?: () => void;
 }
 
 /* Badge color mapping using CSS classes from design system */
@@ -47,6 +49,7 @@ function getBadgeClass(role: string): string {
 export function PlayerSlot({
   slot, player, onRemove, onChangePosition, compact = false, iceTimeMinutes,
   onChangeName, onChangeNumber, onChangeTeamColor, onChangeCaptainRole, onChangeRegistered, onDelete,
+  onEmptySlotClick,
 }: PlayerSlotProps) {
   const { isOver, setNodeRef } = useDroppable({ id: slot.id });
 
@@ -91,6 +94,13 @@ export function PlayerSlot({
             iceTimeMinutes={iceTimeMinutes}
           />
         </div>
+      ) : onEmptySlotClick ? (
+        <button
+          onClick={onEmptySlotClick}
+          className={`${compact ? 'text-[9px]' : 'text-[11px]'} italic flex-1 text-white/20 ${isOver ? "!text-white/50" : ""} flex items-center px-2 hover:text-white/40 hover:bg-white/[0.03] transition-colors rounded-r-md cursor-pointer`}
+        >
+          {isOver ? "Släpp här" : "Välj spelare..."}
+        </button>
       ) : (
         <span className={`${compact ? 'text-[9px]' : 'text-[11px]'} italic flex-1 text-white/20 ${isOver ? "!text-white/50" : ""} flex items-center px-2`}>
           {isOver ? "Släpp här" : ""}
