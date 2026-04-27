@@ -1069,21 +1069,10 @@ export default function Home() {
       isDeclined: false,
     }));
 
-    // Uppdatera state
+    // Uppdatera state: markera som anmälda i spelartruppen, användaren får själv köra Auto/Slumpa
     setLineup({});
     setAvailablePlayers(updatedPlayers);
     setDemoActive(true);
-
-    // Kör auto-fördela efter en tick så state hinner uppdateras
-    setTimeout(() => {
-      const result = autoDistribute(updatedPlayers, {}, { shuffle: false, useForBalance: pirSettings.useForBalance });
-      setTeamAConfig(result.teamAConfig);
-      setTeamBConfig(result.teamBConfig);
-      setLineup(result.lineup);
-      const placedIds = new Set(Object.values(result.lineup).map(p => p.id));
-      const remaining = updatedPlayers.filter(p => !placedIds.has(p.id));
-      setAvailablePlayers(remaining);
-    }, 0);
   }, [demoCount, demoActive]);
 
   // Utför Rensa efter bekräftelse
