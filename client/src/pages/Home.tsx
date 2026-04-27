@@ -1815,18 +1815,16 @@ export default function Home() {
                           {/* Separator */}
                           <div className={`my-1 border-t ${isLineupDark ? 'border-white/5' : 'border-gray-100'}`} />
 
-                          {/* Demo */}
-                          <button
-                            onClick={() => { handleDemo(); setShowHeaderMenu(false); }}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
-                              demoActive
-                                ? 'text-amber-300 bg-amber-500/10'
-                                : isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
-                            }`}
-                          >
-                            <FlaskConical className="w-4 h-4" />
-                            <span>{demoActive ? 'Avsluta demo' : `Demo (${demoCount} spelare)`}</span>
-                          </button>
+                          {/* Demo (only visible when active, otherwise in Settings) */}
+                          {demoActive && (
+                            <button
+                              onClick={() => { handleDemo(); setShowHeaderMenu(false); }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all text-amber-300 bg-amber-500/10"
+                            >
+                              <FlaskConical className="w-4 h-4" />
+                              <span>Avsluta demo</span>
+                            </button>
+                          )}
 
                           {/* Settings */}
                           <button
@@ -2033,42 +2031,20 @@ export default function Home() {
 
               {/* Right: Demo + Settings icons */}
               <div className="flex items-center gap-0.5 shrink-0">
-                {/* Demo button */}
-                <div className="flex items-center gap-0">
-                  <LongPressTooltip label="Demo">
+                {/* Demo indicator (active only) */}
+                {demoActive && (
                   <button
                     onClick={handleDemo}
-                    title={demoActive ? "Avsluta demo" : `Demo: simulera ${demoCount} anmälda`}
+                    title="Avsluta demo"
                     className={`p-1.5 rounded transition-all ${
-                      demoActive
-                        ? isLineupDark
-                          ? 'text-amber-300 bg-amber-500/20 hover:bg-amber-500/30'
-                          : 'text-amber-600 bg-amber-100 hover:bg-amber-200'
-                        : isLineupDark
-                          ? 'text-white/30 hover:text-white/60 hover:bg-white/8'
-                          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'
+                      isLineupDark
+                        ? 'text-amber-300 bg-amber-500/20 hover:bg-amber-500/30'
+                        : 'text-amber-600 bg-amber-100 hover:bg-amber-200'
                     }`}
                   >
                     <FlaskConical className="w-4 h-4" />
                   </button>
-                  </LongPressTooltip>
-                  {!demoActive && (
-                    <input
-                      type="number"
-                      min={4}
-                      max={50}
-                      value={demoCount}
-                      onChange={(e) => {
-                        const v = parseInt(e.target.value, 10);
-                        if (!isNaN(v) && v >= 1 && v <= 99) setDemoCount(v);
-                      }}
-                      className={`w-[22px] text-center bg-transparent outline-none text-[10px] font-bold tabular-nums ${
-                        isLineupDark ? 'text-white/40' : 'text-gray-400'
-                      }`}
-                      title="Antal spelare att simulera"
-                    />
-                  )}
-                </div>
+                )}
                 {/* Settings icon */}
                 <LongPressTooltip label="Inställningar">
                 <button
@@ -2453,7 +2429,7 @@ export default function Home() {
       )}
 
       {/* Inställningar-modal */}
-      <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} pirSettings={pirSettings} onPirSettingsChange={(s) => { setPirSettings(s); setPirEnabled(s.enabled); }} />
+      <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} pirSettings={pirSettings} onPirSettingsChange={(s) => { setPirSettings(s); setPirEnabled(s.enabled); }} demoCount={demoCount} onDemoCountChange={setDemoCount} demoActive={demoActive} onDemoToggle={handleDemo} />
 
       {/* Bekäftelsedialog för Rensa */}
       {confirmClear && (

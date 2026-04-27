@@ -6,16 +6,21 @@
 import React, { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import type { PirSettings } from "@/hooks/usePirEnabled";
-import { X, Settings, Eye, EyeOff, CheckCircle2, XCircle, Loader2, TrendingUp, Lock, BarChart3, ArrowUpDown, Target, Scale } from "lucide-react";
+import { X, Settings, Eye, EyeOff, CheckCircle2, XCircle, Loader2, TrendingUp, Lock, BarChart3, ArrowUpDown, Target, Scale, FlaskConical } from "lucide-react";
 
 interface SettingsModalProps {
   open: boolean;
   onClose: () => void;
   pirSettings: PirSettings;
   onPirSettingsChange: (settings: PirSettings) => void;
+  /** Demo settings */
+  demoCount: number;
+  onDemoCountChange: (count: number) => void;
+  demoActive: boolean;
+  onDemoToggle: () => void;
 }
 
-export function SettingsModal({ open, onClose, pirSettings, onPirSettingsChange }: SettingsModalProps) {
+export function SettingsModal({ open, onClose, pirSettings, onPirSettingsChange, demoCount, onDemoCountChange, demoActive, onDemoToggle }: SettingsModalProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -450,6 +455,53 @@ export function SettingsModal({ open, onClose, pirSettings, onPirSettingsChange 
                 )}
               </>
             )}
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-white/8" />
+
+          {/* Demo section */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <FlaskConical className="w-4 h-4 text-amber-400" />
+              <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider">
+                Demo-läge
+              </h3>
+            </div>
+            <p className="text-[11px] text-white/40 mb-3">
+              Simulera anmälda spelare och kör auto-fördelning för att testa laguppställningen
+              utan riktiga anmälningar.
+            </p>
+
+            <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all bg-white/3 border-white/8">
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-semibold text-white/90">Antal spelare</div>
+                <div className="text-[10px] text-white/40 leading-tight">Hur många spelare som ska simuleras som anmälda</div>
+              </div>
+              <input
+                type="number"
+                min={4}
+                max={50}
+                value={demoCount}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  if (!isNaN(v) && v >= 1 && v <= 99) onDemoCountChange(v);
+                }}
+                className="w-16 text-center px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm font-bold tabular-nums focus:outline-none focus:border-amber-400/50 focus:ring-1 focus:ring-amber-400/20 transition-colors"
+              />
+            </div>
+
+            <button
+              onClick={() => { onDemoToggle(); if (!demoActive) onClose(); }}
+              className={`mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                demoActive
+                  ? 'bg-red-500/20 border border-red-400/40 text-red-300 hover:bg-red-500/30'
+                  : 'bg-amber-500/20 border border-amber-400/40 text-amber-300 hover:bg-amber-500/30'
+              }`}
+            >
+              <FlaskConical className="w-4 h-4" />
+              {demoActive ? 'Avsluta demo' : `Starta demo (${demoCount} spelare)`}
+            </button>
           </div>
         </div>
 
