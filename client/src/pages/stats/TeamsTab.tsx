@@ -1,13 +1,15 @@
 /**
- * TeamsTab – Team comparison (Vita vs Gröna) with visual bars
+ * TeamsTab – Team comparison (Vita vs Gröna) with visual bars + Head-to-Head player comparison
  */
-import { useMemo } from "react";
-import { Shield, Target, Trophy, Users, Flame } from "lucide-react";
+import { useState, useMemo } from "react";
+import { trpc } from "@/lib/trpc";
+import { Shield, Target, Trophy, Users, Flame, Swords, ChevronDown, Search } from "lucide-react";
 import { IMAGES } from "@/lib/scoreConstants";
 
 interface TeamsTabProps {
   teamData: any;
   stats: any;
+  dateFilter?: { from?: string; to?: string };
 }
 
 // ─── Comparison Bar ─────────────────────────────────────────────────────────
@@ -55,6 +57,320 @@ function ComparisonBar({
               : "rgba(34,197,94,0.25)",
           }}
         />
+      </div>
+    </div>
+  );
+}
+
+// ─── H2H Stat Bar ───────────────────────────────────────────────────────────
+function H2HStatBar({
+  label,
+  val1,
+  val2,
+  suffix = "",
+  higherIsBetter = true,
+}: {
+  label: string;
+  val1: number;
+  val2: number;
+  suffix?: string;
+  higherIsBetter?: boolean;
+}) {
+  const max = Math.max(val1, val2, 1);
+  const p1Better = higherIsBetter ? val1 > val2 : val1 < val2;
+  const p2Better = higherIsBetter ? val2 > val1 : val2 < val1;
+  return (
+    <div className="mb-3">
+      <div className="flex justify-between text-xs text-[#9BA1A6] mb-1">
+        <span className={p1Better ? "text-[#0a7ea4] font-bold" : ""}>
+          {val1}
+          {suffix}
+        </span>
+        <span className="text-[#687076]">{label}</span>
+        <span className={p2Better ? "text-[#F59E0B] font-bold" : ""}>
+          {val2}
+          {suffix}
+        </span>
+      </div>
+      <div className="flex gap-1 items-center">
+        <div className="flex-1 flex justify-end">
+          <div
+            className="h-2 rounded-l-full transition-all"
+            style={{
+              width: `${(val1 / max) * 100}%`,
+              backgroundColor: p1Better ? "#0a7ea4" : "#3a3a3a",
+            }}
+          />
+        </div>
+        <div className="flex-1">
+          <div
+            className="h-2 rounded-r-full transition-all"
+            style={{
+              width: `${(val2 / max) * 100}%`,
+              backgroundColor: p2Better ? "#F59E0B" : "#3a3a3a",
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Head-to-Head Section ───────────────────────────────────────────────────
+function HeadToHeadSection({ dateFilter }: { dateFilter?: { from?: string; to?: string } }) {
+  const [player1, setPlayer1] = useState("");
+  const [player2, setPlayer2] = useState("");
+  const [showPicker, setShowPicker] = useState<1 | 2 | null>(null);
+  const [pickerSearch, setPickerSearch] = useState("");
+
+  const { data: playerStats } = trpc.score.playerStats.useQuery(dateFilter);
+
+  const playerNames = useMemo(() => {
+    if (!playerStats) return [];
+    return playerStats.map((p: any) => p.name).sort();
+  }, [playerStats]);
+
+  const filteredNames = useMemo(() => {
+    const excluded = showPicker === 1 ? player2 : player1;
+    let names = playerNames.filter((n: string) => n !== excluded);
+    if (pickerSearch.trim()) {
+      const q = pickerSearch.toLowerCase();
+      names = names.filter((n: string) => n.toLowerCase().includes(q));
+    }
+    return names;
+  }, [playerNames, showPicker, player1, player2, pickerSearch]);
+
+  const queryInput = useMemo(() => {
+    if (!player1 || !player2) return null;
+    return {
+      player1,
+      player2,
+      ...(dateFilter?.from ? { from: dateFilter.from } : {}),
+      ...(dateFilter?.to ? { to: dateFilter.to } : {}),
+    };
+  }, [player1, player2, dateFilter]);
+
+  const { data: h2h, isLoading } = trpc.scoreStats.headToHead.useQuery(queryInput!, {
+    enabled: !!queryInput,
+  });
+
+  const selectPlayer = (name: string) => {
+    if (showPicker === 1) {
+      setPlayer1(name);
+      if (name === player2) setPlayer2("");
+    } else if (showPicker === 2) {
+      setPlayer2(name);
+      if (name === player1) setPlayer1("");
+    }
+    setShowPicker(null);
+    setPickerSearch("");
+  };
+
+  const positionColors: Record<string, string> = {
+    MV: "#F59E0B",
+    LW: "#3B82F6",
+    RW: "#8B5CF6",
+    C: "#EF4444",
+    B: "#22C55E",
+  };
+
+  return (
+    <div className="bg-gradient-to-br from-[#1a1a1a] to-[#111] rounded-xl border border-[#2a2a2a] overflow-hidden">
+      <div className="p-5 border-b border-[#2a2a2a]">
+        <h3 className="text-[#ECEDEE] text-sm font-semibold flex items-center gap-2">
+          <Swords size={14} className="text-amber-400" />
+          Head-to-Head
+        </h3>
+      </div>
+
+      <div className="p-5 space-y-4">
+        {/* Player selectors */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[#687076] text-[10px] mb-1 block uppercase tracking-wider">Spelare 1</label>
+            <button
+              onClick={() => {
+                setShowPicker(showPicker === 1 ? null : 1);
+                setPickerSearch("");
+              }}
+              className="w-full text-left bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-white truncate hover:border-[#0a7ea4]/50 transition-colors"
+            >
+              {player1 ? (
+                <span className="text-[#0a7ea4] font-medium">{player1.split(" #")[0]}</span>
+              ) : (
+                <span className="text-[#687076]">Välj spelare...</span>
+              )}
+            </button>
+          </div>
+          <div>
+            <label className="text-[#687076] text-[10px] mb-1 block uppercase tracking-wider">Spelare 2</label>
+            <button
+              onClick={() => {
+                setShowPicker(showPicker === 2 ? null : 2);
+                setPickerSearch("");
+              }}
+              className="w-full text-left bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-white truncate hover:border-[#F59E0B]/50 transition-colors"
+            >
+              {player2 ? (
+                <span className="text-[#F59E0B] font-medium">{player2.split(" #")[0]}</span>
+              ) : (
+                <span className="text-[#687076]">Välj spelare...</span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Player picker dropdown */}
+        {showPicker && (
+          <div className="bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg overflow-hidden">
+            <div className="relative p-2 border-b border-[#2a2a2a]">
+              <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#687076]" />
+              <input
+                type="text"
+                value={pickerSearch}
+                onChange={(e) => setPickerSearch(e.target.value)}
+                placeholder="Sök spelare..."
+                className="w-full pl-8 pr-3 py-1.5 bg-transparent text-sm text-[#ECEDEE] placeholder:text-[#687076] focus:outline-none"
+                autoFocus
+              />
+            </div>
+            <div className="max-h-48 overflow-y-auto">
+              {filteredNames.map((name: string) => (
+                <button
+                  key={name}
+                  onClick={() => selectPlayer(name)}
+                  className="w-full text-left px-3 py-2 text-sm text-[#ECEDEE] hover:bg-[#2a2a2a] border-b border-[#1a1a1a] last:border-0 transition-colors"
+                >
+                  {name}
+                </button>
+              ))}
+              {filteredNames.length === 0 && (
+                <p className="text-center py-4 text-[#687076] text-xs">Inga spelare hittades</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Results */}
+        {player1 && player2 && (
+          <>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-5 h-5 border-2 border-[#0a7ea4] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : h2h ? (
+              <div className="space-y-4">
+                {/* Player names header */}
+                <div className="flex justify-between items-center text-center py-2">
+                  <div className="flex-1">
+                    <span className="text-[#0a7ea4] font-bold text-base">{h2h.player1.name.split(" #")[0]}</span>
+                  </div>
+                  <div className="px-3">
+                    <Swords size={16} className="text-[#687076]" />
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-[#F59E0B] font-bold text-base">{h2h.player2.name.split(" #")[0]}</span>
+                  </div>
+                </div>
+
+                {/* Win rates */}
+                <div className="flex justify-around items-center py-3 bg-[#0a0a0a] rounded-xl">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-[#0a7ea4]">{h2h.player1.winRate}%</div>
+                    <div className="text-[10px] text-[#687076] uppercase">Vinst%</div>
+                  </div>
+                  <div className="text-center">
+                    <Trophy size={20} className="text-amber-400 mx-auto mb-1" />
+                    <div className="text-[10px] text-[#687076]">{h2h.sharedMatches} gemensamma</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-[#F59E0B]">{h2h.player2.winRate}%</div>
+                    <div className="text-[10px] text-[#687076] uppercase">Vinst%</div>
+                  </div>
+                </div>
+
+                {/* Stat bars */}
+                <div className="bg-[#0a0a0a] rounded-xl p-4">
+                  <H2HStatBar label="Matcher" val1={h2h.player1.matchesPlayed} val2={h2h.player2.matchesPlayed} />
+                  <H2HStatBar label="Vinster" val1={h2h.player1.wins} val2={h2h.player2.wins} />
+                  <H2HStatBar label="Förluster" val1={h2h.player1.losses} val2={h2h.player2.losses} higherIsBetter={false} />
+                  <H2HStatBar label="Mål" val1={h2h.player1.goals} val2={h2h.player2.goals} />
+                  <H2HStatBar label="Assist" val1={h2h.player1.assists} val2={h2h.player2.assists} />
+                  <H2HStatBar label="Poäng" val1={h2h.player1.points} val2={h2h.player2.points} />
+                  <H2HStatBar label="Vita" val1={h2h.player1.matchesWhite} val2={h2h.player2.matchesWhite} />
+                  <H2HStatBar label="Gröna" val1={h2h.player1.matchesGreen} val2={h2h.player2.matchesGreen} />
+                </div>
+
+                {/* Shared match analysis */}
+                {h2h.sharedMatches > 0 && (
+                  <div className="bg-[#0a0a0a] rounded-xl p-4">
+                    <h4 className="text-[#ECEDEE] text-xs font-bold mb-3 flex items-center gap-1.5">
+                      <Users size={12} className="text-[#0a7ea4]" /> Gemensamma matcher
+                    </h4>
+                    {h2h.player1.sameTeamMatches > 0 && (
+                      <div className="mb-3">
+                        <p className="text-[#687076] text-[10px] mb-1 uppercase tracking-wider">
+                          Samma lag ({h2h.player1.sameTeamMatches} matcher)
+                        </p>
+                        <div className="flex gap-3 text-xs">
+                          <span className="text-emerald-400 font-medium">{h2h.sameTeamRecord.wins}V</span>
+                          <span className="text-red-400">{h2h.sameTeamRecord.losses}F</span>
+                          <span className="text-[#9BA1A6]">{h2h.sameTeamRecord.draws}O</span>
+                        </div>
+                      </div>
+                    )}
+                    {h2h.player1.oppositeTeamMatches > 0 && (
+                      <div>
+                        <p className="text-[#687076] text-[10px] mb-1 uppercase tracking-wider">
+                          Motståndare ({h2h.player1.oppositeTeamMatches} matcher)
+                        </p>
+                        <div className="flex justify-between text-xs">
+                          <span>
+                            <span className="text-[#0a7ea4] font-bold">{h2h.oppositeTeamRecord.p1Wins}</span> vinster
+                          </span>
+                          <span className="text-[#9BA1A6]">{h2h.oppositeTeamRecord.draws} oavgjort</span>
+                          <span>
+                            <span className="text-[#F59E0B] font-bold">{h2h.oppositeTeamRecord.p2Wins}</span> vinster
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Position breakdown */}
+                <div className="grid grid-cols-2 gap-3">
+                  {[h2h.player1, h2h.player2].map((p: any, i: number) => {
+                    const positions = Object.entries(p.positionCounts).sort((a: any, b: any) => b[1] - a[1]);
+                    if (positions.length === 0) return null;
+                    return (
+                      <div key={i} className="bg-[#0a0a0a] rounded-xl p-3">
+                        <p className={`text-[10px] font-bold mb-2 uppercase tracking-wider ${i === 0 ? "text-[#0a7ea4]" : "text-[#F59E0B]"}`}>
+                          Positioner
+                        </p>
+                        {positions.map(([pos, count]: any) => {
+                          const posColor = positionColors[pos] || "#687076";
+                          return (
+                            <div key={pos} className="flex justify-between text-xs text-[#9BA1A6] mb-0.5">
+                              <span className="flex items-center gap-1">
+                                <span
+                                  className="w-1.5 h-1.5 rounded-full"
+                                  style={{ backgroundColor: posColor }}
+                                />
+                                {pos}
+                              </span>
+                              <span>{count}x</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </>
+        )}
       </div>
     </div>
   );
@@ -118,7 +434,7 @@ function TeamStatCard({
 }
 
 // ─── Main Component ─────────────────────────────────────────────────────────
-export default function TeamsTab({ teamData, stats }: TeamsTabProps) {
+export default function TeamsTab({ teamData, stats, dateFilter }: TeamsTabProps) {
   if (!teamData || teamData.totalMatches === 0) {
     return (
       <div className="text-center py-16 text-[#687076]">
@@ -140,10 +456,12 @@ export default function TeamsTab({ teamData, stats }: TeamsTabProps) {
           <span className="text-[#687076] text-lg font-bold">VS</span>
           <img src={IMAGES.teamGreenLogo} alt="Gröna" className="w-12 h-12 object-contain" />
         </div>
-        <p className="text-[#687076] text-xs">{teamData.totalMatches} matcher, {teamData.draws} oavgjorda</p>
+        <p className="text-[#687076] text-xs">
+          {teamData.totalMatches} matcher, {teamData.draws} oavgjorda
+        </p>
       </div>
 
-      {/* Win comparison donut */}
+      {/* Win comparison */}
       <div className="bg-gradient-to-br from-[#1a1a1a] to-[#111] rounded-xl border border-[#2a2a2a] p-5">
         <div className="flex items-center justify-center gap-8">
           <div className="text-center">
@@ -204,6 +522,9 @@ export default function TeamsTab({ teamData, stats }: TeamsTabProps) {
         <TeamStatCard team="white" data={w} />
         <TeamStatCard team="green" data={g} />
       </div>
+
+      {/* Head-to-Head */}
+      <HeadToHeadSection dateFilter={dateFilter} />
     </div>
   );
 }

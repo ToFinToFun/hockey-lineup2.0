@@ -688,7 +688,7 @@ export const scoreStatsRouter = router({
       return {
         totalMatches: 0, whiteWins: 0, greenWins: 0, draws: 0,
         totalGoalsWhite: 0, totalGoalsGreen: 0,
-        topScorers: [] as { name: string; goals: number; assists: number; gwg: number; points: number; team: string }[],
+        topScorers: [] as { name: string; goals: number; assists: number; gwg: number; points: number; team: string; matches: number }[],
         recentForm: [] as { name: string; whiteScore: number; greenScore: number }[],
         biggestWinWhite: null as { name: string; whiteScore: number; greenScore: number } | null,
         biggestWinGreen: null as { name: string; whiteScore: number; greenScore: number } | null,
@@ -703,7 +703,7 @@ export const scoreStatsRouter = router({
 
     let whiteWins = 0, greenWins = 0, draws = 0;
     let totalGoalsWhite = 0, totalGoalsGreen = 0;
-    const playerStats: Record<string, { goals: number; assists: number; gwg: number; team: string }> = {};
+    const playerStats: Record<string, { goals: number; assists: number; gwg: number; team: string; matches: number }> = {};
     const goalTypes: Record<string, number> = {};
 
     let biggestWinWhite: { name: string; whiteScore: number; greenScore: number; diff: number } | null = null;
@@ -745,12 +745,12 @@ export const scoreStatsRouter = router({
 
         for (const goal of goals) {
           if (goal.scorer) {
-            if (!playerStats[goal.scorer]) playerStats[goal.scorer] = { goals: 0, assists: 0, gwg: 0, team: goal.team };
+            if (!playerStats[goal.scorer]) playerStats[goal.scorer] = { goals: 0, assists: 0, gwg: 0, team: goal.team, matches: 0 };
             playerStats[goal.scorer].goals++;
             matchPlayerGoals[goal.scorer] = (matchPlayerGoals[goal.scorer] || 0) + 1;
           }
           if (goal.assist) {
-            if (!playerStats[goal.assist]) playerStats[goal.assist] = { goals: 0, assists: 0, gwg: 0, team: goal.team };
+            if (!playerStats[goal.assist]) playerStats[goal.assist] = { goals: 0, assists: 0, gwg: 0, team: goal.team, matches: 0 };
             playerStats[goal.assist].assists++;
             matchPlayerAssists[goal.assist] = (matchPlayerAssists[goal.assist] || 0) + 1;
           }
@@ -758,6 +758,12 @@ export const scoreStatsRouter = router({
             const key = goal.other.trim();
             if (key) goalTypes[key] = (goalTypes[key] || 0) + 1;
           }
+        }
+
+        // Track matches played per player
+        const matchPlayers = new Set([...Object.keys(matchPlayerGoals), ...Object.keys(matchPlayerAssists)]);
+        for (const player of matchPlayers) {
+          if (playerStats[player]) playerStats[player].matches++;
         }
 
         const gwgScorer = findGwgScorer(goals, match.teamWhiteScore, match.teamGreenScore);
@@ -825,11 +831,10 @@ export const scoreStatsRouter = router({
       .sort((a, b) => b.month.localeCompare(a.month));
 
     const topScorers = Object.entries(playerStats)
-      .map(([name, stats]) => ({ name, goals: stats.goals, assists: stats.assists, gwg: stats.gwg, points: stats.goals + stats.assists, team: stats.team }))
-      .sort((a, b) => b.points - a.points || b.goals - a.goals || b.assists - a.assists || b.gwg - a.gwg)
-      .slice(0, 20);
+      .map(([name, stats]) => ({ name, goals: stats.goals, assists: stats.assists, gwg: stats.gwg, points: stats.goals + stats.assists, team: stats.team, matches: stats.matches }))
+      .sort((a, b) => b.points - a.points || b.goals - a.goals || b.assists - a.assists || b.gwg - a.gwg);
 
-    const recentForm = matches.slice(0, 10).map(m => ({ name: m.name, whiteScore: m.teamWhiteScore, greenScore: m.teamGreenScore }));
+    const recentForm = matches.slice(0, 20).map(m => ({ name: m.name, whiteScore: m.teamWhiteScore, greenScore: m.teamGreenScore }));
 
     return {
       totalMatches: matches.length, whiteWins, greenWins, draws, totalGoalsWhite, totalGoalsGreen,

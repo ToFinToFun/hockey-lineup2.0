@@ -222,6 +222,7 @@ export default function StatsApp() {
                 stats={seasonStats}
                 onPlayerClick={handlePlayerClick}
                 periodLabel={PERIOD_OPTIONS.find((p) => p.key === periodPreset)?.label ?? "Säsong"}
+                dateFilter={queryInput}
               />
             )}
             {activeTab === "awards" && (
@@ -246,6 +247,7 @@ export default function StatsApp() {
               <TeamsTab
                 teamData={teamData}
                 stats={seasonStats}
+                dateFilter={queryInput}
               />
             )}
           </>

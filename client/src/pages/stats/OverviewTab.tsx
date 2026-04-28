@@ -150,24 +150,25 @@ function GoalTrendChart({ data }: { data: { label: string; white: number; green:
 function RecentForm({ matches }: { matches: { name: string; whiteScore: number; greenScore: number }[] }) {
   if (!matches || matches.length === 0) return null;
   return (
-    <div className="flex gap-1.5 flex-wrap">
+    <div className="space-y-1.5">
       {matches.map((m, i) => {
         const isDraw = m.whiteScore === m.greenScore;
+        const isWhiteWin = m.whiteScore > m.greenScore;
         return (
           <div
             key={i}
-            className="flex flex-col items-center gap-0.5 bg-[#1a1a1a] rounded-lg px-2 py-1.5 border border-[#2a2a2a] min-w-[44px]"
+            className="flex items-center justify-between py-1.5 border-b border-[#2a2a2a] last:border-0"
           >
+            <span className="text-[#687076] text-xs flex-1 truncate pr-2">{m.name}</span>
             <div className="flex items-center gap-1">
-              <span className="text-white/80 text-[11px] font-bold">{m.whiteScore}</span>
-              <span className="text-[#687076] text-[9px]">-</span>
-              <span className="text-emerald-400/80 text-[11px] font-bold">{m.greenScore}</span>
+              <span className={`text-sm font-bold ${isWhiteWin ? 'text-white' : 'text-[#9BA1A6]'}`}>
+                {m.whiteScore}
+              </span>
+              <span className="text-[#687076] text-xs">-</span>
+              <span className={`text-sm font-bold ${!isDraw && !isWhiteWin ? 'text-[#22C55E]' : 'text-[#9BA1A6]'}`}>
+                {m.greenScore}
+              </span>
             </div>
-            <div
-              className={`w-full h-[2px] rounded-full ${
-                isDraw ? "bg-[#687076]" : m.whiteScore > m.greenScore ? "bg-white/60" : "bg-emerald-500/60"
-              }`}
-            />
           </div>
         );
       })}
@@ -386,6 +387,112 @@ export default function OverviewTab({ stats, pirData, onPlayerClick }: OverviewT
           </div>
         )}
       </div>
+
+      {/* Goal type distribution */}
+      {stats.goalTypes && stats.goalTypes.length > 0 && (
+        <div className="bg-gradient-to-br from-[#1a1a1a] to-[#111] rounded-xl border border-[#2a2a2a] p-5">
+          <h3 className="text-[#ECEDEE] text-sm font-semibold mb-4 flex items-center gap-2">
+            <Target size={14} className="text-amber-400" />
+            Måltyper
+          </h3>
+          <div className="space-y-2">
+            {stats.goalTypes.map((gt: any) => {
+              const maxCount = stats.goalTypes[0]?.count ?? 1;
+              const pct = (gt.count / maxCount) * 100;
+              const label = gt.type === "even" ? "Lika styrka" : gt.type === "pp" ? "Powerplay" : gt.type === "sh" ? "Boxplay" : gt.type === "ps" ? "Straffslag" : gt.type === "en" ? "Tomt mål" : gt.type || "Okänd";
+              return (
+                <div key={gt.type} className="flex items-center gap-3">
+                  <span className="text-[#9BA1A6] text-xs w-24 text-right">{label}</span>
+                  <div className="flex-1 h-3 bg-[#0a0a0a] rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-amber-500/70 to-amber-500/30 transition-all duration-500"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="text-[#ECEDEE] text-xs font-bold w-8 text-right">{gt.count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Player records */}
+      {(stats.playerRecordGoals || stats.playerRecordAssists || stats.playerRecordPoints) && (
+        <div className="bg-gradient-to-br from-[#1a1a1a] to-[#111] rounded-xl border border-[#2a2a2a] p-5">
+          <h3 className="text-[#ECEDEE] text-sm font-semibold mb-3 flex items-center gap-2">
+            <Users size={14} className="text-[#0a7ea4]" />
+            Spelarrekord (enskild match)
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {stats.playerRecordGoals && (
+              <button
+                onClick={() => onPlayerClick(stats.playerRecordGoals.playerName)}
+                className="bg-[#0a0a0a] rounded-lg p-3 border border-[#2a2a2a] text-left hover:border-[#0a7ea4]/30 transition-colors"
+              >
+                <p className="text-[#687076] text-[10px] uppercase tracking-wider">Flest mål</p>
+                <p className="text-amber-400 font-bold text-lg mt-1">{stats.playerRecordGoals.goals} mål</p>
+                <p className="text-[#9BA1A6] text-xs mt-0.5 truncate">{stats.playerRecordGoals.playerName}</p>
+                <p className="text-[#687076] text-[10px] truncate">{stats.playerRecordGoals.matchName}</p>
+              </button>
+            )}
+            {stats.playerRecordAssists && (
+              <button
+                onClick={() => onPlayerClick(stats.playerRecordAssists.playerName)}
+                className="bg-[#0a0a0a] rounded-lg p-3 border border-[#2a2a2a] text-left hover:border-[#0a7ea4]/30 transition-colors"
+              >
+                <p className="text-[#687076] text-[10px] uppercase tracking-wider">Flest assist</p>
+                <p className="text-[#0a7ea4] font-bold text-lg mt-1">{stats.playerRecordAssists.assists} assist</p>
+                <p className="text-[#9BA1A6] text-xs mt-0.5 truncate">{stats.playerRecordAssists.playerName}</p>
+                <p className="text-[#687076] text-[10px] truncate">{stats.playerRecordAssists.matchName}</p>
+              </button>
+            )}
+            {stats.playerRecordPoints && (
+              <button
+                onClick={() => onPlayerClick(stats.playerRecordPoints.playerName)}
+                className="bg-[#0a0a0a] rounded-lg p-3 border border-[#2a2a2a] text-left hover:border-[#0a7ea4]/30 transition-colors"
+              >
+                <p className="text-[#687076] text-[10px] uppercase tracking-wider">Flest poäng</p>
+                <p className="text-emerald-400 font-bold text-lg mt-1">{stats.playerRecordPoints.points} poäng</p>
+                <p className="text-[#9BA1A6] text-xs mt-0.5 truncate">{stats.playerRecordPoints.playerName}</p>
+                <p className="text-[#687076] text-[10px] truncate">{stats.playerRecordPoints.matchName}</p>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Monthly MVP */}
+      {stats.monthlyMvp && stats.monthlyMvp.length > 0 && (
+        <div className="bg-gradient-to-br from-[#1a1a1a] to-[#111] rounded-xl border border-[#2a2a2a] p-5">
+          <h3 className="text-[#ECEDEE] text-sm font-semibold mb-3 flex items-center gap-2">
+            <Trophy size={14} className="text-amber-400" />
+            Månadens spelare
+          </h3>
+          <div className="space-y-2">
+            {stats.monthlyMvp.map((mvp: any) => {
+              const [year, month] = mvp.month.split("-");
+              const monthNames = ["Jan", "Feb", "Mar", "Apr", "Maj", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"];
+              const monthLabel = `${monthNames[parseInt(month) - 1]} ${year}`;
+              return (
+                <button
+                  key={mvp.month}
+                  onClick={() => onPlayerClick(mvp.playerName)}
+                  className="w-full flex items-center justify-between bg-[#0a0a0a] rounded-lg px-3 py-2 border border-[#2a2a2a] hover:border-[#0a7ea4]/30 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-[#687076] text-xs w-16">{monthLabel}</span>
+                    <span className="text-[#ECEDEE] text-xs font-medium">{mvp.playerName}</span>
+                  </div>
+                  <span className="text-[#9BA1A6] text-[10px]">
+                    {mvp.goals}M + {mvp.assists}A = {mvp.points}P ({mvp.matches} matcher)
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Records */}
       {(stats.biggestWinWhite || stats.biggestWinGreen || stats.highestScoringMatch) && (
