@@ -10,22 +10,23 @@ import { HockeyCard, exportCardAsImage, type CardStats } from "./HockeyCard";
 
 type TeamTheme = "white" | "green";
 
-interface PlayerPhoto {
-  playerId: string;
-  url: string;
-}
-
 export default function CardsApp() {
   const [, setLocation] = useLocation();
 
-  // Fetch season stats for all players
-  const { data: seasonData } = trpc.scoreStats.seasonStats.useQuery(
-    { periodType: "all" },
+  // Fetch player stats (returns per-player data with matches, goals, assists, wins, goalTypes)
+  const { data: playerStatsData } = trpc.score.playerStats.useQuery(
+    {},
     { staleTime: 60_000 }
   );
 
   // Fetch PIR data
   const { data: pirData } = trpc.pir.getRatings.useQuery(undefined, { staleTime: 60_000 });
+
+  // Fetch goalkeeper stats
+  const { data: gkData } = trpc.score.goalkeeperStats.useQuery(
+    {},
+    { staleTime: 60_000 }
+  );
 
   // State
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
@@ -37,7 +38,6 @@ export default function CardsApp() {
     } catch { return {}; }
   });
   const [showGallery, setShowGallery] = useState(true);
-  const [exportingAll, setExportingAll] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -47,50 +47,64 @@ export default function CardsApp() {
     localStorage.setItem("stalstaden_card_photos", JSON.stringify(photos));
   }, [photos]);
 
-  // Build player stats from season data
-  const playerStats = useMemo(() => {
-    if (!seasonData?.playerStats) return [];
+  // Build player list from playerStats data
+  const playerList = useMemo(() => {
+    if (!playerStatsData) return [];
     const pirMap = new Map<string, any>();
     if (pirData) {
       pirData.forEach((p: any) => pirMap.set(p.name, p));
     }
+    const gkMap = new Map<string, any>();
+    if (gkData && Array.isArray(gkData)) {
+      gkData.forEach((g: any) => gkMap.set(g.name, g));
+    }
 
-    return Object.entries(seasonData.playerStats).map(([name, s]: [string, any]) => {
-      const pir = pirMap.get(name);
-      const isGk = s.positionStats?.MV > (s.positionStats?.B ?? 0) + (s.positionStats?.F ?? 0) + (s.positionStats?.C ?? 0);
-      const totalMatches = s.matches ?? 0;
-      const wins = s.wins ?? 0;
-
-      // Determine position
-      let position = "F";
-      if (s.positionStats) {
-        const entries = Object.entries(s.positionStats) as [string, number][];
-        entries.sort((a, b) => b[1] - a[1]);
-        if (entries.length > 0) position = entries[0][0];
-      }
+    return playerStatsData.map((p: any) => {
+      const pir = pirMap.get(p.name);
+      const gk = gkMap.get(p.name);
+      const isGk = gk && gk.matchesPlayed > (p.matchesPlayed / 2);
 
       // Extract number from name if present (format "Name #Number")
-      const numberMatch = name.match(/#(\d+)$/);
+      const numberMatch = p.name.match(/#(\d+)$/);
       const playerNumber = numberMatch ? numberMatch[1] : undefined;
-      const cleanName = name.replace(/\s*#\d+$/, "");
+      const cleanName = p.name.replace(/\s*#\d+$/, "");
+
+      // Determine position from most played
+      let position = "F";
+      if (isGk) {
+        position = "MV";
+      } else if (p.matchesWhite > 0 || p.matchesGreen > 0) {
+        // Use generic position - we don't have slot data here
+        position = "UT";
+      }
+
+      // Calculate longest win streak from recentForm
+      let longestStreak = 0;
+      let currentStreak = 0;
+      if (p.recentForm) {
+        for (const r of p.recentForm) {
+          if (r === "V") { currentStreak++; longestStreak = Math.max(longestStreak, currentStreak); }
+          else { currentStreak = 0; }
+        }
+      }
 
       const stats: CardStats = {
-        season: seasonData.seasonLabel ?? "2025/26",
-        matches: totalMatches,
-        wins,
-        topStreak: s.longestWinStreak ?? 0,
-        goals: s.goals ?? 0,
-        assists: s.assists ?? 0,
-        points: (s.goals ?? 0) + (s.assists ?? 0),
-        gwg: s.gwg ?? 0,
-        winRate: totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0,
-        isGoalkeeper: isGk,
-        goalsAgainstPerMatch: isGk ? (s.goalsAgainstPerMatch ?? 0) : undefined,
-        cleanSheets: isGk ? (s.cleanSheets ?? 0) : undefined,
+        season: "2025/26",
+        matches: p.matchesPlayed ?? 0,
+        wins: p.wins ?? 0,
+        topStreak: longestStreak,
+        goals: p.goals ?? 0,
+        assists: p.assists ?? 0,
+        points: p.points ?? (p.goals + p.assists) ?? 0,
+        gwg: p.gwg ?? 0,
+        winRate: p.winRate ?? 0,
+        isGoalkeeper: !!isGk,
+        goalsAgainstPerMatch: isGk && gk ? gk.goalsAgainstPerMatch : undefined,
+        cleanSheets: isGk && gk ? gk.cleanSheets : undefined,
       };
 
       return {
-        id: name,
+        id: p.name,
         name: cleanName,
         number: playerNumber,
         position,
@@ -98,12 +112,12 @@ export default function CardsApp() {
         pirRating: pir?.rating,
         captainRole: undefined as string | undefined,
       };
-    }).sort((a, b) => a.name.localeCompare(b.name, "sv"));
-  }, [seasonData, pirData]);
+    }).sort((a: any, b: any) => a.name.localeCompare(b.name, "sv"));
+  }, [playerStatsData, pirData, gkData]);
 
   const selectedPlayerData = useMemo(() => {
-    return playerStats.find(p => p.id === selectedPlayer);
-  }, [playerStats, selectedPlayer]);
+    return playerList.find((p: any) => p.id === selectedPlayer);
+  }, [playerList, selectedPlayer]);
 
   // Photo upload handler
   const handlePhotoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,7 +202,7 @@ export default function CardsApp() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-bold text-[#687076] uppercase tracking-wider">
-                Välj spelare ({playerStats.length})
+                Välj spelare ({playerList.length})
               </h2>
               <button
                 onClick={() => setShowGallery(!showGallery)}
@@ -199,10 +213,16 @@ export default function CardsApp() {
               </button>
             </div>
 
-            {showGallery ? (
+            {playerList.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <User size={40} className="text-[#2a2a2a] mb-4" />
+                <p className="text-sm text-[#687076]">Inga spelare hittades</p>
+                <p className="text-[10px] text-[#3a3a3a] mt-1">Spela några matcher i Score Tracker först</p>
+              </div>
+            ) : showGallery ? (
               /* Gallery view: mini cards */
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {playerStats.map((p) => (
+                {playerList.map((p: any) => (
                   <button
                     key={p.id}
                     onClick={() => setSelectedPlayer(p.id)}
@@ -238,7 +258,7 @@ export default function CardsApp() {
             ) : (
               /* List view */
               <div className="space-y-1">
-                {playerStats.map((p) => (
+                {playerList.map((p: any) => (
                   <button
                     key={p.id}
                     onClick={() => setSelectedPlayer(p.id)}

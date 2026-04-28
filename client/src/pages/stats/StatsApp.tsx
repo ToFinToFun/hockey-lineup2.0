@@ -2,7 +2,7 @@
  * StatsApp – Main statistics module container
  * Provides tab navigation, period filtering, and admin controls
  */
-import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { IMAGES } from "@/lib/scoreConstants";
@@ -67,24 +67,24 @@ export default function StatsApp() {
   const [showAdmin, setShowAdmin] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
 
-  // Swipe support for mobile
+  // Swipe support for mobile (horizontal only, doesn't block vertical scroll)
   const touchStartX = useRef(0);
-  const touchEndX = useRef(0);
-  const contentRef = useRef<HTMLDivElement>(null);
+  const touchStartY = useRef(0);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartX.current = e.changedTouches[0].clientX;
+    touchStartY.current = e.changedTouches[0].clientY;
   }, []);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    touchEndX.current = e.changedTouches[0].clientX;
-    const diff = touchStartX.current - touchEndX.current;
-    const threshold = 60;
-    if (Math.abs(diff) < threshold) return;
+    const dx = touchStartX.current - e.changedTouches[0].clientX;
+    const dy = touchStartY.current - e.changedTouches[0].clientY;
+    // Only trigger tab switch for clearly horizontal swipes
+    if (Math.abs(dx) < 80 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
     const currentIdx = TABS.findIndex((t) => t.id === activeTab);
-    if (diff > 0 && currentIdx < TABS.length - 1) {
+    if (dx > 0 && currentIdx < TABS.length - 1) {
       setActiveTab(TABS[currentIdx + 1].id);
-    } else if (diff < 0 && currentIdx > 0) {
+    } else if (dx < 0 && currentIdx > 0) {
       setActiveTab(TABS[currentIdx - 1].id);
     }
   }, [activeTab]);
@@ -199,10 +199,9 @@ export default function StatsApp() {
 
       {/* Content */}
       <main
-        ref={contentRef}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className="max-w-6xl mx-auto px-4 py-6"
+        className="max-w-6xl mx-auto px-4 py-6 overflow-y-auto"
       >
         {isLoading ? (
           <div className="flex items-center justify-center py-24">
