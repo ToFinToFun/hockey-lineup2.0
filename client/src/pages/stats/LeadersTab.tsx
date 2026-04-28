@@ -1,17 +1,29 @@
 /**
- * LeadersTab – Scoring leaders with podium and expandable tables
+ * LeadersTab – Scoring leaders with podium, expandable tables, and goal type leaderboards
  */
 import { useState, useMemo } from "react";
-import { Trophy, Target, Users, ChevronDown, ChevronUp, Crown, Medal } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { Trophy, Target, Users, ChevronDown, ChevronUp, Crown, Medal, Crosshair } from "lucide-react";
 import { HockeyPuck, HockeyStick, HockeyGoalNet } from "@/components/score/HockeyIcons";
 
 interface LeadersTabProps {
   stats: any;
   onPlayerClick: (name: string) => void;
   periodLabel: string;
+  dateFilter?: { from?: string; to?: string };
 }
 
-type LeaderCategory = "points" | "goals" | "assists" | "gwg";
+type LeaderCategory = "points" | "goals" | "assists" | "gwg" | "matches";
+
+// ─── Goal Type Config ──────────────────────────────────────────────────────
+const goalTypeConfig: { type: string; label: string; color: string; icon: string }[] = [
+  { type: "Skott", label: "Skottligan", color: "#3B82F6", icon: "\uD83C\uDFAF" },
+  { type: "Styrning", label: "Styrningsligan", color: "#8B5CF6", icon: "\uD83C\uDFD2" },
+  { type: "Friläge", label: "Frilägesligan", color: "#F59E0B", icon: "\uD83D\uDCA8" },
+  { type: "Solo", label: "Sololigan", color: "#EC4899", icon: "\u26A1" },
+  { type: "Straff", label: "Straffligan", color: "#EF4444", icon: "\uD83C\uDFAA" },
+  { type: "Självmål", label: "Självmålsligan", color: "#6B7280", icon: "\uD83D\uDE05" },
+];
 
 // ─── Podium ─────────────────────────────────────────────────────────────────
 function Podium({
@@ -164,9 +176,98 @@ function LeaderTable({
   );
 }
 
+// ─── Goal Type Leaderboards ─────────────────────────────────────────────────
+function GoalTypeLeaderboards({
+  playerStats,
+  onPlayerClick,
+}: {
+  playerStats: any[];
+  onPlayerClick: (name: string) => void;
+}) {
+  const leaderboards = useMemo(() => {
+    return goalTypeConfig
+      .map((cfg) => {
+        const players = playerStats
+          .filter((p: any) => p.goalTypes && p.goalTypes[cfg.type] > 0)
+          .map((p: any) => ({ name: p.name, count: p.goalTypes[cfg.type] ?? 0 }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 5);
+        return { ...cfg, players };
+      })
+      .filter((lb) => lb.players.length > 0);
+  }, [playerStats]);
+
+  if (leaderboards.length === 0) return null;
+
+  return (
+    <div className="bg-gradient-to-br from-[#1a1a1a] to-[#111] rounded-xl border border-[#2a2a2a] p-5">
+      <h3 className="text-[#ECEDEE] text-sm font-semibold mb-1 flex items-center gap-2">
+        <Crosshair size={14} className="text-[#EC4899]" />
+        Måltyps-topplistan
+      </h3>
+      <p className="text-[#687076] text-[10px] mb-4">Topp 5 spelare per måltyp</p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {leaderboards.map((lb) => {
+          const maxCount = lb.players[0]?.count ?? 1;
+          return (
+            <div key={lb.type} className="bg-[#0a0a0a] rounded-xl p-3 border border-[#2a2a2a]">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm">{lb.icon}</span>
+                <h4 className="text-xs font-bold" style={{ color: lb.color }}>
+                  {lb.label}
+                </h4>
+              </div>
+              <div className="space-y-1">
+                {lb.players.map((player, i) => {
+                  const barPct = (player.count / maxCount) * 100;
+                  return (
+                    <button
+                      key={player.name}
+                      onClick={() => onPlayerClick(player.name)}
+                      className="w-full flex items-center gap-1.5 hover:bg-white/5 rounded px-1 py-0.5 transition-colors"
+                    >
+                      <span className="text-[#687076] text-[10px] w-4 shrink-0 text-right">
+                        {i === 0 ? "\uD83E\uDD47" : i === 1 ? "\uD83E\uDD48" : i === 2 ? "\uD83E\uDD49" : `${i + 1}.`}
+                      </span>
+                      <span className="text-[#ECEDEE] text-[11px] w-24 truncate shrink-0 text-left">
+                        {player.name}
+                      </span>
+                      <div className="flex-1 h-3 bg-[#2a2a2a] rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${Math.max(barPct, 10)}%`,
+                            backgroundColor: lb.color,
+                            opacity: 0.7,
+                          }}
+                        />
+                      </div>
+                      <span
+                        className="text-[10px] font-bold shrink-0 w-6 text-right"
+                        style={{ color: lb.color }}
+                      >
+                        {player.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ─────────────────────────────────────────────────────────
-export default function LeadersTab({ stats, onPlayerClick, periodLabel }: LeadersTabProps) {
+export default function LeadersTab({ stats, onPlayerClick, periodLabel, dateFilter }: LeadersTabProps) {
   const [category, setCategory] = useState<LeaderCategory>("points");
+
+  // Fetch per-player stats (includes goalTypes per player) for goal type leaderboards
+  const gkInput = useMemo(() => dateFilter ?? {}, [dateFilter]);
+  const { data: playerStats } = trpc.score.playerStats.useQuery(gkInput);
 
   const topScorers = stats?.topScorers ?? [];
 
@@ -187,8 +288,20 @@ export default function LeadersTab({ stats, onPlayerClick, periodLabel }: Leader
     () => [...topScorers].filter((p: any) => p.gwg > 0).sort((a: any, b: any) => b.gwg - a.gwg || b.goals - a.goals),
     [topScorers]
   );
+  const byMatches = useMemo(
+    () => [...topScorers].sort((a: any, b: any) => (b.matches ?? 0) - (a.matches ?? 0) || b.points - a.points),
+    [topScorers]
+  );
 
-  const categories: { key: LeaderCategory; label: string; icon: any; data: any[]; valueKey: string; valueLabel: string; columns: { key: string; label: string; width?: string }[] }[] = [
+  const categories: {
+    key: LeaderCategory;
+    label: string;
+    icon: any;
+    data: any[];
+    valueKey: string;
+    valueLabel: string;
+    columns: { key: string; label: string; width?: string }[];
+  }[] = [
     {
       key: "points",
       label: "Poäng",
@@ -239,6 +352,20 @@ export default function LeadersTab({ stats, onPlayerClick, periodLabel }: Leader
       columns: [
         { key: "gwg", label: "GWG", width: "w-10" },
         { key: "goals", label: "M", width: "w-8" },
+        { key: "points", label: "P", width: "w-8" },
+      ],
+    },
+    {
+      key: "matches",
+      label: "Matcher",
+      icon: Users,
+      data: byMatches,
+      valueKey: "matches",
+      valueLabel: "matcher",
+      columns: [
+        { key: "matches", label: "Sp", width: "w-8" },
+        { key: "goals", label: "M", width: "w-8" },
+        { key: "assists", label: "A", width: "w-8" },
         { key: "points", label: "P", width: "w-8" },
       ],
     },
@@ -303,6 +430,11 @@ export default function LeadersTab({ stats, onPlayerClick, periodLabel }: Leader
           initialShow={10}
         />
       </div>
+
+      {/* Goal Type Leaderboards */}
+      {playerStats && playerStats.length > 0 && (
+        <GoalTypeLeaderboards playerStats={playerStats} onPlayerClick={onPlayerClick} />
+      )}
 
       {/* Monthly MVP */}
       {stats.monthlyMvp && stats.monthlyMvp.length > 0 && (
