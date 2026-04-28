@@ -1,21 +1,20 @@
 /**
  * ScoreApp - Score Tracker sub-application wrapper
- * Provides tab navigation between Match, Lineup, and History
- * Stats have been moved to the dedicated /stats module
+ * Provides tab navigation between Match and Lineup
+ * History and Stats have been moved to dedicated Hub apps
  * Uses tRPC to fetch lineup data instead of Firebase
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import MatchPage from "./MatchPage";
 import LineupPage from "./LineupPage";
-import MatchHistoryPage from "./MatchHistoryPage";
 import PlayerProfileModal from "./PlayerProfileModal";
 import { trpc } from "@/lib/trpc";
-import { Home, Users, History, BarChart3, ArrowLeft } from "lucide-react";
+import { Home, Users, ArrowLeft } from "lucide-react";
 import type { AppState } from "@/lib/lineup";
 import { Link } from "wouter";
 
-type TabType = "match" | "lineup" | "history";
+type TabType = "match" | "lineup";
 
 export default function ScoreApp() {
   const [activeTab, setActiveTab] = useState<TabType>("match");
@@ -85,9 +84,6 @@ export default function ScoreApp() {
               onRefresh={refresh}
             />
           )}
-          {activeTab === "history" && (
-            <MatchHistoryPage onBack={() => setActiveTab("match")} />
-          )}
         </div>
 
         {/* Player Profile Modal */}
@@ -129,22 +125,6 @@ export default function ScoreApp() {
               <Users size={20} />
               <span className="text-[10px] font-medium">Uppställning</span>
             </button>
-            <button
-              onClick={() => setActiveTab("history")}
-              className={`flex-1 flex flex-col items-center py-2 gap-0.5 transition-colors ${
-                activeTab === "history" ? "text-[#0a7ea4]" : "text-[#9BA1A6]"
-              }`}
-            >
-              <History size={20} />
-              <span className="text-[10px] font-medium">Historik</span>
-            </button>
-            <Link
-              href="/stats"
-              className="flex-1 flex flex-col items-center py-2 gap-0.5 text-[#9BA1A6] hover:text-[#0a7ea4] transition-colors"
-            >
-              <BarChart3 size={20} />
-              <span className="text-[10px] font-medium">Statistik</span>
-            </Link>
           </div>
         </div>
       </div>

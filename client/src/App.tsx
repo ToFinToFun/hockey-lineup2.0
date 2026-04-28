@@ -11,6 +11,7 @@ import ScoreApp from "./pages/score/ScoreApp";
 import IceTimeApp from "./pages/icetime/IceTimeApp";
 import StatsApp from "./pages/stats/StatsApp";
 import CardsApp from "./pages/cards/CardsApp";
+import HistoryApp from "./pages/history/HistoryApp";
 
 function Router() {
   return (
@@ -34,6 +35,9 @@ function Router() {
 
       {/* Hockey Cards app */}
       <Route path="/cards" component={CardsApp} />
+
+      {/* Match History app */}
+      <Route path="/history" component={HistoryApp} />
 
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

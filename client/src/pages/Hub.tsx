@@ -5,7 +5,7 @@
  */
 
 import { Link } from "wouter";
-import { BarChart3, Users, ChevronRight, Trophy, ClipboardList, Timer, TrendingUp, Sparkles } from "lucide-react";
+import { BarChart3, Users, ChevronRight, Trophy, ClipboardList, Timer, TrendingUp, Sparkles, History } from "lucide-react";
 
 const LOGO_GREEN =
   "https://d2xsxph8kpxj0f.cloudfront.net/310519663363408929/PKtRPHEa7fsCMSzHJMpymq/team-green-logo_0c27fdbe.png";
@@ -72,14 +72,14 @@ export default function Hub() {
                 <div className="flex-1 min-w-0">
                   <h2 className="text-lg sm:text-xl font-bold tracking-tight">Score Tracker</h2>
                   <p className="text-white/40 text-xs sm:text-sm mt-0.5">
-                    Poängräkning, matchhistorik och statistik
+                    Poängräkning och matchregistrering
                   </p>
                   <div className="flex items-center gap-3 mt-2">
                     <span className="inline-flex items-center gap-1 text-[10px] text-white/30 bg-white/5 px-2 py-0.5 rounded-full">
-                      <BarChart3 size={10} /> Statistik
+                      <Trophy size={10} /> Poäng
                     </span>
                     <span className="inline-flex items-center gap-1 text-[10px] text-white/30 bg-white/5 px-2 py-0.5 rounded-full">
-                      <Trophy size={10} /> Utmärkelser
+                      <Users size={10} /> Uppställning
                     </span>
                   </div>
                 </div>
@@ -122,6 +122,38 @@ export default function Hub() {
               </div>
             </div>
           </Link>
+          {/* Match History Card */}
+          <Link href="/history">
+            <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] hover:border-orange-500/60 transition-all duration-300 cursor-pointer">
+              {/* Accent line */}
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-orange-500 to-orange-500/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+
+              <div className="p-5 sm:p-6 flex items-center gap-4">
+                <div className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
+                  <History size={24} className="text-orange-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold tracking-tight">Matchhistorik</h2>
+                  <p className="text-white/40 text-xs sm:text-sm mt-0.5">
+                    Alla matcher, resultat och matchrapporter
+                  </p>
+                  <div className="flex items-center gap-3 mt-2">
+                    <span className="inline-flex items-center gap-1 text-[10px] text-white/30 bg-white/5 px-2 py-0.5 rounded-full">
+                      <History size={10} /> Historik
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[10px] text-white/30 bg-white/5 px-2 py-0.5 rounded-full">
+                      <Trophy size={10} /> Rapporter
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight
+                  size={20}
+                  className="text-white/20 group-hover:text-orange-500 transition-colors flex-shrink-0"
+                />
+              </div>
+            </div>
+          </Link>
+
           {/* Stats Card */}
           <Link href="/stats">
             <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] hover:border-amber-500/60 transition-all duration-300 cursor-pointer">
