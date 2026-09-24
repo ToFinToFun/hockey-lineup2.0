@@ -44,14 +44,6 @@ Set these in Coolify's environment variables section:
 | `LAGET_SE_USERNAME` | Laget.se login email |
 | `LAGET_SE_PASSWORD` | Laget.se login password |
 
-### Optional (Manus APIs — only if using LLM/storage)
-
-| Variable | Description |
-|----------|-------------|
-| `BUILT_IN_FORGE_API_URL` | Manus Forge API base URL |
-| `BUILT_IN_FORGE_API_KEY` | Manus Forge API bearer token |
-| `OWNER_OPEN_ID` | Owner identifier for admin operations |
-
 ## Build & Deploy
 
 ### Docker (recommended for Coolify)

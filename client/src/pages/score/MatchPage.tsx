@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { IMAGES, COLORS, SOUNDS, getSponsorImage, getRandomSponsor, STORAGE_KEY, type GoalEvent, type MatchState } from "@/lib/scoreConstants";
+import { IMAGES, COLORS, getRandomSponsor, STORAGE_KEY, type GoalEvent, type MatchState } from "@/lib/scoreConstants";
 import { type AppState, createTeamSlots, MAX_TEAM_CONFIG } from "@/lib/lineup";
 import { type Player } from "@/lib/players";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -61,40 +61,26 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
   const [endTimeModalVisible, setEndTimeModalVisible] = useState(false);
   const [endTimeInput, setEndTimeInput] = useState("");
   const [endTimeTriggered, setEndTimeTriggered] = useState(false);
-  const endSignalAudioRef = useRef<HTMLAudioElement | null>(null);
-  const goalWhiteAudioRef = useRef<HTMLAudioElement | null>(null);
-  const goalGreenAudioRef = useRef<HTMLAudioElement | null>(null);
   const [isMuted, setIsMuted] = useState(false);
 
-  // Preload all sounds
-  useEffect(() => {
-    const endAudio = new Audio(SOUNDS.slutsignal);
-    endAudio.preload = "auto";
-    endSignalAudioRef.current = endAudio;
-
-    const whiteAudio = new Audio(SOUNDS.goalWhite);
-    whiteAudio.preload = "auto";
-    goalWhiteAudioRef.current = whiteAudio;
-
-    const greenAudio = new Audio(SOUNDS.goalGreen);
-    greenAudio.preload = "auto";
-    goalGreenAudioRef.current = greenAudio;
-
-    return () => {
-      endAudio.pause(); endAudio.src = "";
-      whiteAudio.pause(); whiteAudio.src = "";
-      greenAudio.pause(); greenAudio.src = "";
-    };
-  }, []);
+  const playTone = useCallback((frequency: number, duration = 0.25) => {
+    if (isMuted) return;
+    const context = new AudioContext();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.frequency.value = frequency;
+    gain.gain.setValueAtTime(0.18, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + duration);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + duration);
+    oscillator.addEventListener("ended", () => void context.close(), { once: true });
+  }, [isMuted]);
 
   const playGoalSound = useCallback((team: "white" | "green") => {
-    if (isMuted) return;
-    const audioRef = team === "white" ? goalWhiteAudioRef : goalGreenAudioRef;
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(e => console.error("Failed to play goal sound:", e));
-    }
-  }, [isMuted]);
+    playTone(team === "white" ? 660 : 520, 0.3);
+  }, [playTone]);
 
   // Check end time every second inside the clock timer
   useEffect(() => {
@@ -107,10 +93,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
       if (currentTimeStr === endTime) {
         setEndTimeTriggered(true);
         // Play sound
-        if (endSignalAudioRef.current && !isMuted) {
-          endSignalAudioRef.current.currentTime = 0;
-          endSignalAudioRef.current.play().catch(e => console.error("Failed to play end signal:", e));
-        }
+        playTone(330, 0.8);
         // Show alert after a short delay so sound starts first
         setTimeout(() => {
           alert(`📣 Sluttid! Matchen har nått sluttiden ${endTime}`);
@@ -120,7 +103,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
       }
     }, 1000);
     return () => clearInterval(checkInterval);
-  }, [endTime, endTimeTriggered]);
+  }, [endTime, endTimeTriggered, playTone]);
 
   const handleSetEndTime = () => {
     const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
@@ -150,10 +133,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
   };
 
   const testEndSignalSound = () => {
-    if (endSignalAudioRef.current) {
-      endSignalAudioRef.current.currentTime = 0;
-      endSignalAudioRef.current.play().catch(e => console.error("Failed to play test sound:", e));
-    }
+    playTone(330, 0.8);
   };
 
   // ─── Wake Lock (prevent screen from turning off) ────────────────
@@ -722,8 +702,9 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
                       <span className="text-[8px] mb-0.5" style={{ color: getGoalText(goal.team), opacity: 0.6 }}>
                         Presenteras av
                       </span>
-                      <img src={getSponsorImage(goal.sponsor)} alt={goal.sponsor}
-                        className="w-14 h-10 object-contain" />
+                      <span className="text-[10px] font-semibold text-center leading-tight">
+                        {goal.sponsor}
+                      </span>
                     </div>
                   )}
                 </button>

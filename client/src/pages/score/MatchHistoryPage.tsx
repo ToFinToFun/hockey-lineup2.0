@@ -1,5 +1,5 @@
 import { trpc } from "@/lib/trpc";
-import { IMAGES, getSponsorImage } from "@/lib/scoreConstants";
+import { IMAGES } from "@/lib/scoreConstants";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowLeft, Trash2, Trophy, Clock, Target, Search, Filter, X, Pencil, GripVertical, Plus, ChevronDown, Users, UserCheck, CheckSquare, Square, XCircle, Share2, Star } from "lucide-react";
@@ -726,8 +726,9 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                               )}
                             </div>
                             {goal.sponsor && (
-                              <img src={getSponsorImage(goal.sponsor)} alt={goal.sponsor}
-                                className="w-8 h-5 object-contain shrink-0 opacity-70" />
+                              <span className="text-[9px] text-[#687076] shrink-0">
+                                {goal.sponsor}
+                              </span>
                             )}
                           </div>
                         );
