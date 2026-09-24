@@ -1,32 +1,12 @@
-// CDN URLs for images
+// Core artwork is served by this app so Score Tracker, statistics, cards, and
+// lineup views all use the same reliable assets in production.
 export const IMAGES = {
-  hockeyBackground: "https://d2xsxph8kpxj0f.cloudfront.net/310519663363408929/PKtRPHEa7fsCMSzHJMpymq/hockey-background_28b70dc4.jpg",
-  teamWhiteLogo: "https://d2xsxph8kpxj0f.cloudfront.net/310519663363408929/PKtRPHEa7fsCMSzHJMpymq/team-white-logo_4796bd85.png",
-  teamGreenLogo: "https://d2xsxph8kpxj0f.cloudfront.net/310519663363408929/PKtRPHEa7fsCMSzHJMpymq/team-green-logo_0c27fdbe.png",
-  sponsorPolar: "https://d2xsxph8kpxj0f.cloudfront.net/310519663363408929/PKtRPHEa7fsCMSzHJMpymq/Polar_ec4fb3a1.png",
-  sponsorLindstroms: "https://d2xsxph8kpxj0f.cloudfront.net/310519663363408929/PKtRPHEa7fsCMSzHJMpymq/lindstromstransport_97331e95.png",
-  sponsorKirunabilfrakt: "https://d2xsxph8kpxj0f.cloudfront.net/310519663363408929/PKtRPHEa7fsCMSzHJMpymq/Kirunabilfrakt_0aecf52d.png",
-  sponsorRen: "https://d2xsxph8kpxj0f.cloudfront.net/310519663363408929/PKtRPHEa7fsCMSzHJMpymq/Ren_5427bd7a.jpg",
-} as const;
-
-// CDN URLs for sounds
-export const SOUNDS = {
-  slutsignal: "https://d2xsxph8kpxj0f.cloudfront.net/310519663363408929/PKtRPHEa7fsCMSzHJMpymq/slutsignal_38c70fd2.mp3",
-  goalWhite: "https://d2xsxph8kpxj0f.cloudfront.net/310519663363408929/PKtRPHEa7fsCMSzHJMpymq/MålVita_c23702e7.mp3",
-  goalGreen: "https://d2xsxph8kpxj0f.cloudfront.net/310519663363408929/PKtRPHEa7fsCMSzHJMpymq/MålGröna_940f09ff.mp3",
+  hockeyBackground: "/images/background.jpg",
+  teamWhiteLogo: "/images/logo-white.png",
+  teamGreenLogo: "/images/logo-green.png",
 } as const;
 
 export const SPONSORS = ["Polar", "lindstromstransport", "Kirunabilfrakt", "Ren"] as const;
-
-export function getSponsorImage(sponsor: string): string {
-  switch (sponsor) {
-    case "Polar": return IMAGES.sponsorPolar;
-    case "lindstromstransport": return IMAGES.sponsorLindstroms;
-    case "Kirunabilfrakt": return IMAGES.sponsorKirunabilfrakt;
-    case "Ren": return IMAGES.sponsorRen;
-    default: return IMAGES.sponsorPolar;
-  }
-}
 
 export function getRandomSponsor(): string {
   const idx = Math.floor(Math.random() * SPONSORS.length);

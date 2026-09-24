@@ -1,5 +1,5 @@
 import { trpc } from "@/lib/trpc";
-import { IMAGES } from "@/lib/scoreConstants";
+import { SPONSORS } from "@/lib/scoreConstants";
 import { useMemo, useState, useCallback, useRef } from "react";
 import { ArrowLeft, Calendar, Trophy, Award, Crown, Star, Flame, Shield, Zap, Medal, Download, Share2 } from "lucide-react";
 import { HockeyPuck, HockeyStick, HockeyGoalNet, GoalieMask } from "@/components/score/HockeyIcons";
@@ -233,24 +233,9 @@ async function generateAwardsImage(
   ctx.textAlign = 'center';
   ctx.fillText('SPONSORER', W / 2, sponsorY + 28);
 
-  // Load and draw sponsor logos
-  const sponsorUrls = [IMAGES.sponsorPolar, IMAGES.sponsorLindstroms, IMAGES.sponsorKirunabilfrakt, IMAGES.sponsorRen];
-  const logoSize = 50;
-  const totalLogosW = sponsorUrls.length * logoSize + (sponsorUrls.length - 1) * 30;
-  let logoX = (W - totalLogosW) / 2;
-
-  try {
-    for (const url of sponsorUrls) {
-      const img = await loadImage(url);
-      const aspect = img.width / img.height;
-      const drawW = aspect > 1 ? logoSize : logoSize * aspect;
-      const drawH = aspect > 1 ? logoSize / aspect : logoSize;
-      ctx.drawImage(img, logoX + (logoSize - drawW) / 2, sponsorY + 42 + (logoSize - drawH) / 2, drawW, drawH);
-      logoX += logoSize + 30;
-    }
-  } catch {
-    // Sponsors failed to load, skip
-  }
+  ctx.fillStyle = '#9BA1A6';
+  ctx.font = '600 16px system-ui, -apple-system, sans-serif';
+  ctx.fillText(SPONSORS.join('  ·  '), W / 2, sponsorY + 58);
 
   return canvas;
 }
@@ -258,12 +243,9 @@ async function generateAwardsImage(
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = reject;
-    // Use server-side proxy to bypass CORS for CDN images
-    const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(src)}`;
-    img.src = proxyUrl;
+    img.src = src;
   });
 }
 

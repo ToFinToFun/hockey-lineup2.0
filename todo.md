@@ -44,7 +44,7 @@
 - [x] BUGG: Netlify Function hittar bara 1 anmäld spelare istället för 8 (fixad: skrev om extractAttendeesFromModal med split-strategi istället för regex)
 - [x] Visa rött kryss för spelare som svarat "Kommer inte" på laget.se (liknande grön bock för "Kommer")
 - [x] BUGG: Spelare som svarat "Kommer inte" (t.ex. Jerry Paasovaara) markeras inte med rött kryss - declinedNames returneras tom (fixad: hämtar från admin-sidan)
-- [x] BUGG: Netlify hittar inga spelare men Manus-servern fungerar (fixad: regex hanterar \r\n whitespace i laget.se HTML)
+- [x] BUGG: En tidigare server hittade spelare men den driftsatta miljön gjorde det inte (fixad: regex hanterar \r\n whitespace i laget.se HTML)
 - [x] Visa tidsstämpel för senaste synk-tidpunkt i headern (t.ex. "Hämtat 17:09")
 - [x] Hämta "Deltar ej" (Kommer inte) från laget.se admin kalender-redigering istället för RSVP-modal
 - [x] Lägg till sorteringsknapp "Avböjda" i spelartruppen (bredvid "Anmälda")
@@ -130,10 +130,10 @@
 - [x] Bygg engångs-migrationsskript: Firebase → SQL (sparade uppställningar + delade länkar)
 - [x] Analysera och dokumentera Hetzner/Coolify deployment-krav
 
-## Databassammanslagning (Railway → vår databas)
-- [x] Analysera Railway-databasens schema och data
-- [x] Slå ihop Railway-schemat med vårt Drizzle-schema (undvik namnkonflikter)
-- [x] Bygg import-skript som läser all data från Railway och importerar till vår databas (testat och verifierat)
+## Databassammanslagning
+- [x] Analysera den äldre resultatdatabasens schema och data
+- [x] Slå ihop resultatdatabasen med vårt Drizzle-schema (undvik namnkonflikter)
+- [x] Importera och verifiera all äldre data i den gemensamma databasen
 
 ## Laget.se inloggning via inställningar
 - [x] Skapa DB-tabell för krypterade credentials (app_secrets)
@@ -185,7 +185,7 @@
 - [x] Port Score Tracker db helpers (match results, app config)
 - [x] Port playerProfile, headToHead, seasonAwards, seasonStats, teamComparison
 - [x] Add proxy-image endpoint for match report export
-- [x] Remove Manus OAuth / auth requirements — all endpoints public (auth router removed, protectedProcedure removed)
+- [x] Remove legacy OAuth/auth requirements — all endpoints public (auth router removed, protectedProcedure removed)
 
 ### Phase 3: Port Score Tracker Client
 - [x] Port MatchPage.tsx
@@ -219,7 +219,7 @@
 - [x] Run vitest tests (38/38 passed)
 - [x] Push to GitHub (99fc6a0)
 
-### Feature: Remove Manus OAuth
+### Feature: Remove legacy OAuth
 - [x] Remove OAuth callback route and middleware from server
 - [x] Remove auth-related imports and hooks from client (useAuth kept as stub)
 - [x] Remove protectedProcedure/adminProcedure from trpc.ts

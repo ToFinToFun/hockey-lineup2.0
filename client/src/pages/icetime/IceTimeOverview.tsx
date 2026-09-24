@@ -11,8 +11,7 @@ import { Shield, Target, Swords, Users } from "lucide-react";
 
 const PLAYER_RANGE = Array.from({ length: 8 }, (_, i) => i + 8); // 8–15
 
-const BG_URL =
-  "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/gLOHFxhFzgQgHeKl.jpg";
+const BG_URL = "/images/background.jpg";
 
 interface ScenarioData {
   players: number;
