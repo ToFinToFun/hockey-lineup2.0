@@ -3,13 +3,13 @@
 Prioriterad lista från genomgången 2026-09-24. Bocka av när klart.
 
 ## 1. Deploy
-- [ ] Merga `main` → `production`. Live kör fortfarande gammal kod som länkar logotyper, bakgrund och favicon från Manus CDN (därav trasiga bilder).
+- [x] Merga `main` → `production` (live länkade tidigare logotyper, bakgrund och favicon från Manus CDN).
 
 ## 2. Säkerhet
 - [ ] Adminlösenordet ("Styrelsen") är hårdkodat i klientkoden (SettingsModal.tsx, MatchHistoryPage.tsx) och läsbart för alla. Flytta till miljövariabel i Coolify, kontrollera enbart på servern.
 - [ ] Alla ~40 tRPC-endpoints är öppna. Skydda skrivande/raderande endpoints (radera matcher, sparade uppställningar, laget.se-inloggning) med admin-session.
 - [ ] `JWT_SECRET` har en känd reservnyckel i server/crypto.ts. Appen ska vägra starta utan den i produktion.
-- [ ] Railway-databasens root-lösenord finns i git-historiken. Radera Railway-projektet om det finns kvar.
+- [x] Railway: kontot borttaget, gamla uppgifter rensade ur git-historiken.
 
 ## 3. Saknade filer (Jerry)
 - [ ] Sponsorloggor: Polar, Lindströms Transport, Kirunabilfrakt, Ren → `client/public/images/sponsors/`
