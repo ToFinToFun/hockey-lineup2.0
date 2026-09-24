@@ -4,7 +4,7 @@
  * playerProfile, headToHead, seasonAwards, seasonStats, teamComparison
  */
 
-import { publicProcedure, router } from "../_core/trpc";
+import { adminProcedure, router } from "../_core/trpc";
 import { getAllMatchResults } from "../scoreDb";
 import { z } from "zod";
 
@@ -94,7 +94,7 @@ const dateRangeInput = z
 
 export const scoreStatsRouter = router({
   /** Detailed player profile with per-match history */
-  playerProfile: publicProcedure
+  playerProfile: adminProcedure
     .input(z.object({ name: z.string() }))
     .query(async ({ input }) => {
       const matches = await getAllMatchResults();
@@ -346,7 +346,7 @@ export const scoreStatsRouter = router({
     }),
 
   /** Head-to-head comparison between two players */
-  headToHead: publicProcedure
+  headToHead: adminProcedure
     .input(z.object({
       player1: z.string(),
       player2: z.string(),
@@ -478,7 +478,7 @@ export const scoreStatsRouter = router({
     }),
 
   /** Season Awards */
-  seasonAwards: publicProcedure.input(dateRangeInput).query(async ({ input }) => {
+  seasonAwards: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
     const allMatches = await getAllMatchResults();
     const matches = filterMatchesByDate(allMatches, input?.from, input?.to);
 
@@ -681,7 +681,7 @@ export const scoreStatsRouter = router({
   }),
 
   /** Aggregated season statistics */
-  seasonStats: publicProcedure.input(dateRangeInput).query(async ({ input }) => {
+  seasonStats: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
     const allMatches = await getAllMatchResults();
     const matches = filterMatchesByDate(allMatches, input?.from, input?.to);
     if (matches.length === 0) {
@@ -848,7 +848,7 @@ export const scoreStatsRouter = router({
   }),
 
   /** Team comparison (Vita vs Gröna) */
-  teamComparison: publicProcedure.input(dateRangeInput).query(async ({ input }) => {
+  teamComparison: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
     const allMatches = await getAllMatchResults();
     const matches = filterMatchesByDate(allMatches, input?.from, input?.to);
 

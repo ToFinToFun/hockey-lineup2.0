@@ -10,7 +10,7 @@ import type { TrpcContext } from "./_core/context";
 
 function createPublicContext(): TrpcContext {
   return {
-    user: null,
+    session: { role: "admin", expiresAt: Date.now() + 60_000 },
     req: {
       protocol: "https",
       headers: {},
@@ -204,24 +204,6 @@ describe("lineup tRPC router", () => {
         shareId: created.shareId,
       });
       expect(deleted).toBeNull();
-    });
-  });
-
-  describe("settings.hasLagetSeCredentials", () => {
-    it("should return a configured boolean", async () => {
-      const result = await caller.settings.hasLagetSeCredentials();
-      expect(result).toHaveProperty("configured");
-      expect(typeof result.configured).toBe("boolean");
-    });
-  });
-
-  describe("settings.getLagetSeInfo", () => {
-    it("should return configured status and username", async () => {
-      const result = await caller.settings.getLagetSeInfo();
-      expect(result).toHaveProperty("configured");
-      expect(result).toHaveProperty("username");
-      expect(typeof result.configured).toBe("boolean");
-      expect(typeof result.username).toBe("string");
     });
   });
 });

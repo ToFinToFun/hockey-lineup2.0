@@ -5,6 +5,8 @@
  */
 
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+import { AccessPanel } from "@/components/auth/AccessPanel";
 import { BarChart3, Users, ChevronRight, Trophy, ClipboardList, Timer, TrendingUp, Sparkles, History } from "lucide-react";
 
 // Keep the hub artwork on the same origin as the application. The old external
@@ -15,6 +17,7 @@ const LOGO_WHITE = "/images/logo-white.png";
 const BG_URL = "/images/background.jpg";
 
 export default function Hub() {
+  const { isAdmin, canEditLineup } = useAuth();
   return (
     <div className="min-h-[100dvh] bg-[#0a0a0a] text-white relative overflow-hidden">
       {/* Background image with overlay */}
@@ -92,6 +95,7 @@ export default function Hub() {
           </Link>
 
           {/* Lineup Card */}
+          {canEditLineup && (
           <Link href="/lineup">
             <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] hover:border-emerald-500/60 transition-all duration-300 cursor-pointer">
               {/* Accent line */}
@@ -122,7 +126,9 @@ export default function Hub() {
               </div>
             </div>
           </Link>
+          )}
           {/* Match History Card */}
+          {isAdmin && (
           <Link href="/history">
             <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] hover:border-orange-500/60 transition-all duration-300 cursor-pointer">
               {/* Accent line */}
@@ -153,8 +159,10 @@ export default function Hub() {
               </div>
             </div>
           </Link>
+          )}
 
           {/* Stats Card */}
+          {isAdmin && (
           <Link href="/stats">
             <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] hover:border-amber-500/60 transition-all duration-300 cursor-pointer">
               {/* Accent line */}
@@ -185,8 +193,10 @@ export default function Hub() {
               </div>
             </div>
           </Link>
+          )}
 
           {/* Hockey Cards */}
+          {isAdmin && (
           <Link href="/cards">
             <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] hover:border-purple-500/60 transition-all duration-300 cursor-pointer">
               {/* Accent line */}
@@ -217,8 +227,10 @@ export default function Hub() {
               </div>
             </div>
           </Link>
+          )}
 
           {/* IceTime Card */}
+          {isAdmin && (
           <Link href="/icetime">
             <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] hover:border-sky-400/60 transition-all duration-300 cursor-pointer">
               {/* Accent line */}
@@ -249,7 +261,10 @@ export default function Hub() {
               </div>
             </div>
           </Link>
+          )}
         </div>
+
+        <AccessPanel />
 
         {/* Footer */}
         <div className="mt-auto pt-8 text-center">

@@ -6,9 +6,9 @@ Prioriterad lista från genomgången 2026-09-24. Bocka av när klart.
 - [x] Merga `main` → `production` (live länkade tidigare logotyper, bakgrund och favicon från Manus CDN).
 
 ## 2. Säkerhet
-- [ ] Adminlösenordet ("Styrelsen") är hårdkodat i klientkoden (SettingsModal.tsx, MatchHistoryPage.tsx) och läsbart för alla. Flytta till miljövariabel i Coolify, kontrollera enbart på servern.
-- [ ] Alla ~40 tRPC-endpoints är öppna. Skydda skrivande/raderande endpoints (radera matcher, sparade uppställningar, laget.se-inloggning) med admin-session.
-- [ ] `JWT_SECRET` har en känd reservnyckel i server/crypto.ts. Appen ska vägra starta utan den i produktion.
+- [x] Behörighet på servern: publik score tracker, tillfälliga 24 h-länkar för uppställning, styrelseinloggning via ADMIN_PASSWORD. Hårdkodat "Styrelsen" borttaget.
+- [x] Laget.se-formuläret borttaget; inloggningen ligger bara i Coolify.
+- [x] Appen vägrar starta i produktion utan JWT_SECRET/ADMIN_PASSWORD/DATABASE_URL.
 - [x] Railway: kontot borttaget, gamla uppgifter rensade ur git-historiken.
 
 ## 3. Saknade filer (Jerry)
@@ -19,7 +19,7 @@ Prioriterad lista från genomgången 2026-09-24. Bocka av när klart.
 ## 4. Optimering och städning
 - [ ] Koddela per delapp (lineup/score/stats/cards/history/icetime). JS-bundlen är 1,1 MB.
 - [ ] Slå ihop README.md och DEPLOY.md (säger emot varandra om miljövariabler; DEPLOY nämner TiDB och LAGET_SE_* som inte längre behövs).
-- [ ] Separera eller mocka de 9 tester som kräver databas.
+- [x] Tester: behörighetstester tillagda; laget.se-testet körs bara när inloggning finns. DB-testerna kräver en MySQL (DATABASE_URL).
 - [ ] `start.sh` sväljer migreringsfel – ska avbryta start vid fel.
 - [ ] Gå igenom oanvända komponenter och beroenden efter sammanslagningen av projekten.
 

@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { fetchAttendance } from "./lagetSe";
 
-describe("laget.se integration", () => {
+// Kör bara mot riktiga laget.se när inloggning finns i miljön.
+const hasCreds = !!process.env.LAGET_SE_USERNAME && !!process.env.LAGET_SE_PASSWORD;
+
+describe.skipIf(!hasCreds)("laget.se integration", () => {
   it("should fetch attendance or report no event without error", async () => {
     const result = await fetchAttendance();
 

@@ -7,13 +7,16 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { sseManager } from "../sse";
 import crypto from "crypto";
+import { assertRequiredEnv } from "./env";
 
 async function startServer() {
+  assertRequiredEnv();
   const app = express();
+  // Bakom Traefik i Coolify: behövs för korrekt klient-IP och säkra cookies.
+  app.set("trust proxy", 1);
   const server = createServer(app);
-  // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  app.use(express.json({ limit: "2mb" }));
+  app.use(express.urlencoded({ limit: "2mb", extended: true }));
 
   // SSE endpoint for real-time lineup sync
   app.get("/api/sse/lineup", (req, res) => {
@@ -56,4 +59,7 @@ async function startServer() {
   });
 }
 
-startServer().catch(console.error);
+startServer().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

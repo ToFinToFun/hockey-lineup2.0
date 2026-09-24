@@ -1,7 +1,7 @@
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, lineupProcedure, adminProcedure, router } from "./_core/trpc";
+import { authRouter } from "./routers/auth";
 import { fetchAttendance, updateAttendance, type AttendingStatus } from "./lagetSe";
-import { saveLagetSeCredentials, getLagetSeCredentials, hasLagetSeCredentials } from "./secretsDb";
 import { scoreRouter } from "./routers/score";
 import { scoreStatsRouter } from "./routers/scoreStats";
 import { getAllMatchResults, getConfigValue, setConfigValue } from "./scoreDb";
@@ -21,17 +21,18 @@ import { z } from "zod";
 
 export const appRouter = router({
   system: systemRouter,
+  auth: authRouter,
   score: scoreRouter,
   scoreStats: scoreStatsRouter,
   laget: router({
     /** Hämta anmälningslistan från laget.se för dagens/nästa event */
-    attendance: publicProcedure.query(async () => {
+    attendance: lineupProcedure.query(async () => {
       const result = await fetchAttendance();
       return result;
     }),
 
     /** Ändra en spelares deltagarstatus på laget.se */
-    updateAttendance: publicProcedure
+    updateAttendance: lineupProcedure
       .input(
         z.object({
           playerName: z.string().min(1),
@@ -57,7 +58,7 @@ export const appRouter = router({
     }),
 
     /** Save/update the full lineup state with an operation description */
-    saveState: publicProcedure
+    saveState: lineupProcedure
       .input(
         z.object({
           players: z.array(z.any()),
@@ -100,7 +101,7 @@ export const appRouter = router({
       }),
 
     /** Get operations after a given sequence number (for SSE catch-up) */
-    getOperationsAfter: publicProcedure
+    getOperationsAfter: lineupProcedure
       .input(z.object({ afterSeq: z.number() }))
       .query(async ({ input }) => {
         return getOperationsAfter(input.afterSeq);
@@ -110,7 +111,7 @@ export const appRouter = router({
      * Calculate the most-played position for each player from match history.
      * Returns a map: playerKey -> { mostPlayed: "B", stats: { B: 10, C: 2, ... } }
      */
-    positionHistory: publicProcedure.query(async () => {
+    positionHistory: lineupProcedure.query(async () => {
       const allMatches = await getAllMatchResults();
       // playerKey -> { position -> count }
       const positionCounts: Record<string, Record<string, number>> = {};
@@ -191,19 +192,19 @@ export const appRouter = router({
 
   savedLineups: router({
     /** Get all saved lineups */
-    list: publicProcedure.query(async () => {
+    list: lineupProcedure.query(async () => {
       return getAllSavedLineups();
     }),
 
     /** Get a single saved lineup by shareId (for shared view) */
-    getByShareId: publicProcedure
+    getByShareId: lineupProcedure
       .input(z.object({ shareId: z.string() }))
       .query(async ({ input }) => {
         return getSavedLineupByShareId(input.shareId);
       }),
 
     /** Create a new saved lineup */
-    create: publicProcedure
+    create: lineupProcedure
       .input(
         z.object({
           name: z.string().min(1).max(200),
@@ -224,7 +225,7 @@ export const appRouter = router({
       }),
 
     /** Toggle favorite status */
-    toggleFavorite: publicProcedure
+    toggleFavorite: lineupProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         await toggleSavedLineupFavorite(input.id);
@@ -236,7 +237,7 @@ export const appRouter = router({
       }),
 
     /** Delete a saved lineup */
-    delete: publicProcedure
+    delete: adminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         await deleteSavedLineup(input.id);
@@ -251,33 +252,8 @@ export const appRouter = router({
   // ─── Settings ──────────────────────────────────────────────────────────────
 
   settings: router({
-    /** Check if laget.se credentials are configured */
-    hasLagetSeCredentials: publicProcedure.query(async () => {
-      return { configured: await hasLagetSeCredentials() };
-    }),
-
-    /** Get laget.se username (masked password) */
-    getLagetSeInfo: publicProcedure.query(async () => {
-      const creds = await getLagetSeCredentials();
-      if (!creds) return { configured: false, username: "" };
-      return { configured: true, username: creds.username };
-    }),
-
-    /** Save laget.se credentials (encrypted in DB) */
-    saveLagetSeCredentials: publicProcedure
-      .input(
-        z.object({
-          username: z.string().min(1, "Ange e-postadress"),
-          password: z.string().min(1, "Ange lösenord"),
-        })
-      )
-      .mutation(async ({ input }) => {
-        await saveLagetSeCredentials(input);
-        return { success: true };
-      }),
-
     /** Test laget.se connection with current credentials */
-    testLagetSeConnection: publicProcedure.mutation(async () => {
+    testLagetSeConnection: adminProcedure.mutation(async () => {
       try {
         const result = await fetchAttendance();
         if (result.error && result.error.includes("Kontrollera användarnamn")) {
@@ -298,7 +274,7 @@ export const appRouter = router({
     }),
 
     /** Get PIR settings (all granular toggles) */
-    getPirSettings: publicProcedure.query(async () => {
+    getPirSettings: lineupProcedure.query(async () => {
       const [enabled, showRating, showTrend, showTeamStrength, showPrediction, useForBalance] = await Promise.all([
         getConfigValue("pir_enabled"),
         getConfigValue("pir_show_rating"),
@@ -318,10 +294,10 @@ export const appRouter = router({
     }),
 
     /** Update PIR settings (requires admin password) */
-    setPirSettings: publicProcedure
+    setPirSettings: adminProcedure
       .input(
         z.object({
-          password: z.string(),
+          password: z.string().optional(),
           enabled: z.boolean().optional(),
           showRating: z.boolean().optional(),
           showTrend: z.boolean().optional(),
@@ -331,9 +307,6 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input }) => {
-        if (input.password !== "Styrelsen") {
-          return { success: false, error: "Fel lösenord" };
-        }
         const updates: Promise<void>[] = [];
         if (input.enabled !== undefined) updates.push(setConfigValue("pir_enabled", input.enabled ? "true" : "false"));
         if (input.showRating !== undefined) updates.push(setConfigValue("pir_show_rating", input.showRating ? "true" : "false"));
@@ -346,14 +319,13 @@ export const appRouter = router({
       }),
 
     // Keep backward compat aliases
-    getPirEnabled: publicProcedure.query(async () => {
+    getPirEnabled: adminProcedure.query(async () => {
       const val = await getConfigValue("pir_enabled");
       return { enabled: val === "true" };
     }),
-    setPirEnabled: publicProcedure
-      .input(z.object({ enabled: z.boolean(), password: z.string() }))
+    setPirEnabled: adminProcedure
+      .input(z.object({ enabled: z.boolean(), password: z.string().optional() }))
       .mutation(async ({ input }) => {
-        if (input.password !== "Styrelsen") return { success: false, error: "Fel lösenord" };
         await setConfigValue("pir_enabled", input.enabled ? "true" : "false");
         return { success: true };
       }),
@@ -363,7 +335,7 @@ export const appRouter = router({
 
   pir: router({
     /** Get PIR ratings for all players (enhanced with trend, confidence, etc.) */
-    getRatings: publicProcedure.query(async () => {
+    getRatings: lineupProcedure.query(async () => {
       const matches = await getAllMatchResults();
       return calculatePIR(matches);
     }),
@@ -373,7 +345,7 @@ export const appRouter = router({
 
   statsConfig: router({
     /** Get stats visibility settings */
-    getVisibility: publicProcedure.query(async () => {
+    getVisibility: adminProcedure.query(async () => {
       const raw = await getConfigValue("stats_visibility");
       const defaults = {
         overview: true,
@@ -393,10 +365,10 @@ export const appRouter = router({
     }),
 
     /** Update stats visibility settings (requires admin password) */
-    setVisibility: publicProcedure
+    setVisibility: adminProcedure
       .input(
         z.object({
-          password: z.string(),
+          password: z.string().optional(),
           overview: z.boolean().optional(),
           leaders: z.boolean().optional(),
           awards: z.boolean().optional(),
@@ -407,10 +379,7 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input }) => {
-        if (input.password !== "Styrelsen") {
-          return { success: false, error: "Fel lösenord" };
-        }
-        const { password, ...settings } = input;
+        const { password: _ignored, ...settings } = input;
         // Merge with existing
         const raw = await getConfigValue("stats_visibility");
         let current: Record<string, any> = {};

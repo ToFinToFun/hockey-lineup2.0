@@ -55,11 +55,24 @@ pnpm dev
 | Variabel | Krävs | Beskrivning |
 |---|---|---|
 | `DATABASE_URL` | Ja | MySQL connection string, t.ex. `mysql://user:pass@host:3306/lineup` |
-| `JWT_SECRET` | Ja | Session-signeringsnyckel. Generera med `openssl rand -hex 32` |
+| `JWT_SECRET` | Ja | Signerar sessioner och länkar. Minst 32 tecken, generera med `openssl rand -hex 32` |
+| `ADMIN_PASSWORD` | Ja | Styrelsens lösenord för inloggning i appen |
+| `LAGET_SE_USERNAME` | Ja* | Laget.se-konto för anmälningssynk (*krävs för laget.se-funktionen) |
+| `LAGET_SE_PASSWORD` | Ja* | Lösenord till laget.se-kontot |
 | `NODE_ENV` | Ja | `production` i Coolify, `development` lokalt |
 | `PORT` | Nej | Server-port (default: 3000) |
 
-Laget.se-uppgifter konfigureras via appens inställningar (kugghjulet) och lagras krypterat i databasen. De behöver inte sättas som miljövariabler.
+Appen startar inte i produktion om `JWT_SECRET`, `ADMIN_PASSWORD` eller `DATABASE_URL` saknas.
+
+## Behörighet
+
+| Roll | Hur | Får göra |
+|---|---|---|
+| Alla | Ingen inloggning | Score tracker: registrera mål, spara match, se uppställningen |
+| Tillfällig länk | Styrelsen skapar länk på startsidan, giltig 24 h | Bygga uppställningar, synka laget.se |
+| Styrelsen | `ADMIN_PASSWORD`, inloggad 30 dagar per enhet | Allt, inkl. statistik, historik, inställningar, radering |
+
+"Återkalla alla" på startsidan gör alla utskickade länkar ogiltiga direkt. Behörigheten kontrolleras på servern (`server/_core/trpc.ts`).
 
 ---
 
@@ -82,6 +95,8 @@ Appen deployas automatiskt via Coolify från `production`-branchen på GitHub.
 3. **Sätt miljövariabler i Coolify**
    - `DATABASE_URL` → connection-strängen från steg 1
    - `JWT_SECRET` → generera med `openssl rand -hex 32`
+   - `ADMIN_PASSWORD` → styrelsens lösenord
+   - `LAGET_SE_USERNAME` / `LAGET_SE_PASSWORD` → laget.se-kontot
    - `NODE_ENV` → `production`
 
 4. **Deploya** — Coolify bygger Docker-imagen och kör automatiskt databasmigrering vid startup via `start.sh`.

@@ -39,7 +39,6 @@ export default function StatsAdminPanel({ onClose }: StatsAdminPanelProps) {
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   const { data: serverSettings } = trpc.statsConfig.getVisibility.useQuery();
@@ -60,15 +59,10 @@ export default function StatsAdminPanel({ onClose }: StatsAdminPanelProps) {
   }, [serverSettings]);
 
   const handleSave = async () => {
-    if (!password) {
-      setError("Ange lösenord");
-      return;
-    }
     setSaving(true);
     setError("");
     try {
       const result = await mutation.mutateAsync({
-        password,
         overview: settings.overview,
         leaders: settings.leaders,
         awards: settings.awards,
@@ -222,21 +216,7 @@ export default function StatsAdminPanel({ onClose }: StatsAdminPanelProps) {
             />
           </div>
 
-          {/* Password */}
-          <div>
-            <h3 className="text-[#ECEDEE] text-sm font-semibold mb-1 flex items-center gap-2">
-              <Lock size={14} className="text-[#687076]" />
-              Lösenord
-            </h3>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setError(""); }}
-              placeholder="Admin-lösenord..."
-              className="w-full px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-[#ECEDEE] text-sm focus:outline-none focus:border-[#0a7ea4]/50"
-            />
-            {error && <p className="text-red-400 text-[10px] mt-1">{error}</p>}
-          </div>
+          {error && <p className="text-red-400 text-[10px]">{error}</p>}
         </div>
 
         {/* Footer */}

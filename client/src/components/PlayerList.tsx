@@ -590,11 +590,11 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
               {registerResult.error ? (
                 <span>
                   {registerResult.error.includes("NO_CREDENTIALS:") ? (
-                    <>Inga inloggningsuppgifter konfigurerade. Klicka på <button onClick={() => { const btn = document.querySelector('[data-settings-btn]') as HTMLButtonElement; btn?.click(); }} className="underline font-bold cursor-pointer hover:text-white">kugghjulet</button> och ange ditt laget.se-konto.</>
+                    <>Laget.se-inloggning saknas på servern. Styrelsen behöver lägga in LAGET_SE_USERNAME och LAGET_SE_PASSWORD i Coolify.</>
                   ) : registerResult.error.includes("LOGIN_FAILED:") ? (
-                    <>Kunde inte logga in på laget.se. Kontrollera uppgifterna i <button onClick={() => { const btn = document.querySelector('[data-settings-btn]') as HTMLButtonElement; btn?.click(); }} className="underline font-bold cursor-pointer hover:text-white">inställningarna</button>.</>
+                    <>Kunde inte logga in på laget.se. Styrelsen behöver kontrollera laget.se-uppgifterna i Coolify.</>
                   ) : registerResult.error.includes("AUTH_ERROR:") ? (
-                    <>Åtkomst nekad av laget.se. Kontrollera uppgifterna i <button onClick={() => { const btn = document.querySelector('[data-settings-btn]') as HTMLButtonElement; btn?.click(); }} className="underline font-bold cursor-pointer hover:text-white">inställningarna</button>.</>
+                    <>Åtkomst nekad av laget.se. Styrelsen behöver kontrollera laget.se-uppgifterna i Coolify.</>
                   ) : registerResult.error.includes("RATE_LIMITED:") ? (
                     <>Laget.se blockerar tillfälligt förfrågningar. Vänta några minuter och försök igen.</>
                   ) : (

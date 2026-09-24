@@ -21,7 +21,6 @@ interface GoalEvent {
 
 type ResultFilter = "all" | "white" | "green" | "draw";
 
-const ADMIN_PASSWORD = "Styrelsen";
 const GOAL_TYPES = ["Övrigt", "Skott", "Styrning", "Friläge", "Solo", "Straff", "Självmål"];
 
 export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
@@ -65,10 +64,8 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkDeleteDialog, setBulkDeleteDialog] = useState(false);
-  const [bulkPasswordInput, setBulkPasswordInput] = useState("");
   const [showExport, setShowExport] = useState(false);
   const [exportMatchData, setExportMatchData] = useState<any>(null);
-  const [bulkPasswordError, setBulkPasswordError] = useState(false);
 
   // Toggle selection
   const toggleSelection = (id: number) => {
@@ -89,21 +86,13 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
   };
 
   const handleBulkDelete = () => {
-    if (bulkPasswordInput === ADMIN_PASSWORD) {
-      setBulkPasswordError(false);
-      deleteManyMutation.mutateAsync({ ids: Array.from(selectedIds) }).then(() => {
-        setBulkDeleteDialog(false);
-        setBulkPasswordInput("");
-      });
-    } else {
-      setBulkPasswordError(true);
-    }
+    deleteManyMutation.mutateAsync({ ids: Array.from(selectedIds) }).then(() => {
+      setBulkDeleteDialog(false);
+    });
   };
 
-  // Password dialog state
+  // Bekräftelse vid radering (behörighet kontrolleras på servern)
   const [passwordDialog, setPasswordDialog] = useState<{ action: "edit" | "delete"; matchId: number } | null>(null);
-  const [passwordInput, setPasswordInput] = useState("");
-  const [passwordError, setPasswordError] = useState(false);
 
   // Edit dialog state
   const [editDialog, setEditDialog] = useState<number | null>(null);
@@ -179,29 +168,24 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
   const selectedMatchData = matches?.find(m => m.id === selectedMatch);
   const goalHistory = (selectedMatchData?.goalHistory as GoalEvent[] | null) ?? [];
 
-  // Handle password verification
-  const handlePasswordSubmit = () => {
-    if (passwordInput === ADMIN_PASSWORD) {
-      setPasswordError(false);
-      if (passwordDialog?.action === "delete") {
-        deleteMutation.mutateAsync({ id: passwordDialog.matchId }).then(() => {
-          setSelectedMatch(null);
-        });
-      } else if (passwordDialog?.action === "edit") {
-        const match = matches?.find(m => m.id === passwordDialog.matchId);
-        if (match) {
-          setEditName(match.name);
+  const openEditDialog = (matchId: number) => {
+    const match = matches?.find(m => m.id === matchId);
+    if (!match) return;
+    setEditName(match.name);
+    const gh = (match.goalHistory as GoalEvent[] | null) ?? [];
+    setEditGoals(gh.map(g => ({ ...g })));
+    setEditDialog(matchId);
+  };
 
-          const gh = (match.goalHistory as GoalEvent[] | null) ?? [];
-          setEditGoals(gh.map(g => ({ ...g })));
-          setEditDialog(passwordDialog.matchId);
-        }
-      }
-      setPasswordDialog(null);
-      setPasswordInput("");
-    } else {
-      setPasswordError(true);
+  const handlePasswordSubmit = () => {
+    if (passwordDialog?.action === "delete") {
+      deleteMutation.mutateAsync({ id: passwordDialog.matchId }).then(() => {
+        setSelectedMatch(null);
+      });
+    } else if (passwordDialog?.action === "edit") {
+      openEditDialog(passwordDialog.matchId);
     }
+    setPasswordDialog(null);
   };
 
   // Goal editing helpers
@@ -428,7 +412,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
           <div className="flex-1" />
           {selectedIds.size > 0 && (
             <button
-              onClick={() => { setBulkDeleteDialog(true); setBulkPasswordInput(""); setBulkPasswordError(false); }}
+              onClick={() => setBulkDeleteDialog(true)}
               className="flex items-center gap-1.5 bg-[#EF4444] text-white px-4 py-1.5 rounded-full text-sm font-medium hover:bg-[#DC2626] transition-colors"
             >
               <Trash2 size={14} />
@@ -978,9 +962,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
               <div className="flex gap-2">
                 <button
                   onClick={() => {
-                    setPasswordDialog({ action: "edit", matchId: selectedMatchData.id });
-                    setPasswordInput("");
-                    setPasswordError(false);
+                    openEditDialog(selectedMatchData.id);
                   }}
                   className="flex-1 flex items-center justify-center gap-2 bg-[#2a2a2a] border border-[#0a7ea4]/30 text-[#0a7ea4] py-2.5 rounded-xl text-sm font-medium hover:bg-[#0a7ea4]/10 transition-colors"
                 >
@@ -989,8 +971,6 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                 <button
                   onClick={() => {
                     setPasswordDialog({ action: "delete", matchId: selectedMatchData.id });
-                    setPasswordInput("");
-                    setPasswordError(false);
                   }}
                   className="flex-1 flex items-center justify-center gap-2 bg-[#2a2a2a] border border-[#EF4444]/30 text-[#EF4444] py-2.5 rounded-xl text-sm font-medium hover:bg-[#EF4444]/10 transition-colors"
                 >
@@ -1002,8 +982,8 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Password Dialog */}
-      <Dialog open={passwordDialog !== null} onOpenChange={(open) => { if (!open) { setPasswordDialog(null); setPasswordInput(""); setPasswordError(false); } }}>
+      {/* Bekräfta radering */}
+      <Dialog open={passwordDialog !== null} onOpenChange={(open) => { if (!open) setPasswordDialog(null); }}>
         <DialogContent className="bg-[#2a2a2a] border-[#3a3a3a] max-w-xs">
           <DialogHeader>
             <DialogTitle className="text-[#ECEDEE] text-center">
@@ -1011,25 +991,11 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
             </DialogTitle>
           </DialogHeader>
           <p className="text-[#9BA1A6] text-sm text-center">
-            Ange lösenord för att fortsätta
+            Är du säker? Matchen tas bort permanent.
           </p>
-          <input
-            type="password"
-            placeholder="Lösenord..."
-            value={passwordInput}
-            onChange={(e) => { setPasswordInput(e.target.value); setPasswordError(false); }}
-            onKeyDown={(e) => { if (e.key === "Enter") handlePasswordSubmit(); }}
-            className={`w-full bg-[#1a1a1a] border rounded-xl px-4 py-3 text-[#ECEDEE] placeholder-[#687076] text-sm outline-none ${
-              passwordError ? "border-[#EF4444]" : "border-[#3a3a3a] focus:border-[#0a7ea4]"
-            }`}
-            autoFocus
-          />
-          {passwordError && (
-            <p className="text-[#EF4444] text-xs text-center">Fel lösenord</p>
-          )}
           <div className="flex gap-3 mt-1">
             <button
-              onClick={() => { setPasswordDialog(null); setPasswordInput(""); setPasswordError(false); }}
+              onClick={() => setPasswordDialog(null)}
               className="flex-1 bg-[#1a1a1a] text-[#ECEDEE] py-3 rounded-full font-semibold border border-[#444444]"
             >
               Avbryt
@@ -1047,31 +1013,17 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
       </Dialog>
 
       {/* Bulk Delete Dialog */}
-      <Dialog open={bulkDeleteDialog} onOpenChange={(open) => { if (!open) { setBulkDeleteDialog(false); setBulkPasswordInput(""); setBulkPasswordError(false); } }}>
+      <Dialog open={bulkDeleteDialog} onOpenChange={(open) => { if (!open) setBulkDeleteDialog(false); }}>
         <DialogContent className="bg-[#2a2a2a] border-[#3a3a3a] max-w-xs">
           <DialogHeader>
             <DialogTitle className="text-[#ECEDEE] text-center">Ta bort {selectedIds.size} matcher</DialogTitle>
           </DialogHeader>
           <p className="text-[#9BA1A6] text-sm text-center">
-            Är du säker? Denna åtgärd kan inte ångras. Ange lösenord för att bekräfta.
+            Är du säker? Denna åtgärd kan inte ångras.
           </p>
-          <input
-            type="password"
-            placeholder="Lösenord..."
-            value={bulkPasswordInput}
-            onChange={(e) => { setBulkPasswordInput(e.target.value); setBulkPasswordError(false); }}
-            onKeyDown={(e) => { if (e.key === "Enter") handleBulkDelete(); }}
-            className={`w-full bg-[#1a1a1a] border rounded-xl px-4 py-3 text-[#ECEDEE] placeholder-[#687076] text-sm outline-none ${
-              bulkPasswordError ? "border-[#EF4444]" : "border-[#3a3a3a] focus:border-[#0a7ea4]"
-            }`}
-            autoFocus
-          />
-          {bulkPasswordError && (
-            <p className="text-[#EF4444] text-xs text-center">Fel lösenord</p>
-          )}
           <div className="flex gap-3 mt-1">
             <button
-              onClick={() => { setBulkDeleteDialog(false); setBulkPasswordInput(""); setBulkPasswordError(false); }}
+              onClick={() => setBulkDeleteDialog(false)}
               className="flex-1 bg-[#1a1a1a] text-[#ECEDEE] py-3 rounded-full font-semibold border border-[#444444]"
             >
               Avbryt

@@ -5,7 +5,7 @@
  * head-to-head, season awards, season stats, and team comparison.
  */
 
-import { publicProcedure, router } from "../_core/trpc";
+import { publicProcedure, adminProcedure, router } from "../_core/trpc";
 import {
   insertMatchResult,
   getAllMatchResults,
@@ -61,7 +61,7 @@ const dateRangeInput = z
 export const scoreRouter = router({
   /** App configuration (season/playoff dates) */
   config: router({
-    getPeriods: publicProcedure.query(async () => {
+    getPeriods: adminProcedure.query(async () => {
       const config = await getAllConfig();
       return {
         seasonFrom: config["season_from"] ?? DEFAULT_SEASON_FROM,
@@ -72,7 +72,7 @@ export const scoreRouter = router({
         preseasonTo: config["preseason_to"] ?? DEFAULT_PRESEASON_TO,
       };
     }),
-    updatePeriods: publicProcedure
+    updatePeriods: adminProcedure
       .input(
         z.object({
           seasonFrom: z.string().optional(),
@@ -123,17 +123,17 @@ export const scoreRouter = router({
         return { success: true };
       }),
 
-    list: publicProcedure.query(async () => {
+    list: adminProcedure.query(async () => {
       return getAllMatchResults();
     }),
 
-    detail: publicProcedure
+    detail: adminProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
         return getMatchResultById(input.id);
       }),
 
-    update: publicProcedure
+    update: adminProcedure
       .input(
         z.object({
           id: z.number(),
@@ -157,14 +157,14 @@ export const scoreRouter = router({
         return { success: true };
       }),
 
-    delete: publicProcedure
+    delete: adminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         await deleteMatchResult(input.id);
         return { success: true };
       }),
 
-    deleteMany: publicProcedure
+    deleteMany: adminProcedure
       .input(z.object({ ids: z.array(z.number()).min(1) }))
       .mutation(async ({ input }) => {
         await deleteMultipleMatchResults(input.ids);
@@ -173,7 +173,7 @@ export const scoreRouter = router({
   }),
 
   /** Per-player statistics across all matches - only players from lineups */
-  playerStats: publicProcedure.input(dateRangeInput).query(async ({ input }) => {
+  playerStats: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
     const allMatches = await getAllMatchResults();
     const matches = filterMatchesByDate(allMatches, input?.from, input?.to);
     const playerMap: Record<
@@ -328,7 +328,7 @@ export const scoreRouter = router({
   }),
 
   /** Goalkeeper statistics */
-  goalkeeperStats: publicProcedure.input(dateRangeInput).query(async ({ input }) => {
+  goalkeeperStats: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
     const allMatches = await getAllMatchResults();
     const matches = filterMatchesByDate(allMatches, input?.from, input?.to);
     const gkMap: Record<

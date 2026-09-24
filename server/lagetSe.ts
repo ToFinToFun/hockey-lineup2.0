@@ -112,7 +112,7 @@ async function login(
   const password = dbCreds?.password || ENV.lagetSePassword;
 
   if (!username || !password) {
-    throw new Error("NO_CREDENTIALS: Inga inloggningsuppgifter konfigurerade. Klicka på kugghjulet (⚙) och ange ditt laget.se-konto.");
+    throw new Error("NO_CREDENTIALS: Inga inloggningsuppgifter konfigurerade. Sätt LAGET_SE_USERNAME och LAGET_SE_PASSWORD i Coolify.");
   }
 
   // Steg 1: GET /Login – hämta CSRF-token
