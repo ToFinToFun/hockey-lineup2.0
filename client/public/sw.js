@@ -1,7 +1,7 @@
 // Service Worker for Stålstadens multi-app PWA
 // Handles Hub (/), Lineup (/lineup), and Score Tracker (/score)
 
-const CACHE_NAME = 'stalstadens-app-v4';
+const CACHE_NAME = 'stalstadens-app-v5';
 
 // Assets to pre-cache for offline shell
 const PRECACHE_URLS = [
@@ -9,6 +9,7 @@ const PRECACHE_URLS = [
   '/manifest.json',
   '/lineup-manifest.json',
   '/score-manifest.json',
+  '/icetime-manifest.json',
   '/pwa-icon-192.png',
   '/pwa-icon-512.png',
   '/apple-touch-icon.png',
