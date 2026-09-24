@@ -95,7 +95,7 @@ export default function CardsApp() {
         topStreak: longestStreak,
         goals: p.goals ?? 0,
         assists: p.assists ?? 0,
-        points: p.points ?? (p.goals + p.assists) ?? 0,
+        points: p.points ?? p.goals + p.assists,
         gwg: p.gwg ?? 0,
         winRate: p.winRate ?? 0,
         isGoalkeeper: !!isGk,

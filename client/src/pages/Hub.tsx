@@ -7,12 +7,12 @@
 import { Link } from "wouter";
 import { BarChart3, Users, ChevronRight, Trophy, ClipboardList, Timer, TrendingUp, Sparkles, History } from "lucide-react";
 
-const LOGO_GREEN =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663363408929/PKtRPHEa7fsCMSzHJMpymq/team-green-logo_0c27fdbe.png";
-const LOGO_WHITE =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663363408929/PKtRPHEa7fsCMSzHJMpymq/team-white-logo_4796bd85.png";
-const BG_URL =
-  "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/gLOHFxhFzgQgHeKl.jpg";
+// Keep the hub artwork on the same origin as the application. The old external
+// CDN links can expire or reject requests in production, while Vite serves
+// everything in client/public from the site root.
+const LOGO_GREEN = "/images/logo-green.png";
+const LOGO_WHITE = "/images/logo-white.png";
+const BG_URL = "/images/background.jpg";
 
 export default function Hub() {
   return (

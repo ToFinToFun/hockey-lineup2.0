@@ -36,8 +36,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-const BG_URL =
-  "https://files.manuscdn.com/user_upload_by_module/session_file/310519663363408929/gLOHFxhFzgQgHeKl.jpg";
+const BG_URL = "/images/background.jpg";
 
 const ICE_SLOTS = { backs: 2, centers: 1, forwards: 2 } as const;
 

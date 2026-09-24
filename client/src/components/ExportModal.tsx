@@ -355,26 +355,15 @@ export function ExportModal({
       // Font may already be loaded or fallback to sans-serif
     }
 
-    // Load logos + sponsors
+    // Load the two same-origin team logos.
     let imgWhite: HTMLImageElement | null = null;
     let imgGreen: HTMLImageElement | null = null;
-    const sponsorUrls = [
-      "https://d2xsxph8kpxj0f.cloudfront.net/310519663363408929/SXvJKubXoqm5p7aDCmZ97X/sponsor-ren_99c2ef22.jpg",
-      "https://d2xsxph8kpxj0f.cloudfront.net/310519663363408929/SXvJKubXoqm5p7aDCmZ97X/sponsor-kirunabilfrakt_725b571b.png",
-      "https://d2xsxph8kpxj0f.cloudfront.net/310519663363408929/SXvJKubXoqm5p7aDCmZ97X/sponsor-lindstroms_a0e64384.png",
-      "https://d2xsxph8kpxj0f.cloudfront.net/310519663363408929/SXvJKubXoqm5p7aDCmZ97X/sponsor-polar_60ed05a2.png",
-    ];
-    const [resWhite, resGreen, ...sponsorResults] = await Promise.allSettled([
+    const [resWhite, resGreen] = await Promise.allSettled([
       loadImage(LOGO_WHITE_B64),
       loadImage(LOGO_GREEN_B64),
-      ...sponsorUrls.map(url => loadImage(url)),
     ]);
     if (resWhite.status === "fulfilled") imgWhite = resWhite.value;
     if (resGreen.status === "fulfilled") imgGreen = resGreen.value;
-    const sponsorImages: HTMLImageElement[] = [];
-    for (const r of sponsorResults) {
-      if (r.status === "fulfilled") sponsorImages.push(r.value);
-    }
 
     // ── Native 1800×1000 canvas (9:5) ──
     const W = 1800;
@@ -428,30 +417,6 @@ export function ExportModal({
     ctx.fillStyle = "#ffffff";
     ctx.letterSpacing = "3px";
     ctx.fillText(`A-LAG HERRAR  ·  ${getToday().toUpperCase()}`, padding, 86);
-
-    // ── Sponsor logos (right-aligned in header) ──
-    if (sponsorImages.length > 0) {
-      const sponsorH = 50; // max height for sponsor logos
-      const sponsorGap = 20;
-      const sponsorY = (headerH - sponsorH) / 2; // vertically center in header
-      let sponsorX = W - padding; // start from right edge
-      // Draw sponsors right-to-left
-      for (let i = sponsorImages.length - 1; i >= 0; i--) {
-        const img = sponsorImages[i];
-        const aspect = img.naturalWidth / img.naturalHeight;
-        const drawH = sponsorH;
-        const drawW = drawH * aspect;
-        sponsorX -= drawW;
-        // White rounded background for readability
-        ctx.save();
-        ctx.fillStyle = "rgba(255,255,255,0.9)";
-        roundRect(ctx, sponsorX - 4, sponsorY - 2, drawW + 8, drawH + 4, 4);
-        ctx.fill();
-        ctx.restore();
-        ctx.drawImage(img, sponsorX, sponsorY, drawW, drawH);
-        sponsorX -= sponsorGap;
-      }
-    }
 
     // ── Content area ──
     const contentY = headerH + 16;

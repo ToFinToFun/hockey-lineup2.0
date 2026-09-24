@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from "react";
-import { IMAGES } from "@/lib/scoreConstants";
+import { IMAGES, SPONSORS } from "@/lib/scoreConstants";
 import { Download, Share2, Image, FileText, Loader2, AlertCircle, X, Check, Copy, Sun, Moon } from "lucide-react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
@@ -32,7 +32,7 @@ interface MatchReportExportProps {
 type ExportFormat = "social" | "a4";
 type ExportTheme = "dark" | "light";
 
-// Load image with timeout and fallback - uses fetch + blob to avoid CORS
+// Core images are same-origin assets and can be drawn directly onto canvas.
 function loadImage(url: string, timeoutMs = 8000): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
@@ -40,8 +40,7 @@ function loadImage(url: string, timeoutMs = 8000): Promise<HTMLImageElement | nu
       resolve(null);
     }, timeoutMs);
 
-    // Try fetch + blob approach first (avoids CORS canvas tainting)
-    fetch(`/api/proxy-image?url=${encodeURIComponent(url)}`)
+    fetch(url)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.blob();
@@ -51,6 +50,7 @@ function loadImage(url: string, timeoutMs = 8000): Promise<HTMLImageElement | nu
         const img = new window.Image();
         img.onload = () => {
           clearTimeout(timer);
+          URL.revokeObjectURL(objectUrl);
           resolve(img);
         };
         img.onerror = () => {
@@ -103,8 +103,7 @@ export default function MatchReportExport({ match, open, onOpenChange }: MatchRe
   const imagesRef = useRef<{
     whiteLogo: HTMLImageElement | null;
     greenLogo: HTMLImageElement | null;
-    sponsors: (HTMLImageElement | null)[];
-  }>({ whiteLogo: null, greenLogo: null, sponsors: [] });
+  }>({ whiteLogo: null, greenLogo: null });
 
   const goalHistory = (match.goalHistory ?? []) as GoalEvent[];
 
@@ -146,21 +145,17 @@ export default function MatchReportExport({ match, open, onOpenChange }: MatchRe
     let cancelled = false;
     async function preload() {
       try {
-        const [whiteLogo, greenLogo, ...sponsors] = await Promise.all([
+        const [whiteLogo, greenLogo] = await Promise.all([
           loadImage(IMAGES.teamWhiteLogo),
           loadImage(IMAGES.teamGreenLogo),
-          loadImage(IMAGES.sponsorPolar),
-          loadImage(IMAGES.sponsorLindstroms),
-          loadImage(IMAGES.sponsorKirunabilfrakt),
-          loadImage(IMAGES.sponsorRen),
         ]);
         if (!cancelled) {
-          imagesRef.current = { whiteLogo, greenLogo, sponsors };
+          imagesRef.current = { whiteLogo, greenLogo };
           setImagesLoaded(true);
         }
       } catch {
         if (!cancelled) {
-          imagesRef.current = { whiteLogo: null, greenLogo: null, sponsors: [] };
+          imagesRef.current = { whiteLogo: null, greenLogo: null };
           setImagesLoaded(true);
         }
       }
@@ -282,7 +277,7 @@ export default function MatchReportExport({ match, open, onOpenChange }: MatchRe
       sponsorAlpha: 0.5,
     };
 
-    const { whiteLogo, greenLogo, sponsors: sponsorLogos } = imagesRef.current;
+    const { whiteLogo, greenLogo } = imagesRef.current;
 
     // ─── Background ───
     ctx.fillStyle = colors.bg;
@@ -639,21 +634,13 @@ export default function MatchReportExport({ match, open, onOpenChange }: MatchRe
       }
     }
 
-    // ─── Sponsor logos ───
-    const sponsorY = H - (isSocial ? 75 : 48);
-    const sponsorSize = isSocial ? 50 : 30;
-    const validSponsors = sponsorLogos.filter((s): s is HTMLImageElement => s !== null);
-    if (validSponsors.length > 0) {
-      const gap = isSocial ? 25 : 15;
-      const totalWidth = validSponsors.length * sponsorSize + (validSponsors.length - 1) * gap;
-      let sx = (W - totalWidth) / 2;
-      for (const logo of validSponsors) {
-        ctx.globalAlpha = colors.sponsorAlpha;
-        ctx.drawImage(logo, sx, sponsorY, sponsorSize, sponsorSize);
-        ctx.globalAlpha = 1;
-        sx += sponsorSize + gap;
-      }
-    }
+    // ─── Sponsors ───
+    ctx.globalAlpha = colors.sponsorAlpha;
+    ctx.fillStyle = colors.footer;
+    ctx.font = `${isSocial ? 12 : 8}px system-ui, -apple-system, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText(SPONSORS.join("  ·  "), W / 2, H - (isSocial ? 52 : 32));
+    ctx.globalAlpha = 1;
 
     // ─── Footer ───
     ctx.fillStyle = colors.footer;

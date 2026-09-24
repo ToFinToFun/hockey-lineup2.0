@@ -170,8 +170,8 @@ export function MobileSlotPicker({
                     {/* Badges */}
                     <div className="flex items-center gap-1 flex-shrink-0">
                       {/* Team color */}
-                      {player.teamColor && player.teamColor !== "none" && (
-                        <TeamColorIndicator color={player.teamColor} size="sm" />
+                      {player.teamColor && (
+                        <TeamColorIndicator teamColor={player.teamColor} compact />
                       )}
 
                       {/* Position badge */}
@@ -205,9 +205,9 @@ export function MobileSlotPicker({
                       )}
 
                       {/* Captain role */}
-                      {player.captainRole && player.captainRole !== "none" && (
+                      {player.captainRole && (
                         <span className="text-[9px] font-bold text-amber-400 bg-amber-400/15 px-1 py-0.5 rounded">
-                          {player.captainRole === "captain" ? "C" : "A"}
+                          {player.captainRole}
                         </span>
                       )}
                     </div>
