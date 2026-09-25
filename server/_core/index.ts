@@ -8,6 +8,17 @@ import { serveStatic, setupVite } from "./vite";
 import { sseManager } from "../sse";
 import crypto from "crypto";
 import { assertRequiredEnv } from "./env";
+import { readFileSync } from "fs";
+import path from "path";
+
+function readVersion(): string {
+  try {
+    return JSON.parse(readFileSync(path.resolve(process.cwd(), "package.json"), "utf-8")).version;
+  } catch {
+    return "okänd";
+  }
+}
+const APP_VERSION = readVersion();
 
 async function startServer() {
   assertRequiredEnv();
@@ -33,7 +44,7 @@ async function startServer() {
 
   // Health check endpoint for Coolify / Docker
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", timestamp: Date.now() });
+    res.json({ status: "ok", version: APP_VERSION, timestamp: Date.now() });
   });
 
   // tRPC API
@@ -55,7 +66,7 @@ async function startServer() {
   const port = parseInt(process.env.PORT || "3000");
 
   server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}/`);
+    console.log(`Stålstadens v${APP_VERSION} kör på port ${port}`);
   });
 }
 

@@ -7,6 +7,7 @@
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { AccessPanel } from "@/components/auth/AccessPanel";
+import { AppVersion } from "@/components/AppVersion";
 import { BarChart3, Users, ChevronRight, Trophy, ClipboardList, Timer, TrendingUp, Sparkles, History } from "lucide-react";
 
 // Keep the hub artwork on the same origin as the application. The old external
@@ -271,6 +272,7 @@ export default function Hub() {
           <p className="text-white/15 text-[10px] tracking-wider uppercase">
             Stålstadens Sportförening &middot; A-lag Herrar
           </p>
+          <AppVersion className="mt-1" />
         </div>
       </div>
     </div>

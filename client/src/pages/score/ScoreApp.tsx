@@ -12,6 +12,7 @@ import PlayerProfileModal from "./PlayerProfileModal";
 import { trpc } from "@/lib/trpc";
 import { saveLineupSnapshot, loadLineupSnapshot, getPendingMatches, flushPendingMatches } from "@/lib/offlineScore";
 import { toast } from "sonner";
+import { AppVersion } from "@/components/AppVersion";
 import { Home, Users, ArrowLeft } from "lucide-react";
 import type { AppState } from "@/lib/lineup";
 import { Link } from "wouter";
@@ -167,6 +168,7 @@ export default function ScoreApp() {
               <span className="text-[10px] font-medium">Uppställning</span>
             </button>
           </div>
+          <AppVersion className="text-center pb-1 -mt-1" />
         </div>
       </div>
     </div>

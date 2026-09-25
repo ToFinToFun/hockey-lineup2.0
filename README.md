@@ -113,6 +113,10 @@ git merge main
 git push origin production
 ```
 
+### Versioner
+
+Se `CHANGELOG.md`. Versionen höjs i `package.json` inför varje deploy, commiten taggas `vX.Y.Z`, och versionen visas längst ner i appen.
+
 ### Hälsokontroll
 
 `GET /api/health` svarar `{"status":"ok"}`. Dockerfilen använder den som HEALTHCHECK.
