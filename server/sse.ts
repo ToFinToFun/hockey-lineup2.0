@@ -37,6 +37,7 @@ class SSEManager {
       "X-Accel-Buffering": "no", // Disable nginx buffering
     });
 
+    res.write(`retry: 2000\n`);
     // Send initial connection event with the assigned clientId
     res.write(`event: connected\ndata: ${JSON.stringify({ clientId: id, lastSeq })}\n\n`);
 
@@ -49,19 +50,11 @@ class SSEManager {
   }
 
   /**
-   * Notify all connected clients about a state change.
-   * @param excludeClientId - If provided, this client will NOT receive the event (prevents echo-back).
+   * Skicka en uppställningsändring till ALLA klienter (även avsändaren, som
+   * använder den som kvitto). Klienterna tillämpar ändringarna i versionsordning.
    */
-  notifyStateChange(data: {
-    version: number;
-    opType: string;
-    description: string;
-    /** The full state is included so clients can update without a separate fetch */
-    state?: any;
-  }, excludeClientId?: string): void {
-    const payload = JSON.stringify(data);
-    const message = `event: stateChange\ndata: ${payload}\n\n`;
-    this.broadcast(message, excludeClientId);
+  notifyLineupPatch(data: { version: number; patchId: string; clientId: string | null; ops: unknown[] }): void {
+    this.broadcast(`event: patch\ndata: ${JSON.stringify(data)}\n\n`);
   }
 
   /**

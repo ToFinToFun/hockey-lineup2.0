@@ -36,6 +36,9 @@ import { MobileSlotPicker } from "@/components/MobileSlotPicker";
 import { LongPressTooltip } from "@/components/LongPressTooltip";
 import { trpc } from "@/lib/trpc";
 import { lineupStateToText, shareOrCopy } from "@/lib/lineupText";
+import { useLineupDocSync } from "@/hooks/useLineupDocSync";
+import { useAuth } from "@/hooks/useAuth";
+import { MatchPredictionBar } from "@/components/MatchPredictionBar";
 import type { Player as PlayerType } from "@/lib/players";
 import { Download, Wifi, WifiOff, Share2, FileText, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Settings, Sun, Moon, Home as HomeIcon, Users, HelpCircle, FlaskConical, MoreVertical, X as XIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -150,7 +153,7 @@ export default function Home() {
   // Match duration in minutes for ice time calculation
   const [matchTime, setMatchTime] = useState<number>(local?.matchTime ?? 60);
 
-  // Refs for config so saveToServer always reads the latest values
+  // Refs for config so the sync always reads the latest values
   const teamAConfigRef = useRef(teamAConfig);
   useEffect(() => { teamAConfigRef.current = teamAConfig; }, [teamAConfig]);
   const teamBConfigRef = useRef(teamBConfig);
@@ -161,9 +164,7 @@ export default function Home() {
   const TEAM_B_SLOTS = useMemo(() => createTeamSlots("team-b", teamBConfig), [teamBConfig]);
 
   // När config minskas: flytta spelare från borttagna slots tillbaka till truppen.
-  // Guard: if this runs as a consequence of applyRemoteState (which already set
-  // the correct lineup), we must propagate the isApplyingRemoteRef flag so the
-  // save-effect doesn't treat the resulting state changes as local edits.
+  // (Servern gör samma sak, så en ändring från en annan enhet ger inga dubbletter.)
   useEffect(() => {
     const validSlotIds = new Set([
       ...TEAM_A_SLOTS.map(s => s.id),
@@ -180,12 +181,6 @@ export default function Home() {
       }
     }
     if (orphanedPlayers.length > 0) {
-      // If this cleanup was triggered by a remote config change, mark the
-      // resulting state updates as remote too so the save-effect skips them.
-      // We detect this by checking if isApplyingRemoteRef was JUST cleared
-      // in this render cycle (remoteApplyCounterRef was incremented recently).
-      // Simpler: just skip cleanup entirely during remote apply — the remote
-      // state already has the correct lineup for its config.
       setLineup(cleanedLineup);
       setAvailablePlayers(prev => [...orphanedPlayers, ...prev]);
     }
@@ -198,7 +193,6 @@ export default function Home() {
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [demoCount, setDemoCount] = useState(16);
   const [demoActive, setDemoActive] = useState(false);
-  const [sseConnected, setSseConnected] = useState<boolean | null>(null);
   const [shareState, setShareState] = useState<"idle" | "saving" | "copied">("idle");
 
   // Event-info från senaste anmälningshämtning
@@ -208,7 +202,6 @@ export default function Home() {
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
 
   const createSavedLineupMutation = trpc.savedLineups.create.useMutation();
-  const saveStateMutation = trpc.lineup.saveState.useMutation();
 
   const handleShare = useCallback(async () => {
     setShareState("saving");
@@ -218,6 +211,7 @@ export default function Home() {
         teamAName,
         teamBName,
         lineup,
+        share: true,
       });
       const url = `${window.location.origin}/lineup/${result.shareId}`;
       await shareOrCopy({ url, title: `${teamAName} – ${teamBName}` }).catch(() => {});
@@ -284,485 +278,148 @@ export default function Home() {
     showTeamStrength: true, showPrediction: true, useForBalance: true,
   });
 
-  // Track if we've received the initial server state
-  const hasReceivedInitial = useRef(false);
-  // === SYNC ARCHITECTURE v3 ===
-  // Root cause of previous bugs: useEffect for SSE had saveStateMutation in its
-  // dependency array. tRPC mutations can change identity on re-render, causing the
-  // effect to re-run, re-fetch initial state, re-open SSE (new clientId), and
-  // create an infinite loop of applyRemoteState → save-effect → saveToServer.
-  //
-  // Fix: Use refs for everything the SSE effect needs, so it has ZERO dependencies
-  // that change. Generate a stable clientId on the client side.
-  const versionRef = useRef(0);
-  // Client-generated stable ID — survives SSE reconnects, used for server-side echo prevention
-  const clientIdRef = useRef<string>(crypto.randomUUID());
-  // Dirty flag: true when local state has changed but not yet saved to server
-  const isDirtyRef = useRef(false);
-  // Flag: true while we are currently inside saveToServer (prevents re-entrant saves)
-  const isSavingRef = useRef(false);
-  // Pending remote state: queued when SSE arrives while dirty/saving
-  const pendingRemoteRef = useRef<{ state: any; version: number } | null>(null);
-  // Monotonic counter incremented by applyRemoteState. The save-effect captures it
-  // at schedule time; if it changed when the debounce fires, a remote state was
-  // applied and we should NOT save.
-  const remoteApplyCounterRef = useRef(0);
-  // Boolean flag: true while applyRemoteState is setting React state.
-  // Checked synchronously by the save-effect body.
-  const isApplyingRemoteRef = useRef(false);
-  // Timestamp of last remote apply — used to suppress saves from cascading
-  // effects (e.g. config cleanup) that run in subsequent render cycles.
-  const lastRemoteApplyTsRef = useRef(0);
-  // Ref to saveStateMutation so the SSE effect doesn't depend on it
-  const saveStateMutationRef = useRef(saveStateMutation);
-  saveStateMutationRef.current = saveStateMutation;
-  // Toast for remote changes
+  const { isAdmin } = useAuth();
+
+  // Toast när någon annan ändrat uppställningen
   const [remoteChangeToast, setRemoteChangeToast] = useState<string | null>(null);
+  const remoteToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const exportRef = useRef<HTMLDivElement>(null);
 
-  // Helper to apply remote state (from initial load or SSE).
-  // IDEMPOTENT: skips if version <= versionRef (except for initial load where version=0).
-  const applyRemoteState = useCallback((state: {
-    players: any[];
-    lineup: Record<string, any>;
-    teamAName: string;
-    teamBName: string;
-    teamAConfig?: { goalkeepers: number; defensePairs: number; forwardLines: number } | null;
-    teamBConfig?: { goalkeepers: number; defensePairs: number; forwardLines: number } | null;
-    deletedPlayerIds?: string[] | null;
-  }, version?: number) => {
-    // Idempotency: skip if we already have this version or newer
-    // (version=undefined is allowed for initial load)
-    if (version !== undefined && version > 0 && version <= versionRef.current) {
-      console.log('[SYNC] applyRemoteState SKIPPED (version <= current)', { version, current: versionRef.current });
-      return;
-    }
-
-    // Set flag so the save-effect knows this state change is from remote, not local
-    isApplyingRemoteRef.current = true;
-    skipNextUndoSnapshot.current = true;
-    // Increment the remote-apply counter (used by save-effect debounce guard)
-    remoteApplyCounterRef.current += 1;
-    // Record timestamp so cascading effects (config cleanup) within 500ms are
-    // also treated as remote and don't trigger a save.
-    lastRemoteApplyTsRef.current = Date.now();
-    console.log('[SYNC] applyRemoteState APPLYING', { version, configA: state.teamAConfig, configB: state.teamBConfig, counter: remoteApplyCounterRef.current });
-
-    // Update versionRef
-    if (version && version > versionRef.current) {
-      versionRef.current = version;
-    }
-
-    const remotePlayers: Player[] = (state.players ?? []) as Player[];
-    const remoteDeletedIds = new Set<string>(state.deletedPlayerIds ?? []);
-    if (remoteDeletedIds.size > 0) {
-      setDeletedPlayerIds((prev) => {
-        const merged = new Set(Array.from(prev).concat(Array.from(remoteDeletedIds)));
-        deletedPlayerIdsRef.current = merged;
-        return merged;
-      });
-    }
-
-    // Only merge with initialPlayers if the database is completely empty
-    const remoteLineup = state.lineup ?? {};
-    let finalPlayers: Player[];
-    if (remotePlayers.length === 0 && Object.keys(remoteLineup).length === 0) {
-      finalPlayers = initialPlayers;
-    } else {
-      finalPlayers = remotePlayers;
-    }
-
-    // Filtrera bort ogiltiga slot-IDs
-    const sanitizedLineup: Record<string, Player> = {};
-    for (const [slotId, player] of Object.entries(remoteLineup)) {
-      if (ALL_SLOT_IDS.has(slotId)) {
-        sanitizedLineup[slotId] = player as Player;
-      }
-    }
-
-    setAvailablePlayers(finalPlayers);
-    setLineup(sanitizedLineup);
-    setTeamAName(state.teamAName ?? "VITA");
-    setTeamBName(state.teamBName ?? "GRÖNA");
-    if (state.teamAConfig) setTeamAConfig(state.teamAConfig);
-    if (state.teamBConfig) setTeamBConfig(state.teamBConfig);
-
-    // DO NOT clear isApplyingRemoteRef here. It will be cleared by a dedicated
-    // useEffect that runs AFTER the save-effect in the same React commit.
-    // This guarantees the save-effect always sees isApplyingRemoteRef=true.
-  }, []);
-
-  // Ref to applyRemoteState so the SSE effect (which has [] deps) can call it
-  const applyRemoteStateRef = useRef(applyRemoteState);
-  applyRemoteStateRef.current = applyRemoteState;
-
-  // Refs for team names so saveToServer always reads the latest values
+  // Refs for team names so pushUndo always reads the latest values
   const teamANameRef = useRef(teamAName);
   useEffect(() => { teamANameRef.current = teamAName; }, [teamAName]);
   const teamBNameRef = useRef(teamBName);
   useEffect(() => { teamBNameRef.current = teamBName; }, [teamBName]);
 
-  // Direct save to server. Uses refs for everything so it has stable identity.
-  const saveToServer = useCallback(async (
-    players?: Player[],
-    lineupData?: Record<string, Player>,
-    operation?: { opType: string; description: string; payload?: Record<string, any> }
-  ) => {
-    if (isSavingRef.current) { console.log('[SYNC] saveToServer BLOCKED (already saving)'); return null; }
-    isSavingRef.current = true;
-    const currentPlayers = players ?? availablePlayersRef.current;
-    const currentLineup = lineupData ?? lineupRef.current;
-    console.log('[SYNC] saveToServer START', { configA: teamAConfigRef.current, configB: teamBConfigRef.current, clientId: clientIdRef.current });
-    try {
-      const result = await saveStateMutationRef.current.mutateAsync({
-        players: currentPlayers,
-        lineup: currentLineup,
-        teamAName: teamANameRef.current,
-        teamBName: teamBNameRef.current,
-        deletedPlayerIds: Array.from(deletedPlayerIdsRef.current),
-        teamAConfig: teamAConfigRef.current,
-        teamBConfig: teamBConfigRef.current,
-        operation,
-        clientId: clientIdRef.current,
-      });
-      // Update our version — all SSE events with version <= this will be ignored
-      versionRef.current = result.version;
-      isDirtyRef.current = false;
-      isSavingRef.current = false;
-      console.log('[SYNC] saveToServer SUCCESS', { newVersion: result.version, hasPending: !!pendingRemoteRef.current });
+  // ─── Berikning: vanligaste position och PIR (räknas fram, synkas inte) ─────
+  type PirEntry = {
+    rating: number; recentRating: number; trend: number; trendLabel: string;
+    confidence: number; matchesPlayed: number;
+    goalkeeperRating: number | null; goalkeeperTrend: number | null; goalkeeperTrendLabel: string | null;
+    goalkeeperMatchesPlayed: number; goalkeeperConfidence: number;
+    outfieldRating: number | null; outfieldTrend: number | null; outfieldTrendLabel: string | null;
+    outfieldMatchesPlayed: number; outfieldConfidence: number;
+  };
+  type PosEntry = { mostPlayed: string; stats: Record<string, number>; mostPlayedTeam?: string; teamStats?: Record<string, number> };
+  const posHistoryRef = useRef<Record<string, PosEntry> | null>(null);
+  const pirMapRef = useRef<Record<string, PirEntry> | null>(null);
 
-      // If a remote state was queued while we were saving, apply it now
-      const pending = pendingRemoteRef.current;
-      if (pending) {
-        pendingRemoteRef.current = null;
-        applyRemoteState(pending.state, pending.version);
+  const enrichPlayer = useCallback((p: Player): Player => {
+    if (!p?.name) return p;
+    const key = p.number ? `${p.name} #${p.number}` : p.name;
+    const nameOnly = p.name.trim();
+    const enriched: any = { ...p };
+    const posHistory = posHistoryRef.current;
+    if (posHistory) {
+      const hist = posHistory[key] ?? posHistory[nameOnly];
+      if (hist?.mostPlayed) {
+        enriched.mostPlayedPosition = hist.mostPlayed;
+        if (hist.mostPlayedTeam === "green" || hist.mostPlayedTeam === "white") {
+          enriched.mostPlayedTeam = hist.mostPlayedTeam;
+        }
       }
-
-      return result;
-    } catch (err) {
-      console.error("Save to server failed:", err);
-      isSavingRef.current = false;
-      isDirtyRef.current = false;
-      return null;
     }
-  }, [applyRemoteState]);
-
-  // Load initial state from SQL + subscribe to SSE for real-time updates.
-  // IMPORTANT: This effect has [] dependencies — it runs ONCE on mount.
-  // All mutable values are accessed via refs to avoid re-running.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    let es: EventSource | null = null;
-    let mounted = true;
-
-    // 1. Load initial state + position history in parallel
-    const statePromise = fetch("/api/trpc/lineup.getState", { credentials: "include" })
-      .then(res => res.json())
-      .then((json) => {
-        const wrapped = json?.result?.data;
-        return wrapped?.json ?? wrapped;
-      });
-
-    const posHistoryPromise = fetch("/api/trpc/lineup.positionHistory", { credentials: "include" })
-      .then(res => res.json())
-      .then((json) => {
-        const wrapped = json?.result?.data;
-        return (wrapped?.json ?? wrapped) as Record<string, { mostPlayed: string; stats: Record<string, number>; mostPlayedTeam?: string; teamStats?: Record<string, number> }> | null;
-      })
-      .catch(() => null);
-
-    // Fetch PIR settings (granular toggles)
-    fetch("/api/trpc/settings.getPirSettings", { credentials: "include" })
-      .then(res => res.json())
-      .then((json) => {
-        const data = json?.result?.data;
-        const result = data?.json ?? data;
-        if (result) {
-          setPirSettings(result);
-          setPirEnabled(result.enabled === true);
-        }
-      })
-      .catch(() => {});
-
-    const pirPromise = fetch("/api/trpc/pir.getRatings", { credentials: "include" })
-      .then(res => res.json())
-      .then((json) => {
-        const wrapped = json?.result?.data;
-        const arr = (wrapped?.json ?? wrapped) as Array<{
-          playerKey: string; rating: number; recentRating: number;
-          trend: number; trendLabel: string; confidence: number;
-          matchesPlayed: number;
-          goalkeeperRating: number | null; goalkeeperTrend: number | null;
-          goalkeeperTrendLabel: string | null; goalkeeperMatchesPlayed: number;
-          goalkeeperConfidence: number;
-          outfieldRating: number | null; outfieldTrend: number | null;
-          outfieldTrendLabel: string | null; outfieldMatchesPlayed: number;
-          outfieldConfidence: number;
-        }> | null;
-        if (!arr) return null;
-        const map: Record<string, {
-          rating: number; recentRating: number; trend: number;
-          trendLabel: string; confidence: number; matchesPlayed: number;
-          goalkeeperRating: number | null; goalkeeperTrend: number | null;
-          goalkeeperTrendLabel: string | null; goalkeeperMatchesPlayed: number;
-          goalkeeperConfidence: number;
-          outfieldRating: number | null; outfieldTrend: number | null;
-          outfieldTrendLabel: string | null; outfieldMatchesPlayed: number;
-          outfieldConfidence: number;
-        }> = {};
-        for (const r of arr) map[r.playerKey] = {
-          rating: r.rating, recentRating: r.recentRating,
-          trend: r.trend, trendLabel: r.trendLabel,
-          confidence: r.confidence, matchesPlayed: r.matchesPlayed,
-          goalkeeperRating: r.goalkeeperRating, goalkeeperTrend: r.goalkeeperTrend,
-          goalkeeperTrendLabel: r.goalkeeperTrendLabel, goalkeeperMatchesPlayed: r.goalkeeperMatchesPlayed,
-          goalkeeperConfidence: r.goalkeeperConfidence,
-          outfieldRating: r.outfieldRating, outfieldTrend: r.outfieldTrend,
-          outfieldTrendLabel: r.outfieldTrendLabel, outfieldMatchesPlayed: r.outfieldMatchesPlayed,
-          outfieldConfidence: r.outfieldConfidence,
-        };
-        return map;
-      })
-      .catch(() => null);
-
-    Promise.all([statePromise, posHistoryPromise, pirPromise])
-      .then(([state, posHistory, pirMap]) => {
-        if (!mounted) return;
-
-        // Enrich players with mostPlayedPosition + PIR from match history
-        if (state && state.players) {
-          state.players = (state.players as Player[]).map((p: Player) => {
-            const key = p.number ? `${p.name} #${p.number}` : p.name;
-            const nameOnly = p.name.trim();
-            const enriched: any = { ...p };
-            if (posHistory) {
-              const hist = posHistory[key] ?? posHistory[nameOnly];
-              if (hist?.mostPlayed) {
-                enriched.mostPlayedPosition = hist.mostPlayed;
-                if (hist.mostPlayedTeam === "green" || hist.mostPlayedTeam === "white") {
-                  enriched.mostPlayedTeam = hist.mostPlayedTeam;
-                }
-              }
-            }
-            if (pirMap) {
-              const pir = pirMap[key] ?? pirMap[nameOnly];
-              if (pir) {
-                enriched.pir = pir.rating;
-                enriched.pirConfidence = pir.confidence;
-                enriched.pirRecent = pir.recentRating;
-                enriched.pirTrend = pir.trend;
-                enriched.pirTrendLabel = pir.trendLabel;
-                enriched.pirMatchesPlayed = pir.matchesPlayed;
-                // Dual PIR: goalkeeper and outfield
-                enriched.pirGoalkeeper = pir.goalkeeperRating;
-                enriched.pirGoalkeeperTrend = pir.goalkeeperTrend;
-                enriched.pirGoalkeeperTrendLabel = pir.goalkeeperTrendLabel ?? 'stable';
-                enriched.pirGoalkeeperMatchesPlayed = pir.goalkeeperMatchesPlayed;
-                enriched.pirGoalkeeperConfidence = pir.goalkeeperConfidence;
-                enriched.pirOutfield = pir.outfieldRating;
-                enriched.pirOutfieldTrend = pir.outfieldTrend;
-                enriched.pirOutfieldTrendLabel = pir.outfieldTrendLabel ?? 'stable';
-                enriched.pirOutfieldMatchesPlayed = pir.outfieldMatchesPlayed;
-                enriched.pirOutfieldConfidence = pir.outfieldConfidence;
-              } else {
-                // Default PIR for players without match history
-                enriched.pir = 1000;
-                enriched.pirConfidence = 0;
-                enriched.pirMatchesPlayed = 0;
-                enriched.pirTrendLabel = 'stable';
-              }
-            }
-            return enriched as Player;
-          });
-          // Also enrich players in lineup
-          if (state.lineup) {
-            for (const [slotId, player] of Object.entries(state.lineup)) {
-              const p = player as Player;
-              if (!p?.name) continue;
-              const key = p.number ? `${p.name} #${p.number}` : p.name;
-              const nameOnly = p.name.trim();
-              const enriched: any = { ...p };
-              if (posHistory) {
-                const hist = posHistory[key] ?? posHistory[nameOnly];
-                if (hist?.mostPlayed) {
-                  enriched.mostPlayedPosition = hist.mostPlayed;
-                  if (hist.mostPlayedTeam === "green" || hist.mostPlayedTeam === "white") {
-                    enriched.mostPlayedTeam = hist.mostPlayedTeam;
-                  }
-                }
-              }
-              if (pirMap) {
-                const pir = pirMap[key] ?? pirMap[nameOnly];
-                if (pir) {
-                  enriched.pir = pir.rating;
-                  enriched.pirConfidence = pir.confidence;
-                  enriched.pirRecent = pir.recentRating;
-                  enriched.pirTrend = pir.trend;
-                  enriched.pirTrendLabel = pir.trendLabel;
-                  enriched.pirMatchesPlayed = pir.matchesPlayed;
-                  // Dual PIR: goalkeeper and outfield
-                  enriched.pirGoalkeeper = pir.goalkeeperRating;
-                  enriched.pirGoalkeeperTrend = pir.goalkeeperTrend;
-                  enriched.pirGoalkeeperTrendLabel = pir.goalkeeperTrendLabel ?? 'stable';
-                  enriched.pirGoalkeeperMatchesPlayed = pir.goalkeeperMatchesPlayed;
-                  enriched.pirGoalkeeperConfidence = pir.goalkeeperConfidence;
-                  enriched.pirOutfield = pir.outfieldRating;
-                  enriched.pirOutfieldTrend = pir.outfieldTrend;
-                  enriched.pirOutfieldTrendLabel = pir.outfieldTrendLabel ?? 'stable';
-                  enriched.pirOutfieldMatchesPlayed = pir.outfieldMatchesPlayed;
-                  enriched.pirOutfieldConfidence = pir.outfieldConfidence;
-                } else {
-                  enriched.pir = 1000;
-                  enriched.pirConfidence = 0;
-                  enriched.pirMatchesPlayed = 0;
-                  enriched.pirTrendLabel = 'stable';
-                }
-              }
-              state.lineup[slotId] = enriched as Player;
-            }
-          }
-        }
-
-        if (state && state.players) {
-          applyRemoteStateRef.current(state, state.version);
-        } else if (!hasReceivedInitial.current) {
-          // No data in SQL yet — push our local state up
-          const localState = loadLocalState();
-          if (localState) {
-            const rawLocalLineup = localState.lineup ?? {};
-            const sanitizedLocalLineup: Record<string, Player> = {};
-            for (const [slotId, player] of Object.entries(rawLocalLineup)) {
-              if (ALL_SLOT_IDS.has(slotId)) {
-                sanitizedLocalLineup[slotId] = player;
-              }
-            }
-            saveStateMutationRef.current.mutateAsync({
-              players: localState.availablePlayers,
-              lineup: sanitizedLocalLineup,
-              teamAName: localState.teamAName,
-              teamBName: localState.teamBName,
-            }).then((result) => {
-              if (result?.version) versionRef.current = result.version;
-            }).catch(() => {});
-          }
-        }
-        hasReceivedInitial.current = true;
-      })
-      .catch(() => {
-        if (mounted) setSseConnected(false);
-      });
-
-    // 2. Subscribe to SSE for real-time updates
-    // Pass clientId so the server can exclude our own saves from SSE broadcast
-    es = new EventSource(`/api/sse/lineup?clientId=${clientIdRef.current}`);
-
-    es.addEventListener("connected", (event) => {
-      if (!mounted) return;
-      try {
-        JSON.parse(event.data); // validate
-      } catch { /* ignore */ }
-      setSseConnected(true);
-    });
-
-    es.addEventListener("stateChange", (event) => {
-      if (!mounted) return;
-      try {
-        const data = JSON.parse(event.data);
-        // Version-based dedup: skip if we already have this version or newer
-        if (data.version && data.version <= versionRef.current) {
-          console.log('[SYNC] SSE stateChange IGNORED (version <= ours)', { eventVersion: data.version, ourVersion: versionRef.current });
-          return;
-        }
-        console.log('[SYNC] SSE stateChange ACCEPTED', { eventVersion: data.version, ourVersion: versionRef.current, isDirty: isDirtyRef.current, isSaving: isSavingRef.current });
-        if (data.state) {
-          // If we have unsaved local changes or are currently saving,
-          // queue the remote state and apply it after our save completes.
-          if (isDirtyRef.current || isSavingRef.current) {
-            console.log('[SYNC] SSE stateChange QUEUED (dirty or saving)', { isDirty: isDirtyRef.current, isSaving: isSavingRef.current, configA: data.state?.teamAConfig });
-            pendingRemoteRef.current = { state: data.state, version: data.version };
-          } else {
-            console.log('[SYNC] SSE stateChange APPLYING immediately', { configA: data.state?.teamAConfig });
-            applyRemoteStateRef.current(data.state, data.version);
-          }
-        }
-        // Show toast for remote changes
-        if (data.description) {
-          setRemoteChangeToast(data.description);
-          setTimeout(() => setRemoteChangeToast(null), 3000);
-        }
-      } catch { /* ignore parse errors */ }
-    });
-
-    es.onerror = () => {
-      if (mounted) setSseConnected(false);
-      // EventSource auto-reconnects
-    };
-
-    return () => {
-      mounted = false;
-      es?.close();
-    };
+    const pirMap = pirMapRef.current;
+    if (pirMap) {
+      const pir = pirMap[key] ?? pirMap[nameOnly];
+      if (pir) {
+        Object.assign(enriched, {
+          pir: pir.rating, pirConfidence: pir.confidence, pirRecent: pir.recentRating,
+          pirTrend: pir.trend, pirTrendLabel: pir.trendLabel, pirMatchesPlayed: pir.matchesPlayed,
+          pirGoalkeeper: pir.goalkeeperRating, pirGoalkeeperTrend: pir.goalkeeperTrend,
+          pirGoalkeeperTrendLabel: pir.goalkeeperTrendLabel ?? "stable",
+          pirGoalkeeperMatchesPlayed: pir.goalkeeperMatchesPlayed, pirGoalkeeperConfidence: pir.goalkeeperConfidence,
+          pirOutfield: pir.outfieldRating, pirOutfieldTrend: pir.outfieldTrend,
+          pirOutfieldTrendLabel: pir.outfieldTrendLabel ?? "stable",
+          pirOutfieldMatchesPlayed: pir.outfieldMatchesPlayed, pirOutfieldConfidence: pir.outfieldConfidence,
+        });
+      } else {
+        Object.assign(enriched, { pir: 1000, pirConfidence: 0, pirMatchesPlayed: 0, pirTrendLabel: "stable" });
+      }
+    }
+    return enriched as Player;
   }, []);
 
-  // Save to both SQL and localStorage on every state change.
-  // Two-layer guard against saving remote state back to server:
-  //   Layer 1: isApplyingRemoteRef (synchronous check when effect runs)
-  //   Layer 2: remoteApplyCounterRef snapshot (checked when debounce fires)
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    // Layer 1: Don't save remote state back to server
-    if (isApplyingRemoteRef.current) {
-      console.log('[SYNC] save-effect BLOCKED by isApplyingRemoteRef', { configA: teamAConfig, configB: teamBConfig });
-      return;
-    }
-    // Layer 1b: Suppress cascading effects from remote apply (e.g. config
-    // cleanup effect runs in a later render cycle after isApplyingRemoteRef
-    // was already cleared). 500ms window is generous for React render cycles.
-    if (Date.now() - lastRemoteApplyTsRef.current < 500) {
-      console.log('[SYNC] save-effect BLOCKED by lastRemoteApplyTs (cascading effect)', { msSince: Date.now() - lastRemoteApplyTsRef.current });
-      return;
-    }
-    if (!hasReceivedInitial.current) {
-      console.log('[SYNC] save-effect BLOCKED by !hasReceivedInitial');
-      return;
-    }
-    console.log('[SYNC] save-effect PASSED guards', { configA: teamAConfig, configB: teamBConfig, counter: remoteApplyCounterRef.current });
+  const enrichLineup = useCallback((l: Record<string, Player>) => {
+    const out: Record<string, Player> = {};
+    for (const [slotId, p] of Object.entries(l)) out[slotId] = enrichPlayer(p);
+    return out;
+  }, [enrichPlayer]);
 
-    const state: SavedState = { availablePlayers, lineup, teamAName, teamBName, teamAConfig, teamBConfig, matchTime };
-    saveLocalState(state);
-
-    // Mark as dirty — we have unsaved local changes
-    isDirtyRef.current = true;
-
-    // Capture the remote-apply counter NOW. If it changes before the timeout
-    // fires, a remote state was applied in between and we should NOT save.
-    const counterAtSchedule = remoteApplyCounterRef.current;
-
-    // Debounce (150ms) to batch rapid React state updates (e.g. drag-end
-    // sets both lineup and availablePlayers in quick succession)
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      // Layer 2: If remote state was applied after we scheduled this save, abort
-      if (remoteApplyCounterRef.current !== counterAtSchedule) {
-        console.log('[SYNC] save-timer ABORTED by counter change', { counterAtSchedule, current: remoteApplyCounterRef.current });
-        isDirtyRef.current = false;
-        return;
-      }
-      console.log('[SYNC] save-timer FIRING saveToServer');
-      saveToServer();
-    }, 150);
-  }, [availablePlayers, lineup, teamAName, teamBName, deletedPlayerIds, teamAConfig, teamBConfig, matchTime, saveToServer]);
-
-  // CLEARING EFFECT: Runs AFTER the save-effect in the same React commit.
-  // React runs useEffects in declaration order, so this always executes after
-  // the save-effect above. This guarantees isApplyingRemoteRef=true is visible
-  // to the save-effect, then cleared here.
-  useEffect(() => {
-    if (isApplyingRemoteRef.current) {
-      isApplyingRemoteRef.current = false;
-    }
+  // ─── Live-synk ─────────────────────────────────────────────────────────────
+  const sync = useLineupDocSync({
+    readLocalDoc: () => ({
+      players: availablePlayersRef.current,
+      lineup: lineupRef.current,
+      teamAName: teamANameRef.current,
+      teamBName: teamBNameRef.current,
+      teamAConfig: teamAConfigRef.current,
+      teamBConfig: teamBConfigRef.current,
+      deletedPlayerIds: Array.from(deletedPlayerIdsRef.current),
+    }),
+    writeLocalDoc: (doc) => {
+      const players = doc.players.map(enrichPlayer);
+      const l = enrichLineup(doc.lineup);
+      // Uppdatera refs direkt så att nästa jämförelse ser det nya läget.
+      availablePlayersRef.current = players;
+      lineupRef.current = l;
+      teamANameRef.current = doc.teamAName;
+      teamBNameRef.current = doc.teamBName;
+      teamAConfigRef.current = doc.teamAConfig;
+      teamBConfigRef.current = doc.teamBConfig;
+      const deleted = new Set(doc.deletedPlayerIds);
+      deletedPlayerIdsRef.current = deleted;
+      setAvailablePlayers(players);
+      setLineup(l);
+      setTeamAName(doc.teamAName);
+      setTeamBName(doc.teamBName);
+      setTeamAConfig(doc.teamAConfig);
+      setTeamBConfig(doc.teamBConfig);
+      setDeletedPlayerIds(deleted);
+    },
+    onRemoteChange: (description) => {
+      setRemoteChangeToast(description);
+      if (remoteToastTimer.current) clearTimeout(remoteToastTimer.current);
+      remoteToastTimer.current = setTimeout(() => setRemoteChangeToast(null), 2500);
+    },
   });
+  const sseConnected: boolean | null = sync.status === "live" ? true : sync.status === "connecting" ? null : false;
+
+  // Hämta PIR-inställningar, positionshistorik och PIR-värden (bara för visning).
+  useEffect(() => {
+    const get = (path: string) =>
+      fetch(`/api/trpc/${path}`, { credentials: "include" })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((json) => json?.result?.data?.json ?? json?.result?.data ?? null)
+        .catch(() => null);
+
+    get("settings.getPirSettings").then((result) => {
+      if (result) {
+        setPirSettings(result);
+        setPirEnabled(result.enabled === true);
+      }
+    });
+
+    Promise.all([get("lineup.positionHistory"), get("pir.getRatings")]).then(([posHistory, pirArr]) => {
+      posHistoryRef.current = posHistory;
+      if (Array.isArray(pirArr)) {
+        const map: Record<string, PirEntry> = {};
+        for (const r of pirArr) map[r.playerKey] = r;
+        pirMapRef.current = map;
+      }
+      // Berika det som redan visas (ändrar inget som synkas).
+      setAvailablePlayers((prev) => prev.map(enrichPlayer));
+      setLineup((prev) => enrichLineup(prev));
+    });
+  }, [enrichPlayer, enrichLineup]);
+
+  // Varje ändring: spara lokalt (för start utan nät) och skicka till servern.
+  useEffect(() => {
+    saveLocalState({ availablePlayers, lineup, teamAName, teamBName, teamAConfig, teamBConfig, matchTime });
+    sync.notifyLocalChange();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availablePlayers, lineup, teamAName, teamBName, deletedPlayerIds, teamAConfig, teamBConfig, matchTime]);
 
   // Spara en snapshot i undo-stacken
   const pushUndo = useCallback(() => {
@@ -1390,9 +1047,9 @@ export default function Home() {
   const autoFetchDone = useRef(false);
   useEffect(() => {
     if (autoFetchDone.current) return;
-    if (!hasReceivedInitial.current) return; // Vänta på server-state först
+    if (!sync.ready) return; // Vänta på server-state först
     autoFetchDone.current = true;
-    // Small delay to ensure React has committed the state from applyRemoteState
+    // Liten fördröjning så att serverns state hunnit renderas
     setTimeout(() => {
       handleBulkRegister().then((result) => {
         if (result.eventTitle) {
@@ -1402,7 +1059,7 @@ export default function Home() {
         }
       });
     }, 100);
-  }, [handleBulkRegister, availablePlayers]);
+  }, [handleBulkRegister, availablePlayers, sync.ready]);
 
   const [mobileTab, setMobileTabRaw] = useState<MobileTab>("trupp");
   const [dragHoverTab, setDragHoverTab] = useState<MobileTab | null>(null);
@@ -2154,6 +1811,11 @@ export default function Home() {
               </div>
             </div>
           </header>
+
+          {/* Matchprediktion (experimentell, endast styrelsen) */}
+          {isAdmin && pirSettings.enabled && pirSettings.showPrediction && (
+            <MatchPredictionBar lineup={lineup} teamAName={teamAName} teamBName={teamBName} dark={isLineupDark} />
+          )}
 
           {/* Expanderbar statistik-panel */}
           {showStats && (() => {

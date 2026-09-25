@@ -1,6 +1,6 @@
 {
   "name": "hockey-lineup",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -52,6 +52,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/react": "^16.3.3",
     "@types/express": "5.0.6",
     "@types/node": "^22.20.4",
     "@types/react": "^19.3.0",
@@ -59,6 +60,8 @@
     "@vitejs/plugin-react": "^6.1.1",
     "drizzle-kit": "^0.31.11",
     "esbuild": "^0.28.2",
+    "eventsource": "4",
+    "jsdom": "^30.1.1",
     "prettier": "^3.9.9",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",

@@ -36,3 +36,9 @@ Prioriterad lista från genomgången 2026-09-24. Bocka av när klart.
 ## Framtiden
 - [x] Databasbackup i Coolify (konfigurerad av Jerry).
 - [ ] TypeScript 7, framer-motion 13 och lucide-react 1.x – tas i designfasen (kräver UI-genomgång).
+
+## Lineup
+- [x] Ny live-synk (operationer i stället för hela uppställningen) – v2.2.0
+- [x] Delningslänkar öppna, skrivskyddade, 48 h – v2.2.0
+- [x] Matchprediktion för styrelsen (experimentell) – v2.2.0
+- [ ] Se över PIR-viktning och prediktion när mer matchdata finns

@@ -255,7 +255,7 @@ export default function ShareView() {
 
           {notFound && !loading && (
             <div className="flex flex-col items-center justify-center h-64 gap-4">
-              <p className="text-white/40 text-sm">Uppställningen hittades inte eller har tagits bort.</p>
+              <p className="text-white/40 text-sm">Länken har gått ut eller finns inte längre. Delade länkar gäller i 48 timmar.</p>
               <Link href="/lineup">
                 <button className="px-4 py-2 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-bold hover:bg-emerald-500/30 transition-all">
                   Gå till appen

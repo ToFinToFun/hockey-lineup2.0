@@ -7,6 +7,28 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.2.0 – 2026-09-25
+
+**Ny live-synk för Lineup**
+- Varje ändring skickas som en liten operation (flytta spelare, byt lagnamn, ändra formation) i stället för hela uppställningen. Servern tar dem i tur och ordning och skickar dem direkt till alla enheter.
+- Två personer som flyttar olika spelare samtidigt skriver inte längre över varandra. Flyttar båda samma spelare vinner den sista – ingen spelare försvinner eller dubbleras.
+- Ändringar visas direkt på den egna enheten och köas om nätet försvinner. De skickas automatiskt när anslutningen kommer tillbaka.
+- Mobil: synkar direkt när appen öppnas igen efter att ha legat i bakgrunden.
+- PIR och vanligaste position räknas lokalt och synkas inte (färre onödiga uppdateringar).
+- Den gamla synkkoden med sina lager av lagningar är borttagen, liksom operationsloggen i databasen.
+- Score Tracker uppdaterar uppställningen live när den ändras i Lineup.
+
+**Delning**
+- "Dela länk" skapar en öppen, skrivskyddad länk som gäller i 48 timmar och sedan tas bort. Delningslänkar syns inte bland sparade uppställningar.
+- Delnings-ID:n skapas med kryptografisk slump.
+
+**Matchprediktion (experimentell, endast styrelsen)**
+- Visas ovanför lagen när PIR och "Visa matchprediktion" är påslagna. Vinstchans per lag från PIR per roll, och hur stor andel av spelarna som har tillräckligt med matchdata.
+
+**Tester**
+- Nya tester kör två simulerade enheter mot riktig server: samtidiga flyttar, krockar, snabba serier, formation och servern nere en stund.
+- Röktest av hela Lineup-sidan: ingen återkopplingsloop och fjärrändringar syns live.
+
 ## 2.1.2 – 2026-09-25
 
 - Lineup: "Dela" har nu två val – "Dela länk" och "Dela som text" (samma textformat som "Kopiera" i Score Tracker). På mobilen öppnas telefonens dela-meny.

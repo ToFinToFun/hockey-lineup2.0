@@ -30,6 +30,28 @@ export default function ScoreApp() {
     refetchOnWindowFocus: true,
   });
 
+  // Live: hämta om uppställningen när den ändras i Lineup.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const es = new EventSource("/api/sse/lineup");
+    es.addEventListener("patch", () => {
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        refetch();
+      }, 400);
+    });
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refetch();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      es.close();
+      if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [refetch]);
+
   // Offline: använd senast hämtade uppställning om servern inte nås.
   const [snapshot] = useState(() => loadLineupSnapshot<NonNullable<typeof liveLineup>>());
   useEffect(() => {

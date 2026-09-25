@@ -26,7 +26,12 @@ const guard = (need: "admin" | "lineup", Page: ComponentType<any>) => (props: an
 );
 
 const LineupPage = guard("lineup", Home);
-const SharedLineupPage = guard("lineup", ShareView);
+// Delade länkar är öppna och skrivskyddade (servern avgör om länken gått ut).
+const SharedLineupPage = (props: any) => (
+  <Suspense fallback={<div className="min-h-[100dvh] bg-[#0a0a0a]" />}>
+    <ShareView {...props} />
+  </Suspense>
+);
 const IceTimePage = guard("admin", IceTimeApp);
 const StatsPage = guard("admin", StatsApp);
 const CardsPage = guard("admin", CardsApp);

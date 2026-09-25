@@ -44,6 +44,32 @@ describe("lineup tRPC router", () => {
     });
   });
 
+  describe("lineup.patch", () => {
+    it("tillämpar ändringar, räknar upp versionen och är idempotent", async () => {
+      const before = await caller.lineup.getState();
+      const id = `test-${Date.now()}`;
+      const r1 = await caller.lineup.patch({
+        id,
+        ops: [{ t: "rosterUpsert", player: { id: "pp1", name: "Patch Spelare" }, index: 0 }],
+      });
+      expect(r1.version).toBe(before.version + 1);
+      const again = await caller.lineup.patch({
+        id,
+        ops: [{ t: "rosterUpsert", player: { id: "pp1", name: "Patch Spelare" }, index: 0 }],
+      });
+      expect(again).toEqual({ version: r1.version, duplicate: true });
+      const after = await caller.lineup.getState();
+      expect(after.players.some((p) => p.id === "pp1")).toBe(true);
+      expect(after.appliedPatchIds).toContain(id);
+    });
+
+    it("avvisar ogiltiga operationer", async () => {
+      await expect(
+        caller.lineup.patch({ id: "test-invalid-1", ops: [{ t: "field", key: "teamAConfig", value: { goalkeepers: 9, defensePairs: 1, forwardLines: 1 } }] as any })
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    });
+  });
+
   describe("lineup.saveState", () => {
     it("should save a valid lineup state and return a version number", async () => {
       const result = await caller.lineup.saveState({
@@ -52,7 +78,7 @@ describe("lineup tRPC router", () => {
           { id: "p2", name: "Test Player 2", position: "B" },
         ],
         lineup: {
-          "team-a-fw-1-lw": { id: "p1", name: "Test Player 1", position: "F" },
+          "team-a-fwd-1-lw": { id: "p1", name: "Test Player 1", position: "F" },
         },
         teamAName: "VITA",
         teamBName: "GRÖNA",
@@ -88,19 +114,6 @@ describe("lineup tRPC router", () => {
     });
   });
 
-  describe("lineup.getOperationsAfter", () => {
-    it("should return operations after a given sequence number", async () => {
-      const result = await caller.lineup.getOperationsAfter({ afterSeq: 0 });
-      expect(Array.isArray(result)).toBe(true);
-      // Each operation should have expected fields
-      if (result.length > 0) {
-        expect(result[0]).toHaveProperty("seq");
-        expect(result[0]).toHaveProperty("opType");
-        expect(result[0]).toHaveProperty("description");
-      }
-    });
-  });
-
   describe("savedLineups.create", () => {
     it("should create a saved lineup and return shareId", async () => {
       const result = await caller.savedLineups.create({
@@ -108,7 +121,7 @@ describe("lineup tRPC router", () => {
         teamAName: "VITA",
         teamBName: "GRÖNA",
         lineup: {
-          "team-a-fw-1-lw": { id: "p1", name: "Test Player", position: "F" },
+          "team-a-fwd-1-lw": { id: "p1", name: "Test Player", position: "F" },
         },
       });
 

@@ -30,22 +30,6 @@ export type InsertLineupState = typeof lineupState.$inferInsert;
 // ─── Lineup Operations (Change Log) ─────────────────────────────────────────
 // Each mutation is recorded as an operation for SSE-based real-time sync
 
-export const lineupOperations = mysqlTable("lineup_operations", {
-  id: int("id").autoincrement().primaryKey(),
-  /** Monotonically increasing sequence number (matches lineupState.version) */
-  seq: bigint("seq", { mode: "number" }).notNull(),
-  /** Type of operation: movePlayer, removePlayer, renameTeam, updateConfig, etc. */
-  opType: varchar("opType", { length: 50 }).notNull(),
-  /** Human-readable description, e.g. "Någon flyttade Spelare X till Kedja 2" */
-  description: varchar("description", { length: 500 }).notNull().default(""),
-  /** Full operation payload as JSON (details vary by opType) */
-  payload: json("payload").$type<Record<string, any>>(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type LineupOperation = typeof lineupOperations.$inferSelect;
-export type InsertLineupOperation = typeof lineupOperations.$inferInsert;
-
 // ─── Saved Lineups ──────────────────────────────────────────────────────────
 // Named lineup snapshots that users can save, load, share, and favorite
 
@@ -66,6 +50,8 @@ export const savedLineups = mysqlTable("saved_lineups", {
   /** Unix timestamp in ms when saved (for display) */
   savedAt: bigint("savedAt", { mode: "number" }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  /** Delningslänkar går ut (48 h). Sparade uppställningar har inget utgångsdatum. */
+  expiresAt: timestamp("expiresAt"),
 });
 
 export type SavedLineup = typeof savedLineups.$inferSelect;

@@ -32,9 +32,9 @@ jobs:
         run: pnpm check
       - name: Databasmigrering
         run: node scripts/migrate.mjs
-      - name: Tester
-        run: pnpm test
       - name: Bygge
         run: pnpm build
+      - name: Tester (inkl. live-synk med två simulerade enheter)
+        run: pnpm test
       - name: Säkerhetsgranskning av beroenden
         run: pnpm audit --prod --audit-level high

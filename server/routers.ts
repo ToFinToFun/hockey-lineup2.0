@@ -6,18 +6,33 @@ import { scoreRouter } from "./routers/score";
 import { scoreStatsRouter } from "./routers/scoreStats";
 import { getAllMatchResults, getConfigValue, setConfigValue, getMatchCacheVersion } from "./scoreDb";
 import { calculatePIR } from "./pir";
+import { getLineupSnapshot, applyLineupPatch, applyFullState } from "./lineupSync";
+import type { LineupOp } from "../shared/lineupDoc";
 import {
-  getLineupState,
-  saveLineupState,
-  getOperationsAfter,
   createSavedLineup,
   getAllSavedLineups,
   getSavedLineupByShareId,
   toggleSavedLineupFavorite,
   deleteSavedLineup,
+  deleteExpiredShares,
 } from "./lineupDb";
 import { sseManager } from "./sse";
 import { z } from "zod";
+
+const teamConfigSchema = z.object({
+  goalkeepers: z.number().int().min(1).max(2),
+  defensePairs: z.number().int().min(1).max(4),
+  forwardLines: z.number().int().min(1).max(4),
+});
+const playerSchema = z.looseObject({ id: z.string().min(1).max(100), name: z.string().max(200) });
+const lineupOpSchema = z.union([
+  z.object({ t: z.literal("slot"), slot: z.string().max(40), player: playerSchema.nullable() }),
+  z.object({ t: z.literal("rosterUpsert"), player: playerSchema, index: z.number().int().min(0).max(10000) }),
+  z.object({ t: z.literal("rosterRemove"), id: z.string().max(100) }),
+  z.object({ t: z.literal("field"), key: z.enum(["teamAName", "teamBName"]), value: z.string().max(100) }),
+  z.object({ t: z.literal("field"), key: z.enum(["teamAConfig", "teamBConfig"]), value: teamConfigSchema }),
+  z.object({ t: z.literal("field"), key: z.literal("deletedPlayerIds"), value: z.array(z.string().max(100)).max(1000) }),
+]);
 
 let pirCache: { version: number; result: ReturnType<typeof calculatePIR> } | null = null;
 
@@ -53,13 +68,26 @@ export const appRouter = router({
   // ─── Lineup State ──────────────────────────────────────────────────────────
 
   lineup: router({
-    /** Get the current lineup state */
+    /** Aktuell uppställning (öppen – visas i Score Tracker). */
     getState: publicProcedure.query(async () => {
-      const state = await getLineupState();
-      return state;
+      const { doc, version, appliedPatchIds } = await getLineupSnapshot();
+      return { ...doc, version, appliedPatchIds };
     }),
 
-    /** Save/update the full lineup state with an operation description */
+    /** Tillämpa en ändring (patch) på uppställningen. Skickas live till alla enheter. */
+    patch: lineupProcedure
+      .input(
+        z.object({
+          id: z.string().min(8).max(64),
+          clientId: z.string().max(64).optional(),
+          ops: z.array(lineupOpSchema).min(1).max(500),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return applyLineupPatch(input.id, input.ops as LineupOp[], input.clientId);
+      }),
+
+    /** Äldre klienter (före v2.2) skickar hela uppställningen – görs om till en patch. */
     saveState: lineupProcedure
       .input(
         z.object({
@@ -67,46 +95,16 @@ export const appRouter = router({
           lineup: z.record(z.string(), z.any()),
           teamAName: z.string(),
           teamBName: z.string(),
-          teamAConfig: z.object({
-            goalkeepers: z.number(),
-            defensePairs: z.number(),
-            forwardLines: z.number(),
-          }).optional(),
-          teamBConfig: z.object({
-            goalkeepers: z.number(),
-            defensePairs: z.number(),
-            forwardLines: z.number(),
-          }).optional(),
+          teamAConfig: teamConfigSchema.optional(),
+          teamBConfig: teamConfigSchema.optional(),
           deletedPlayerIds: z.array(z.string()).optional(),
-          operation: z.object({
-            opType: z.string(),
-            description: z.string(),
-            payload: z.record(z.string(), z.any()).optional(),
-          }).optional(),
+          operation: z.any().optional(),
           clientId: z.string().optional(),
         })
       )
       .mutation(async ({ input }) => {
-        const { operation, clientId, ...stateData } = input;
-        const result = await saveLineupState(stateData, operation);
-
-        // Notify all SSE clients about the change
-        // Server-side echo prevention: exclude the sender so they don't get their own change back
-        sseManager.notifyStateChange({
-          version: result.version,
-          opType: operation?.opType ?? "fullSync",
-          description: operation?.description ?? "",
-          state: stateData,
-        }, clientId);
-
-        return result;
-      }),
-
-    /** Get operations after a given sequence number (for SSE catch-up) */
-    getOperationsAfter: lineupProcedure
-      .input(z.object({ afterSeq: z.number() }))
-      .query(async ({ input }) => {
-        return getOperationsAfter(input.afterSeq);
+        const { operation: _op, clientId, ...state } = input;
+        return applyFullState(state, clientId);
       }),
 
     /**
@@ -198,11 +196,14 @@ export const appRouter = router({
       return getAllSavedLineups();
     }),
 
-    /** Get a single saved lineup by shareId (for shared view) */
-    getByShareId: lineupProcedure
-      .input(z.object({ shareId: z.string() }))
+    /** En delad/sparad uppställning via länk. Öppen (skrivskyddad); delningslänkar går ut efter 48 h. */
+    getByShareId: publicProcedure
+      .input(z.object({ shareId: z.string().max(20) }))
       .query(async ({ input }) => {
-        return getSavedLineupByShareId(input.shareId);
+        const row = await getSavedLineupByShareId(input.shareId);
+        if (!row) return null;
+        if (row.expiresAt && row.expiresAt.getTime() < Date.now()) return null;
+        return row;
       }),
 
     /** Create a new saved lineup */
@@ -213,10 +214,15 @@ export const appRouter = router({
           teamAName: z.string(),
           teamBName: z.string(),
           lineup: z.record(z.string(), z.any()),
+          /** true = delningslänk som går ut efter 48 h och inte syns bland sparade. */
+          share: z.boolean().optional(),
         })
       )
       .mutation(async ({ input }) => {
-        const result = await createSavedLineup(input);
+        const { share, ...data } = input;
+        await deleteExpiredShares().catch(() => {});
+        const result = await createSavedLineup({ ...data, expiresInHours: share ? 48 : undefined });
+        if (share) return result;
         // Notify SSE clients
         sseManager.notifySavedLineupsChange({
           action: "created",
