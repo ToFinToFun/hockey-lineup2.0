@@ -41,4 +41,6 @@ Prioriterad lista från genomgången 2026-09-24. Bocka av när klart.
 - [x] Ny live-synk (operationer i stället för hela uppställningen) – v2.2.0
 - [x] Delningslänkar öppna, skrivskyddade, 48 h – v2.2.0
 - [x] Matchprediktion för styrelsen (experimentell) – v2.2.0
-- [ ] Se över PIR-viktning och prediktion när mer matchdata finns
+- [x] PIR: mål/assist/målvakt, manuell justering, träffsäkerhetsanalys, förslag på vikter – v2.3.0
+- [x] Auto-fördelning: lagfärg → antal → position → PIR – v2.3.0
+- [ ] Godkänn föreslagna vikter när det finns 30+ matcher

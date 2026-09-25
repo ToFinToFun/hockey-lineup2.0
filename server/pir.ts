@@ -28,6 +28,8 @@ import type { MatchResult } from "../drizzle/schema";
 
 export interface PIRResult {
   playerKey: string;
+  /** Manuell justering (ingår redan i rating och rollbetygen). */
+  adjustment: number;
   /** Overall rating (time-weighted) */
   rating: number;
   /** Recent form rating (last N matches only) */
@@ -62,6 +64,48 @@ export interface PIRResult {
   outfieldConfidence: number;
 }
 
+/**
+ * Vikter som styr beräkningen. Kan ändras av styrelsen och föreslås av
+ * träffsäkerhetsanalysen (se pirAnalysis.ts).
+ */
+export interface PirWeights {
+  /** Bonus per mål (utespelare). */
+  goal: number;
+  /** Bonus per assist (utespelare). */
+  assist: number;
+  /** Målvakt: bonus per mål färre insläppta än snittet (avdrag per mål fler). */
+  goalkeeper: number;
+  /** Halveringstid i dagar – hur snabbt gamla matcher tappar vikt. */
+  halfLifeDays: number;
+}
+
+export const DEFAULT_PIR_WEIGHTS: PirWeights = {
+  goal: 3,
+  assist: 2,
+  goalkeeper: 2,
+  halfLifeDays: 90,
+};
+
+/** Tidigare beteende (endast lagresultat) – används som jämförelse i analysen. */
+export const TEAM_ONLY_PIR_WEIGHTS: PirWeights = { goal: 0, assist: 0, goalkeeper: 0, halfLifeDays: 90 };
+
+export interface PirOptions {
+  weights?: PirWeights;
+  /** Manuella justeringar per spelare (namn → poäng), läggs ovanpå beräkningen. */
+  adjustments?: Record<string, number>;
+  /** Beräkna som om det vore detta datum (används vid analys bakåt i tiden). */
+  now?: Date;
+  /** Hoppa över trendberäkningen (snabbare, används vid analys). */
+  skipTrend?: boolean;
+  /** Antal varv i beräkningen (standard 20). Färre varv används vid analys. */
+  iterations?: number;
+}
+
+/** Spelarens namn utan tröjnummer, t.ex. "Kalle Karlsson #12" → "Kalle Karlsson". */
+export function playerKeyFromLabel(label: string): string {
+  return label.replace(/\s*#\s*\d+\s*$/, "").trim();
+}
+
 /** Role a player had in a specific match */
 type MatchRole = "goalkeeper" | "outfield";
 
@@ -74,6 +118,8 @@ interface MatchPlayerData {
   greenScore: number;
   /** Per-player role in this match (goalkeeper or outfield) */
   playerRoles: Map<string, MatchRole>;
+  /** Mål och assist per spelare i matchen */
+  points: Map<string, { goals: number; assists: number }>;
 }
 
 // ─── Constants ─────────────────────────────────────────────────────
@@ -164,6 +210,22 @@ function extractMatchData(matches: MatchResult[]): MatchPlayerData[] {
       }
     }
 
+    // Mål och assist per spelare (målskytt sparas som "Namn #nr" eller fritext)
+    const points = new Map<string, { goals: number; assists: number }>();
+    const goalList = (match.goalHistory as Array<{ scorer?: string; assist?: string; other?: string }> | null) ?? [];
+    for (const g of goalList) {
+      if (g.other === "Självmål") continue; // ingen poäng för självmål
+      for (const [field, kind] of [["scorer", "goals"], ["assist", "assists"]] as const) {
+        const label = g[field];
+        if (!label) continue;
+        const key = playerKeyFromLabel(label);
+        if (!playerRoles.has(key)) continue; // okänd spelare (inte i uppställningen)
+        const entry = points.get(key) ?? { goals: 0, assists: 0 };
+        entry[kind]++;
+        points.set(key, entry);
+      }
+    }
+
     if (whiteTeam.length > 0 && greenTeam.length > 0) {
       // Use matchEndTime, matchStartTime, or createdAt for date
       const matchDate = match.matchStartTime ?? match.matchEndTime ?? match.createdAt;
@@ -176,6 +238,7 @@ function extractMatchData(matches: MatchResult[]): MatchPlayerData[] {
         whiteScore: match.teamWhiteScore,
         greenScore: match.teamGreenScore,
         playerRoles,
+        points,
       });
     }
   }
@@ -209,9 +272,33 @@ function teamAvgRating(team: string[], ratings: Map<string, number>): number {
  * Time decay weight: exponential decay based on days since match.
  * Returns value between 0 and 1 (1 = today, 0.5 = half-life days ago).
  */
-function timeDecayWeight(matchDate: Date, now: Date): number {
+function timeDecayWeight(matchDate: Date, now: Date, halfLifeDays = DECAY_HALF_LIFE_DAYS): number {
   const daysSince = Math.max(0, (now.getTime() - matchDate.getTime()) / (1000 * 60 * 60 * 24));
-  return Math.pow(0.5, daysSince / DECAY_HALF_LIFE_DAYS);
+  return Math.pow(0.5, daysSince / halfLifeDays);
+}
+
+/**
+ * Individuell bonus per spelare i en match (mål, assist, målvaktsinsats).
+ * Nollsummerad inom matchen så att snittet i gruppen stannar kring 1000.
+ */
+function individualBonuses(m: MatchPlayerData, weights: PirWeights, avgGoalsPerTeam: number): Map<string, number> {
+  const bonus = new Map<string, number>();
+  const all = [...m.whiteTeam, ...m.greenTeam];
+  if (all.length === 0) return bonus;
+  for (const p of all) {
+    let b = 0;
+    if (m.playerRoles.get(p) === "goalkeeper") {
+      const conceded = m.whiteTeam.includes(p) ? m.greenScore : m.whiteScore;
+      b = weights.goalkeeper * (avgGoalsPerTeam - conceded);
+    } else {
+      const pts = m.points.get(p);
+      if (pts) b = weights.goal * pts.goals + weights.assist * pts.assists;
+    }
+    bonus.set(p, b);
+  }
+  const mean = [...bonus.values()].reduce((s, v) => s + v, 0) / all.length;
+  for (const [p, b] of bonus) bonus.set(p, b - mean);
+  return bonus;
 }
 
 /**
@@ -251,7 +338,14 @@ function runEloIterations(
   now: Date,
   useTimeDecay: boolean,
   matchCountMap?: Map<string, number>,
+  weights: PirWeights = DEFAULT_PIR_WEIGHTS,
+  avgGoalsPerTeam = 0,
+  iterations = ITERATIONS,
 ): Map<string, number> {
+  // Individuella bonusar beror inte på betygen – räkna dem en gång.
+  const bonusByMatch = new Map<number, Map<string, number>>();
+  for (const m of matchData) bonusByMatch.set(m.matchId, individualBonuses(m, weights, avgGoalsPerTeam));
+
   const ratings = new Map<string, number>();
   for (const p of allPlayers) {
     ratings.set(p, INITIAL_RATING);
@@ -263,7 +357,7 @@ function runEloIterations(
     iterMatchCount.set(p, 0);
   }
 
-  for (let iter = 0; iter < ITERATIONS; iter++) {
+  for (let iter = 0; iter < iterations; iter++) {
     const newRatings = new Map<string, number>();
     for (const p of allPlayers) {
       newRatings.set(p, INITIAL_RATING);
@@ -299,7 +393,8 @@ function runEloIterations(
       const marginMultiplier = 1 + Math.min(scoreDiff, 5) * 0.1;
 
       // Time decay weight
-      const decayW = useTimeDecay ? timeDecayWeight(m.matchDate, now) : 1;
+      const decayW = useTimeDecay ? timeDecayWeight(m.matchDate, now, weights.halfLifeDays) : 1;
+      const bonus = bonusByMatch.get(m.matchId)!;
 
       // Update white team
       for (const p of m.whiteTeam) {
@@ -307,7 +402,7 @@ function runEloIterations(
         iterMatchCount.set(p, mc + 1);
         const k = playerKFactor(matchCountMap?.get(p) ?? mc) * marginMultiplier * decayW / Math.sqrt(m.whiteTeam.length);
         const current = newRatings.get(p) ?? INITIAL_RATING;
-        newRatings.set(p, current + k * (actualWhite - expectedWhite));
+        newRatings.set(p, current + k * (actualWhite - expectedWhite) + decayW * (bonus.get(p) ?? 0));
       }
 
       // Update green team
@@ -316,7 +411,7 @@ function runEloIterations(
         iterMatchCount.set(p, mc + 1);
         const k = playerKFactor(matchCountMap?.get(p) ?? mc) * marginMultiplier * decayW / Math.sqrt(m.greenTeam.length);
         const current = newRatings.get(p) ?? INITIAL_RATING;
-        newRatings.set(p, current + k * (actualGreen - expectedGreen));
+        newRatings.set(p, current + k * (actualGreen - expectedGreen) + decayW * (bonus.get(p) ?? 0));
       }
     }
 
@@ -363,12 +458,19 @@ function filterMatchesByRole(
  * Enhanced with time-decay, trend, newcomer K-factor, inactivity decay,
  * and dual goalkeeper/outfield ratings.
  */
-export function calculatePIR(matches: MatchResult[]): PIRResult[] {
-  const matchData = extractMatchData(matches);
+export function calculatePIR(matches: MatchResult[], options: PirOptions = {}): PIRResult[] {
+  return calculatePIRFromData(extractMatchData(matches), options);
+}
 
+function calculatePIRFromData(matchData: MatchPlayerData[], options: PirOptions = {}): PIRResult[] {
   if (matchData.length === 0) return [];
 
-  const now = new Date();
+  const now = options.now ?? new Date();
+  const weights = options.weights ?? DEFAULT_PIR_WEIGHTS;
+  const adjustments = options.adjustments ?? {};
+  const avgGoalsPerTeam = matchData.reduce((s, m) => s + m.whiteScore + m.greenScore, 0) / (matchData.length * 2);
+  const elo = (data: MatchPlayerData[], decay: boolean, counts: Map<string, number>) =>
+    runEloIterations(data, allPlayers, now, decay, counts, weights, avgGoalsPerTeam, options.iterations ?? ITERATIONS);
 
   // Collect all unique players
   const allPlayers = new Set<string>();
@@ -441,7 +543,7 @@ export function calculatePIR(matches: MatchResult[]): PIRResult[] {
   }
 
   // ── Overall rating (with time decay) ──
-  const overallRatings = runEloIterations(matchData, allPlayers, now, true, matchCountMap);
+  const overallRatings = elo(matchData, true, matchCountMap);
 
   // ── Recent rating (last N matches per player) ──
   // Build per-player recent match sets
@@ -471,7 +573,7 @@ export function calculatePIR(matches: MatchResult[]): PIRResult[] {
     for (const p of m.whiteTeam) recentPlayers.add(p);
     for (const p of m.greenTeam) recentPlayers.add(p);
   }
-  const recentRatings = runEloIterations(recentMatches, allPlayers, now, false, matchCountMap);
+  const recentRatings = options.skipTrend ? overallRatings : elo(recentMatches, false, matchCountMap);
 
   // ── Role-specific PIR calculations ──
 
@@ -496,9 +598,9 @@ export function calculatePIR(matches: MatchResult[]): PIRResult[] {
   let gkOverallRatings: Map<string, number> | null = null;
   let gkRecentRatings: Map<string, number> | null = null;
   if (gkData.matches.length > 0) {
-    gkOverallRatings = runEloIterations(gkData.matches, allPlayers, now, true, gkRoleMatchCountMap);
+    gkOverallRatings = elo(gkData.matches, true, gkRoleMatchCountMap);
     const gkRecentMatches = gkData.matches.slice(-Math.min(gkData.matches.length, RECENT_MATCHES_COUNT * 2));
-    gkRecentRatings = runEloIterations(gkRecentMatches, allPlayers, now, false, gkRoleMatchCountMap);
+    gkRecentRatings = options.skipTrend ? gkOverallRatings : elo(gkRecentMatches, false, gkRoleMatchCountMap);
   }
 
   // Outfield ratings
@@ -510,9 +612,9 @@ export function calculatePIR(matches: MatchResult[]): PIRResult[] {
   let outOverallRatings: Map<string, number> | null = null;
   let outRecentRatings: Map<string, number> | null = null;
   if (outData.matches.length > 0) {
-    outOverallRatings = runEloIterations(outData.matches, allPlayers, now, true, outRoleMatchCountMap);
+    outOverallRatings = elo(outData.matches, true, outRoleMatchCountMap);
     const outRecentMatches = outData.matches.slice(-Math.min(outData.matches.length, RECENT_MATCHES_COUNT * 2));
-    outRecentRatings = runEloIterations(outRecentMatches, allPlayers, now, false, outRoleMatchCountMap);
+    outRecentRatings = options.skipTrend ? outOverallRatings : elo(outRecentMatches, false, outRoleMatchCountMap);
   }
 
   // ── Apply inactivity decay ──
@@ -585,10 +687,16 @@ export function calculatePIR(matches: MatchResult[]): PIRResult[] {
       outfieldConfidence = Math.min(rs.outPlayed / MIN_MATCHES_FULL_CONFIDENCE, 1);
     }
 
+    // Manuell justering från styrelsen läggs ovanpå (påverkar inte trenden).
+    const adj = Math.round(adjustments[p] ?? 0);
+    if (goalkeeperRating != null) goalkeeperRating += adj;
+    if (outfieldRating != null) outfieldRating += adj;
+
     results.push({
       playerKey: p,
-      rating,
-      recentRating,
+      rating: rating + adj,
+      recentRating: recentRating + adj,
+      adjustment: adj,
       trend,
       trendLabel: getTrendLabel(trend),
       matchesPlayed: s.played,
@@ -655,4 +763,71 @@ export function predictMatchOutcome(teamARatings: number[], teamBRatings: number
     teamBAvgPir: Math.round(avgB),
     balance,
   };
+}
+
+// ─── Analys bakåt i tiden ──────────────────────────────────────────
+
+export interface BacktestPoint {
+  matchId: number;
+  matchDate: Date;
+  /** Förutsagd vinstchans för Vita. */
+  pWhite: number;
+  /** Utfall: 1 = Vita vann, 0 = Gröna vann, 0.5 = oavgjort. */
+  outcome: number;
+  /** Andel spelare med tillräcklig historik vid tillfället. */
+  coverage: number;
+}
+
+/**
+ * Förutsäger varje match med enbart matcher som spelats före den, precis som
+ * prediktionen fungerar i appen. Hoppar över de första `warmup` matcherna.
+ */
+export async function backtestPIR(
+  matches: MatchResult[],
+  weights: PirWeights,
+  warmup = 5,
+  yieldFn: () => Promise<void> = async () => {},
+): Promise<BacktestPoint[]> {
+  const data = extractMatchData(matches);
+  const points: BacktestPoint[] = [];
+  // Räkna om betygen före varje match i början, sedan glesare (högst ~60
+  // omräkningar) – annars växer tiden kvadratiskt med antalet matcher.
+  const step = Math.max(1, Math.ceil((data.length - warmup) / 60));
+  let ratings = new Map<string, PIRResult>();
+  for (let i = warmup; i < data.length; i++) {
+    const m = data[i];
+    if ((i - warmup) % step === 0) {
+      await yieldFn();
+      ratings = new Map(
+        calculatePIRFromData(data.slice(0, i), { weights, now: m.matchDate, skipTrend: true, iterations: 8 })
+          .map((r) => [r.playerKey, r])
+      );
+    }
+    let known = 0;
+    const strength = (team: string[]) =>
+      team.reduce((sum, p) => {
+        const r = ratings.get(p);
+        if (!r) return sum + INITIAL_RATING;
+        if (r.matchesPlayed < MIN_MATCHES_SHOW) return sum + INITIAL_RATING + r.adjustment;
+        known++;
+        const role = m.playerRoles.get(p);
+        const v = role === "goalkeeper" ? r.goalkeeperRating ?? r.rating : r.outfieldRating ?? r.rating;
+        return sum + v;
+      }, 0) / Math.max(1, team.length);
+    const white = strength(m.whiteTeam);
+    const green = strength(m.greenTeam);
+    points.push({
+      matchId: m.matchId,
+      matchDate: m.matchDate,
+      pWhite: expectedScore(white, green),
+      outcome: m.whiteScore > m.greenScore ? 1 : m.whiteScore < m.greenScore ? 0 : 0.5,
+      coverage: known / (m.whiteTeam.length + m.greenTeam.length),
+    });
+  }
+  return points;
+}
+
+/** Antal matcher med uppställning som kan användas i beräkningen. */
+export function countRatedMatches(matches: MatchResult[]): number {
+  return extractMatchData(matches).length;
 }

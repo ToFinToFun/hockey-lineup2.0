@@ -5,7 +5,8 @@ import { fetchAttendance, updateAttendance, type AttendingStatus } from "./laget
 import { scoreRouter } from "./routers/score";
 import { scoreStatsRouter } from "./routers/scoreStats";
 import { getAllMatchResults, getConfigValue, setConfigValue, getMatchCacheVersion } from "./scoreDb";
-import { calculatePIR } from "./pir";
+import { calculatePIR, DEFAULT_PIR_WEIGHTS, type PirWeights } from "./pir";
+import { analyzePir, sanitizeWeights, type PirAnalysis } from "./pirAnalysis";
 import { getLineupSnapshot, applyLineupPatch, applyFullState } from "./lineupSync";
 import type { LineupOp } from "../shared/lineupDoc";
 import {
@@ -34,7 +35,31 @@ const lineupOpSchema = z.union([
   z.object({ t: z.literal("field"), key: z.literal("deletedPlayerIds"), value: z.array(z.string().max(100)).max(1000) }),
 ]);
 
-let pirCache: { version: number; result: ReturnType<typeof calculatePIR> } | null = null;
+let pirCache: { key: string; result: ReturnType<typeof calculatePIR> } | null = null;
+let analysisCache: { key: string; result: PirAnalysis } | null = null;
+
+// PIR-inställningar i app_config (vikter och manuella justeringar per spelare).
+const PIR_WEIGHTS_KEY = "pir_weights";
+const PIR_ADJUSTMENTS_KEY = "pir_adjustments";
+let pirConfigVersion = 0;
+
+async function loadPirConfig(): Promise<{ weights: PirWeights; adjustments: Record<string, number> }> {
+  const [w, a] = await Promise.all([getConfigValue(PIR_WEIGHTS_KEY), getConfigValue(PIR_ADJUSTMENTS_KEY)]);
+  let weights = DEFAULT_PIR_WEIGHTS;
+  let adjustments: Record<string, number> = {};
+  try { if (w) weights = sanitizeWeights(JSON.parse(w)); } catch { /* standardvikter */ }
+  try { if (a) adjustments = JSON.parse(a); } catch { /* inga justeringar */ }
+  return { weights, adjustments };
+}
+
+async function getPirRatings() {
+  const key = `${getMatchCacheVersion()}:${pirConfigVersion}`;
+  if (!pirCache || pirCache.key !== key) {
+    const { weights, adjustments } = await loadPirConfig();
+    pirCache = { key, result: calculatePIR(await getAllMatchResults(), { weights, adjustments }) };
+  }
+  return pirCache.result;
+}
 
 export const appRouter = router({
   system: systemRouter,
@@ -344,13 +369,53 @@ export const appRouter = router({
   pir: router({
     /** Get PIR ratings for all players (enhanced with trend, confidence, etc.) */
     getRatings: lineupProcedure.query(async () => {
-      // Räknas bara om när matcherna har ändrats.
-      const version = getMatchCacheVersion();
-      if (!pirCache || pirCache.version !== version) {
-        pirCache = { version, result: calculatePIR(await getAllMatchResults()) };
-      }
-      return pirCache.result;
+      // Räknas bara om när matcherna eller inställningarna har ändrats.
+      return getPirRatings();
     }),
+
+    /** Vikter och manuella justeringar (styrelsen). */
+    getConfig: adminProcedure.query(async () => {
+      const cfg = await loadPirConfig();
+      return { ...cfg, defaults: DEFAULT_PIR_WEIGHTS };
+    }),
+
+    setWeights: adminProcedure
+      .input(z.object({
+        goal: z.number().min(0).max(20),
+        assist: z.number().min(0).max(20),
+        goalkeeper: z.number().min(0).max(20),
+        halfLifeDays: z.number().min(14).max(730),
+      }))
+      .mutation(async ({ input }) => {
+        await setConfigValue(PIR_WEIGHTS_KEY, JSON.stringify(sanitizeWeights(input)));
+        pirConfigVersion++;
+        return { success: true };
+      }),
+
+    /** Manuell justering av en spelares PIR (0 tar bort justeringen). */
+    setAdjustment: adminProcedure
+      .input(z.object({ playerKey: z.string().min(1).max(200), value: z.number().int().min(-500).max(500) }))
+      .mutation(async ({ input }) => {
+        const { adjustments } = await loadPirConfig();
+        if (input.value === 0) delete adjustments[input.playerKey];
+        else adjustments[input.playerKey] = input.value;
+        await setConfigValue(PIR_ADJUSTMENTS_KEY, JSON.stringify(adjustments));
+        pirConfigVersion++;
+        return { success: true };
+      }),
+
+    /** Träffsäkerhet bakåt i tiden, med förslag på vikter om withSuggestion. */
+    analysis: adminProcedure
+      .input(z.object({ withSuggestion: z.boolean().default(false) }).optional())
+      .query(async ({ input }) => {
+        const { weights } = await loadPirConfig();
+        const withSuggestion = input?.withSuggestion ?? false;
+        const key = `${getMatchCacheVersion()}:${JSON.stringify(weights)}:${withSuggestion}`;
+        if (!analysisCache || analysisCache.key !== key) {
+          analysisCache = { key, result: await analyzePir(await getAllMatchResults(), weights, withSuggestion) };
+        }
+        return analysisCache.result;
+      }),
   }),
 
   // ─── Stats Visibility ────────────────────────────────────────────────────

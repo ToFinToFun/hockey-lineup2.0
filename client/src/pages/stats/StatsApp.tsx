@@ -6,12 +6,13 @@ import { useState, useMemo, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { IMAGES } from "@/lib/scoreConstants";
-import { ArrowLeft, BarChart3, Trophy, Award, Users, Shield, Settings, Loader2 } from "lucide-react";
+import { ArrowLeft, BarChart3, Trophy, Award, Users, Shield, Settings, Loader2, Gauge } from "lucide-react";
 import OverviewTab from "./OverviewTab";
 import LeadersTab from "./LeadersTab";
 import AwardsTab from "./AwardsTab";
 import PlayersTab from "./PlayersTab";
 import TeamsTab from "./TeamsTab";
+import PirTab from "./PirTab";
 import StatsAdminPanel from "./StatsAdminPanel";
 
 // ─── Period helpers ─────────────────────────────────────────────────────────
@@ -56,6 +57,7 @@ const TABS = [
   { id: "awards", label: "Utmärkelser", icon: Award },
   { id: "players", label: "Spelare", icon: Users },
   { id: "teams", label: "Lag", icon: Shield },
+  { id: "pir", label: "PIR", icon: Gauge },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -242,6 +244,7 @@ export default function StatsApp() {
                 dateFilter={queryInput}
               />
             )}
+            {activeTab === "pir" && <PirTab />}
             {activeTab === "teams" && (
               <TeamsTab
                 teamData={teamData}

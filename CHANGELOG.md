@@ -7,6 +7,24 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.3.0 – 2026-09-25
+
+**PIR med individuella insatser**
+- Mål och assist ger bonus, målvakter jämförs mot snittet av insläppta mål. Självmål ger inga poäng. Bonusarna jämnas ut inom varje match så att snittet stannar kring 1000.
+- Vikterna (mål, assist, målvakt, halveringstid) kan ändras av styrelsen. Standard: 3 / 2 / 2 / 90 dagar.
+- Manuell justering av en spelares PIR (t.ex. +50 för en ny stark spelare). Ligger ovanpå beräkningen och gäller även spelare med få matcher.
+
+**Träffsäkerhet och förslag (Statistik → PIR)**
+- Varje match förutsägs med bara det som var känt före den, och jämförs med utfallet: rätt vinnare, Brier-poäng, jämförelse med bara lagresultat och kalibrering.
+- "Ta fram förslag" provar olika vikter och visar vilka som hade förutsagt historiken bäst. Rekommenderas bara när det finns minst 30 matcher och förbättringen är tydlig. Styrelsen godkänner.
+- Testat på syntetiska säsonger: prognosen träffar lika ofta som om man visste spelarnas verkliga styrka, och individuella vikter förbättrar jämfört med bara lagresultat.
+
+**Auto-fördelning**
+- Ny ordning: lagfärg → jämnt antal spelare (inkl. målvakter) → jämnt antal backar/centrar/forwards → PIR-byten inom samma position tills lagen är så jämna som möjligt.
+- Målvakt som även spelat ute placeras som utespelare när två rena målvakter finns.
+- Rättat: en tredje målvakt fick aldrig någon plats (reservmålvaktsplatsen skapades inte).
+- Prediktion och fördelning använder samma regel för spelarstyrka.
+
 ## 2.2.0 – 2026-09-25
 
 **Ny live-synk för Lineup**

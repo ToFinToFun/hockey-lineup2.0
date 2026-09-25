@@ -41,6 +41,8 @@ export interface Player {
   pirTrendLabel?: "rising" | "slightly_rising" | "stable" | "slightly_falling" | "falling";
   /** Total matches played (for PIR) */
   pirMatchesPlayed?: number;
+  /** Manuell justering från styrelsen (ingår redan i pir-värdena). */
+  pirAdjustment?: number;
 
   /** PIR when playing as goalkeeper */
   pirGoalkeeper?: number;

@@ -295,7 +295,7 @@ export default function Home() {
   // ─── Berikning: vanligaste position och PIR (räknas fram, synkas inte) ─────
   type PirEntry = {
     rating: number; recentRating: number; trend: number; trendLabel: string;
-    confidence: number; matchesPlayed: number;
+    confidence: number; matchesPlayed: number; adjustment?: number;
     goalkeeperRating: number | null; goalkeeperTrend: number | null; goalkeeperTrendLabel: string | null;
     goalkeeperMatchesPlayed: number; goalkeeperConfidence: number;
     outfieldRating: number | null; outfieldTrend: number | null; outfieldTrendLabel: string | null;
@@ -327,6 +327,7 @@ export default function Home() {
         Object.assign(enriched, {
           pir: pir.rating, pirConfidence: pir.confidence, pirRecent: pir.recentRating,
           pirTrend: pir.trend, pirTrendLabel: pir.trendLabel, pirMatchesPlayed: pir.matchesPlayed,
+          pirAdjustment: pir.adjustment ?? 0,
           pirGoalkeeper: pir.goalkeeperRating, pirGoalkeeperTrend: pir.goalkeeperTrend,
           pirGoalkeeperTrendLabel: pir.goalkeeperTrendLabel ?? "stable",
           pirGoalkeeperMatchesPlayed: pir.goalkeeperMatchesPlayed, pirGoalkeeperConfidence: pir.goalkeeperConfidence,
