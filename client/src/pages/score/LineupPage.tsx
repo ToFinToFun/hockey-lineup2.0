@@ -11,6 +11,7 @@ import { RefreshCw, Copy } from "lucide-react";
 import { toast } from "sonner";
 import PullToRefresh from "@/components/score/PullToRefresh";
 import { type AppState, type Slot, createTeamSlots, groupSlots, MAX_TEAM_CONFIG } from "@/lib/lineup";
+import { generateLineupText } from "@/lib/lineupText";
 import { type Player } from "@/lib/players";
 
 interface LineupPageProps {
@@ -157,70 +158,6 @@ function formatSyncTime(date: Date | null): string {
   const diffMin = Math.floor(diffSec / 60);
   if (diffMin < 60) return `${diffMin} min sedan`;
   return date.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" });
-}
-
-function generateLineupText(
-  lineupState: AppState,
-  teamASlots: Slot[],
-  teamBSlots: Slot[],
-  teamALineup: Record<string, Player>,
-  teamBLineup: Record<string, Player>
-): string {
-  const formatTeam = (
-    teamName: string,
-    slots: Slot[],
-    lineup: Record<string, Player>
-  ): string => {
-    const lines: string[] = [];
-    lines.push(teamName.toUpperCase());
-    lines.push("");
-
-    const sections: Slot["type"][] = ["goalkeeper", "defense", "forward"];
-
-    for (const sectionType of sections) {
-      const sectionSlots = slots.filter((s) => s.type === sectionType);
-      const filled = sectionSlots.filter((s) => lineup[s.id]);
-      if (filled.length === 0) continue;
-
-      const groups = groupSlots(sectionSlots);
-      let isFirstGroup = true;
-      for (const group of groups) {
-        const filledInGroup = group.slots.filter((s) => lineup[s.id]);
-        if (filledInGroup.length === 0) continue;
-
-        if (!isFirstGroup) {
-          lines.push("");
-        }
-
-        for (const slot of filledInGroup) {
-          const p = lineup[slot.id];
-          if (!p) continue;
-          const pos = slot.shortLabel.padEnd(3);
-          const captain = p.captainRole ? ` (${p.captainRole})` : "";
-          const num = p.number ? ` #${p.number}` : "";
-          lines.push(`${pos}  ${p.name}${num}${captain}`);
-        }
-        isFirstGroup = false;
-      }
-
-      lines.push("");
-    }
-
-    return lines.join("\n");
-  };
-
-  const teamA = formatTeam(
-    lineupState.teamAName,
-    teamASlots,
-    teamALineup
-  );
-  const teamB = formatTeam(
-    lineupState.teamBName,
-    teamBSlots,
-    teamBLineup
-  );
-
-  return [teamA, teamB].join("\n");
 }
 
 export default function LineupPage({ lineupState, loading, lastSyncTime, refreshing, onRefresh }: LineupPageProps) {

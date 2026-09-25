@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.1.2 – 2026-09-25
+
+- Lineup: "Dela" har nu två val – "Dela länk" och "Dela som text" (samma textformat som "Kopiera" i Score Tracker). På mobilen öppnas telefonens dela-meny.
+- Inställningar: laget.se-delen visas bara för styrelsen och innehåller bara "Testa anslutning".
+
 ## 2.1.1 – 2026-09-25
 
 - Score Tracker: knappen "Exportera" under Uppställning borttagen (samma innehåll som "Kopiera").

@@ -170,17 +170,14 @@ export function SettingsModal({ open, onClose, pirSettings, onPirSettingsChange,
 
         {/* Content */}
         <div className="px-5 py-5 space-y-5">
-          {/* Laget.se section */}
+          {/* Laget.se section (endast styrelsen) */}
+          {isAdmin && (
           <div>
             <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider mb-1">
-              Laget.se inloggning
+              Laget.se
             </h3>
-            <p className="text-[11px] text-white/40 mb-3">
-              Inloggningen till laget.se hanteras som miljövariabler (LAGET_SE_USERNAME / LAGET_SE_PASSWORD) i Coolify och kan inte ändras här.
-            </p>
 
-            {isAdmin && (
-              <button
+            <button
                 onClick={handleTest}
                 disabled={testing}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-300 text-sm font-bold hover:bg-sky-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
@@ -194,7 +191,6 @@ export function SettingsModal({ open, onClose, pirSettings, onPirSettingsChange,
                   "Testa anslutning"
                 )}
               </button>
-            )}
 
             {/* Test result */}
             {testResult && (
@@ -208,9 +204,10 @@ export function SettingsModal({ open, onClose, pirSettings, onPirSettingsChange,
               </div>
             )}
           </div>
+          )}
 
           {/* Divider */}
-          <div className="border-t border-white/8" />
+          {isAdmin && <div className="border-t border-white/8" />}
 
           {/* PIR section */}
           <div>

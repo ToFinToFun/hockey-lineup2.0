@@ -35,8 +35,10 @@ import { MobileRosterDrawer } from "@/components/MobileRosterDrawer";
 import { MobileSlotPicker } from "@/components/MobileSlotPicker";
 import { LongPressTooltip } from "@/components/LongPressTooltip";
 import { trpc } from "@/lib/trpc";
+import { lineupStateToText, shareOrCopy } from "@/lib/lineupText";
 import type { Player as PlayerType } from "@/lib/players";
-import { Download, Wifi, WifiOff, Share2, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Settings, Sun, Moon, Home as HomeIcon, Users, HelpCircle, FlaskConical, MoreVertical, X as XIcon } from "lucide-react";
+import { Download, Wifi, WifiOff, Share2, FileText, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Settings, Sun, Moon, Home as HomeIcon, Users, HelpCircle, FlaskConical, MoreVertical, X as XIcon } from "lucide-react";
+import { toast } from "sonner";
 import { useLineupTheme } from "@/hooks/useLineupTheme";
 import { useForwardColor } from "@/hooks/useForwardColor";
 import { Link } from "wouter";
@@ -218,13 +220,25 @@ export default function Home() {
         lineup,
       });
       const url = `${window.location.origin}/lineup/${result.shareId}`;
-      await navigator.clipboard.writeText(url).catch(() => {});
+      await shareOrCopy({ url, title: `${teamAName} – ${teamBName}` }).catch(() => {});
       setShareState("copied");
       setTimeout(() => setShareState("idle"), 2500);
     } catch {
       setShareState("idle");
     }
   }, [teamAName, teamBName, lineup, createSavedLineupMutation]);
+
+  // Dela uppställningen som text (samma format som "Kopiera" i Score Tracker).
+  const handleShareText = useCallback(async () => {
+    const text = lineupStateToText({ teamAName, teamBName, teamAConfig, teamBConfig, lineup });
+    try {
+      const how = await shareOrCopy({ text, title: "Laguppställning" });
+      if (how === "copied") toast.success("Uppställningen kopierad", { description: "Klistra in i valfri chatt" });
+    } catch {
+      toast.error("Kunde inte dela texten");
+    }
+  }, [teamAName, teamBName, teamAConfig, teamBConfig, lineup]);
+  const [showShareMenu, setShowShareMenu] = useState(false);
 
   // IDs för medvetet borttagna spelare – hindrar merge från att lägga tillbaka dem
   const [deletedPlayerIds, setDeletedPlayerIds] = useState<Set<string>>(new Set());
@@ -1815,6 +1829,15 @@ export default function Home() {
                             {shareState === 'copied' ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
                             <span>{shareState === 'copied' ? 'Kopierad!' : 'Dela länk'}</span>
                           </button>
+                          <button
+                            onClick={() => { handleShareText(); setShowHeaderMenu(false); }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
+                              isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            <FileText className="w-4 h-4" />
+                            <span>Dela som text</span>
+                          </button>
 
                           {/* Separator */}
                           <div className={`my-1 border-t ${isLineupDark ? 'border-white/5' : 'border-gray-100'}`} />
@@ -2000,9 +2023,10 @@ export default function Home() {
                 </LongPressTooltip>
 
                 {/* DELA button */}
-                <LongPressTooltip label="Dela länk">
+                <LongPressTooltip label="Dela">
+                <div className="relative">
                 <button
-                  onClick={handleShare}
+                  onClick={() => setShowShareMenu(v => !v)}
                   disabled={shareState === "saving"}
                   title="Dela skrivskyddad länk"
                   className={`flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider ${
@@ -2019,6 +2043,28 @@ export default function Home() {
                     ? <><Check className="w-3.5 h-3.5" /><span>Kopierad!</span></>
                     : <><Share2 className="w-3.5 h-3.5" /><span>Dela</span></>}
                 </button>
+                {showShareMenu && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowShareMenu(false)} />
+                    <div className={`absolute right-0 top-full mt-1 z-50 min-w-[150px] rounded-lg shadow-xl border py-1 ${
+                      isLineupDark ? 'bg-[#1a1a1a] border-white/10' : 'bg-white border-gray-200'
+                    }`}>
+                      <button
+                        onClick={() => { handleShare(); setShowShareMenu(false); }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] ${isLineupDark ? 'text-white/70 hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'}`}
+                      >
+                        <Share2 className="w-3.5 h-3.5" /> Dela länk
+                      </button>
+                      <button
+                        onClick={() => { handleShareText(); setShowShareMenu(false); }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] ${isLineupDark ? 'text-white/70 hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'}`}
+                      >
+                        <FileText className="w-3.5 h-3.5" /> Dela som text
+                      </button>
+                    </div>
+                  </>
+                )}
+                </div>
                 </LongPressTooltip>
 
                 {/* Divider */}
