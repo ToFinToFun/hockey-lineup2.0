@@ -41,7 +41,7 @@ pnpm install
 # JWT_SECRET=<generera med: openssl rand -hex 32>
 
 # Kör databasmigrering
-pnpm db:push
+pnpm db:migrate
 
 # Starta utvecklingsservern
 pnpm dev
