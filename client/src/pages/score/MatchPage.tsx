@@ -10,6 +10,7 @@ import { type AppState, createTeamSlots, MAX_TEAM_CONFIG } from "@/lib/lineup";
 import { type Player } from "@/lib/players";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
+import { queueMatch, isNetworkError } from "@/lib/offlineScore";
 import { toast } from "sonner";
 
 interface MatchPageProps {
@@ -305,35 +306,49 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
     return `${yy}-${mm}-${dd} ${weekday} ${hh}:00 ${teamWhiteScore}-${teamGreenScore}`;
   };
 
+  const resetAfterSave = () => {
+    setTeamWhiteScore(0);
+    setTeamGreenScore(0);
+    setGoalHistory([]);
+    setMatchStartTime(undefined);
+    localStorage.removeItem(STORAGE_KEY);
+    setEndMatchModalVisible(false);
+  };
+
   const handleEndMatch = async () => {
     setSavingMatch(true);
+    const name = getMatchName();
+    const payload = {
+      name,
+      teamWhiteScore,
+      teamGreenScore,
+      goalHistory: goalHistory,
+      matchStartTime: matchStartTime || undefined,
+      lineup: lineupState || undefined,
+    };
     try {
-      const name = getMatchName();
-      await saveMatchMutation.mutateAsync({
-        name,
-        teamWhiteScore,
-        teamGreenScore,
-        goalHistory: goalHistory,
-        matchStartTime: matchStartTime || undefined,
-        lineup: lineupState || undefined,
-      });
-      // Reset match after successful save
-      setTeamWhiteScore(0);
-      setTeamGreenScore(0);
-      setGoalHistory([]);
-      setMatchStartTime(undefined);
-      localStorage.removeItem(STORAGE_KEY);
-      setEndMatchModalVisible(false);
+      await saveMatchMutation.mutateAsync(payload);
+      resetAfterSave();
       toast.success("Matchen sparad!", {
         description: name,
         duration: 4000,
       });
     } catch (e) {
-      console.error('Failed to save match:', e);
-      toast.error("Kunde inte spara matchen", {
-        description: "Försök igen.",
-        duration: 4000,
-      });
+      if (isNetworkError(e)) {
+        // Ingen täckning: spara lokalt och skicka automatiskt senare.
+        queueMatch(payload);
+        resetAfterSave();
+        toast.success("Matchen sparad på telefonen", {
+          description: "Skickas automatiskt när du har nät igen.",
+          duration: 5000,
+        });
+      } else {
+        console.error('Failed to save match:', e);
+        toast.error("Kunde inte spara matchen", {
+          description: "Försök igen.",
+          duration: 4000,
+        });
+      }
     } finally {
       setSavingMatch(false);
     }

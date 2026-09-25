@@ -1,84 +1,123 @@
-// Service Worker for Stålstadens multi-app PWA
-// Handles Hub (/), Lineup (/lineup), and Score Tracker (/score)
+// Service worker för app.stalstadens.se
+//
+// Mål: Score Tracker ska starta och fungera även utan täckning i hallen.
+// - Sidor (navigering): nätet först, men max 3 s – sedan cachad version.
+// - Byggda filer (/assets/*, hashade namn): cache först, de ändras aldrig.
+// - Bilder, ljud, ikoner, typsnitt: cache först, uppdateras i bakgrunden.
+// - API-anrop (/api/*) hanteras aldrig här; appen sköter sin egen offline-data.
 
-const CACHE_NAME = 'stalstadens-app-v5';
+const VERSION = 'v6';
+const SHELL_CACHE = `stal-shell-${VERSION}`;
+const ASSET_CACHE = `stal-assets-${VERSION}`;
+const NETWORK_TIMEOUT_MS = 3000;
 
-// Assets to pre-cache for offline shell
 const PRECACHE_URLS = [
   '/',
+  '/score',
   '/manifest.json',
-  '/lineup-manifest.json',
   '/score-manifest.json',
-  '/icetime-manifest.json',
   '/pwa-icon-192.png',
   '/pwa-icon-512.png',
+  '/score-icon-192.png',
+  '/score-icon-512.png',
   '/apple-touch-icon.png',
+  '/score-apple-touch-icon.png',
+  '/favicon-32.png',
+  '/score-favicon-32.png',
+  '/images/logo-green.png',
+  '/images/logo-white.png',
 ];
 
-// Install event - pre-cache essential assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_URLS);
-    }).then(() => {
-      return self.skipWaiting();
-    })
+    (async () => {
+      const cache = await caches.open(SHELL_CACHE);
+      // En enskild fil som saknas ska inte stoppa installationen.
+      await Promise.all(PRECACHE_URLS.map((url) => cache.add(url).catch(() => {})));
+      // Förladda Score Trackerns byggda filer så att appen fungerar offline direkt.
+      await precacheAssetsFrom('/score');
+      await self.skipWaiting();
+    })()
   );
 });
 
-// Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
-      );
-    }).then(() => {
-      return self.clients.claim();
-    })
+    (async () => {
+      const keep = [SHELL_CACHE, ASSET_CACHE];
+      const names = await caches.keys();
+      await Promise.all(names.filter((n) => !keep.includes(n)).map((n) => caches.delete(n)));
+      await self.clients.claim();
+    })()
   );
 });
 
-// Fetch event - network-first strategy with cache fallback
+/** Läser en sida och cachar de /assets/-filer den laddar (JS och CSS). */
+async function precacheAssetsFrom(pageUrl) {
+  try {
+    const res = await fetch(pageUrl, { cache: 'no-store' });
+    const html = await res.text();
+    const urls = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((m) => m[1]);
+    const cache = await caches.open(ASSET_CACHE);
+    await Promise.all(urls.map((u) => cache.add(u).catch(() => {})));
+  } catch {
+    /* offline vid installation – filerna cachas när de väl laddas */
+  }
+}
+
+function timeout(ms) {
+  return new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms));
+}
+
+async function handleNavigation(request) {
+  const url = new URL(request.url);
+  const isScore = url.pathname === '/score' || url.pathname.startsWith('/score/');
+  const cache = await caches.open(SHELL_CACHE);
+  try {
+    const response = await Promise.race([fetch(request), timeout(NETWORK_TIMEOUT_MS)]);
+    if (response.ok) cache.put(request, response.clone());
+    return response;
+  } catch {
+    return (
+      (await cache.match(request)) ||
+      (await cache.match(isScore ? '/score' : '/')) ||
+      new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
+    );
+  }
+}
+
+async function cacheFirst(request, cacheName, revalidate) {
+  const cache = await caches.open(cacheName);
+  const cached = await cache.match(request);
+  const network = fetch(request)
+    .then((response) => {
+      if (response.ok) cache.put(request, response.clone());
+      return response;
+    })
+    .catch(() => undefined);
+  if (cached) {
+    if (revalidate) network.catch(() => {});
+    return cached;
+  }
+  return (await network) || new Response('', { status: 504 });
+}
+
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
-
-  const url = new URL(event.request.url);
-
-  // Skip API calls and SSE
+  const { request } = event;
+  if (request.method !== 'GET') return;
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith('/api/')) return;
-  if (url.pathname.startsWith('/sse')) return;
 
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        if (response.ok) {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
-        }
-        return response;
-      })
-      .catch(() => {
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          // For navigation requests, return the appropriate cached page
-          if (event.request.mode === 'navigate') {
-            if (url.pathname.startsWith('/lineup')) {
-              return caches.match('/lineup') || caches.match('/');
-            }
-            if (url.pathname.startsWith('/score')) {
-              return caches.match('/score') || caches.match('/');
-            }
-            return caches.match('/');
-          }
-          return new Response('Offline', { status: 503 });
-        });
-      })
-  );
+  if (request.mode === 'navigate') {
+    event.respondWith(handleNavigation(request));
+    return;
+  }
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(cacheFirst(request, ASSET_CACHE, false));
+    return;
+  }
+  if (/\.(png|jpe?g|webp|svg|ico|mp3|wav|ogg|m4a|woff2?|json)$/i.test(url.pathname)) {
+    event.respondWith(cacheFirst(request, SHELL_CACHE, true));
+  }
 });

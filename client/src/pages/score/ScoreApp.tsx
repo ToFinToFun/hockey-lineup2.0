@@ -10,6 +10,8 @@ import MatchPage from "./MatchPage";
 import LineupPage from "./LineupPage";
 import PlayerProfileModal from "./PlayerProfileModal";
 import { trpc } from "@/lib/trpc";
+import { saveLineupSnapshot, loadLineupSnapshot, getPendingMatches, flushPendingMatches } from "@/lib/offlineScore";
+import { toast } from "sonner";
 import { Home, Users, ArrowLeft } from "lucide-react";
 import type { AppState } from "@/lib/lineup";
 import { Link } from "wouter";
@@ -22,7 +24,40 @@ export default function ScoreApp() {
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
 
   // Fetch lineup state via tRPC instead of Firebase
-  const { data: lineupData, isLoading: loading, refetch } = trpc.lineup.getState.useQuery();
+  const { data: liveLineup, isLoading: liveLoading, refetch } = trpc.lineup.getState.useQuery(undefined, {
+    retry: 1,
+    refetchOnWindowFocus: true,
+  });
+
+  // Offline: använd senast hämtade uppställning om servern inte nås.
+  const [snapshot] = useState(() => loadLineupSnapshot<NonNullable<typeof liveLineup>>());
+  useEffect(() => {
+    if (liveLineup) saveLineupSnapshot(liveLineup);
+  }, [liveLineup]);
+  const lineupData = liveLineup ?? snapshot?.data ?? null;
+  const loading = liveLoading && !snapshot;
+
+  // Köade matcher (sparade utan nät) skickas när nätet är tillbaka.
+  const utils = trpc.useUtils();
+  const [pendingCount, setPendingCount] = useState(() => getPendingMatches().length);
+  useEffect(() => {
+    const update = () => setPendingCount(getPendingMatches().length);
+    const flush = async () => {
+      if (!getPendingMatches().length) return;
+      const sent = await flushPendingMatches((p) => utils.client.score.match.save.mutate(p as any));
+      if (sent > 0) toast.success(sent === 1 ? "Köad match skickad" : `${sent} köade matcher skickade`);
+      update();
+    };
+    flush();
+    const interval = setInterval(flush, 60_000);
+    window.addEventListener("online", flush);
+    window.addEventListener("pending-matches-changed", update);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("online", flush);
+      window.removeEventListener("pending-matches-changed", update);
+    };
+  }, [utils]);
   const [refreshing, setRefreshing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
 
@@ -50,7 +85,7 @@ export default function ScoreApp() {
 
   const refresh = useCallback(() => {
     setRefreshing(true);
-    refetch();
+    refetch().finally(() => setRefreshing(false));
   }, [refetch]);
 
   useEffect(() => {
@@ -70,6 +105,12 @@ export default function ScoreApp() {
           boxShadow: isDesktop ? "0 0 80px rgba(0,0,0,0.6)" : "none",
         }}
       >
+        {pendingCount > 0 && (
+          <div className="flex-shrink-0 bg-amber-500/15 border-b border-amber-500/30 text-amber-300 text-xs text-center py-1.5">
+            {pendingCount === 1 ? "1 match väntar" : `${pendingCount} matcher väntar`} på att skickas – sker automatiskt när du har nät
+          </div>
+        )}
+
         {/* Main Content */}
         <div className="flex-1 overflow-hidden">
           {activeTab === "match" && (

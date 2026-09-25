@@ -1,4 +1,10 @@
 @import "tailwindcss";
+@import "@fontsource/oswald/latin-400.css";
+@import "@fontsource/oswald/latin-600.css";
+@import "@fontsource/oswald/latin-700.css";
+@import "@fontsource/inter/latin-400.css";
+@import "@fontsource/inter/latin-500.css";
+@import "@fontsource/inter/latin-600.css";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
@@ -44,7 +50,7 @@
   --color-goal-red: oklch(0.55 0.22 15);
 
   /* IceTime fonts */
-  --font-serif: "DM Serif Display", Georgia, serif;
+  --font-serif: Georgia, serif;
 }
 
 /* ============================================

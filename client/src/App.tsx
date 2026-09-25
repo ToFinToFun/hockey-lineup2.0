@@ -5,21 +5,23 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Hub from "./pages/Hub";
-import Home from "./pages/Home";
-import ShareView from "./pages/ShareView";
+const Home = lazy(() => import("./pages/Home"));
+const ShareView = lazy(() => import("./pages/ShareView"));
 import ScoreApp from "./pages/score/ScoreApp";
-import IceTimeApp from "./pages/icetime/IceTimeApp";
-import StatsApp from "./pages/stats/StatsApp";
-import CardsApp from "./pages/cards/CardsApp";
-import HistoryApp from "./pages/history/HistoryApp";
+const IceTimeApp = lazy(() => import("./pages/icetime/IceTimeApp"));
+const StatsApp = lazy(() => import("./pages/stats/StatsApp"));
+const CardsApp = lazy(() => import("./pages/cards/CardsApp"));
+const HistoryApp = lazy(() => import("./pages/history/HistoryApp"));
 import InviteRedeem from "./pages/InviteRedeem";
 import { RequireRole } from "./components/auth/RequireRole";
-import type { ComponentType } from "react";
+import { lazy, Suspense, type ComponentType } from "react";
 
 /** Skyddar en sida i gränssnittet. Servern kontrollerar alltid behörigheten själv. */
 const guard = (need: "admin" | "lineup", Page: ComponentType<any>) => (props: any) => (
   <RequireRole need={need}>
-    <Page {...props} />
+    <Suspense fallback={<div className="min-h-[100dvh] bg-[#0a0a0a]" />}>
+      <Page {...props} />
+    </Suspense>
   </RequireRole>
 );
 
