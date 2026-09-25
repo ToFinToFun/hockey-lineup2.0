@@ -34,5 +34,5 @@ Prioriterad lista från genomgången 2026-09-24. Bocka av när klart.
 - [x] Anteckningar flyttade till docs/, logotyper krympta, SW cachar icetime-manifest
 
 ## Framtiden
-- [ ] Databasbackup i Coolify (schemalagd, gärna till extern lagring).
+- [x] Databasbackup i Coolify (konfigurerad av Jerry).
 - [ ] TypeScript 7, framer-motion 13 och lucide-react 1.x – tas i designfasen (kräver UI-genomgång).
