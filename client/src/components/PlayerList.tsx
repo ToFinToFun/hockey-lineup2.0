@@ -7,7 +7,6 @@ import { DraggablePlayerCard, TeamColorIndicator } from "./PlayerCard";
 import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
 import { ALL_POSITIONS, POSITION_LABELS, getPositionBadgeColor } from "@/lib/players";
 import { Search, UserPlus, X, ArrowUpDown, ClipboardCheck, CheckSquare, Square, Loader2 } from "lucide-react";
-import { nanoid } from "nanoid";
 import { useForwardColor } from "@/hooks/useForwardColor";
 
 interface PlayerListProps {
@@ -127,7 +126,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
   const handleAddPlayer = () => {
     if (!newName.trim()) return;
     onAddPlayer({
-      id: `custom-${nanoid(6)}`,
+      id: `custom-${crypto.randomUUID().replace(/-/g, "").slice(0, 6)}`,
       name: newName.trim(),
       number: newNumber.trim(),
       position: newPosition,

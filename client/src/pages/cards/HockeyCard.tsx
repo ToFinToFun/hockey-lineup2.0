@@ -397,7 +397,7 @@ export function HockeyCard({
 // ─── Export helper ──────────────────────────────────────────────────────────
 export async function exportCardAsImage(cardElement: HTMLElement, playerName: string): Promise<void> {
   // Use html2canvas for export
-  const { default: html2canvas } = await import("html2canvas");
+  const { default: html2canvas } = await import("html2canvas-pro");
   const canvas = await html2canvas(cardElement, {
     backgroundColor: null,
     scale: 2,

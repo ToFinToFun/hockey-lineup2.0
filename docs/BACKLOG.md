@@ -20,10 +20,10 @@ Prioriterad lista från genomgången 2026-09-24. Bocka av när klart.
 - [x] Koddelning per delapp.
 - [x] README och DEPLOY sammanslagna (DEPLOY.md borttagen).
 - [x] Tester: behörighetstester tillagda; laget.se-testet körs bara när inloggning finns. DB-testerna kräver en MySQL (DATABASE_URL).
-- [ ] `start.sh` sväljer migreringsfel – ska avbryta start vid fel.
+- [x] Migreringsskript som avbryter vid fel och hanterar äldre databaser.
 - [x] Död kod bort: ~45 oanvända UI-komponenter, AI-chatt, oanvända statistiksidor/hooks, 40 oanvända npm-paket.
 - [x] Laget.se läses bara från miljövariabler (secretsDb/crypto borttagna).
-- [ ] Migrering: ta bort tabellerna `users` och `app_secrets` (väntar på att migreringsstatus i produktion är kontrollerad).
+- [x] Tabellerna `users` och `app_secrets` borttagna (migrering 0004).
 - [x] PWA: Score Tracker som egen app med egen ikon (score-icon-*), hela sidan som egen app. Servern sätter rätt manifest/ikon/namn per del.
 - [x] Offline: SW cachar Score Tracker vid installation, 3 s timeout vid dålig täckning, uppställningen sparas lokalt, matcher köas och skickas när nät finns.
 - [x] Typsnitt lokalt (@fontsource) i stället för Google Fonts. Koddelning: huvudfilen 1,1 MB → 520 kB.
@@ -32,3 +32,7 @@ Prioriterad lista från genomgången 2026-09-24. Bocka av när klart.
 - [x] Återställd komplett pnpm-lock (Docker-bygget hade fallerat)
 - [x] Manus-rester, gammal zip, package-lock.json och död ComponentShowcase borttagna
 - [x] Anteckningar flyttade till docs/, logotyper krympta, SW cachar icetime-manifest
+
+## Framtiden
+- [ ] Databasbackup i Coolify (schemalagd, gärna till extern lagring).
+- [ ] TypeScript 7, framer-motion 13 och lucide-react 1.x – tas i designfasen (kräver UI-genomgång).

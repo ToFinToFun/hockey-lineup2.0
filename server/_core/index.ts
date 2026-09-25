@@ -1,5 +1,11 @@
-import "dotenv/config";
+// Lokalt: läs .env om den finns (i Coolify kommer variablerna från miljön).
+try {
+  process.loadEnvFile();
+} catch {
+  /* ingen .env – helt normalt i produktion */
+}
 import express from "express";
+import helmet from "helmet";
 import { createServer } from "http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
@@ -26,6 +32,30 @@ async function startServer() {
   // Bakom Traefik i Coolify: behövs för korrekt klient-IP och säkra cookies.
   app.set("trust proxy", 1);
   const server = createServer(app);
+  // Säkerhetsheaders (endast produktion – Vites dev-server behöver inline-skript).
+  if (process.env.NODE_ENV === "production") {
+    app.use(
+      helmet({
+        contentSecurityPolicy: {
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", "data:", "blob:"],
+            fontSrc: ["'self'", "data:"],
+            connectSrc: ["'self'"],
+            workerSrc: ["'self'"],
+            manifestSrc: ["'self'"],
+            objectSrc: ["'none'"],
+            frameAncestors: ["'none'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"],
+          },
+        },
+        crossOriginEmbedderPolicy: false,
+      })
+    );
+  }
   app.use(express.json({ limit: "2mb" }));
   app.use(express.urlencoded({ limit: "2mb", extended: true }));
 

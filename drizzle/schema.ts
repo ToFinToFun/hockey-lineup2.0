@@ -1,23 +1,5 @@
 import { int, json, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, bigint } from "drizzle-orm/mysql-core";
 
-/**
- * Core user table backing auth flow.
- */
-export const users = mysqlTable("users", {
-  id: int("id").autoincrement().primaryKey(),
-  openId: varchar("openId", { length: 64 }).notNull().unique(),
-  name: text("name"),
-  email: varchar("email", { length: 320 }),
-  loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
-});
-
-export type User = typeof users.$inferSelect;
-export type InsertUser = typeof users.$inferInsert;
-
 // ─── Lineup State ────────────────────────────────────────────────────────────
 // Single-row table holding the current lineup state (replaces Firebase /lineup node)
 
@@ -129,6 +111,12 @@ export const matchResults = mysqlTable("match_results", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   /** Last edit timestamp (null if never edited) */
   editedAt: timestamp("editedAt"),
+  /**
+   * Granskning: matcher sparade utan inloggning är "pending" tills styrelsen
+   * godkänner ("approved") eller avvisar ("rejected"). Bara godkända räknas i statistiken.
+   */
+  reviewStatus: mysqlEnum("reviewStatus", ["pending", "approved", "rejected"]).default("approved").notNull(),
+  reviewedAt: timestamp("reviewedAt"),
   /** Full lineup snapshot at time of match: {lineup, availablePlayers, teamAName, teamBName, teamAConfig, teamBConfig} */
   lineup: json("lineup").$type<{
     lineup?: Record<string, any>;
@@ -142,20 +130,3 @@ export const matchResults = mysqlTable("match_results", {
 
 export type MatchResult = typeof matchResults.$inferSelect;
 export type InsertMatchResult = typeof matchResults.$inferInsert;
-
-// ─── App Secrets ──────────────────────────────────────────────────────────────
-// Encrypted key-value store for sensitive credentials (e.g. laget.se login)
-
-export const appSecrets = mysqlTable("app_secrets", {
-  id: int("id").autoincrement().primaryKey(),
-  /** Unique key identifying the secret, e.g. "laget_se" */
-  key: varchar("key", { length: 100 }).notNull().unique(),
-  /** AES-256-GCM encrypted value (base64-encoded JSON with iv + authTag + ciphertext) */
-  encryptedValue: text("encryptedValue").notNull(),
-  /** Human-readable label for the settings UI */
-  label: varchar("label", { length: 200 }),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type AppSecret = typeof appSecrets.$inferSelect;
-export type InsertAppSecret = typeof appSecrets.$inferInsert;

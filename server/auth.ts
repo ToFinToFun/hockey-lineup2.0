@@ -10,7 +10,7 @@
  * app_config, vilket ogiltigförklarar alla länkar och lineup-sessioner.
  */
 import { SignJWT, jwtVerify } from "jose";
-import { parse as parseCookie, serialize as serializeCookie } from "cookie";
+import { parseCookie, stringifySetCookie } from "cookie";
 import { timingSafeEqual, createHash } from "crypto";
 import type { Request, Response } from "express";
 import { ENV } from "./_core/env";
@@ -68,7 +68,9 @@ export async function createInviteToken(): Promise<{ token: string; expiresAt: n
 function setSessionCookie(res: Response, token: string, maxAgeSeconds: number) {
   res.setHeader(
     "Set-Cookie",
-    serializeCookie(COOKIE_NAME, token, {
+    stringifySetCookie({
+      name: COOKIE_NAME,
+      value: token,
       httpOnly: true,
       secure: ENV.isProduction,
       sameSite: "lax",

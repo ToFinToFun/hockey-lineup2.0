@@ -4,7 +4,7 @@ import { authRouter } from "./routers/auth";
 import { fetchAttendance, updateAttendance, type AttendingStatus } from "./lagetSe";
 import { scoreRouter } from "./routers/score";
 import { scoreStatsRouter } from "./routers/scoreStats";
-import { getAllMatchResults, getConfigValue, setConfigValue } from "./scoreDb";
+import { getAllMatchResults, getConfigValue, setConfigValue, getMatchCacheVersion } from "./scoreDb";
 import { calculatePIR } from "./pir";
 import {
   getLineupState,
@@ -18,6 +18,8 @@ import {
 } from "./lineupDb";
 import { sseManager } from "./sse";
 import { z } from "zod";
+
+let pirCache: { version: number; result: ReturnType<typeof calculatePIR> } | null = null;
 
 export const appRouter = router({
   system: systemRouter,
@@ -336,8 +338,12 @@ export const appRouter = router({
   pir: router({
     /** Get PIR ratings for all players (enhanced with trend, confidence, etc.) */
     getRatings: lineupProcedure.query(async () => {
-      const matches = await getAllMatchResults();
-      return calculatePIR(matches);
+      // Räknas bara om när matcherna har ändrats.
+      const version = getMatchCacheVersion();
+      if (!pirCache || pirCache.version !== version) {
+        pirCache = { version, result: calculatePIR(await getAllMatchResults()) };
+      }
+      return pirCache.result;
     }),
   }),
 

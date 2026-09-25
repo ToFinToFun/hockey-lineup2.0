@@ -6,6 +6,7 @@
 
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
 import { AccessPanel } from "@/components/auth/AccessPanel";
 import { AppVersion } from "@/components/AppVersion";
 import { BarChart3, Users, ChevronRight, Trophy, ClipboardList, Timer, TrendingUp, Sparkles, History } from "lucide-react";
@@ -19,6 +20,8 @@ const BG_URL = "/images/background.jpg";
 
 export default function Hub() {
   const { isAdmin, canEditLineup } = useAuth();
+  const pending = trpc.score.match.pendingCount.useQuery(undefined, { enabled: isAdmin });
+  const pendingCount = pending.data?.count ?? 0;
   return (
     <div className="min-h-[100dvh] bg-[#0a0a0a] text-white relative overflow-hidden">
       {/* Background image with overlay */}
@@ -140,7 +143,14 @@ export default function Hub() {
                   <History size={24} className="text-orange-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-lg sm:text-xl font-bold tracking-tight">Matchhistorik</h2>
+                  <h2 className="text-lg sm:text-xl font-bold tracking-tight flex items-center gap-2">
+                    Matchhistorik
+                    {pendingCount > 0 && (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">
+                        {pendingCount} att granska
+                      </span>
+                    )}
+                  </h2>
                   <p className="text-white/40 text-xs sm:text-sm mt-0.5">
                     Alla matcher, resultat och matchrapporter
                   </p>

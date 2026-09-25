@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 /**
  * Score Tracker tRPC router.
  * Ported from stalstadens-score-tracker-web/server/routers.ts
@@ -9,6 +10,9 @@ import { publicProcedure, adminProcedure, router } from "../_core/trpc";
 import {
   insertMatchResult,
   getAllMatchResults,
+  getAllMatchesIncludingUnreviewed,
+  countPendingMatches,
+  setMatchReviewStatus,
   getMatchResultById,
   updateMatchResult,
   deleteMatchResult,
@@ -58,6 +62,19 @@ const dateRangeInput = z
 
 // ─── Score Router ───────────────────────────────────────────────────
 
+// Skydd mot massinskick från den öppna score trackern: max 20 matcher per IP och timme.
+const saveAttempts = new Map<string, { count: number; resetAt: number }>();
+function saveRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = saveAttempts.get(ip);
+  if (!entry || entry.resetAt < now) {
+    saveAttempts.set(ip, { count: 1, resetAt: now + 60 * 60 * 1000 });
+    return false;
+  }
+  entry.count++;
+  return entry.count > 20;
+}
+
 export const scoreRouter = router({
   /** App configuration (season/playoff dates) */
   config: router({
@@ -99,18 +116,36 @@ export const scoreRouter = router({
     save: publicProcedure
       .input(
         z.object({
-          name: z.string(),
-          teamWhiteScore: z.number(),
-          teamGreenScore: z.number(),
-          goalHistory: z.any().optional(),
-          matchStartTime: z.string().optional(),
-          matchEndTime: z.string().optional(),
-          createdAt: z.string().optional(),
+          name: z.string().min(1).max(255),
+          teamWhiteScore: z.number().int().min(0).max(99),
+          teamGreenScore: z.number().int().min(0).max(99),
+          goalHistory: z
+            .array(
+              z.object({
+                team: z.string().max(20),
+                scorer: z.string().max(100).optional().default(""),
+                assist: z.string().max(100).optional(),
+                other: z.string().max(100).optional(),
+                sponsor: z.string().max(100).optional(),
+                timestamp: z.string().max(40),
+              })
+            )
+            .max(200)
+            .optional(),
+          matchStartTime: z.string().max(40).optional(),
+          matchEndTime: z.string().max(40).optional(),
+          createdAt: z.string().max(40).optional(),
           lineup: z.any().optional(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        if (saveRateLimited(ctx.req.ip ?? "okänd")) {
+          throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "För många sparade matcher, vänta en stund" });
+        }
         await insertMatchResult({
+          // Styrelsens matcher godkänns direkt, övriga väntar på granskning.
+          reviewStatus: ctx.session?.role === "admin" ? "approved" : "pending",
+          reviewedAt: ctx.session?.role === "admin" ? new Date() : null,
           name: input.name,
           teamWhiteScore: input.teamWhiteScore,
           teamGreenScore: input.teamGreenScore,
@@ -124,8 +159,26 @@ export const scoreRouter = router({
       }),
 
     list: adminProcedure.query(async () => {
-      return getAllMatchResults();
+      return getAllMatchesIncludingUnreviewed();
     }),
+
+    /** Antal matcher som väntar på granskning. */
+    pendingCount: adminProcedure.query(async () => {
+      return { count: await countPendingMatches() };
+    }),
+
+    /** Godkänn eller avvisa matcher. Bara godkända räknas i statistiken. */
+    review: adminProcedure
+      .input(
+        z.object({
+          ids: z.array(z.number().int()).min(1).max(500),
+          status: z.enum(["approved", "rejected", "pending"]),
+        })
+      )
+      .mutation(async ({ input }) => {
+        await setMatchReviewStatus(input.ids, input.status);
+        return { success: true };
+      }),
 
     detail: adminProcedure
       .input(z.object({ id: z.number() }))
@@ -151,8 +204,6 @@ export const scoreRouter = router({
         const updateData: Record<string, any> = { ...data, editedAt: new Date() };
         if (matchEndTime) updateData.matchEndTime = new Date(matchEndTime);
         if (createdAt) updateData.createdAt = new Date(createdAt);
-        console.log('[score.match.update] id:', id, 'matchEndTime input:', matchEndTime, 'createdAt input:', createdAt);
-        console.log('[score.match.update] updateData keys:', Object.keys(updateData), 'matchEndTime value:', updateData.matchEndTime, 'createdAt value:', updateData.createdAt);
         await updateMatchResult(id, updateData);
         return { success: true };
       }),

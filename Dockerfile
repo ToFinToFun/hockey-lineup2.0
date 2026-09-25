@@ -1,46 +1,36 @@
-FROM node:22-slim AS base
-RUN corepack enable && corepack prepare pnpm@10.4.1 --activate
+# ── Bygg ────────────────────────────────────────────────────────────────────
+FROM node:22-slim AS build
+RUN corepack enable
 WORKDIR /app
-
-# Install dependencies
-FROM base AS deps
 COPY package.json pnpm-lock.yaml ./
-COPY patches/ ./patches/
-RUN pnpm install --frozen-lockfile --prod=false
-
-# Build
-FROM deps AS build
+RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
 
-# Production image
+# ── Produktionsberoenden (utan dev-verktyg) ─────────────────────────────────
+FROM node:22-slim AS prod-deps
+RUN corepack enable
+WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile --prod
+
+# ── Körbar image ────────────────────────────────────────────────────────────
 FROM node:22-slim AS production
+ENV NODE_ENV=production
 WORKDIR /app
 
-# Copy built artifacts
+COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/drizzle ./drizzle
-COPY --from=build /app/package.json ./
-COPY --from=build /app/pnpm-lock.yaml ./
-COPY --from=build /app/drizzle.config.ts ./
-COPY --from=build /app/start.sh ./
-
-# Install only production dependencies + drizzle-kit for migrations
-RUN corepack enable && corepack prepare pnpm@10.4.1 --activate
-COPY --from=deps /app/patches ./patches
-RUN pnpm install --frozen-lockfile --prod
-RUN pnpm add drizzle-kit
-
-# Make startup script executable
+COPY package.json start.sh ./
+COPY scripts/migrate.mjs ./scripts/migrate.mjs
 RUN chmod +x start.sh
 
-# Health check for Coolify
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+# Kör inte som root.
+USER node
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD node -e "fetch('http://localhost:' + (process.env.PORT || 3000) + '/api/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
 
-# Port is configurable via PORT env var (default 3000)
 EXPOSE 3000
-ENV NODE_ENV=production
-
-# Start with migration then server
 CMD ["./start.sh"]

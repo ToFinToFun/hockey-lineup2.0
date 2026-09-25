@@ -1,0 +1,40 @@
+name: CI
+
+# Kör typkontroll, tester (mot riktig MySQL) och bygge vid varje push.
+on:
+  push:
+    branches: [main, production]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: lineup
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DATABASE_URL: mysql://root:root@127.0.0.1:3306/lineup
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Typkontroll
+        run: pnpm check
+      - name: Databasmigrering
+        run: node scripts/migrate.mjs
+      - name: Tester
+        run: pnpm test
+      - name: Bygge
+        run: pnpm build
+      - name: Säkerhetsgranskning av beroenden
+        run: pnpm audit --prod --audit-level high

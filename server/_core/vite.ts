@@ -1,13 +1,14 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import { type Server } from "http";
-import { nanoid } from "nanoid";
 import path from "path";
-import { createServer as createViteServer } from "vite";
-import viteConfig from "../../vite.config";
 import { applyAppHead } from "./html";
 
+/** Endast utveckling. Vite och dess konfiguration laddas dynamiskt så att de
+ *  inte följer med i produktionsbygget (vite är ett dev-beroende). */
 export async function setupVite(app: Express, server: Server) {
+  const { createServer: createViteServer } = await import("vite");
+  const { default: viteConfig } = await import("../../vite.config");
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
@@ -22,7 +23,7 @@ export async function setupVite(app: Express, server: Server) {
   });
 
   app.use(vite.middlewares);
-  app.use("*", async (req, res, next) => {
+  app.use(async (req, res, next) => {
     const url = req.originalUrl;
 
     try {
@@ -37,7 +38,7 @@ export async function setupVite(app: Express, server: Server) {
       let template = await fs.promises.readFile(clientTemplate, "utf-8");
       template = template.replace(
         `src="/src/main.tsx"`,
-        `src="/src/main.tsx?v=${nanoid()}"`
+        `src="/src/main.tsx?v=${Date.now()}"`
       );
       const page = applyAppHead(await vite.transformIndexHtml(url, template), url);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
@@ -78,7 +79,7 @@ export function serveStatic(app: Express) {
 
   // Alla sidor: index.html med rätt manifest/ikon för den del som öppnas.
   let indexHtml: string | null = null;
-  app.use("*", (req, res) => {
+  app.use((req, res) => {
     indexHtml ??= fs.readFileSync(path.resolve(distPath, "index.html"), "utf-8");
     res
       .status(200)

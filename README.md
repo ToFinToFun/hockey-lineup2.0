@@ -142,10 +142,8 @@ traefik.http.middlewares.lineup-buffering.buffering.maxResponseBodyBytes=0
 | `saved_lineups` | Sparade uppställningar |
 | `match_results` | Matchresultat och statistik |
 | `app_config` | Appkonfiguration |
-| `app_secrets` | Används inte längre (tas bort i kommande migrering) |
-| `users` | Används inte längre (tas bort i kommande migrering) |
 
-Migrering sköts av Drizzle ORM. Vid varje deploy körs `drizzle-kit migrate` automatiskt (idempotent — säkert att köra flera gånger).
+Ändra schemat i `drizzle/schema.ts` och kör `pnpm db:generate` för att skapa en ny migrering. Vid varje uppstart kör `start.sh` → `scripts/migrate.mjs`, som applicerar nya migreringar. Misslyckas migreringen startar inte appen och Coolify behåller den tidigare versionen.
 
 ---
 
@@ -177,5 +175,6 @@ drizzle/             ← Databasschema och migrationer
 | `pnpm start` | Starta produktionsserver |
 | `pnpm check` | TypeScript-typkontroll |
 | `pnpm test` | Kör tester (Vitest) |
-| `pnpm db:push` | Generera och kör databasmigrering |
+| `pnpm db:generate` | Skapa migrering från ändrat schema |
+| `pnpm db:migrate` | Kör migreringar mot `DATABASE_URL` |
 | `pnpm assets:audit` | Kontrollera att alla bilder/ljud finns lokalt |

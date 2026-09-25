@@ -59,6 +59,16 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
   const [resultFilter, setResultFilter] = useState<ResultFilter>("all");
   const [monthFilter, setMonthFilter] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
+  const [onlyPending, setOnlyPending] = useState(false);
+
+  // Granskning: matcher från score trackern utan inloggning väntar på styrelsen.
+  const reviewMutation = trpc.score.match.review.useMutation({
+    onSuccess: () => refetch(),
+  });
+  const pendingTotal = useMemo(
+    () => (matches ?? []).filter(m => m.reviewStatus === "pending").length,
+    [matches]
+  );
 
   // Multi-select state
   const [selectionMode, setSelectionMode] = useState(false);
@@ -139,6 +149,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
   const filteredMatches = useMemo(() => {
     if (!matches) return [];
     return matches.filter(match => {
+      if (onlyPending && match.reviewStatus !== "pending") return false;
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         const nameMatch = match.name.toLowerCase().includes(q);
@@ -161,7 +172,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
       }
       return true;
     });
-  }, [matches, searchQuery, resultFilter, monthFilter]);
+  }, [matches, searchQuery, resultFilter, monthFilter, onlyPending]);
 
   const hasActiveFilters = resultFilter !== "all" || monthFilter !== "all" || searchQuery !== "";
 
@@ -517,6 +528,31 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
 
       {/* Match List */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        {pendingTotal > 0 && (
+          <div className="flex items-center justify-between gap-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl px-4 py-3">
+            <span className="text-amber-300 text-sm">
+              {pendingTotal === 1 ? "1 match väntar" : `${pendingTotal} matcher väntar`} på granskning
+            </span>
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={() => setOnlyPending(v => !v)}
+                className="text-xs px-3 py-1.5 rounded-full border border-amber-500/40 text-amber-200"
+              >
+                {onlyPending ? "Visa alla" : "Visa"}
+              </button>
+              <button
+                onClick={() => {
+                  const ids = (matches ?? []).filter(m => m.reviewStatus === "pending").map(m => m.id);
+                  if (confirm(`Godkänna alla ${ids.length} väntande matcher?`)) reviewMutation.mutate({ ids, status: "approved" });
+                }}
+                className="text-xs px-3 py-1.5 rounded-full bg-[#22C55E]/20 border border-[#22C55E]/40 text-[#22C55E]"
+              >
+                Godkänn alla
+              </button>
+            </div>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
             <div className="animate-spin w-8 h-8 border-2 border-[#0a7ea4] border-t-transparent rounded-full" />
@@ -555,8 +591,10 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                 key={match.id}
                 onClick={() => selectionMode ? toggleSelection(match.id) : setSelectedMatch(match.id)}
                 className={`w-full bg-[#2a2a2a] rounded-2xl p-4 border text-left active:opacity-80 transition-all ${
-                  isSelected ? 'border-[#0a7ea4] bg-[#0a7ea4]/10' : 'border-[#3a3a3a]'
-                }`}
+                  isSelected ? 'border-[#0a7ea4] bg-[#0a7ea4]/10'
+                    : match.reviewStatus === "pending" ? 'border-amber-500/50'
+                    : 'border-[#3a3a3a]'
+                } ${match.reviewStatus === "rejected" ? 'opacity-50' : ''}`}
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
@@ -570,6 +608,12 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                       </span>
                     )}
                     <span className="text-[#9BA1A6] text-xs font-medium">{match.name}</span>
+                    {match.reviewStatus === "pending" && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-medium">VÄNTAR</span>
+                    )}
+                    {match.reviewStatus === "rejected" && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#EF4444]/20 text-[#EF4444] font-medium">AVVISAD</span>
+                    )}
                   </div>
                   {isDraw ? (
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#3a3a3a] text-[#9BA1A6] font-medium">OAVGJORT</span>
@@ -957,6 +1001,42 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
               >
                 <Share2 size={14} /> Exportera matchrapport
               </button>
+
+              {/* Granskning */}
+              {selectedMatchData.reviewStatus !== "approved" ? (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+                  <p className="text-amber-300 text-xs text-center">
+                    {selectedMatchData.reviewStatus === "pending"
+                      ? "Sparad utan inloggning – räknas inte i statistiken förrän den godkänts."
+                      : "Avvisad – räknas inte i statistiken."}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => reviewMutation.mutate({ ids: [selectedMatchData.id], status: "approved" })}
+                      disabled={reviewMutation.isPending}
+                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#22C55E]/20 border border-[#22C55E]/40 text-[#22C55E] disabled:opacity-50"
+                    >
+                      Godkänn
+                    </button>
+                    {selectedMatchData.reviewStatus === "pending" && (
+                      <button
+                        onClick={() => reviewMutation.mutate({ ids: [selectedMatchData.id], status: "rejected" })}
+                        disabled={reviewMutation.isPending}
+                        className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#EF4444]/15 border border-[#EF4444]/40 text-[#EF4444] disabled:opacity-50"
+                      >
+                        Avvisa
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { if (confirm("Avvisa matchen? Den tas bort ur statistiken men finns kvar här.")) reviewMutation.mutate({ ids: [selectedMatchData.id], status: "rejected" }); }}
+                  className="w-full text-[#687076] text-xs py-1 hover:text-[#EF4444]"
+                >
+                  Avvisa från statistiken
+                </button>
+              )}
 
               {/* Edit & Delete Buttons */}
               <div className="flex gap-2">

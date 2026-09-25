@@ -9,16 +9,61 @@ import { matchResults, appConfig, type InsertMatchResult } from "../drizzle/sche
 
 // ─── Match Results ─────────────────────────────────────────────────
 
+// Alla matcher läses ofta (statistik, PIR) men ändras sällan. De hålls därför
+// i minnet och laddas om först när något skrivs. Appen kör som en enda process.
+type MatchRow = typeof matchResults.$inferSelect;
+let matchCache: MatchRow[] | null = null;
+let matchCacheVersion = 0;
+
+/** Anropas efter varje ändring av matcher. */
+function invalidateMatches() {
+  matchCache = null;
+  matchCacheVersion++;
+}
+
+/** Ökar vid varje ändring – används för att cacha beräkningar (t.ex. PIR). */
+export function getMatchCacheVersion() {
+  return matchCacheVersion;
+}
+
+async function loadAllMatches(): Promise<MatchRow[]> {
+  if (matchCache) return matchCache;
+  const db = await getDb();
+  if (!db) return [];
+  matchCache = await db.select().from(matchResults).orderBy(desc(matchResults.id));
+  return matchCache;
+}
+
 export async function insertMatchResult(match: InsertMatchResult) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.insert(matchResults).values(match);
+  invalidateMatches();
 }
 
+/** Godkända matcher – det enda som räknas i statistik och PIR. */
 export async function getAllMatchResults() {
+  return (await loadAllMatches()).filter((m) => m.reviewStatus === "approved");
+}
+
+/** Alla matcher inklusive ej granskade och avvisade (för styrelsens historik). */
+export async function getAllMatchesIncludingUnreviewed() {
+  return loadAllMatches();
+}
+
+export async function countPendingMatches() {
+  return (await loadAllMatches()).filter((m) => m.reviewStatus === "pending").length;
+}
+
+export async function setMatchReviewStatus(ids: number[], status: "approved" | "rejected" | "pending") {
   const db = await getDb();
-  if (!db) return [];
-  return db.select().from(matchResults).orderBy(desc(matchResults.id));
+  if (!db) throw new Error("Database not available");
+  if (ids.length === 0) return;
+  await db
+    .update(matchResults)
+    .set({ reviewStatus: status, reviewedAt: status === "pending" ? null : new Date() })
+    .where(inArray(matchResults.id, ids));
+  invalidateMatches();
 }
 
 export async function getMatchResultById(id: number) {
@@ -32,12 +77,14 @@ export async function updateMatchResult(id: number, data: Partial<InsertMatchRes
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(matchResults).set(data).where(eq(matchResults.id, id));
+  invalidateMatches();
 }
 
 export async function deleteMatchResult(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(matchResults).where(eq(matchResults.id, id));
+  invalidateMatches();
 }
 
 export async function deleteMultipleMatchResults(ids: number[]) {
@@ -45,6 +92,7 @@ export async function deleteMultipleMatchResults(ids: number[]) {
   if (!db) throw new Error("Database not available");
   if (ids.length === 0) return;
   await db.delete(matchResults).where(inArray(matchResults.id, ids));
+  invalidateMatches();
 }
 
 // ─── App Config ───────────────────────────────────────────────────
