@@ -7,7 +7,7 @@
 
 import { useMemo } from "react";
 import { IMAGES } from "@/lib/scoreConstants";
-import { RefreshCw, Download, Copy } from "lucide-react";
+import { RefreshCw, Copy } from "lucide-react";
 import { toast } from "sonner";
 import PullToRefresh from "@/components/score/PullToRefresh";
 import { type AppState, type Slot, createTeamSlots, groupSlots, MAX_TEAM_CONFIG } from "@/lib/lineup";
@@ -285,27 +285,6 @@ export default function LineupPage({ lineupState, loading, lastSyncTime, refresh
             >
               <Copy size={12} />
               Kopiera
-            </button>
-            <button
-              onClick={() => {
-                const text = generateLineupText(lineupState, teamASlots, teamBSlots, teamALineup, teamBLineup);
-                const blob = new Blob(["\uFEFF" + text], { type: "text/plain;charset=utf-8" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                const now = new Date();
-                const dateStr = now.toLocaleDateString("sv-SE").replace(/\//g, "-");
-                const teamA = lineupState.teamAName.toLowerCase().replace(/[^a-zåäö0-9]/gi, "");
-                const teamB = lineupState.teamBName.toLowerCase().replace(/[^a-zåäö0-9]/gi, "");
-                a.href = url;
-                a.download = `${teamA}-vs-${teamB}-${dateStr}.txt`;
-                a.click();
-                URL.revokeObjectURL(url);
-                toast.success("Laguppställning exporterad!", { description: "Textfil sparad" });
-              }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#22c55e]/15 border border-[#22c55e]/30 text-[#22c55e] hover:bg-[#22c55e]/25 transition-colors text-[10px] font-medium"
-            >
-              <Download size={12} />
-              Exportera
             </button>
             <button
               onClick={onRefresh}

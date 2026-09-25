@@ -316,7 +316,7 @@ export default function IceTimeCalc() {
               initial={{ opacity: 0, x: -30 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="rounded-2xl p-6 sm:p-8 sticky top-16 z-10 bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a]"
+              className="rounded-2xl p-6 sm:p-8 lg:sticky lg:top-16 z-10 bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a]"
             >
               <h2
                 className="text-xl font-bold tracking-tight mb-6"
@@ -379,8 +379,8 @@ export default function IceTimeCalc() {
                     variant="outline"
                     size="icon"
                     className="h-10 w-10 rounded-xl shrink-0 border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white"
-                    onClick={() => setMatchTime((t) => Math.max(50, t - 5))}
-                    disabled={matchTime <= 50}
+                    onClick={() => setMatchTime((t) => Math.max(45, t - 5))}
+                    disabled={matchTime <= 45}
                   >
                     -
                   </Button>
@@ -400,13 +400,13 @@ export default function IceTimeCalc() {
                 <Slider
                   value={[matchTime]}
                   onValueChange={([v]) => setMatchTime(v)}
-                  min={50}
+                  min={45}
                   max={120}
                   step={5}
                   className="mt-2"
                 />
                 <div className="flex justify-between text-xs text-white/30 mt-1.5">
-                  <span>50 min</span>
+                  <span>45 min</span>
                   <span>120 min</span>
                 </div>
               </div>

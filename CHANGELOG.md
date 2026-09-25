@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.1.1 – 2026-09-25
+
+- Score Tracker: knappen "Exportera" under Uppställning borttagen (samma innehåll som "Kopiera").
+- IceTime: inställningspanelen ligger inte längre kvar över innehållet när man scrollar på mobilen (fast bara på större skärmar).
+- IceTime: matchtiden kan nu sättas ned till 45 minuter (tidigare 50).
+
 ## 2.1.0 – 2026-09-25
 
 **Granskning av matcher**
