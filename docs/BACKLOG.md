@@ -18,10 +18,13 @@ Prioriterad lista från genomgången 2026-09-24. Bocka av när klart.
 
 ## 4. Optimering och städning
 - [ ] Koddela per delapp (lineup/score/stats/cards/history/icetime). JS-bundlen är 1,1 MB.
-- [ ] Slå ihop README.md och DEPLOY.md (säger emot varandra om miljövariabler; DEPLOY nämner TiDB och LAGET_SE_* som inte längre behövs).
+- [x] README och DEPLOY sammanslagna (DEPLOY.md borttagen).
 - [x] Tester: behörighetstester tillagda; laget.se-testet körs bara när inloggning finns. DB-testerna kräver en MySQL (DATABASE_URL).
 - [ ] `start.sh` sväljer migreringsfel – ska avbryta start vid fel.
-- [ ] Gå igenom oanvända komponenter och beroenden efter sammanslagningen av projekten.
+- [x] Död kod bort: ~45 oanvända UI-komponenter, AI-chatt, oanvända statistiksidor/hooks, 40 oanvända npm-paket.
+- [x] Laget.se läses bara från miljövariabler (secretsDb/crypto borttagna).
+- [ ] Migrering: ta bort tabellerna `users` och `app_secrets` (väntar på att migreringsstatus i produktion är kontrollerad).
+- [ ] PWA: separat installerbar Score Tracker med egen ikon, offline-först (spelare cachade, matcher köas och synkas när nät finns). Hela sidan som egen PWA för styrelsen.
 
 ## Klart
 - [x] Återställd komplett pnpm-lock (Docker-bygget hade fallerat)

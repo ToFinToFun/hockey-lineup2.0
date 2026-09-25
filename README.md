@@ -1,6 +1,6 @@
-# Stålstadens Lineup
+# Stålstadens App
 
-Formations-verktyg för Stålstadens Ishockey. Drag-and-drop-gränssnitt för att bygga laguppställningar med realtidssynkronisering, laget.se-integration och matchstatistik.
+Webbapp för Stålstadens SF på https://app.stalstadens.se: score tracker, laguppställningar med realtidssynk och laget.se-integration, matchhistorik, statistik, hockeykort och istidskalkylator.
 
 ---
 
@@ -113,6 +113,10 @@ git merge main
 git push origin production
 ```
 
+### Hälsokontroll
+
+`GET /api/health` svarar `{"status":"ok"}`. Dockerfilen använder den som HEALTHCHECK.
+
 ### SSE och Traefik
 
 Appen använder Server-Sent Events för realtidssynk. Coolify/Traefik respekterar `X-Accel-Buffering: no`-headern som appen skickar, så SSE fungerar utan extra konfiguration.
@@ -134,8 +138,8 @@ traefik.http.middlewares.lineup-buffering.buffering.maxResponseBodyBytes=0
 | `saved_lineups` | Sparade uppställningar |
 | `match_results` | Matchresultat och statistik |
 | `app_config` | Appkonfiguration |
-| `app_secrets` | Krypterade inloggningsuppgifter (laget.se) |
-| `users` | Användarkonton |
+| `app_secrets` | Används inte längre (tas bort i kommande migrering) |
+| `users` | Används inte längre (tas bort i kommande migrering) |
 
 Migrering sköts av Drizzle ORM. Vid varje deploy körs `drizzle-kit migrate` automatiskt (idempotent — säkert att köra flera gånger).
 
@@ -153,7 +157,7 @@ server/              ← Express + tRPC backend
   lineupDb.ts        ← Databasoperationer för uppställningar
   lagetSe.ts         ← Laget.se-integration (scraping)
   sse.ts             ← SSE-hantering för realtidssynk
-  crypto.ts          ← Kryptering av credentials
+  auth.ts            ← Styrelseinloggning, sessioner och tillfälliga länkar
 drizzle/             ← Databasschema och migrationer
   schema.ts          ← Drizzle-schema
 ```
@@ -170,3 +174,4 @@ drizzle/             ← Databasschema och migrationer
 | `pnpm check` | TypeScript-typkontroll |
 | `pnpm test` | Kör tester (Vitest) |
 | `pnpm db:push` | Generera och kör databasmigrering |
+| `pnpm assets:audit` | Kontrollera att alla bilder/ljud finns lokalt |

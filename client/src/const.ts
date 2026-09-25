@@ -1,1 +1,0 @@
-// No auth - public app
