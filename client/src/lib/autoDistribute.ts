@@ -4,7 +4,8 @@
 // 1. Favoritposition – MV→MV, B→B, C→C, F→F, IB→resten
 // 2. mostPlayedPosition – Om en slot saknar spelare, leta efter spelare
 //    vars mostPlayedPosition matchar (t.ex. F med mostPlayed=C → C-slot)
-// 3. Lagfärg – white→team-a, green→team-b (alla med lagfärg låses)
+// 3. Lagfärg – white→team-a, green→team-b. C och målvakter låses; övriga
+//    med lagfärg kan flyttas om antalet annars blir ojämnt
 // 4. Kapten/Assisterande – C/A prioriteras till första kedjan/backparet
 // 5. Jämna lag – lika många spelare per lag inkl. målvakter (±1)
 // 6. Position – backar/centrar/forwards fördelas jämnt mellan lagen
@@ -115,19 +116,9 @@ export function autoDistribute(
 
   // In shuffle mode: only C/A captains are locked to their team color
   // In auto mode: all players with team color are locked
-  const isGkLocked = (t: TaggedPlayer, color: "white" | "green") => {
-    if (doShuffle) {
-      return t.player.teamColor === color && isLockedCaptain(t.player);
-    }
-    return t.player.teamColor === color;
-  };
-
-  const isGkNeutral = (t: TaggedPlayer) => {
-    if (doShuffle) {
-      return !isLockedCaptain(t.player);
-    }
-    return !t.player.teamColor;
-  };
+  // Målvakter med lagfärg följer alltid sin färg – även i slumpa-läge.
+  const isGkLocked = (t: TaggedPlayer, color: "white" | "green") => t.player.teamColor === color;
+  const isGkNeutral = (t: TaggedPlayer) => !t.player.teamColor;
 
   // Build team goalkeeper lists — prioritize pure GK over versatile
   // Step 2a: Place locked goalkeepers first (prefer pure over versatile)
@@ -194,8 +185,14 @@ export function autoDistribute(
   // Distribute reserve GKs: add as 2nd goalkeeper to teams that only have 1
   const reserveOrder = doShuffle ? shuffleArray(gkToReserve) : [...gkToReserve];
   for (const gk of reserveOrder) {
-    // Prefer the team with fewer goalkeepers
-    if (teamAGoalkeepers.length <= teamBGoalkeepers.length && teamAGoalkeepers.length < 2) {
+    // Lagfärg först, annars laget med minst målvakter
+    if (gk.player.teamColor === "white" && teamAGoalkeepers.length < 2) {
+      teamAGoalkeepers.push(gk);
+      allAssignedGk.add(gk.player.id);
+    } else if (gk.player.teamColor === "green" && teamBGoalkeepers.length < 2) {
+      teamBGoalkeepers.push(gk);
+      allAssignedGk.add(gk.player.id);
+    } else if (teamAGoalkeepers.length <= teamBGoalkeepers.length && teamAGoalkeepers.length < 2) {
       teamAGoalkeepers.push(gk);
       allAssignedGk.add(gk.player.id);
     } else if (teamBGoalkeepers.length < 2) {
@@ -206,34 +203,73 @@ export function autoDistribute(
   }
 
   // ── Step 3: Fördela utespelare mellan lagen ──
-  // Prioritet (enligt styrelsen):
-  //   1. Lagtillhörighet – spelare med lagfärg låses till sitt lag.
-  //   2. Jämnt antal spelare – lagens totala storlek (inkl. målvakter) skiljer max 1.
-  //   3. Position – varje lag får så lika många backar/centrar/forwards som möjligt.
-  //   4. PIR – byten inom samma position tills lagens chans är så nära 50/50 som möjligt.
+  // Ordning (enligt styrelsen):
+  //   1. Lagfärg – spelare med lagfärg placeras i sitt lag. Lagkapten (C) med
+  //      lagfärg är alltid låst. (Målvakter med lagfärg hanteras ovan.)
+  //   2. Jämnt antal – lagens totala storlek (inkl. målvakter) ska skilja max 1.
+  //      Spelare utan lagfärg fyller först på det mindre laget; räcker de inte
+  //      flyttas spelare med lagfärg (aldrig C) från det större laget.
+  //   3. Position – resten fördelas så att backar/centrar/forwards blir jämnt.
+  //   4. PIR – byten inom samma position tills lagen är så jämna som möjligt.
   const allOutfield = [...outfield, ...gkToOutfield];
+  const isCaptainC = (t: TaggedPlayer) => t.player.captainRole === "C";
 
-  // Shuffle-läge: bara C/A med lagfärg är låsta. Auto-läge: alla med lagfärg.
-  const isOfLocked = (t: TaggedPlayer, color: "white" | "green") =>
-    doShuffle ? t.player.teamColor === color && isLockedCaptain(t.player) : t.player.teamColor === color;
+  // I slumpa-läge är bara C låst; i auto-läge placeras alla med lagfärg i sitt lag först.
+  const startsIn = (t: TaggedPlayer, color: "white" | "green") =>
+    t.player.teamColor === color && (!doShuffle || isCaptainC(t));
 
-  const teamAOutfield: TaggedPlayer[] = allOutfield.filter(t => isOfLocked(t, "white"));
-  const teamBOutfield: TaggedPlayer[] = allOutfield.filter(t => isOfLocked(t, "green"));
-  const lockedIds = new Set([...teamAOutfield, ...teamBOutfield].map(t => t.player.id));
-  const neutrals = allOutfield.filter(t => !lockedIds.has(t.player.id));
+  const teamAOutfield: TaggedPlayer[] = allOutfield.filter(t => startsIn(t, "white"));
+  const teamBOutfield: TaggedPlayer[] = allOutfield.filter(t => startsIn(t, "green"));
+  const lockedIds = new Set([...teamAOutfield, ...teamBOutfield].filter(isCaptainC).map(t => t.player.id));
+  const coloredIds = new Set([...teamAOutfield, ...teamBOutfield].map(t => t.player.id));
+  const neutrals = allOutfield.filter(t => !coloredIds.has(t.player.id));
 
   const outfieldPir = (t: TaggedPlayer) => effectivePir(t.player, false);
-  const hasPirData = usePirForBalance && neutrals.some(t => hasPirHistory(t.player) || (t.player.pirAdjustment ?? 0) !== 0);
+  const hasPirData = usePirForBalance && allOutfield.some(t => hasPirHistory(t.player) || (t.player.pirAdjustment ?? 0) !== 0);
+  const countOf = (team: TaggedPlayer[], pos: PosType) => team.filter(t => t.posType === pos).length;
+  const sumOf = (team: TaggedPlayer[]) => team.reduce((s, t) => s + outfieldPir(t), 0);
+  const avgOfTeam = (team: TaggedPlayer[]) => team.length ? sumOf(team) / team.length : 1000;
 
-  // Mål för antal utespelare i lag A så att totalen (inkl. målvakter) blir jämn.
   const totalPlayers = teamAGoalkeepers.length + teamBGoalkeepers.length + allOutfield.length;
+  const totalA = () => teamAGoalkeepers.length + teamAOutfield.length;
+  const totalB = () => teamBGoalkeepers.length + teamBOutfield.length;
+
+  // 2. Räcker inte spelarna utan lagfärg för att jämna ut? Flytta färgade (ej C).
+  const surplus = () => {
+    const diff = totalA() - totalB();
+    const fixable = neutrals.length;
+    // Positivt: A har för många även om alla neutrala går till B.
+    if (diff - fixable > 1) return { from: teamAOutfield, to: teamBOutfield };
+    if (-diff - fixable > 1) return { from: teamBOutfield, to: teamAOutfield };
+    return null;
+  };
+  for (let guard = 0; guard < 50; guard++) {
+    const move = surplus();
+    if (!move) break;
+    const movable = move.from.filter(t => !lockedIds.has(t.player.id));
+    if (movable.length === 0) break;
+    // Välj den flytt som bäst jämnar ut positioner, sedan PIR.
+    let best = movable[0];
+    let bestScore = Infinity;
+    for (const t of movable) {
+      const posGain = countOf(move.from, t.posType) - countOf(move.to, t.posType); // större = bättre att flytta
+      const from = move.from.filter(x => x !== t);
+      const to = [...move.to, t];
+      const pirGap = hasPirData ? Math.abs(avgOfTeam(from) - avgOfTeam(to)) : 0;
+      const score = -posGain * 1000 + pirGap;
+      if (score < bestScore) { bestScore = score; best = t; }
+    }
+    move.from.splice(move.from.indexOf(best), 1);
+    move.to.push(best);
+  }
+
+  // Resterande spelare (utan lagfärg) fyller upp till jämna lag.
   const minA = teamAOutfield.length;
   const maxA = teamAOutfield.length + neutrals.length;
   const idealA = Math.floor(totalPlayers / 2) - teamAGoalkeepers.length;
   const idealAUp = Math.ceil(totalPlayers / 2) - teamAGoalkeepers.length;
-  // Vid udda antal: extraspelaren till laget med lägst PIR-snitt bland de låsta.
-  const lockedAvg = (team: TaggedPlayer[]) => team.length ? team.reduce((s, t) => s + outfieldPir(t), 0) / team.length : 1000;
-  const preferUp = hasPirData ? lockedAvg(teamAOutfield) <= lockedAvg(teamBOutfield) : true;
+  // Vid udda antal: extraspelaren till laget med lägst PIR-snitt.
+  const preferUp = hasPirData ? avgOfTeam(teamAOutfield) <= avgOfTeam(teamBOutfield) : true;
   const targetA = Math.min(maxA, Math.max(minA, preferUp ? idealAUp : idealA));
   const targetB = teamBOutfield.length + neutrals.length - (targetA - teamAOutfield.length);
 
@@ -245,9 +281,6 @@ export function autoDistribute(
         groupOrder.indexOf(x.posType) - groupOrder.indexOf(y.posType) ||
         (hasPirData ? outfieldPir(y) - outfieldPir(x) : 0) ||
         captainSortKey(x.player) - captainSortKey(y.player));
-
-  const countOf = (team: TaggedPlayer[], pos: PosType) => team.filter(t => t.posType === pos).length;
-  const sumOf = (team: TaggedPlayer[]) => team.reduce((s, t) => s + outfieldPir(t), 0);
 
   for (const np of ordered) {
     const roomA = teamAOutfield.length < targetA;
@@ -266,6 +299,13 @@ export function autoDistribute(
 
   // PIR-finjustering: byt olåsta spelare med samma position mellan lagen så
   // länge lagens snitt (inkl. målvakter) kommer närmare varandra.
+  // Bytbara: spelare utan lagfärg, och färgade som redan flyttats för att jämna ut antalet.
+  const isSwappable = (t: TaggedPlayer) => {
+    if (lockedIds.has(t.player.id)) return false;
+    if (!coloredIds.has(t.player.id)) return true;
+    const inA = teamAOutfield.includes(t);
+    return (t.player.teamColor === "white") !== inA; // står i "fel" lag = redan flyttad
+  };
   if (hasPirData && !doShuffle) {
     const gkSum = (gks: TaggedPlayer[]) => gks.reduce((s, t) => s + effectivePir(t.player, true), 0);
     const avgOf = (gks: TaggedPlayer[], of: TaggedPlayer[]) =>
@@ -276,10 +316,10 @@ export function autoDistribute(
       const current = gap();
       for (let i = 0; i < teamAOutfield.length; i++) {
         const a = teamAOutfield[i];
-        if (lockedIds.has(a.player.id)) continue;
+        if (!isSwappable(a)) continue;
         for (let j = 0; j < teamBOutfield.length; j++) {
           const b = teamBOutfield[j];
-          if (lockedIds.has(b.player.id) || b.posType !== a.posType) continue;
+          if (!isSwappable(b) || b.posType !== a.posType) continue;
           teamAOutfield[i] = b; teamBOutfield[j] = a;
           const g = gap();
           teamAOutfield[i] = a; teamBOutfield[j] = b;
@@ -333,8 +373,19 @@ export function autoDistribute(
     };
   }
 
-  const teamAConfig = getOptimalConfig(teamAOutfield, teamAGoalkeepers.length);
-  const teamBConfig = getOptimalConfig(teamBOutfield, teamBGoalkeepers.length);
+  /** Alla anmälda ska få plats: utöka formationen tills platserna räcker (max 4+4). */
+  function ensureCapacity(config: TeamConfig, outfieldCount: number): TeamConfig {
+    const c = { ...config };
+    while (c.defensePairs * 2 + c.forwardLines * 3 < outfieldCount) {
+      if (c.forwardLines < 4 && (c.forwardLines * 3 <= c.defensePairs * 2 * 1.5 || c.defensePairs >= 4)) c.forwardLines++;
+      else if (c.defensePairs < 4) c.defensePairs++;
+      else break;
+    }
+    return c;
+  }
+
+  const teamAConfig = ensureCapacity(getOptimalConfig(teamAOutfield, teamAGoalkeepers.length), teamAOutfield.length);
+  const teamBConfig = ensureCapacity(getOptimalConfig(teamBOutfield, teamBGoalkeepers.length), teamBOutfield.length);
 
   // ── Step 5: Create slots and place players ──
   const teamASlots = createTeamSlots("team-a", teamAConfig);

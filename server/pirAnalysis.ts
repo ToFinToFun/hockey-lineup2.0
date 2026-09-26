@@ -9,7 +9,10 @@
  *
  * Förslag tas fram genom att prova vikter en i taget (koordinatsökning) och
  * behålla det som ger lägst Brier-poäng. Med lite data är skillnaderna ofta
- * slump, så ett förslag visas bara som "bättre" om förbättringen är tydlig.
+ * slump, så förslaget dras mot standardvikterna i proportion till hur lite data
+ * som finns ("krympning"): med 10 matcher flyttas vikterna en tredjedel av
+ * vägen, med 40 matcher två tredjedelar. Då kan analysen hjälpa från början
+ * utan att överreagera.
  */
 import type { MatchResult } from "../drizzle/schema";
 import {
@@ -59,10 +62,12 @@ export function metricsFrom(points: BacktestPoint[]): PirMetrics {
   return { matches: points.length, hitRate: decided.length ? hits / decided.length : null, brier, coverage, calibration };
 }
 
-/** Minsta antal förutsagda matcher innan ett förslag kan tas på allvar. */
-export const MIN_MATCHES_FOR_SUGGESTION = 30;
+/** Minsta antal förutsagda matcher för att ta fram förslag. */
+export const MIN_MATCHES_FOR_SUGGESTION = 6;
+/** Hur mycket data som krävs för att lita halvvägs på det bästa fyndet. */
+const SHRINK_MATCHES = 20;
 /** Förbättring i Brier-poäng som krävs för att ett förslag ska räknas som bättre. */
-const MIN_IMPROVEMENT = 0.005;
+const MIN_IMPROVEMENT = 0.002;
 
 const SEARCH_SPACE: Record<keyof PirWeights, number[]> = {
   goal: [0, 1, 2, 3, 5, 8],
@@ -124,21 +129,36 @@ export async function analyzePir(matches: MatchResult[], currentWeights: PirWeig
 
   let suggestion: PirAnalysis["suggestion"] = null;
   if (withSuggestion && current.matches > 0) {
-    const found = await searchWeights(matches, currentWeights);
-    const metrics = metricsFrom(await backtest(matches, found.weights));
-    const gain = (current.brier ?? 1) - (metrics.brier ?? 1);
     const enoughData = current.matches >= MIN_MATCHES_FOR_SUGGESTION;
-    const clear = gain >= MIN_IMPROVEMENT;
-    suggestion = {
-      weights: found.weights,
-      metrics,
-      recommended: enoughData && clear,
-      reason: !enoughData
-        ? `För lite data (${current.matches} av minst ${MIN_MATCHES_FOR_SUGGESTION} matcher) – förslaget kan vara slump.`
-        : !clear
-          ? "Nuvarande vikter är i princip lika bra – ingen ändring behövs."
-          : "Förslaget förutsade historiken tydligt bättre.",
-    };
+    if (!enoughData) {
+      suggestion = {
+        weights: currentWeights,
+        metrics: current,
+        recommended: false,
+        reason: `Behöver minst ${MIN_MATCHES_FOR_SUGGESTION} analyserade matcher (nu ${current.matches}).`,
+      };
+    } else {
+      const found = await searchWeights(matches, currentWeights);
+      // Krymp mot standardvikterna i proportion till hur lite data som finns.
+      const trust = current.matches / (current.matches + SHRINK_MATCHES);
+      const blend = (key: keyof PirWeights) => {
+        const v = DEFAULT_PIR_WEIGHTS[key] + (found.weights[key] - DEFAULT_PIR_WEIGHTS[key]) * trust;
+        return key === "halfLifeDays" ? Math.round(v / 5) * 5 : Math.round(v * 2) / 2;
+      };
+      const weights = sanitizeWeights({ goal: blend("goal"), assist: blend("assist"), goalkeeper: blend("goalkeeper"), halfLifeDays: blend("halfLifeDays") });
+      const metrics = metricsFrom(await backtest(matches, weights));
+      const gain = (current.brier ?? 1) - (metrics.brier ?? 1);
+      const clear = gain >= MIN_IMPROVEMENT;
+      const certainty = current.matches < 15 ? "låg" : current.matches < 40 ? "medel" : "hög";
+      suggestion = {
+        weights,
+        metrics,
+        recommended: clear,
+        reason: clear
+          ? `Förslaget förutsade historiken bättre. Säkerhet: ${certainty} (${current.matches} matcher) – förslaget är försiktigt anpassat efter datamängden.`
+          : `Nuvarande vikter är i princip lika bra (${current.matches} matcher) – ingen ändring behövs just nu.`,
+      };
+    }
   }
 
   return { ratedMatches, current: { weights: currentWeights, metrics: current }, teamOnly, suggestion };

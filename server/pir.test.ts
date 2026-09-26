@@ -95,9 +95,15 @@ describe("PIR", () => {
     expect(metrics.brier!).toBeLessThanOrEqual(teamOnly.brier!);
   });
 
-  it("analysen föreslår vikter men rekommenderar inte på för lite data", async () => {
-    const small = await analyzePir(season(20), DEFAULT_PIR_WEIGHTS, true);
-    expect(small.suggestion?.recommended).toBe(false);
-    expect(small.current.metrics.matches).toBe(15);
+  it("analysen ger inget förslag på för få matcher, men hjälper redan på en kort säsong", async () => {
+    const tiny = await analyzePir(season(8), DEFAULT_PIR_WEIGHTS, true);
+    expect(tiny.suggestion?.recommended).toBe(false);
+    const small = await analyzePir(season(25, 3), DEFAULT_PIR_WEIGHTS, true);
+    expect(small.current.metrics.matches).toBe(20);
+    expect(small.suggestion).not.toBeNull();
+    // Förslaget är krympt mot standard och aldrig sämre än nuvarande om det rekommenderas.
+    if (small.suggestion!.recommended) {
+      expect(small.suggestion!.metrics.brier!).toBeLessThan(small.current.metrics.brier!);
+    }
   }, 30000);
 });

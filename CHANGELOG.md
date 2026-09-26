@@ -7,6 +7,16 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.3.1 – 2026-09-25
+
+**Auto-fördelning**
+- Alla anmälda placeras ut – formationen utökas vid behov så att ingen blir över (bara anmälda placeras).
+- Lagfärg först. Blir antalet ojämnt fyller spelare utan lagfärg på det mindre laget; räcker de inte flyttas spelare med lagfärg från det större laget (de som bäst jämnar ut position och PIR).
+- Lagkapten (C) och målvakter med lagfärg flyttas aldrig till fel lag – gäller även "Slumpa".
+
+**PIR-förslag från början**
+- Förslag tas fram redan från 6 matcher (tidigare 30). Med lite data dras förslaget mot standardvikterna i proportion till datamängden, så det hjälper tidigt utan att överreagera. Säkerheten (låg/medel/hög) visas.
+
 ## 2.3.0 – 2026-09-25
 
 **PIR med individuella insatser**

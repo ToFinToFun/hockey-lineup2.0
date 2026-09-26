@@ -248,14 +248,55 @@ describe("autoDistribute", () => {
     expect(inA(["f1", "f2", "f3", "f4"])).toBe(2);
   });
 
-  it("lagtillhörighet går före jämnt antal", () => {
+  it("lagfärg först, men vid obalans flyttas färgade (aldrig C) för jämnt antal", () => {
     const players = [
+      makePlayer("c", "F", { teamColor: "white", captainRole: "C" }),
       ...Array.from({ length: 5 }, (_, i) => makePlayer(`w${i}`, "F", { teamColor: "white" })),
       makePlayer("n1", "F"),
     ];
     const { lineup } = autoDistribute(players, {});
-    for (let i = 0; i < 5; i++) expect(teamOf(lineup, `w${i}`)).toBe("team-a");
+    const { a, b } = sizes(lineup);
+    expect(Math.abs(a - b)).toBeLessThanOrEqual(1);
+    expect(teamOf(lineup, "c")).toBe("team-a");
     expect(teamOf(lineup, "n1")).toBe("team-b");
+  });
+
+  it("färgade stannar i sitt lag när spelare utan lagfärg räcker för att jämna ut", () => {
+    const players = [
+      ...Array.from({ length: 4 }, (_, i) => makePlayer(`w${i}`, "F", { teamColor: "white" })),
+      ...Array.from({ length: 4 }, (_, i) => makePlayer(`n${i}`, "F")),
+    ];
+    const { lineup } = autoDistribute(players, {});
+    for (let i = 0; i < 4; i++) expect(teamOf(lineup, `w${i}`)).toBe("team-a");
+  });
+
+  it("målvakter med lagfärg följer sin färg", () => {
+    const players = [
+      makePlayer("mvw1", "MV", { teamColor: "white" }),
+      makePlayer("mvw2", "MV", { teamColor: "white" }),
+      makePlayer("mvn", "MV"),
+      ...Array.from({ length: 8 }, (_, i) => makePlayer(`f${i}`, i % 2 ? "F" : "B")),
+    ];
+    for (const shuffle of [false, true]) {
+      const { lineup } = autoDistribute(players, {}, { shuffle });
+      const slotOf = (id: string) => Object.entries(lineup).find(([, p]) => p.id === id)?.[0] ?? "";
+      expect(slotOf("mvw1")).toMatch(/^team-a-gk/);
+      expect(slotOf("mvw2")).toMatch(/^team-a-gk/);
+      expect(slotOf("mvn")).toMatch(/^team-b-gk/);
+    }
+  });
+
+  it("alla anmälda placeras – ingen blir över", () => {
+    const pos: Player["position"][] = ["B", "B", "C", "F", "F", "IB"];
+    const players = [
+      makePlayer("mv1", "MV"), makePlayer("mv2", "MV"),
+      ...Array.from({ length: 30 }, (_, i) => makePlayer(`p${i}`, pos[i % pos.length], i % 7 === 0 ? { teamColor: "green" } : {})),
+    ];
+    const result = autoDistribute(players, {});
+    expect(result.remaining).toHaveLength(0);
+    expect(Object.keys(result.lineup)).toHaveLength(32);
+    const { a, b } = sizes(result.lineup);
+    expect(Math.abs(a - b)).toBeLessThanOrEqual(1);
   });
 
   it("PIR balanserar lagen: starka och svaga delas lika", () => {

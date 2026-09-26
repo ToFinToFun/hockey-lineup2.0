@@ -176,7 +176,7 @@ export default function PirTab() {
             <p className="text-[11px] text-white/50 mb-2">
               Brier {num(s.metrics.brier)} (nu {num(m?.brier)}) · rätt vinnare {pct(s.metrics.hitRate)} (nu {pct(m?.hitRate)})
             </p>
-            <button
+            {s.recommended && <button
               onClick={() => {
                 setWeights(s.weights);
                 saveWeights.mutate(s.weights);
@@ -184,7 +184,7 @@ export default function PirTab() {
               className="px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-semibold"
             >
               Använd förslaget
-            </button>
+            </button>}
           </div>
         )}
       </Card>
