@@ -13,6 +13,7 @@ import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import { EventSource as NodeEventSource } from "eventsource";
 import { trpc } from "@/lib/trpc";
+import { isolatedDatabaseUrl } from "@/test/isolatedDatabase";
 import { useLineupDocSync } from "./useLineupDocSync";
 import { normalizeDoc, type LineupDoc, type Player } from "@shared/lineupDoc";
 
@@ -96,9 +97,10 @@ async function serverDoc() {
   return normalizeDoc(json.result.data.json);
 }
 
+let dbUrl = "";
 function startServer() {
   return spawn("node", ["dist/index.js"], {
-    env: { ...process.env, NODE_ENV: "production", PORT: String(PORT), ADMIN_PASSWORD: "test", JWT_SECRET: "x".repeat(40) },
+    env: { ...process.env, DATABASE_URL: dbUrl, NODE_ENV: "production", PORT: String(PORT), ADMIN_PASSWORD: "test", JWT_SECRET: "x".repeat(40) },
     stdio: "ignore",
   });
 }
@@ -108,6 +110,7 @@ describe.skipIf(!canRun)("live-synk mellan två enheter", () => {
   let B: Device;
 
   beforeAll(async () => {
+    dbUrl = await isolatedDatabaseUrl("sync");
     server = startServer();
     await new Promise<void>((resolve, reject) => {
       const until = Date.now() + 10000;
@@ -191,7 +194,7 @@ describe.skipIf(!canRun)("live-synk mellan två enheter", () => {
 
   it("ändring direkt i databasen (utanför appen) når alla enheter", { timeout: 20000 }, async () => {
     const mysql = await import("mysql2/promise");
-    const conn = await mysql.createConnection(process.env.DATABASE_URL!);
+    const conn = await mysql.createConnection(dbUrl);
     await conn.query("UPDATE lineup_state SET teamBName = 'EXTERNT' WHERE id = 1");
     await conn.end();
     await waitFor(() => A.doc().teamBName === "EXTERNT" && B.doc().teamBName === "EXTERNT", 12000);

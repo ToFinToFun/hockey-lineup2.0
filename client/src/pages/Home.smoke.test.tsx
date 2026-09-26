@@ -8,6 +8,7 @@ import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import { EventSource as NodeEventSource } from "eventsource";
 import { trpc } from "@/lib/trpc";
+import { isolatedDatabaseUrl } from "@/test/isolatedDatabase";
 
 const PORT = 3072, ORIGIN = `http://127.0.0.1:${PORT}`;
 const canRun = !!process.env.DATABASE_URL && existsSync("dist/index.js");
@@ -18,7 +19,8 @@ const authedFetch = (i: any, init?: any) => realFetch(abs(String(i)), { ...init,
 
 beforeAll(async () => {
   if (!canRun) return;
-  server = spawn("node", ["dist/index.js"], { env: { ...process.env, NODE_ENV: "production", PORT: String(PORT), ADMIN_PASSWORD: "t", JWT_SECRET: "x".repeat(40) }, stdio: "ignore" });
+  const dbUrl = await isolatedDatabaseUrl("smoke");
+  server = spawn("node", ["dist/index.js"], { env: { ...process.env, DATABASE_URL: dbUrl, NODE_ENV: "production", PORT: String(PORT), ADMIN_PASSWORD: "t", JWT_SECRET: "x".repeat(40) }, stdio: "ignore" });
   for (let i = 0; i < 100; i++) { try { await realFetch(`${ORIGIN}/api/health`); break; } catch { await new Promise(r => setTimeout(r, 100)); } }
   const l = await realFetch(`${ORIGIN}/api/trpc/auth.login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ json: { password: "t" } }) });
   cookie = (l.headers.get("set-cookie") ?? "").split(";")[0];
