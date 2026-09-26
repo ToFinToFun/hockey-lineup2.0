@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.3.4 – 2026-09-26
+
+- Databasanslutningen använder kryptering (TLS) automatiskt när MySQL kräver det (`require_secure_transport=ON`). v2.3.3 kunde inte starta av den anledningen. Styrs med `DATABASE_SSL` (auto/on/off) och valfritt `DATABASE_SSL_CA` för certifikatkontroll.
+
 ## 2.3.3 – 2026-09-25
 
 - Ändringar gjorda direkt i databasen (t.ex. med ett databasverktyg) upptäcks inom ca 5 sekunder. Uppställningen laddas om och alla enheter hämtar det nya läget; matchcachen laddas om. Tidigare låg uppställning och matcher kvar i serverns minne tills appen startades om, och appen kunde skriva över en extern ändring.

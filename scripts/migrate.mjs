@@ -24,13 +24,38 @@ function log(msg) {
   console.log(`[migrate] ${msg}`);
 }
 
+// Kryptering (TLS): samma regler som servern (se server/db.ts, DATABASE_SSL).
+const SSL_MODE = (process.env.DATABASE_SSL ?? "auto").toLowerCase();
+let useTls = SSL_MODE === "on" || SSL_MODE === "true" || SSL_MODE === "require";
+
+function tlsOptions() {
+  const caPath = process.env.DATABASE_SSL_CA;
+  return caPath ? { ca: readFileSync(caPath, "utf-8") } : { rejectUnauthorized: false };
+}
+
+function isSecureTransportError(err) {
+  return err?.code === "ER_SECURE_TRANSPORT_REQUIRED" || /secure transport/i.test(err?.message ?? "");
+}
+
+/** Ansluter; kräver servern kryptering byts till TLS automatiskt. */
+async function connectTo(url) {
+  try {
+    return await mysql.createConnection(useTls ? { uri: url, ssl: tlsOptions() } : { uri: url });
+  } catch (err) {
+    if (useTls || SSL_MODE === "off" || !isSecureTransportError(err)) throw err;
+    log("Servern kräver kryptering – ansluter med TLS.");
+    useTls = true;
+    return mysql.createConnection({ uri: url, ssl: tlsOptions() });
+  }
+}
+
 async function ensureDatabase(url) {
   const u = new URL(url);
   const dbName = decodeURIComponent(u.pathname.replace(/^\//, ""));
   if (!dbName) return;
   u.pathname = "/";
   try {
-    const conn = await mysql.createConnection(u.toString());
+    const conn = await connectTo(u.toString());
     await conn.query(`CREATE DATABASE IF NOT EXISTS \`${dbName.replace(/`/g, "")}\``);
     await conn.end();
   } catch (err) {
@@ -120,7 +145,7 @@ async function main() {
   if (!url) throw new Error("DATABASE_URL saknas");
 
   await ensureDatabase(url);
-  const conn = await mysql.createConnection(url);
+  const conn = await connectTo(url);
   try {
     const entries = loadJournal();
     await baselineIfNeeded(conn, entries);

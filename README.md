@@ -57,6 +57,8 @@ pnpm dev
 | `DATABASE_URL` | Ja | MySQL connection string, t.ex. `mysql://user:pass@host:3306/lineup` |
 | `JWT_SECRET` | Ja | Signerar sessioner och länkar. Minst 32 tecken, generera med `openssl rand -hex 32` |
 | `ADMIN_PASSWORD` | Ja | Styrelsens lösenord för inloggning i appen |
+| `DATABASE_SSL` | Nej | `auto` (standard): krypterat om databasen kräver det. `on`/`off` tvingar |
+| `DATABASE_SSL_CA` | Nej | Sökväg till CA-certifikat om certifikatet ska kontrolleras |
 | `LAGET_SE_USERNAME` | Ja* | Laget.se-konto för anmälningssynk (*krävs för laget.se-funktionen) |
 | `LAGET_SE_PASSWORD` | Ja* | Lösenord till laget.se-kontot |
 | `NODE_ENV` | Ja | `production` i Coolify, `development` lokalt |
