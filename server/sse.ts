@@ -57,6 +57,11 @@ class SSEManager {
     this.broadcast(`event: patch\ndata: ${JSON.stringify(data)}\n\n`);
   }
 
+  /** Uppställningen har ändrats utanför appen – alla enheter ska hämta om den. */
+  notifyLineupReset(data: { version: number }): void {
+    this.broadcast(`event: reset\ndata: ${JSON.stringify(data)}\n\n`);
+  }
+
   /**
    * Notify all clients about a saved lineups change (add/delete/toggle favorite).
    */

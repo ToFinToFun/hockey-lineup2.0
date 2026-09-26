@@ -231,6 +231,10 @@ export function useLineupDocSync({ readLocalDoc, writeLocalDoc, onRemoteChange }
         setLastSyncAt(new Date());
         render();
       });
+      // Uppställningen ändrades direkt i databasen – hämta om allt.
+      es.addEventListener("reset", () => {
+        void resync();
+      });
       es.onerror = () => {
         if (closed) return;
         setStatus("offline");

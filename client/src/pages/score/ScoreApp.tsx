@@ -34,13 +34,15 @@ export default function ScoreApp() {
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
     const es = new EventSource("/api/sse/lineup");
-    es.addEventListener("patch", () => {
+    const schedule = () => {
       if (timer) return;
       timer = setTimeout(() => {
         timer = null;
         refetch();
       }, 400);
-    });
+    };
+    es.addEventListener("patch", schedule);
+    es.addEventListener("reset", schedule);
     const onVisible = () => {
       if (document.visibilityState === "visible") refetch();
     };

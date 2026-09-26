@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { publicProcedure, router } from "./trpc";
+import { publicProcedure, adminProcedure, router } from "./trpc";
+import { getDatabaseInfo } from "../dbInfo";
 
 export const systemRouter = router({
   health: publicProcedure
@@ -11,4 +12,7 @@ export const systemRouter = router({
     .query(() => ({
       ok: true,
     })),
+
+  /** Vilken databas appen använder och vad den innehåller (styrelsen). */
+  database: adminProcedure.query(() => getDatabaseInfo()),
 });

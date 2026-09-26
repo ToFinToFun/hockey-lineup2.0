@@ -4,7 +4,7 @@ import { authRouter } from "./routers/auth";
 import { fetchAttendance, updateAttendance, type AttendingStatus } from "./lagetSe";
 import { scoreRouter } from "./routers/score";
 import { scoreStatsRouter } from "./routers/scoreStats";
-import { getAllMatchResults, getConfigValue, setConfigValue, getMatchCacheVersion } from "./scoreDb";
+import { getAllMatchResults, getConfigValue, setConfigValue, getMatchCacheVersion, refreshMatchCacheVersion } from "./scoreDb";
 import { calculatePIR, DEFAULT_PIR_WEIGHTS, type PirWeights } from "./pir";
 import { analyzePir, sanitizeWeights, type PirAnalysis } from "./pirAnalysis";
 import { getLineupSnapshot, applyLineupPatch, applyFullState } from "./lineupSync";
@@ -53,7 +53,7 @@ async function loadPirConfig(): Promise<{ weights: PirWeights; adjustments: Reco
 }
 
 async function getPirRatings() {
-  const key = `${getMatchCacheVersion()}:${pirConfigVersion}`;
+  const key = `${await refreshMatchCacheVersion()}:${pirConfigVersion}`;
   if (!pirCache || pirCache.key !== key) {
     const { weights, adjustments } = await loadPirConfig();
     pirCache = { key, result: calculatePIR(await getAllMatchResults(), { weights, adjustments }) };
@@ -410,7 +410,7 @@ export const appRouter = router({
       .query(async ({ input }) => {
         const { weights } = await loadPirConfig();
         const withSuggestion = input?.withSuggestion ?? false;
-        const key = `${getMatchCacheVersion()}:${JSON.stringify(weights)}:${withSuggestion}`;
+        const key = `${await refreshMatchCacheVersion()}:${JSON.stringify(weights)}:${withSuggestion}`;
         if (!analysisCache || analysisCache.key !== key) {
           analysisCache = { key, result: await analyzePir(await getAllMatchResults(), weights, withSuggestion) };
         }

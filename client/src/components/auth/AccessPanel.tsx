@@ -2,6 +2,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import { LoginForm } from "./LoginForm";
+import { DatabaseInfo } from "./DatabaseInfo";
 import { toast } from "sonner";
 import { Link2, LogOut, ShieldOff, Copy, KeyRound, Loader2 } from "lucide-react";
 
@@ -112,6 +113,8 @@ export function AccessPanel() {
           </button>
         </div>
       )}
+
+      <DatabaseInfo />
     </div>
   );
 }

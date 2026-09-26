@@ -189,6 +189,17 @@ describe.skipIf(!canRun)("live-synk mellan två enheter", () => {
     await waitFor(async () => key(A.doc()) === key(B.doc()) && key(A.doc()) === key(await serverDoc()), 5000);
   });
 
+  it("ändring direkt i databasen (utanför appen) når alla enheter", { timeout: 20000 }, async () => {
+    const mysql = await import("mysql2/promise");
+    const conn = await mysql.createConnection(process.env.DATABASE_URL!);
+    await conn.query("UPDATE lineup_state SET teamBName = 'EXTERNT' WHERE id = 1");
+    await conn.end();
+    await waitFor(() => A.doc().teamBName === "EXTERNT" && B.doc().teamBName === "EXTERNT", 12000);
+    // Och appen fortsätter fungera efteråt.
+    A.set((d) => ({ ...d, teamBName: "GRÖNA" }));
+    await waitFor(async () => B.doc().teamBName === "GRÖNA" && (await serverDoc()).teamBName === "GRÖNA");
+  });
+
   it("lagnamn och formation synkas", { timeout: 15000 }, async () => {
     B.set((d) => ({ ...d, teamAName: "VITA TEST", teamAConfig: { goalkeepers: 1, defensePairs: 2, forwardLines: 1 } }));
     await waitFor(() => A.doc().teamAName === "VITA TEST" && A.doc().teamAConfig.forwardLines === 1);

@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.3.3 – 2026-09-25
+
+- Ändringar gjorda direkt i databasen (t.ex. med ett databasverktyg) upptäcks inom ca 5 sekunder. Uppställningen laddas om och alla enheter hämtar det nya läget; matchcachen laddas om. Tidigare låg uppställning och matcher kvar i serverns minne tills appen startades om, och appen kunde skriva över en extern ändring.
+- Startsidan (styrelsen): "Visa databasinfo" visar vilken databas appen använder, alla tabeller med antal rader (tabeller appen inte använder markeras) samt antal spelare och matcher.
+
 ## 2.3.2 – 2026-09-25
 
 - Lineup: speltidstexten under varje lag är större och tydligare, en rad per grupp (backar, centrar, forwards). Backarna visas nu också.

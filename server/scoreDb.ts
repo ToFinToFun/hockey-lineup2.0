@@ -4,7 +4,7 @@
  */
 
 import { eq, inArray, desc } from "drizzle-orm";
-import { getDb } from "./db";
+import { getDb, tableChecksum } from "./db";
 import { matchResults, appConfig, type InsertMatchResult } from "../drizzle/schema";
 
 // ─── Match Results ─────────────────────────────────────────────────
@@ -14,11 +14,26 @@ import { matchResults, appConfig, type InsertMatchResult } from "../drizzle/sche
 type MatchRow = typeof matchResults.$inferSelect;
 let matchCache: MatchRow[] | null = null;
 let matchCacheVersion = 0;
+/** Kontrollsumman när cachen laddades – ändras den har någon ändrat direkt i databasen. */
+let matchCacheChecksum: string | null = null;
+let lastExternalCheck = 0;
+const EXTERNAL_CHECK_MS = 5_000;
 
 /** Anropas efter varje ändring av matcher. */
 function invalidateMatches() {
   matchCache = null;
   matchCacheVersion++;
+}
+
+/** Har tabellen ändrats utanför appen sedan cachen laddades? Då laddas den om. */
+async function checkExternalMatchChanges() {
+  if (!matchCache || Date.now() - lastExternalCheck < EXTERNAL_CHECK_MS) return;
+  lastExternalCheck = Date.now();
+  const sum = await tableChecksum("match_results");
+  if (sum != null && matchCacheChecksum != null && sum !== matchCacheChecksum) {
+    console.log("[matcher] Ändring direkt i databasen upptäckt – laddar om");
+    invalidateMatches();
+  }
 }
 
 /** Ökar vid varje ändring – används för att cacha beräkningar (t.ex. PIR). */
@@ -27,11 +42,20 @@ export function getMatchCacheVersion() {
 }
 
 async function loadAllMatches(): Promise<MatchRow[]> {
+  await checkExternalMatchChanges();
   if (matchCache) return matchCache;
   const db = await getDb();
   if (!db) return [];
+  matchCacheChecksum = await tableChecksum("match_results");
   matchCache = await db.select().from(matchResults).orderBy(desc(matchResults.id));
+  lastExternalCheck = Date.now();
   return matchCache;
+}
+
+/** Ökar när matcherna ändrats – även direkt i databasen (kontrolleras högst var 5:e s). */
+export async function refreshMatchCacheVersion(): Promise<number> {
+  await checkExternalMatchChanges();
+  return matchCacheVersion;
 }
 
 export async function insertMatchResult(match: InsertMatchResult) {
