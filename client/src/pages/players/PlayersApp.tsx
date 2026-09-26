@@ -13,8 +13,8 @@ import { trpc } from "@/lib/trpc";
 
 type Row = {
   id: string; name: string; number: string; position: string; teamColor: string | null; captainRole: string | null;
-  isMember: boolean; active: boolean; lagetName: string | null; externalId: string | null; mergedInto: string | null;
-  aliases: string[] | null; notes: string | null;
+  isMember: boolean; active: boolean; lagetName: string | null; externalId: string | null;
+  notes: string | null;
 };
 type Filter = "active" | "inactive" | "nonmember" | "all";
 
@@ -154,14 +154,13 @@ export default function PlayersApp() {
   const visible = useMemo(() => {
     const s = q.trim().toLowerCase();
     return rows
-      .filter((r) => !r.mergedInto)
       .filter((r) => filter === "all" || (filter === "active" ? r.active : filter === "inactive" ? !r.active : !r.isMember))
-      .filter((r) => !s || r.name.toLowerCase().includes(s) || r.number === s || (r.aliases ?? []).some((a) => a.toLowerCase().includes(s)))
+      .filter((r) => !s || r.name.toLowerCase().includes(s) || r.number === s)
       .sort((a, b) => a.name.localeCompare(b.name, "sv"));
   }, [rows, filter, q]);
 
   const exportCsv = () => {
-    const blob = new Blob([toCsv(rows.filter((r) => !r.mergedInto))], { type: "text/csv;charset=utf-8" });
+    const blob = new Blob([toCsv(rows)], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -176,10 +175,10 @@ export default function PlayersApp() {
   };
 
   const counts = {
-    active: rows.filter((r) => !r.mergedInto && r.active).length,
-    inactive: rows.filter((r) => !r.mergedInto && !r.active).length,
-    nonmember: rows.filter((r) => !r.mergedInto && !r.isMember).length,
-    all: rows.filter((r) => !r.mergedInto).length,
+    active: rows.filter((r) => r.active).length,
+    inactive: rows.filter((r) => !r.active).length,
+    nonmember: rows.filter((r) => !r.isMember).length,
+    all: rows.length,
   };
 
   return (
@@ -243,7 +242,6 @@ export default function PlayersApp() {
                 <span className="w-9 text-right font-mono text-white/50 text-sm">{r.number ? `#${r.number}` : ""}</span>
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm truncate">{r.name}{r.captainRole ? <span className="ml-1 text-amber-300 font-bold">{r.captainRole}</span> : null}</span>
-                  {(r.aliases?.length ?? 0) > 0 && <span className="block text-[10px] text-white/30 truncate">tidigare: {r.aliases!.join(", ")}</span>}
                 </span>
                 <span className="text-[11px] w-8 text-white/60">{r.position}</span>
                 <span className={`text-[11px] w-10 ${r.teamColor === "green" ? "text-emerald-400" : r.teamColor === "white" ? "text-white" : "text-white/20"}`}>{teamLabel(r.teamColor) || "–"}</span>
@@ -305,7 +303,6 @@ function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]
         </div>
         <label className="block text-xs text-white/50">Namn i laget.se (om det skiljer sig)<input className={input} value={f.lagetName} onChange={(e) => setF({ ...f, lagetName: e.target.value })} /></label>
         <label className="block text-xs text-white/50">Anteckning<textarea className={input} rows={2} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></label>
-        {row?.aliases && row.aliases.length > 0 && <p className="text-[11px] text-white/40">Tidigare namn/nummer: {row.aliases.join(", ")}</p>}
         <button onClick={save} disabled={!payload.name || update.isPending || create.isPending}
           className="w-full py-2.5 rounded-xl bg-[#0a7ea4] font-semibold disabled:opacity-40">Spara</button>
 
@@ -313,11 +310,11 @@ function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]
 
         {row && (
           <div className="border-t border-white/5 pt-3 space-y-2">
-            <p className="text-xs text-white/50">Samma person registrerad två gånger? Slå ihop – historiken samlas på den valda spelaren och den här tas bort ur truppen.</p>
+            <p className="text-xs text-white/50">Samma person registrerad två gånger? Slå ihop – matcher och mål flyttas till den valda spelaren och den här tas bort.</p>
             <div className="flex gap-2">
               <select className={input} value={mergeInto} onChange={(e) => setMergeInto(e.target.value)}>
                 <option value="">Välj spelare …</option>
-                {all.filter((p) => p.id !== row.id && !p.mergedInto).sort((a, b) => a.name.localeCompare(b.name, "sv")).map((p) => (
+                {all.filter((p) => p.id !== row.id).sort((a, b) => a.name.localeCompare(b.name, "sv")).map((p) => (
                   <option key={p.id} value={p.id}>{p.name}{p.number ? ` #${p.number}` : ""}{p.active ? "" : " (inaktiv)"}</option>
                 ))}
               </select>

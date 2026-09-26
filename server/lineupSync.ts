@@ -1,34 +1,42 @@
 /**
  * Serverns del av live-synken för uppställningen.
  *
- * - Dokumentet hålls i minnet (appen kör som en process) och sparas i
- *   databasen efter varje ändring.
- * - Ändringar (patchar) tillämpas strikt en i taget via en kö, får ett
- *   löpnummer (version) och skickas sedan till alla anslutna enheter.
- * - Samma patch-ID tillämpas bara en gång, så klienter kan skicka om säkert.
+ * Lagring (lineup_state) innehåller bara:
+ *   - slots:      plats → spelar-ID
+ *   - attendance: spelar-ID → "registered" | "declined" (dagens match)
+ *   - lagnamn och formation
+ * All spelardata (namn, nummer, position, lag, C/A) finns bara i spelarregistret.
+ * Truppen = aktiva spelare i registret som inte står på en plats.
+ *
+ * Klienterna får ett "dokument" med fullständiga spelare (se shared/lineupDoc)
+ * och skickar små ändringar (patchar). Servern tillämpar dem en i taget,
+ * skriver platser/anmälan till lineup_state och spelardata till registret,
+ * och skickar patchen vidare till alla enheter.
  */
 import { eq } from "drizzle-orm";
 import { getDb, tableChecksum } from "./db";
-import { lineupState } from "../drizzle/schema";
+import { lineupState, type PlayerRow } from "../drizzle/schema";
 import { sseManager } from "./sse";
-import { applyOps, diffDocs, normalizeDoc, type LineupDoc, type LineupOp, type Player } from "../shared/lineupDoc";
-import {
-  createPlayer,
-  getRegistryMap,
-  onRegistryChange,
-  resolveId,
-  toLineupFields,
-  updatePlayer,
-} from "./playersDb";
+import { applyOps, emptyDoc, isValidSlot, type LineupDoc, type LineupOp, type Player } from "../shared/lineupDoc";
+import { createPlayers, getRegistryMap, onRegistryChange, updatePlayers, type PlayerFields } from "./playersDb";
 
 const STATE_ROW_ID = 1;
 const RECENT_PATCH_LIMIT = 500;
 
+interface Stored {
+  slots: Record<string, string>;
+  attendance: Record<string, "registered" | "declined">;
+  teamAName: string;
+  teamBName: string;
+  teamAConfig: LineupDoc["teamAConfig"];
+  teamBConfig: LineupDoc["teamBConfig"];
+}
+
+let stored: Stored | null = null;
 let doc: LineupDoc | null = null;
 let version = 0;
 const recentPatchIds: string[] = [];
 let queue: Promise<unknown> = Promise.resolve();
-/** Kontrollsumma för tabellen efter senaste egna läsning/skrivning. */
 let knownChecksum: string | null = null;
 let lastExternalCheck = 0;
 let watcher: ReturnType<typeof setInterval> | null = null;
@@ -41,44 +49,112 @@ function serialize<T>(task: () => Promise<T>): Promise<T> {
   return run;
 }
 
-async function readRow() {
+// ─── Från lagring + register till dokument ──────────────────────────────────
+
+function toPlayer(row: PlayerRow, attendance: Stored["attendance"]): Player {
+  const status = attendance[row.id];
+  return {
+    id: row.id,
+    name: row.name,
+    number: row.number,
+    position: row.position as Player["position"],
+    isMember: row.isMember,
+    ...(row.teamColor ? { teamColor: row.teamColor as Player["teamColor"] } : {}),
+    ...(row.captainRole ? { captainRole: row.captainRole as Player["captainRole"] } : {}),
+    ...(status === "registered" ? { isRegistered: true } : {}),
+    ...(status === "declined" ? { isDeclined: true } : {}),
+  } as Player;
+}
+
+function hydrate(s: Stored, registry: Map<string, PlayerRow>): LineupDoc {
+  const d: LineupDoc = { ...emptyDoc(), teamAName: s.teamAName, teamBName: s.teamBName, teamAConfig: s.teamAConfig, teamBConfig: s.teamBConfig };
+  const placed = new Set<string>();
+  for (const [slot, id] of Object.entries(s.slots)) {
+    const row = registry.get(id);
+    if (!row || placed.has(id) || !isValidSlot(d, slot)) continue;
+    d.lineup[slot] = toPlayer(row, s.attendance);
+    placed.add(id);
+  }
+  d.players = [...registry.values()]
+    .filter((r) => r.active && !placed.has(r.id))
+    .sort((a, b) => a.name.localeCompare(b.name, "sv"))
+    .map((r) => toPlayer(r, s.attendance));
+  return d;
+}
+
+function dehydrate(d: LineupDoc): Stored {
+  const attendance: Stored["attendance"] = {};
+  const slots: Record<string, string> = {};
+  for (const [slot, p] of Object.entries(d.lineup)) slots[slot] = p.id;
+  for (const p of [...d.players, ...Object.values(d.lineup)]) {
+    if (p.isRegistered) attendance[p.id] = "registered";
+    else if (p.isDeclined) attendance[p.id] = "declined";
+  }
+  return { slots, attendance, teamAName: d.teamAName, teamBName: d.teamBName, teamAConfig: d.teamAConfig, teamBConfig: d.teamBConfig };
+}
+
+async function readStored(): Promise<{ stored: Stored; version: number }> {
   const db = await getDb();
-  return db ? (await db.select().from(lineupState).where(eq(lineupState.id, STATE_ROW_ID)).limit(1))[0] : undefined;
+  const row = db ? (await db.select().from(lineupState).where(eq(lineupState.id, STATE_ROW_ID)).limit(1))[0] : undefined;
+  const base = emptyDoc();
+  return {
+    version: row?.version ?? 0,
+    stored: {
+      slots: (row?.slots as Stored["slots"]) ?? {},
+      attendance: (row?.attendance as Stored["attendance"]) ?? {},
+      teamAName: row?.teamAName ?? base.teamAName,
+      teamBName: row?.teamBName ?? base.teamBName,
+      teamAConfig: (row?.teamAConfig as Stored["teamAConfig"]) ?? base.teamAConfig,
+      teamBConfig: (row?.teamBConfig as Stored["teamBConfig"]) ?? base.teamBConfig,
+    },
+  };
+}
+
+async function persist(s: Stored, nextVersion: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  const values = { ...s, version: nextVersion };
+  await db.insert(lineupState).values({ id: STATE_ROW_ID, ...values }).onDuplicateKeyUpdate({ set: values });
+  knownChecksum = await tableChecksum("lineup_state");
 }
 
 async function load(): Promise<void> {
   if (doc) return;
   knownChecksum = await tableChecksum("lineup_state");
-  const row = await readRow();
-  doc = normalizeDoc(row as Partial<LineupDoc> | undefined);
-  version = row?.version ?? 0;
+  const r = await readStored();
+  stored = r.stored;
+  version = r.version;
+  doc = hydrate(stored, await getRegistryMap());
   lastExternalCheck = Date.now();
   startWatcher();
 }
 
-/**
- * Har någon ändrat uppställningen direkt i databasen (t.ex. med ett
- * databasverktyg)? Då läses den in igen och alla enheter hämtar om.
- * Körs i kön, så den krockar aldrig med appens egna ändringar.
- */
+/** Bygger om dokumentet (efter ändring i registret eller direkt i databasen) och låter alla enheter hämta om. */
+async function rebuild(reason: string, reread: boolean): Promise<void> {
+  if (!doc) return;
+  if (reread) {
+    const r = await readStored();
+    stored = r.stored;
+    version = Math.max(version, r.version);
+  }
+  doc = hydrate(stored!, await getRegistryMap());
+  version += 1;
+  console.log(`[lineup] ${reason} – laddar om (version ${version})`);
+  sseManager.notifyLineupReset({ version });
+}
+
 async function checkExternalChange(force = false): Promise<void> {
   if (!doc) return;
   if (!force && Date.now() - lastExternalCheck < EXTERNAL_CHECK_MS) return;
   lastExternalCheck = Date.now();
   const sum = await tableChecksum("lineup_state");
   if (sum == null || knownChecksum == null || sum === knownChecksum) return;
-  const row = await readRow();
-  doc = normalizeDoc(row as Partial<LineupDoc> | undefined);
-  // Nytt löpnummer som alltid är högre än det klienterna har sett.
-  version = Math.max(version, row?.version ?? 0) + 1;
   knownChecksum = sum;
-  console.log(`[lineup] Ändring direkt i databasen upptäckt – laddar om (version ${version})`);
-  sseManager.notifyLineupReset({ version });
+  await rebuild("Ändring direkt i databasen upptäckt", true);
 }
 
 function startWatcher() {
   if (watcher) return;
-  // Även när ingen använder appen: upptäck externa ändringar och meddela enheterna.
   watcher = setInterval(() => {
     void serialize(() => checkExternalChange(true)).catch(() => {});
     void getRegistryMap().catch(() => {}); // upptäcker ändringar direkt i spelarregistret
@@ -86,25 +162,15 @@ function startWatcher() {
   watcher.unref?.();
 }
 
-async function persist(next: LineupDoc, nextVersion: number): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
-  const values = {
-    players: next.players,
-    lineup: next.lineup,
-    teamAName: next.teamAName,
-    teamBName: next.teamBName,
-    teamAConfig: next.teamAConfig,
-    teamBConfig: next.teamBConfig,
-    deletedPlayerIds: next.deletedPlayerIds,
-    version: nextVersion,
-  };
-  await db
-    .insert(lineupState)
-    .values({ id: STATE_ROW_ID, ...values })
-    .onDuplicateKeyUpdate({ set: values });
-  knownChecksum = await tableChecksum("lineup_state");
-}
+// Ändringar i registret som inte kom från uppställningen (sidan Spelare,
+// import, direkt i databasen) → bygg om dokumentet.
+let applyingOwnRegistryWrite = false;
+onRegistryChange(() => {
+  if (applyingOwnRegistryWrite) return;
+  void serialize(() => rebuild("Spelarregistret ändrades", false)).catch(() => {});
+});
+
+// ─── Publika funktioner ─────────────────────────────────────────────────────
 
 export interface LineupSnapshot {
   doc: LineupDoc;
@@ -126,6 +192,8 @@ export interface PatchResult {
   duplicate: boolean;
 }
 
+const REGISTRY_FIELDS = ["name", "number", "position", "teamColor", "captainRole"] as const;
+
 /** Tillämpar en patch, sparar och skickar den till alla enheter. */
 export function applyLineupPatch(patchId: string, ops: LineupOp[], clientId?: string): Promise<PatchResult> {
   return serialize(async () => {
@@ -133,140 +201,65 @@ export function applyLineupPatch(patchId: string, ops: LineupOp[], clientId?: st
     await checkExternalChange();
     if (recentPatchIds.includes(patchId)) return { version, duplicate: true };
 
-    const next = applyOps(doc!, ops);
+    const before = doc!;
+    const next = applyOps(before, ops);
+
+    // Spelardata → registret: nya spelare, ändrade uppgifter, borttagna ur truppen.
+    const registry = await getRegistryMap();
+    const inNext = new Map([...next.players, ...Object.values(next.lineup)].map((p) => [p.id, p]));
+    const creates: Array<PlayerFields & { id: string; name: string }> = [];
+    const updates: Array<{ id: string; fields: PlayerFields }> = [];
+    for (const p of inNext.values()) {
+      const row = registry.get(p.id);
+      if (!row) {
+        creates.push({
+          id: p.id, name: p.name || "Ny spelare", number: p.number ?? "", position: p.position ?? "F",
+          teamColor: p.teamColor ?? null, captainRole: p.captainRole ?? null, isMember: false, active: true,
+        });
+        continue;
+      }
+      const fields: PlayerFields = {};
+      const src = p as unknown as Record<string, unknown>;
+      for (const key of REGISTRY_FIELDS) {
+        // Namn, nummer och position: saknas fältet ändras inget. Lag och C/A: saknas = borttaget.
+        const optional = key === "teamColor" || key === "captainRole";
+        if (!optional && (src[key] === undefined || src[key] === null)) continue;
+        const value = src[key] ?? null;
+        if ((row as unknown as Record<string, unknown>)[key] !== value) (fields as Record<string, unknown>)[key] = value;
+      }
+      if (!row.active) fields.active = true;
+      if (Object.keys(fields).length) updates.push({ id: p.id, fields });
+    }
+    // Spelare som försvunnit helt (borttagna i Lineup) blir inaktiva – historiken finns kvar.
+    for (const p of [...before.players, ...Object.values(before.lineup)]) {
+      if (!inNext.has(p.id) && registry.get(p.id)?.active) updates.push({ id: p.id, fields: { active: false } });
+    }
+    const removed = ops.find((o) => o.t === "field" && o.key === "deletedPlayerIds");
+    if (removed && Array.isArray((removed as { value: unknown }).value)) {
+      for (const id of (removed as { value: string[] }).value) {
+        if (registry.get(id)?.active && !inNext.has(id)) updates.push({ id, fields: { active: false } });
+      }
+    }
+    applyingOwnRegistryWrite = true;
+    try {
+      if (creates.length) await createPlayers(creates);
+      if (updates.length) await updatePlayers(updates);
+    } finally {
+      applyingOwnRegistryWrite = false;
+    }
+
+    const nextStored = dehydrate(next);
     const nextVersion = version + 1;
-    await persist(next, nextVersion);
+    await persist(nextStored, nextVersion);
+    stored = nextStored;
     doc = next;
     version = nextVersion;
     recentPatchIds.push(patchId);
     if (recentPatchIds.length > RECENT_PATCH_LIMIT) recentPatchIds.shift();
 
     sseManager.notifyLineupPatch({ version, patchId, clientId: clientId ?? null, ops });
-    void writeThroughToRegistry(next, ops).catch((err) =>
-      console.error("[lineup] Kunde inte uppdatera spelarregistret:", err)
-    );
     return { version, duplicate: false };
   });
-}
-
-// ─── Synk med spelarregistret ────────────────────────────────────────────────
-
-const REGISTRY_FIELDS = ["name", "number", "position", "teamColor", "captainRole"] as const;
-
-function allDocPlayers(d: LineupDoc): Player[] {
-  return [...d.players, ...Object.values(d.lineup)];
-}
-
-/**
- * Ändringar gjorda i Lineup (namn, nummer, position, lag, C/A, nya och
- * borttagna spelare) skrivs till registret.
- */
-async function writeThroughToRegistry(next: LineupDoc, ops: LineupOp[]) {
-  const touched = new Map<string, Player>();
-  for (const op of ops) {
-    if (op.t === "slot" && op.player) touched.set(op.player.id, op.player);
-    if (op.t === "rosterUpsert") touched.set(op.player.id, op.player);
-  }
-  const removed = ops.filter((o): o is Extract<LineupOp, { t: "rosterRemove" }> => o.t === "rosterRemove").map((o) => o.id);
-  if (touched.size === 0 && removed.length === 0) return;
-
-  const registry = await getRegistryMap();
-  const inDoc = new Set(allDocPlayers(next).map((p) => p.id));
-  for (const p of touched.values()) {
-    if (!inDoc.has(p.id)) continue;
-    const row = registry.get(p.id);
-    if (!row) {
-      await createPlayer({
-        id: p.id,
-        name: String(p.name ?? "").trim() || "Namnlös",
-        number: String(p.number ?? ""),
-        position: p.position ?? "F",
-        teamColor: p.teamColor ?? null,
-        captainRole: p.captainRole ?? null,
-        // Ny spelare i Lineup: inte i medlemsregistret förrän styrelsen säger det.
-        isMember: (p as Player & { isMember?: boolean }).isMember ?? false,
-        active: true,
-      });
-      continue;
-    }
-    const diff: Record<string, unknown> = {};
-    for (const key of REGISTRY_FIELDS) {
-      const a = (p as unknown as Record<string, unknown>)[key] ?? null;
-      const b = (row as unknown as Record<string, unknown>)[key] ?? null;
-      if (String(a ?? "") !== String(b ?? "")) diff[key] = a;
-    }
-    if (!row.active) diff.active = true;
-    if (Object.keys(diff).length) await updatePlayer(p.id, diff);
-  }
-  for (const id of removed) {
-    // Borttagen ur Lineup (inte bara flyttad till en plats) → inaktiv i registret.
-    if (!inDoc.has(id) && registry.get(id)?.active) await updatePlayer(id, { active: false });
-  }
-}
-
-/**
- * Registret → uppställningen: nya uppgifter, nya aktiva spelare, inaktiva
- * och ihopslagna tas bort. Körs när registret ändrats (styrelsen, import,
- * direkt i databasen). Blir det inga skillnader händer ingenting.
- */
-async function reconcileWithRegistry() {
-  const registry = await getRegistryMap();
-  if (registry.size === 0) return;
-  const { doc: current } = await getLineupSnapshot();
-  const ops: LineupOp[] = [];
-  const seen = new Set<string>();
-
-  const updated = (p: Player): Player | null => {
-    const row = registry.get(p.id);
-    if (!row) return p; // okänd för registret – lämnas (skrivs in vid nästa ändring)
-    if (row.mergedInto || resolveId(registry, p.id) !== p.id || !row.active) return null;
-    return { ...p, ...toLineupFields(row) } as Player;
-  };
-  const same = (a: Player, b: Player) =>
-    REGISTRY_FIELDS.every((k) => String((a as any)[k] ?? "") === String((b as any)[k] ?? "")) &&
-    (a as any).isMember === (b as any).isMember &&
-    ((a as any).lagetName ?? undefined) === ((b as any).lagetName ?? undefined);
-
-  for (const [slot, p] of Object.entries(current.lineup)) {
-    seen.add(p.id);
-    const u = updated(p);
-    if (!u) ops.push({ t: "slot", slot, player: null });
-    else if (!same(p, u)) ops.push({ t: "slot", slot, player: u });
-  }
-  current.players.forEach((p, index) => {
-    seen.add(p.id);
-    const u = updated(p);
-    if (!u) ops.push({ t: "rosterRemove", id: p.id });
-    else if (!same(p, u)) ops.push({ t: "rosterUpsert", player: u, index });
-  });
-  let end = current.players.length;
-  for (const row of registry.values()) {
-    if (!row.active || row.mergedInto || seen.has(row.id)) continue;
-    ops.push({ t: "rosterUpsert", player: { id: row.id, ...toLineupFields(row) } as unknown as Player, index: end++ });
-  }
-  if (ops.length) await applyLineupPatch(`registry-${Date.now()}-${Math.random().toString(36).slice(2)}`, ops);
-}
-
-let reconcileTimer: ReturnType<typeof setTimeout> | null = null;
-onRegistryChange(() => {
-  if (reconcileTimer) clearTimeout(reconcileTimer);
-  reconcileTimer = setTimeout(() => {
-    reconcileTimer = null;
-    void reconcileWithRegistry().catch((err) => console.error("[lineup] Synk med registret misslyckades:", err));
-  }, 300);
-});
-
-/** För tester: kör synken med registret direkt. */
-export const reconcileWithRegistryForTests = reconcileWithRegistry;
-
-/**
- * Äldre klienter skickar hela uppställningen. Den görs om till en patch mot
- * nuvarande dokument så att de inte skriver över andras ändringar i onödan.
- */
-export async function applyFullState(state: Partial<LineupDoc>, clientId?: string): Promise<PatchResult> {
-  const { doc: current } = await getLineupSnapshot();
-  const ops = diffDocs(current, normalizeDoc({ ...current, ...state }));
-  return applyLineupPatch(`legacy-${Date.now()}-${Math.random().toString(36).slice(2)}`, ops, clientId);
 }
 
 /** Endast för tester: glöm dokumentet i minnet. */
@@ -274,6 +267,7 @@ export function resetLineupCacheForTests() {
   if (watcher) clearInterval(watcher);
   watcher = null;
   knownChecksum = null;
+  stored = null;
   doc = null;
   version = 0;
   recentPatchIds.length = 0;

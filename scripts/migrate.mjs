@@ -16,7 +16,6 @@ import path from "node:path";
 import mysql from "mysql2/promise";
 import { drizzle } from "drizzle-orm/mysql2";
 import { migrate } from "drizzle-orm/mysql2/migrator";
-import { runDataMigrations } from "./dataMigrations.mjs";
 
 const MIGRATIONS = path.resolve(process.cwd(), "drizzle");
 const MIGRATIONS_TABLE = "__drizzle_migrations";
@@ -151,7 +150,6 @@ async function main() {
     const entries = loadJournal();
     await baselineIfNeeded(conn, entries);
     await migrate(drizzle(conn), { migrationsFolder: MIGRATIONS, migrationsTable: MIGRATIONS_TABLE });
-    await runDataMigrations(conn, log);
     const [[last]] = await conn.query(
       `SELECT created_at FROM \`${MIGRATIONS_TABLE}\` ORDER BY created_at DESC LIMIT 1`
     );

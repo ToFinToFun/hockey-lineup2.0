@@ -31,7 +31,7 @@ describe("behörighet", () => {
   it("publik användare får inte ändra uppställningen", async () => {
     const caller = appRouter.createCaller(ctx(null));
     await expectCode(
-      caller.lineup.saveState({ players: [], lineup: {}, teamAName: "A", teamBName: "B" } as any),
+      caller.lineup.patch({ id: "auth-test-patch", ops: [{ t: "field", key: "teamAName", value: "A" }] }),
       "UNAUTHORIZED"
     );
   });

@@ -9,7 +9,7 @@ import { getAllMatchResults, getConfigValue, setConfigValue, getMatchCacheVersio
 import { calculatePIR, DEFAULT_PIR_WEIGHTS, type PirWeights } from "./pir";
 import { analyzePir, sanitizeWeights, type PirAnalysis } from "./pirAnalysis";
 import { getRegistryMap, getRegistryVersion } from "./playersDb";
-import { getLineupSnapshot, applyLineupPatch, applyFullState } from "./lineupSync";
+import { getLineupSnapshot, applyLineupPatch } from "./lineupSync";
 import type { LineupOp } from "../shared/lineupDoc";
 import {
   createSavedLineup,
@@ -121,25 +121,6 @@ export const appRouter = router({
         return applyLineupPatch(input.id, input.ops as LineupOp[], input.clientId);
       }),
 
-    /** Äldre klienter (före v2.2) skickar hela uppställningen – görs om till en patch. */
-    saveState: lineupProcedure
-      .input(
-        z.object({
-          players: z.array(z.any()),
-          lineup: z.record(z.string(), z.any()),
-          teamAName: z.string(),
-          teamBName: z.string(),
-          teamAConfig: teamConfigSchema.optional(),
-          teamBConfig: teamConfigSchema.optional(),
-          deletedPlayerIds: z.array(z.string()).optional(),
-          operation: z.any().optional(),
-          clientId: z.string().optional(),
-        })
-      )
-      .mutation(async ({ input }) => {
-        const { operation: _op, clientId, ...state } = input;
-        return applyFullState(state, clientId);
-      }),
 
     /**
      * Calculate the most-played position for each player from match history.
@@ -158,10 +139,8 @@ export const appRouter = router({
         const lineupEntries = lineup.lineup || {};
 
         for (const [slotId, p] of Object.entries(lineupEntries)) {
-          if (!p || typeof p !== "object" || !(p as any).name) continue;
-          const pl = p as any;
-          // Spelarens fasta ID (namn bara för gammal data utan ID)
-          const playerKey = pl.id ? String(pl.id) : (pl.name as string).trim();
+          const playerKey = (p as { id?: string } | null)?.id;
+          if (!playerKey) continue;
 
           // Extract position from slot ID
           let position = "";
@@ -179,7 +158,7 @@ export const appRouter = router({
           if (!positionCounts[playerKey]) positionCounts[playerKey] = {};
           positionCounts[playerKey][position] = (positionCounts[playerKey][position] || 0) + 1;
 
-          // Extract team from slot ID (team-a = white, team-b = green)
+          // Sparade matcher har alltid Vita som lag A
           let team = "";
           if (slotId.startsWith("team-a-")) team = "white";
           else if (slotId.startsWith("team-b-")) team = "green";

@@ -2,6 +2,34 @@ import { eq, desc, and, isNull, isNotNull, lt } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { getDb } from "./db";
 import { savedLineups, type SavedLineup } from "../drizzle/schema";
+import { getRegistryMap } from "./playersDb";
+
+// Sparade uppställningar lagrar bara plats → spelar-ID. Namn, nummer m.m.
+// hämtas från spelarregistret när de läses.
+function toSlotIds(lineup: Record<string, { id?: string } | string | null>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [slot, p] of Object.entries(lineup ?? {})) {
+    const id = typeof p === "string" ? p : p?.id;
+    if (id) out[slot] = id;
+  }
+  return out;
+}
+
+async function hydrateSaved<T extends SavedLineup | null>(row: T): Promise<T> {
+  if (!row) return row;
+  const registry = await getRegistryMap();
+  const lineup: Record<string, unknown> = {};
+  for (const [slot, id] of Object.entries(toSlotIds(row.lineup as Record<string, string>))) {
+    const r = registry.get(id);
+    if (!r) continue;
+    lineup[slot] = {
+      id: r.id, name: r.name, number: r.number, position: r.position,
+      ...(r.teamColor ? { teamColor: r.teamColor } : {}),
+      ...(r.captainRole ? { captainRole: r.captainRole } : {}),
+    };
+  }
+  return { ...row, lineup };
+}
 
 // ─── Saved Lineups CRUD ─────────────────────────────────────────────────────
 
@@ -32,7 +60,7 @@ export async function createSavedLineup(data: {
     name: data.name,
     teamAName: data.teamAName,
     teamBName: data.teamBName,
-    lineup: data.lineup,
+    lineup: toSlotIds(data.lineup),
     savedAt: Date.now(),
     expiresAt,
   });
@@ -46,11 +74,12 @@ export async function createSavedLineup(data: {
 export async function getAllSavedLineups(): Promise<SavedLineup[]> {
   const db = await getDb();
   if (!db) return [];
-  return db
+  const rows = await db
     .select()
     .from(savedLineups)
     .where(isNull(savedLineups.expiresAt))
     .orderBy(desc(savedLineups.favorite), desc(savedLineups.savedAt));
+  return Promise.all(rows.map(hydrateSaved));
 }
 
 /**
@@ -64,7 +93,7 @@ export async function getSavedLineupByShareId(shareId: string): Promise<SavedLin
     .from(savedLineups)
     .where(eq(savedLineups.shareId, shareId))
     .limit(1);
-  return rows[0] ?? null;
+  return hydrateSaved(rows[0] ?? null);
 }
 
 /**

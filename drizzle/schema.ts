@@ -1,14 +1,14 @@
-import { int, json, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, bigint } from "drizzle-orm/mysql-core";
+import { int, json, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, bigint, index } from "drizzle-orm/mysql-core";
 
 // ─── Lineup State ────────────────────────────────────────────────────────────
 // Single-row table holding the current lineup state (replaces Firebase /lineup node)
 
 export const lineupState = mysqlTable("lineup_state", {
   id: int("id").autoincrement().primaryKey(),
-  /** JSON array of Player objects in the available roster */
-  players: json("players").notNull().$type<any[]>(),
-  /** JSON object mapping slotId → Player for current lineup */
-  lineup: json("lineup").notNull().$type<Record<string, any>>(),
+  /** Plats → spelar-ID. Spelardata (namn, nummer …) finns bara i `players`. */
+  slots: json("slots").$type<Record<string, string>>(),
+  /** Spelar-ID → anmälan till dagens match ("registered" | "declined"). */
+  attendance: json("attendance").$type<Record<string, "registered" | "declined">>(),
   /** Team A display name */
   teamAName: varchar("teamAName", { length: 100 }).notNull().default("VITA"),
   /** Team B display name */
@@ -18,7 +18,6 @@ export const lineupState = mysqlTable("lineup_state", {
   /** Team B formation config */
   teamBConfig: json("teamBConfig").$type<{ goalkeepers: number; defensePairs: number; forwardLines: number }>(),
   /** IDs of intentionally deleted players (prevents re-merge) */
-  deletedPlayerIds: json("deletedPlayerIds").$type<string[]>(),
   /** Monotonically increasing version number for optimistic concurrency */
   version: bigint("version", { mode: "number" }).notNull().default(0),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -82,14 +81,6 @@ export const matchResults = mysqlTable("match_results", {
   /** Team green (GRÖNA) final score */
   teamGreenScore: int("teamGreenScore").notNull(),
   /** JSON array of goal events: [{team, scorer, assist?, other?, sponsor?, timestamp}] */
-  goalHistory: json("goalHistory").$type<Array<{
-    team: string;
-    scorer: string;
-    assist?: string;
-    other?: string;
-    sponsor?: string;
-    timestamp: string;
-  }>>(),
   /** When the match started */
   matchStartTime: timestamp("matchStartTime"),
   /** When the match ended */
@@ -103,18 +94,12 @@ export const matchResults = mysqlTable("match_results", {
    */
   reviewStatus: mysqlEnum("reviewStatus", ["pending", "approved", "rejected"]).default("approved").notNull(),
   reviewedAt: timestamp("reviewedAt"),
-  /** Full lineup snapshot at time of match: {lineup, availablePlayers, teamAName, teamBName, teamAConfig, teamBConfig} */
-  lineup: json("lineup").$type<{
-    lineup?: Record<string, any>;
-    availablePlayers?: any[];
-    teamAName?: string;
-    teamBName?: string;
-    teamAConfig?: { goalkeepers: number; defensePairs: number; forwardLines: number };
-    teamBConfig?: { goalkeepers: number; defensePairs: number; forwardLines: number };
-  }>(),
-});
+}, (t) => [
+  index("match_results_review_idx").on(t.reviewStatus),
+  index("match_results_end_idx").on(t.matchEndTime),
+]);
 
-export type MatchResult = typeof matchResults.$inferSelect;
+export type MatchRow = typeof matchResults.$inferSelect;
 export type InsertMatchResult = typeof matchResults.$inferInsert;
 
 // ─── Spelarregister ──────────────────────────────────────────────────────────
@@ -141,10 +126,6 @@ export const players = mysqlTable("players", {
   lagetName: varchar("lagetName", { length: 150 }),
   /** ID i ett externt medlemsregister (förberett för framtida synk). */
   externalId: varchar("externalId", { length: 64 }),
-  /** Tidigare namn/etiketter ("Namn #nr") – kopplar gammal historik. */
-  aliases: json("aliases").$type<string[]>(),
-  /** Om spelaren slagits ihop med en annan: den spelarens ID. */
-  mergedInto: varchar("mergedInto", { length: 64 }),
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -152,3 +133,66 @@ export const players = mysqlTable("players", {
 
 export type PlayerRow = typeof players.$inferSelect;
 export type InsertPlayerRow = typeof players.$inferInsert;
+
+// ─── Matchdeltagare och mål ──────────────────────────────────────────────────
+// En rad per spelare som stod i uppställningen i en match, och en rad per mål.
+// Allt pekar på spelarens fasta ID – namn och nummer hämtas från `players`.
+
+export const matchPlayers = mysqlTable("match_players", {
+  id: int("id").autoincrement().primaryKey(),
+  matchId: int("matchId").notNull(),
+  playerId: varchar("playerId", { length: 64 }).notNull(),
+  team: mysqlEnum("team", ["white", "green"]).notNull(),
+  /** Platsen i uppställningen, t.ex. "team-a-fwd-1-c". */
+  slot: varchar("slot", { length: 40 }).notNull(),
+  /** MV, B, C eller F (härlett från platsen). */
+  position: varchar("position", { length: 4 }).notNull(),
+}, (t) => [
+  index("match_players_match_idx").on(t.matchId),
+  index("match_players_player_idx").on(t.playerId),
+]);
+
+export const matchGoals = mysqlTable("match_goals", {
+  id: int("id").autoincrement().primaryKey(),
+  matchId: int("matchId").notNull(),
+  /** Ordning i matchen (0 = senaste målet, samma ordning som Score Tracker visar). */
+  seq: int("seq").notNull(),
+  team: mysqlEnum("team", ["white", "green"]).notNull(),
+  scorerId: varchar("scorerId", { length: 64 }),
+  assistId: varchar("assistId", { length: 64 }),
+  /** Fritext för gästspelare som inte finns i registret. */
+  scorerName: varchar("scorerName", { length: 120 }),
+  assistName: varchar("assistName", { length: 120 }),
+  /** Måltyp, t.ex. "Straff", "Självmål". */
+  goalType: varchar("goalType", { length: 60 }),
+  sponsor: varchar("sponsor", { length: 120 }),
+  /** Klockslag när målet registrerades (HH:MM:SS). */
+  time: varchar("time", { length: 20 }).notNull().default(""),
+}, (t) => [
+  index("match_goals_match_idx").on(t.matchId),
+  index("match_goals_scorer_idx").on(t.scorerId),
+  index("match_goals_assist_idx").on(t.assistId),
+]);
+
+/**
+ * Matchen som resten av appen läser den: uppställning och mål sammanställda
+ * från `match_players`/`match_goals` med spelarnas nuvarande namn från
+ * `players` (se server/matchStore.ts).
+ */
+export type MatchResult = MatchRow & {
+  lineup: {
+    teamAName: string;
+    teamBName: string;
+    lineup: Record<string, { id: string; name: string; number: string; position: string }>;
+  } | null;
+  goalHistory: Array<{
+    team: "white" | "green";
+    scorer?: string;
+    scorerId?: string;
+    assist?: string;
+    assistId?: string;
+    other?: string;
+    sponsor?: string;
+    timestamp: string;
+  }> | null;
+};

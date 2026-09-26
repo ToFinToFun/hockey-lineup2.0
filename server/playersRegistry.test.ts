@@ -35,12 +35,16 @@ describe.skipIf(!hasDb)("spelarregistret", () => {
     expect(await reg("r1")).toMatchObject({ name: "Kalle Kula", number: "10", isMember: false, active: true });
   });
 
-  it("namnbyte i Lineup uppdaterar registret och sparar gamla namnet som alias", async () => {
+  it("namnbyte i Lineup uppdaterar registret", async () => {
     await caller.lineup.patch({ id: "rename-patch-1", ops: [{ t: "rosterUpsert", player: { id: "r1", name: "Karl Kula", number: "10", position: "F" }, index: 0 }] });
     await wait(200);
-    const r = await reg("r1");
-    expect(r.name).toBe("Karl Kula");
-    expect(r.aliases).toContain("Kalle Kula #10");
+    expect((await reg("r1")).name).toBe("Karl Kula");
+  });
+
+  it("spelare utan position i en ändring behåller sin position", async () => {
+    await caller.lineup.patch({ id: "nopos-patch-1", ops: [{ t: "rosterUpsert", player: { id: "r1", name: "Karl Kula" }, index: 0 }] });
+    await wait(200);
+    expect((await reg("r1")).position).toBe("F");
   });
 
   it("ändring i registret slår igenom i uppställningen", async () => {
@@ -72,15 +76,23 @@ describe.skipIf(!hasDb)("spelarregistret", () => {
     expect(m.lineup.lineup["team-a-fwd-1-c"].name).toBe("Karl Kulan");
   });
 
-  it("sammanslagning: historik och alias samlas, dubbletten försvinner ur truppen", async () => {
+  it("sammanslagning: matcher och mål flyttas, dubbletten försvinner", async () => {
     const dup = await caller.players.create({ name: "Lisa Lind", number: "4", position: "B" });
     await wait(600);
     const issues = await caller.players.issues();
     expect(issues.duplicates.some((g: any[]) => g.some((p) => p.id === dup.id))).toBe(true);
+    await caller.score.match.save({
+      name: "Dubblett", teamWhiteScore: 0, teamGreenScore: 1,
+      goalHistory: [{ team: "green", scorerId: dup.id, timestamp: "20:10" }],
+      lineup: { teamAName: "VITA", teamBName: "GRÖNA", lineup: { "team-b-def-1-1": { id: dup.id, name: "Lisa Lind" } } },
+    });
     await caller.players.merge({ fromId: dup.id, intoId: "r2" });
     await wait(600);
     expect(await docPlayer(dup.id)).toBeUndefined();
-    expect((await reg(dup.id)).mergedInto).toBe("r2");
+    expect(await reg(dup.id)).toBeUndefined();
+    const m = (await caller.score.match.list()).find((x: any) => x.name === "Dubblett");
+    expect(m.goalHistory[0].scorerId).toBe("r2");
+    expect(m.lineup.lineup["team-b-def-1-1"].id).toBe("r2");
   });
 
   it("import: förhandsgranskning ändrar inget, genomförande gör det, saknade flaggas som ej medlem", async () => {

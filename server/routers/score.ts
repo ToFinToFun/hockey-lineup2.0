@@ -8,13 +8,13 @@ import { TRPCError } from "@trpc/server";
 
 import { publicProcedure, adminProcedure, router } from "../_core/trpc";
 import {
-  insertMatchResult,
+  saveMatch,
   getAllMatchResults,
   getAllMatchesIncludingUnreviewed,
   countPendingMatches,
   setMatchReviewStatus,
   getMatchResultById,
-  updateMatchResult,
+  updateMatch,
   deleteMatchResult,
   deleteMultipleMatchResults,
   getConfigValue,
@@ -144,7 +144,7 @@ export const scoreRouter = router({
         if (saveRateLimited(ctx.req.ip ?? "okänd")) {
           throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "För många sparade matcher, vänta en stund" });
         }
-        await insertMatchResult({
+        await saveMatch({
           // Styrelsens matcher godkänns direkt, övriga väntar på granskning.
           reviewStatus: ctx.session?.role === "admin" ? "approved" : "pending",
           reviewedAt: ctx.session?.role === "admin" ? new Date() : null,
@@ -195,18 +195,27 @@ export const scoreRouter = router({
           name: z.string().optional(),
           teamWhiteScore: z.number().optional(),
           teamGreenScore: z.number().optional(),
-          goalHistory: z.any().optional(),
-          lineup: z.any().optional(),
+          goalHistory: z.array(z.object({
+            team: z.string().max(20),
+            scorer: z.string().max(120).optional(),
+            scorerId: z.string().max(64).optional(),
+            assist: z.string().max(120).optional(),
+            assistId: z.string().max(64).optional(),
+            other: z.string().max(100).optional(),
+            sponsor: z.string().max(120).optional(),
+            timestamp: z.string().max(40).default(""),
+          })).max(200).optional(),
           matchEndTime: z.string().optional(),
           createdAt: z.string().optional(),
         })
       )
       .mutation(async ({ input }) => {
         const { id, matchEndTime, createdAt, ...data } = input;
-        const updateData: Record<string, any> = { ...data, editedAt: new Date() };
-        if (matchEndTime) updateData.matchEndTime = new Date(matchEndTime);
-        if (createdAt) updateData.createdAt = new Date(createdAt);
-        await updateMatchResult(id, updateData);
+        await updateMatch(id, {
+          ...data,
+          matchEndTime: matchEndTime ? new Date(matchEndTime) : undefined,
+          createdAt: createdAt ? new Date(createdAt) : undefined,
+        });
         return { success: true };
       }),
 

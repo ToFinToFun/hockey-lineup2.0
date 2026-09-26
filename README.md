@@ -139,12 +139,15 @@ traefik.http.middlewares.lineup-buffering.buffering.maxResponseBodyBytes=0
 
 | Tabell | Beskrivning |
 |---|---|
-| `players` | Spelarregistret – en rad per person med fast ID, medlemsflagga och tidigare namn |
-| `lineup_state` | Aktuell uppställning (spelare, lag, konfiguration) |
-| `lineup_operations` | Ändringslogg för SSE-synkronisering |
-| `saved_lineups` | Sparade uppställningar |
-| `match_results` | Matchresultat och statistik |
-| `app_config` | Appkonfiguration |
+| `players` | Spelarregistret – en rad per person med fast ID. Enda stället där namn, nummer, position, lag, C/A och medlemsflagga finns |
+| `lineup_state` | Dagens uppställning: plats → spelar-ID, anmälan per spelar-ID, lagnamn och formation |
+| `match_results` | En rad per match: resultat, tider, granskningsstatus |
+| `match_players` | Vilka som spelade en match: spelar-ID, lag, plats och position |
+| `match_goals` | Varje mål: lag, målskytt-ID, assist-ID, måltyp, sponsor, tid |
+| `saved_lineups` | Sparade uppställningar och delningslänkar (plats → spelar-ID) |
+| `app_config` | Inställningar (säsong, PIR-vikter och -justeringar) |
+
+Allt pekar på spelarens fasta ID. Namn och nummer hämtas alltid från `players`, så ett namnbyte slår igenom i uppställning, matcher, statistik och PIR direkt.
 
 Ändra schemat i `drizzle/schema.ts` och kör `pnpm db:generate` för att skapa en ny migrering. Vid varje uppstart kör `start.sh` → `scripts/migrate.mjs`, som applicerar nya migreringar. Misslyckas migreringen startar inte appen och Coolify behåller den tidigare versionen.
 

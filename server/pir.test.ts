@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MatchResult } from "../drizzle/schema";
-import { calculatePIR, backtestPIR, DEFAULT_PIR_WEIGHTS, TEAM_ONLY_PIR_WEIGHTS, playerKeyFromLabel } from "./pir";
+import { calculatePIR, backtestPIR, DEFAULT_PIR_WEIGHTS, TEAM_ONLY_PIR_WEIGHTS } from "./pir";
 import { analyzePir, metricsFrom } from "./pirAnalysis";
 
 // Enkel deterministisk slump så att testet alltid ger samma resultat.
@@ -19,11 +19,11 @@ function season(n: number, seed = 1): MatchResult[] {
   for (let i = 0; i < n; i++) {
     const shuffled = [...players].sort(() => rand() - 0.5);
     const a = shuffled.slice(0, 10), b = shuffled.slice(10);
-    const lineup: Record<string, { name: string }> = {};
-    a.forEach((p, j) => (lineup[j === 0 ? "team-a-gk-1" : `team-a-fwd-${j}-c`] = { name: p.name }));
-    b.forEach((p, j) => (lineup[j === 0 ? "team-b-gk-1" : `team-b-fwd-${j}-c`] = { name: p.name }));
+    const lineup: Record<string, { id: string; name: string; number: string; position: string }> = {};
+    a.forEach((p, j) => (lineup[j === 0 ? "team-a-gk-1" : `team-a-fwd-${j}-c`] = { id: p.name, name: p.name, number: "", position: "F" }));
+    b.forEach((p, j) => (lineup[j === 0 ? "team-b-gk-1" : `team-b-fwd-${j}-c`] = { id: p.name, name: p.name, number: "", position: "F" }));
     const sa = a.reduce((s, p) => s + p.strength, 0), sb = b.reduce((s, p) => s + p.strength, 0);
-    const goals: Array<{ team: string; scorer: string; timestamp: string }> = [];
+    const goals: Array<{ team: "white" | "green"; scorer: string; scorerId: string; timestamp: string }> = [];
     let white = 0, green = 0;
     for (let g = 0; g < 8; g++) {
       const whiteScores = rand() < sa / (sa + sb);
@@ -32,7 +32,7 @@ function season(n: number, seed = 1): MatchResult[] {
       const w = outfield.reduce((s, p) => s + p.strength, 0);
       let r = rand() * w, scorer = outfield[0];
       for (const p of outfield) { r -= p.strength; if (r <= 0) { scorer = p; break; } }
-      goals.push({ team: whiteScores ? "white" : "green", scorer: `${scorer.name} #${g}`, timestamp: "" });
+      goals.push({ team: whiteScores ? "white" : "green", scorer: scorer.name, scorerId: scorer.name, timestamp: "" });
       if (whiteScores) white++; else green++;
     }
     const date = new Date(2026, 0, 1 + i * 3);
@@ -46,11 +46,6 @@ function season(n: number, seed = 1): MatchResult[] {
 }
 
 describe("PIR", () => {
-  it("namn utan tröjnummer", () => {
-    expect(playerKeyFromLabel("Kalle Karlsson #12")).toBe("Kalle Karlsson");
-    expect(playerKeyFromLabel("Kalle")).toBe("Kalle");
-  });
-
   it("starka spelare får högre betyg än svaga", () => {
     const r = new Map(calculatePIR(season(60), { now: new Date(2026, 6, 1) }).map((x) => [x.playerKey, x.rating]));
     const strong = [0, 1, 2, 3].map((i) => r.get(`P${i}`)!);

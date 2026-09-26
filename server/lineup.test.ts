@@ -70,50 +70,6 @@ describe("lineup tRPC router", () => {
     });
   });
 
-  describe("lineup.saveState", () => {
-    it("should save a valid lineup state and return a version number", async () => {
-      const result = await caller.lineup.saveState({
-        players: [
-          { id: "p1", name: "Test Player 1", position: "F" },
-          { id: "p2", name: "Test Player 2", position: "B" },
-        ],
-        lineup: {
-          "team-a-fwd-1-lw": { id: "p1", name: "Test Player 1", position: "F" },
-        },
-        teamAName: "VITA",
-        teamBName: "GRÖNA",
-        teamAConfig: { goalkeepers: 1, defensePairs: 2, forwardLines: 2 },
-        teamBConfig: { goalkeepers: 1, defensePairs: 2, forwardLines: 2 },
-        operation: {
-          opType: "movePlayer",
-          description: "Test: moved player to slot",
-        },
-      });
-
-      expect(result).toHaveProperty("version");
-      expect(typeof result.version).toBe("number");
-      expect(result.version).toBeGreaterThan(0);
-    });
-
-    it("should increment version on each save", async () => {
-      const result1 = await caller.lineup.saveState({
-        players: [],
-        lineup: {},
-        teamAName: "VITA",
-        teamBName: "GRÖNA",
-      });
-
-      const result2 = await caller.lineup.saveState({
-        players: [],
-        lineup: {},
-        teamAName: "VITA",
-        teamBName: "GRÖNA",
-      });
-
-      expect(result2.version).toBeGreaterThan(result1.version);
-    });
-  });
-
   describe("savedLineups.create", () => {
     it("should create a saved lineup and return shareId", async () => {
       const result = await caller.savedLineups.create({

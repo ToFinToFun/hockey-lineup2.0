@@ -5,6 +5,8 @@ import { seasonHistory, seasonOf } from "../playerHistory";
 import { getAllMatchResults } from "../scoreDb";
 import {
   createPlayer,
+  createPlayers,
+  updatePlayers,
   listPlayers,
   mergePlayers,
   normalizeName,
@@ -54,7 +56,7 @@ interface PlannedChange {
 
 /** Jämför filen med registret. Ingenting ändras här. */
 function planImport(rows: ImportRow[], registry: RegistryPlayer[], markMissingAsNonMember: boolean) {
-  const live = registry.filter((p) => !p.mergedInto);
+  const live = registry;
   const byId = new Map(live.map((p) => [p.id, p]));
   const byName = new Map<string, RegistryPlayer | null>();
   for (const p of live) {
@@ -151,7 +153,7 @@ export const playersRouter = router({
     .input(fieldsSchema.extend({ name: z.string().trim().min(1).max(120) }))
     .mutation(({ input }) => createPlayer(input as PlayerFields & { name: string })),
 
-  /** Samma person registrerad två gånger: historiken samlas på `intoId`. */
+  /** Samma person registrerad två gånger: matcher och mål flyttas till `intoId`, `fromId` tas bort. */
   merge: adminProcedure
     .input(z.object({ fromId: z.string().max(64), intoId: z.string().max(64) }))
     .mutation(async ({ input }) => {
@@ -161,7 +163,7 @@ export const playersRouter = router({
 
   /** Saker att se över: möjliga dubbletter, medlemmar utan nummer m.m. */
   issues: adminProcedure.query(async () => {
-    const live = (await listPlayers()).filter((p) => !p.mergedInto);
+    const live = await listPlayers();
     const byName = new Map<string, RegistryPlayer[]>();
     for (const p of live) {
       const k = normalizeName(p.name);
@@ -188,18 +190,12 @@ export const playersRouter = router({
     .mutation(async ({ input }) => {
       const { plan, problems } = planImport(input.rows, await listPlayers(), input.markMissingAsNonMember);
       if (problems.length) throw new TRPCError({ code: "BAD_REQUEST", message: problems.join(" ") });
-      let created = 0;
-      let updated = 0;
-      for (const c of plan) {
-        if (c.kind === "new") {
-          await createPlayer({ isMember: true, active: true, ...c.fields });
-          created++;
-        } else if (c.id) {
-          const fields = Object.fromEntries(c.changes.map((ch) => [ch.field, ch.to])) as PlayerFields;
-          await updatePlayer(c.id, fields);
-          updated++;
-        }
-      }
-      return { created, updated };
+      const creates = plan.filter((c) => c.kind === "new").map((c) => ({ isMember: true, active: true, ...c.fields }));
+      const updates = plan
+        .filter((c) => c.kind !== "new" && c.id)
+        .map((c) => ({ id: c.id!, fields: Object.fromEntries(c.changes.map((ch) => [ch.field, ch.to])) as PlayerFields }));
+      await createPlayers(creates);
+      await updatePlayers(updates);
+      return { created: creates.length, updated: updates.length };
     }),
 });

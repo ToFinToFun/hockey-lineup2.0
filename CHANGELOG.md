@@ -7,6 +7,19 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.5.0 – 2026-09-26
+
+**Ny grund inför säsongen – all historik nollställd (beslut av styrelsen)**
+- Gamla matcher, sparade uppställningar och dagens placeringar är borttagna. Spelarregistret är kvar. PIR och statistik börjar om från noll.
+- Allt pekar nu på spelarens fasta ID, utan kopior och utan översättning av gammal data:
+  - Uppställningen lagrar bara plats → spelar-ID och vem som anmält sig. Truppen är de aktiva spelarna i registret.
+  - Matcher lagras i tre tabeller: matchen, vilka som spelade (lag, plats, position) och varje mål (målskytt/assist som ID). Gästspelare utan registrering sparas med namn.
+  - Sparade uppställningar och delningslänkar lagrar spelar-ID.
+  - Namn och nummer hämtas alltid från registret – ändringar slår igenom överallt direkt.
+- Ihopslagning av dubbletter flyttar alla matcher och mål till den kvarvarande spelaren och tar bort dubbletten (inga alias eller kedjor längre).
+- Borttaget: engångsmigreringen från v2.4, alias/tidigare namn, namnbaserad koppling av mål och PIR, kompatibiliteten för appversioner före 2.2.
+- Index på matchdatum, granskningsstatus, deltagare och mål.
+
 ## 2.4.0 – 2026-09-26
 
 **Spelarregister**

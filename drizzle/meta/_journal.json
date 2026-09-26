@@ -50,6 +50,20 @@
       "when": 1790443754780,
       "tag": "0006_players_register",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1790455779911,
+      "tag": "0007_reset_history_drop_legacy",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1790455822576,
+      "tag": "0008_match_players_goals",
+      "breakpoints": true
     }
   ]
 }

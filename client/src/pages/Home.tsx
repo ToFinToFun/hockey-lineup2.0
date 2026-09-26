@@ -307,12 +307,10 @@ export default function Home() {
 
   const enrichPlayer = useCallback((p: Player): Player => {
     if (!p?.name) return p;
-    const key = p.number ? `${p.name} #${p.number}` : p.name;
-    const nameOnly = p.name.trim();
     const enriched: any = { ...p };
     const posHistory = posHistoryRef.current;
     if (posHistory) {
-      const hist = posHistory[p.id] ?? posHistory[key] ?? posHistory[nameOnly];
+      const hist = posHistory[p.id];
       if (hist?.mostPlayed) {
         enriched.mostPlayedPosition = hist.mostPlayed;
         if (hist.mostPlayedTeam === "green" || hist.mostPlayedTeam === "white") {
@@ -322,7 +320,7 @@ export default function Home() {
     }
     const pirMap = pirMapRef.current;
     if (pirMap) {
-      const pir = pirMap[p.id] ?? pirMap[key] ?? pirMap[nameOnly];
+      const pir = pirMap[p.id];
       if (pir) {
         Object.assign(enriched, {
           pir: pir.rating, pirConfidence: pir.confidence, pirRecent: pir.recentRating,

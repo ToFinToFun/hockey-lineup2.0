@@ -104,11 +104,6 @@ export interface PirOptions {
   iterations?: number;
 }
 
-/** Spelarens namn utan tröjnummer, t.ex. "Kalle Karlsson #12" → "Kalle Karlsson". */
-export function playerKeyFromLabel(label: string): string {
-  return label.replace(/\s*#\s*\d+\s*$/, "").trim();
-}
-
 /** Role a player had in a specific match */
 type MatchRole = "goalkeeper" | "outfield";
 
@@ -195,17 +190,14 @@ function extractMatchData(matches: MatchResult[]): MatchPlayerData[] {
     const greenTeam: string[] = [];
     const playerRoles = new Map<string, MatchRole>();
     const playerNames = new Map<string, string>();
-    const labelToKey = new Map<string, string>();
 
     for (const [slotId, p] of Object.entries(lineupEntries)) {
       if (!p || typeof p !== "object" || !(p as any).name) continue;
       const pl = p as any;
       // Spelarens fasta ID (registret) – namnet bara för mycket gammal data utan ID.
-      const playerKey = pl.id ? String(pl.id) : (pl.name as string).trim();
+      if (!pl.id) continue;
+      const playerKey = String(pl.id);
       playerNames.set(playerKey, String(pl.name).trim());
-      const label = pl.number ? `${String(pl.name).trim()} #${pl.number}` : String(pl.name).trim();
-      labelToKey.set(label.toLowerCase(), playerKey);
-      labelToKey.set(String(pl.name).trim().toLowerCase(), playerKey);
 
       // Determine role from slot ID
       const role: MatchRole = isGoalkeeperSlot(slotId) ? "goalkeeper" : "outfield";
@@ -225,13 +217,9 @@ function extractMatchData(matches: MatchResult[]): MatchPlayerData[] {
     const goalList = (match.goalHistory as Array<{ scorer?: string; assist?: string; scorerId?: string; assistId?: string; other?: string }> | null) ?? [];
     for (const g of goalList) {
       if (g.other === "Självmål") continue; // ingen poäng för självmål
-      for (const [field, idField, kind] of [["scorer", "scorerId", "goals"], ["assist", "assistId", "assists"]] as const) {
-        const label = g[field];
-        const key =
-          (g[idField] && playerRoles.has(g[idField]!) ? g[idField] : undefined) ??
-          (label ? labelToKey.get(label.trim().toLowerCase()) ?? playerKeyFromLabel(label) : undefined);
-        if (!key) continue;
-        if (!playerRoles.has(key)) continue; // okänd spelare (inte i uppställningen)
+      for (const [idField, kind] of [["scorerId", "goals"], ["assistId", "assists"]] as const) {
+        const key = g[idField];
+        if (!key || !playerRoles.has(key)) continue; // gäst eller spelare utanför uppställningen
         const entry = points.get(key) ?? { goals: 0, assists: 0 };
         entry[kind]++;
         points.set(key, entry);
