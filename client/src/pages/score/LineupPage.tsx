@@ -23,21 +23,15 @@ interface LineupPageProps {
 }
 
 // Position badge colors matching the native app
+/** Samma positionsfärger som i Lineup (se .pos-badge-* i index.css). */
+const POSITION_COLORS: Record<string, string> = {
+  MV: "#f97316", RES: "#f97316", B: "#3b82f6", C: "#8b5cf6", LW: "#06b6d4", RW: "#06b6d4", F: "#06b6d4", IB: "#a8b8c8",
+};
+
 function getPositionColors(shortLabel: string) {
-  switch (shortLabel) {
-    case "MV":
-    case "RES":
-      return { bg: "#92400e20", text: "#fbbf24", border: "#fbbf2440" };
-    case "B":
-      return { bg: "#1e3a5f20", text: "#60a5fa", border: "#60a5fa40" };
-    case "C":
-      return { bg: "#581c8720", text: "#c084fc", border: "#c084fc40" };
-    case "LW":
-    case "RW":
-      return { bg: "#064e3b20", text: "#34d399", border: "#34d39940" };
-    default:
-      return { bg: "#ffffff10", text: "#ffffff80", border: "#ffffff20" };
-  }
+  const color = POSITION_COLORS[shortLabel];
+  if (!color) return { bg: "#ffffff10", text: "#ffffff80", border: "#ffffff20" };
+  return { bg: `${color}1f`, text: "#ffffff", border: color };
 }
 
 // ─── Slot Row ────────────────────────────────────────────────────────────────
@@ -65,7 +59,7 @@ function SlotRow({ player, label, shortLabel }: { player: Player | undefined; la
       </div>
       {player.captainRole && (
         <span className="shrink-0 text-[9px] font-bold"
-          style={{ color: player.captainRole === "C" ? "#fde047" : "#7dd3fc" }}>
+          style={{ color: player.captainRole === "C" ? "#fde047" : "#fdba74" }}>
           {player.captainRole}
         </span>
       )}

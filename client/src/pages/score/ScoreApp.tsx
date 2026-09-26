@@ -189,7 +189,7 @@ export default function ScoreApp() {
               }`}
             >
               <Users size={20} />
-              <span className="text-[10px] font-medium">Uppställning</span>
+              <span className="text-[10px] font-medium">Lineup</span>
             </button>
           </div>
           <AppVersion className="text-center pb-1 -mt-1" />

@@ -169,12 +169,14 @@ export function DraggablePlayerCard({
       style={{ ...style, touchAction: "manipulation" }}
       className={`
         group relative rounded-md w-full
-        player-row
+        player-row border-l-[3px]
+        ${player.isRegistered ? "border-l-emerald-400" : player.isDeclined ? "border-l-red-500" : "border-l-white/10"}
         transition-all duration-150 select-none
         ${compact ? "flex flex-col px-0.5 py-px text-xs" : "flex items-center gap-1.5 px-1 py-1 text-sm"}
         ${isDragging ? "shadow-2xl ring-2 ring-emerald-400/60" : ""}
         ${isHolding ? "ring-1 ring-red-400/60" : ""}
       `}
+      title={player.isRegistered ? "Anmäld" : player.isDeclined ? "Kommer inte" : "Inte svarat"}
       {...attributes}
       {...listeners}
       onPointerDown={handlePointerDown}
@@ -205,52 +207,18 @@ export function DraggablePlayerCard({
       )}
 
       {compact ? (
-        /* ---- COMPACT: always 2 rows — name top, badges bottom ---- */
+        /* ---- KOMPAKT: rad 1 = hela namnet, rad 2 = märken (anmälan visas som kant) ---- */
         <>
           <div className="flex items-center gap-1 w-full py-0.5">
-            <span className="text-white font-semibold leading-snug text-[13px] min-w-0 truncate">
+            <span className="text-white font-semibold leading-snug text-[13px] min-w-0 truncate" title={player.name}>
               {player.name}
               {player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
             </span>
-            {pirEnabled && pirSettings.showRating && activePir.rating != null && (
-              <span
-                className={`text-[9px] font-bold px-1 py-px rounded shrink-0 border ${
-                  activePir.rating >= 1050 ? 'bg-amber-400/15 text-amber-300 border-amber-400/30'
-                  : activePir.rating >= 1000 ? 'bg-white/5 text-white/50 border-white/15'
-                  : 'bg-sky-400/10 text-sky-300/60 border-sky-400/20'
-                }`}
-                title={`PIR${activePir.label ? ` (${activePir.label})` : ''}: ${activePir.rating} | Matcher: ${activePir.matchesPlayed}${activePir.confidence != null ? ` | Konfidens: ${Math.round(activePir.confidence * 100)}%` : ''}${player.pirGoalkeeper != null && player.pirOutfield != null ? ` | MV: ${player.pirGoalkeeper} | Ute: ${player.pirOutfield}` : ''}`}
-              >
-                {activePir.rating}{activePir.label ? <span className="text-[7px] opacity-50 ml-px">{activePir.label}</span> : null}
-              </span>
-            )}
-            {pirEnabled && pirSettings.showTrend && activePir.trendLabel && activePir.trendLabel !== 'stable' && (
-              <span
-                className={`text-[9px] shrink-0 ${
-                  activePir.trendLabel === 'rising' ? 'text-emerald-400'
-                  : activePir.trendLabel === 'slightly_rising' ? 'text-emerald-400/60'
-                  : activePir.trendLabel === 'slightly_falling' ? 'text-red-400/60'
-                  : 'text-red-400'
-                }`}
-                title={`Trend: ${activePir.trend != null ? (activePir.trend > 0 ? '+' : '') + activePir.trend : '?'} (senaste matcher vs totalt)`}
-              >
-                {activePir.trendLabel === 'rising' ? '\u2191'
-                  : activePir.trendLabel === 'slightly_rising' ? '\u2197'
-                  : activePir.trendLabel === 'slightly_falling' ? '\u2198'
-                  : '\u2193'}
-              </span>
-            )}
           </div>
         </>
       ) : (
         /* ---- NON-COMPACT: single row ---- */
         <>
-          {!hideExtras && player.isRegistered && (
-            <span className="text-emerald-400 text-[9px] shrink-0" title="Anmäld (Kommer)">✓</span>
-          )}
-          {!hideExtras && player.isDeclined && !player.isRegistered && (
-            <span className="text-red-400 text-[9px] shrink-0" title="Avböjd (Kommer inte)">✗</span>
-          )}
           <span className="text-white font-medium flex-1 leading-tight text-[13px] min-w-0">
             {player.name}
             {player.number ? <span className="text-white/40 font-normal ml-1.5">#{player.number}</span> : null}
@@ -303,12 +271,6 @@ export function DraggablePlayerCard({
           className="flex items-center gap-0.5 w-full hover:ring-1 hover:ring-emerald-400/40 rounded px-0.5 transition-all cursor-pointer leading-none"
           title="Klicka för att redigera spelare"
         >
-          {!hideExtras && player.isRegistered && (
-            <span className="text-emerald-400 text-[8px] shrink-0" title="Anmäld">✓</span>
-          )}
-          {!hideExtras && player.isDeclined && !player.isRegistered && (
-            <span className="text-red-400 text-[8px] shrink-0" title="Avböjd">✗</span>
-          )}
           {player.captainRole && (
             <span className={`text-[8px] font-black px-1 py-0.5 rounded shrink-0 ${
               player.captainRole === "C"
@@ -333,15 +295,39 @@ export function DraggablePlayerCard({
               {iceTimeMinutes}ʼ
             </span>
           )}
+          <span className="ml-auto flex items-center gap-0.5 shrink-0">
+            {pirEnabled && pirSettings.showRating && activePir.rating != null && (
+                <span
+                  className={`text-[9px] font-bold px-1 py-px rounded shrink-0 border ${
+                    activePir.rating >= 1050 ? 'bg-amber-400/15 text-amber-300 border-amber-400/30'
+                    : activePir.rating >= 1000 ? 'bg-white/5 text-white/50 border-white/15'
+                    : 'bg-sky-400/10 text-sky-300/60 border-sky-400/20'
+                  }`}
+                  title={`PIR${activePir.label ? ` (${activePir.label})` : ''}: ${activePir.rating} | Matcher: ${activePir.matchesPlayed}${activePir.confidence != null ? ` | Konfidens: ${Math.round(activePir.confidence * 100)}%` : ''}${player.pirGoalkeeper != null && player.pirOutfield != null ? ` | MV: ${player.pirGoalkeeper} | Ute: ${player.pirOutfield}` : ''}`}
+                >
+                  {activePir.rating}{activePir.label ? <span className="text-[7px] opacity-50 ml-px">{activePir.label}</span> : null}
+                </span>
+              )}
+              {pirEnabled && pirSettings.showTrend && activePir.trendLabel && activePir.trendLabel !== 'stable' && (
+                <span
+                  className={`text-[9px] shrink-0 ${
+                    activePir.trendLabel === 'rising' ? 'text-emerald-400'
+                    : activePir.trendLabel === 'slightly_rising' ? 'text-emerald-400/60'
+                    : activePir.trendLabel === 'slightly_falling' ? 'text-red-400/60'
+                    : 'text-red-400'
+                  }`}
+                  title={`Trend: ${activePir.trend != null ? (activePir.trend > 0 ? '+' : '') + activePir.trend : '?'} (senaste matcher vs totalt)`}
+                >
+                  {activePir.trendLabel === 'rising' ? '\u2191'
+                    : activePir.trendLabel === 'slightly_rising' ? '\u2197'
+                    : activePir.trendLabel === 'slightly_falling' ? '\u2198'
+                    : '\u2193'}
+                </span>
+              )}
+          </span>
         </button>
       ) : compact && !hideExtras ? (
         <div className="flex items-center gap-0.5 w-full leading-none">
-          {player.isRegistered && (
-            <span className="text-emerald-400 text-[8px] shrink-0" title="Anmäld">✓</span>
-          )}
-          {player.isDeclined && !player.isRegistered && (
-            <span className="text-red-400 text-[8px] shrink-0" title="Avböjd">✗</span>
-          )}
           {player.captainRole && (
             <span className={`text-[8px] font-black px-1 py-0.5 rounded shrink-0 ${
               player.captainRole === "C"
@@ -366,6 +352,36 @@ export function DraggablePlayerCard({
               {iceTimeMinutes}ʼ
             </span>
           )}
+          <span className="ml-auto flex items-center gap-0.5 shrink-0">
+            {pirEnabled && pirSettings.showRating && activePir.rating != null && (
+                <span
+                  className={`text-[9px] font-bold px-1 py-px rounded shrink-0 border ${
+                    activePir.rating >= 1050 ? 'bg-amber-400/15 text-amber-300 border-amber-400/30'
+                    : activePir.rating >= 1000 ? 'bg-white/5 text-white/50 border-white/15'
+                    : 'bg-sky-400/10 text-sky-300/60 border-sky-400/20'
+                  }`}
+                  title={`PIR${activePir.label ? ` (${activePir.label})` : ''}: ${activePir.rating} | Matcher: ${activePir.matchesPlayed}${activePir.confidence != null ? ` | Konfidens: ${Math.round(activePir.confidence * 100)}%` : ''}${player.pirGoalkeeper != null && player.pirOutfield != null ? ` | MV: ${player.pirGoalkeeper} | Ute: ${player.pirOutfield}` : ''}`}
+                >
+                  {activePir.rating}{activePir.label ? <span className="text-[7px] opacity-50 ml-px">{activePir.label}</span> : null}
+                </span>
+              )}
+              {pirEnabled && pirSettings.showTrend && activePir.trendLabel && activePir.trendLabel !== 'stable' && (
+                <span
+                  className={`text-[9px] shrink-0 ${
+                    activePir.trendLabel === 'rising' ? 'text-emerald-400'
+                    : activePir.trendLabel === 'slightly_rising' ? 'text-emerald-400/60'
+                    : activePir.trendLabel === 'slightly_falling' ? 'text-red-400/60'
+                    : 'text-red-400'
+                  }`}
+                  title={`Trend: ${activePir.trend != null ? (activePir.trend > 0 ? '+' : '') + activePir.trend : '?'} (senaste matcher vs totalt)`}
+                >
+                  {activePir.trendLabel === 'rising' ? '\u2191'
+                    : activePir.trendLabel === 'slightly_rising' ? '\u2197'
+                    : activePir.trendLabel === 'slightly_falling' ? '\u2198'
+                    : '\u2193'}
+                </span>
+              )}
+          </span>
         </div>
       ) : null}
 

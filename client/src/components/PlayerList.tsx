@@ -352,6 +352,14 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
         </div>
       )}
 
+      {/* Förklaring: kanten till vänster visar anmälan, rutan visar lagtillhörighet */}
+      <div className="flex items-center gap-3 px-3 pt-2 text-[10px] text-white/45">
+        <span className="flex items-center gap-1"><span className="w-[3px] h-3 rounded-sm bg-emerald-400" />Anmäld</span>
+        <span className="flex items-center gap-1"><span className="w-[3px] h-3 rounded-sm bg-red-500" />Kommer inte</span>
+        <span className="flex items-center gap-1"><span className="w-[3px] h-3 rounded-sm bg-white/15" />Inte svarat</span>
+        <span className="flex items-center gap-1 ml-auto"><span className="w-2.5 h-2.5 rounded-sm bg-white" /><span className="w-2.5 h-2.5 rounded-sm bg-emerald-400" />Lag</span>
+      </div>
+
       {/* Player list */}
       <div className="overflow-y-auto p-2 space-y-0.5" style={{ maxHeight: "560px", overscrollBehavior: "auto" }}>
         {sorted.length === 0 ? (

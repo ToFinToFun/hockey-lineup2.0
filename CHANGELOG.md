@@ -7,6 +7,18 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.6.0 – 2026-09-26
+
+**Lineup: nya spelarkort**
+- Anmälan visas som en färgad kant till vänster: grön = anmäld, röd = kommer inte, grå = inte svarat. Syns oavsett vilket lag spelaren är placerad i.
+- Lagtillhörigheten (vit/grön ruta) visas alltid på kortet.
+- Hela namnet får första raden. PIR flyttas till höger på andra raden.
+- Förklaring av färgerna ovanför truppen (fungerar på mobil där det inte finns mouse-over).
+
+**Score Tracker**
+- Fliken "Uppställning" heter nu "Lineup".
+- Samma positionsfärger som i Lineup (MV orange, B blå, C lila, forwards turkos). A-märket orange som i Lineup.
+
 ## 2.5.1 – 2026-09-26
 
 - Lineup, truppen: ikonerna till höger linjerar nu på alla rader. Rader utan "vanligaste position" får en tom plats, och C/A står först.
