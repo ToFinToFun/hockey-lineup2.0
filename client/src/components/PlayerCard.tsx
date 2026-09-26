@@ -16,6 +16,8 @@ const LOGO_GREEN = "/images/logo-green.png";
 const LOGO_WHITE = "/images/logo-white.png";
 
 interface PlayerCardProps {
+  /** Kortet ligger inne i en plats i uppställningen – ingen egen ruta runt. */
+  embedded?: boolean;
   player: Player;
   onRemove?: () => void;
   onDelete?: () => void;
@@ -59,6 +61,7 @@ export function DraggablePlayerCard({
   holdDuration = 3000,
   compact = false,
   hideExtras = false,
+  embedded = false,
   slotType,
   iceTimeMinutes,
 }: PlayerCardProps) {
@@ -168,11 +171,11 @@ export function DraggablePlayerCard({
       ref={setNodeRef}
       style={{ ...style, touchAction: "manipulation" }}
       className={`
-        group relative rounded-md w-full
-        player-row border-l-[3px]
+        group relative rounded-r-md rounded-l-sm w-full
+        ${embedded ? "bg-transparent" : "player-row"} border-l-[3px]
         ${player.isRegistered ? "border-l-emerald-400" : player.isDeclined ? "border-l-red-500" : "border-l-white/10"}
         transition-all duration-150 select-none
-        ${compact ? "flex flex-col px-0.5 py-px text-xs" : "flex items-center gap-1.5 px-1 py-1 text-sm"}
+        ${compact ? "flex items-center pl-1 pr-0.5 py-0.5 text-xs" : "flex items-center pl-1.5 pr-1 py-1 text-sm"}
         ${isDragging ? "shadow-2xl ring-2 ring-emerald-400/60" : ""}
         ${isHolding ? "ring-1 ring-red-400/60" : ""}
       `}
@@ -206,258 +209,90 @@ export function DraggablePlayerCard({
         </div>
       )}
 
-      {compact ? (
-        /* ---- KOMPAKT: rad 1 = hela namnet, rad 2 = märken (anmälan visas som kant) ---- */
-        <>
-          <div className="flex items-center gap-1 w-full py-0.5">
-            <span className="text-white font-semibold leading-snug text-[13px] min-w-0 truncate" title={player.name}>
-              {player.name}
-              {player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
-            </span>
-          </div>
-        </>
-      ) : (
-        /* ---- NON-COMPACT: single row ---- */
-        <>
-          <span className="text-white font-medium flex-1 leading-tight text-[13px] min-w-0">
-            {player.name}
-            {player.number ? <span className="text-white/40 font-normal ml-1.5">#{player.number}</span> : null}
-            {!hideExtras && player.gamesPlayed != null && player.gamesPlayed > 0 && (
-              <span className="ml-1 text-white/25 text-[9px]" title="Matcher spelade">({player.gamesPlayed})</span>
-            )}
-          </span>
-          {pirEnabled && pirSettings.showRating && activePir.rating != null && (
-            <span
-              className={`text-[9px] font-bold px-1 py-0.5 rounded shrink-0 border ${
-                activePir.rating >= 1050 ? 'bg-amber-400/15 text-amber-300 border-amber-400/30'
-                : activePir.rating >= 1000 ? 'bg-white/5 text-white/50 border-white/15'
-                : 'bg-sky-400/10 text-sky-300/60 border-sky-400/20'
-              }`}
-              title={`PIR${activePir.label ? ` (${activePir.label})` : ''}: ${activePir.rating} | Matcher: ${activePir.matchesPlayed}${activePir.confidence != null ? ` | Konfidens: ${Math.round(activePir.confidence * 100)}%` : ''}${player.pirGoalkeeper != null && player.pirOutfield != null ? ` | MV: ${player.pirGoalkeeper} | Ute: ${player.pirOutfield}` : ''}`}
-            >
-              {activePir.rating}{activePir.label ? <span className="text-[7px] opacity-50 ml-px">{activePir.label}</span> : null}
-            </span>
-          )}
-          {pirEnabled && pirSettings.showTrend && activePir.trendLabel && activePir.trendLabel !== 'stable' && (
-            <span
-              className={`text-[10px] shrink-0 ${
-                activePir.trendLabel === 'rising' ? 'text-emerald-400'
-                : activePir.trendLabel === 'slightly_rising' ? 'text-emerald-400/60'
-                : activePir.trendLabel === 'slightly_falling' ? 'text-red-400/60'
-                : 'text-red-400'
-              }`}
-              title={`Trend: ${activePir.trend != null ? (activePir.trend > 0 ? '+' : '') + activePir.trend : '?'}`}
-            >
-              {activePir.trendLabel === 'rising' ? '\u2191'
-                : activePir.trendLabel === 'slightly_rising' ? '\u2197'
-                : activePir.trendLabel === 'slightly_falling' ? '\u2198'
-                : '\u2193'}
-            </span>
-          )}
-        </>
-      )}
-
-      {/* Compact badges — row 2, always visible */}
-      {compact && !hideExtras && onChangeName ? (
-        <button
-          ref={editBtnRef}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            setNameValue(player.name);
-            setNrValue(player.number ?? "");
-            setShowEditPanel((v) => !v);
-          }}
-          className="flex items-center gap-0.5 w-full hover:ring-1 hover:ring-emerald-400/40 rounded px-0.5 transition-all cursor-pointer leading-none"
-          title="Klicka för att redigera spelare"
+      {/* ---- Namn (upp till två rader) till vänster, märken i två rader till höger ----
+           Anmälan visas som färgad kant, lagtillhörighet som V/G-ruta. */}
+      <div className={`flex items-center w-full min-w-0 ${compact ? "gap-1" : "gap-2"}`}>
+        <span
+          className={`flex-1 min-w-0 text-white leading-tight line-clamp-2 break-words ${compact ? "text-[12px] font-semibold" : "text-[13px] font-medium"}`}
+          title={player.name}
         >
-          {player.captainRole && (
-            <span className={`text-[8px] font-black px-1 py-0.5 rounded shrink-0 ${
-              player.captainRole === "C"
-                ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/40"
-                : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
-            }`}>{player.captainRole}</span>
-          )}
-          <TeamColorIndicator teamColor={player.teamColor ?? null} compact mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />
-          <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
-            {displayPosition}
-          </span>
-          {player.mostPlayedPosition && (
-            <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0 ${
-              player.mostPlayedPosition === displayPosition ? 'opacity-30' : ''
-            }`}
-              title={`Vanligaste position: ${player.mostPlayedPosition}`}>
-              {player.mostPlayedPosition}
-            </span>
-          )}
-          {iceTimeMinutes != null && (
-            <span className="ice-time-badge ice-time-badge-compact shrink-0" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
-              {iceTimeMinutes}ʼ
-            </span>
-          )}
-          <span className="ml-auto flex items-center gap-0.5 shrink-0">
-            {pirEnabled && pirSettings.showRating && activePir.rating != null && (
-                <span
-                  className={`text-[9px] font-bold px-1 py-px rounded shrink-0 border ${
-                    activePir.rating >= 1050 ? 'bg-amber-400/15 text-amber-300 border-amber-400/30'
-                    : activePir.rating >= 1000 ? 'bg-white/5 text-white/50 border-white/15'
-                    : 'bg-sky-400/10 text-sky-300/60 border-sky-400/20'
-                  }`}
-                  title={`PIR${activePir.label ? ` (${activePir.label})` : ''}: ${activePir.rating} | Matcher: ${activePir.matchesPlayed}${activePir.confidence != null ? ` | Konfidens: ${Math.round(activePir.confidence * 100)}%` : ''}${player.pirGoalkeeper != null && player.pirOutfield != null ? ` | MV: ${player.pirGoalkeeper} | Ute: ${player.pirOutfield}` : ''}`}
-                >
-                  {activePir.rating}{activePir.label ? <span className="text-[7px] opacity-50 ml-px">{activePir.label}</span> : null}
-                </span>
-              )}
-              {pirEnabled && pirSettings.showTrend && activePir.trendLabel && activePir.trendLabel !== 'stable' && (
-                <span
-                  className={`text-[9px] shrink-0 ${
-                    activePir.trendLabel === 'rising' ? 'text-emerald-400'
-                    : activePir.trendLabel === 'slightly_rising' ? 'text-emerald-400/60'
-                    : activePir.trendLabel === 'slightly_falling' ? 'text-red-400/60'
-                    : 'text-red-400'
-                  }`}
-                  title={`Trend: ${activePir.trend != null ? (activePir.trend > 0 ? '+' : '') + activePir.trend : '?'} (senaste matcher vs totalt)`}
-                >
-                  {activePir.trendLabel === 'rising' ? '\u2191'
-                    : activePir.trendLabel === 'slightly_rising' ? '\u2197'
-                    : activePir.trendLabel === 'slightly_falling' ? '\u2198'
-                    : '\u2193'}
-                </span>
-              )}
-          </span>
-        </button>
-      ) : compact && !hideExtras ? (
-        <div className="flex items-center gap-0.5 w-full leading-none">
-          {player.captainRole && (
-            <span className={`text-[8px] font-black px-1 py-0.5 rounded shrink-0 ${
-              player.captainRole === "C"
-                ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/40"
-                : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
-            }`}>{player.captainRole}</span>
-          )}
-          <TeamColorIndicator teamColor={player.teamColor ?? null} compact mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />
-          <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
-            {displayPosition}
-          </span>
-          {player.mostPlayedPosition && (
-            <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0 ${
-              player.mostPlayedPosition === displayPosition ? 'opacity-30' : ''
-            }`}
-              title={`Vanligaste position: ${player.mostPlayedPosition}`}>
-              {player.mostPlayedPosition}
-            </span>
-          )}
-          {iceTimeMinutes != null && (
-            <span className="ice-time-badge ice-time-badge-compact shrink-0" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
-              {iceTimeMinutes}ʼ
-            </span>
-          )}
-          <span className="ml-auto flex items-center gap-0.5 shrink-0">
-            {pirEnabled && pirSettings.showRating && activePir.rating != null && (
-                <span
-                  className={`text-[9px] font-bold px-1 py-px rounded shrink-0 border ${
-                    activePir.rating >= 1050 ? 'bg-amber-400/15 text-amber-300 border-amber-400/30'
-                    : activePir.rating >= 1000 ? 'bg-white/5 text-white/50 border-white/15'
-                    : 'bg-sky-400/10 text-sky-300/60 border-sky-400/20'
-                  }`}
-                  title={`PIR${activePir.label ? ` (${activePir.label})` : ''}: ${activePir.rating} | Matcher: ${activePir.matchesPlayed}${activePir.confidence != null ? ` | Konfidens: ${Math.round(activePir.confidence * 100)}%` : ''}${player.pirGoalkeeper != null && player.pirOutfield != null ? ` | MV: ${player.pirGoalkeeper} | Ute: ${player.pirOutfield}` : ''}`}
-                >
-                  {activePir.rating}{activePir.label ? <span className="text-[7px] opacity-50 ml-px">{activePir.label}</span> : null}
-                </span>
-              )}
-              {pirEnabled && pirSettings.showTrend && activePir.trendLabel && activePir.trendLabel !== 'stable' && (
-                <span
-                  className={`text-[9px] shrink-0 ${
-                    activePir.trendLabel === 'rising' ? 'text-emerald-400'
-                    : activePir.trendLabel === 'slightly_rising' ? 'text-emerald-400/60'
-                    : activePir.trendLabel === 'slightly_falling' ? 'text-red-400/60'
-                    : 'text-red-400'
-                  }`}
-                  title={`Trend: ${activePir.trend != null ? (activePir.trend > 0 ? '+' : '') + activePir.trend : '?'} (senaste matcher vs totalt)`}
-                >
-                  {activePir.trendLabel === 'rising' ? '\u2191'
-                    : activePir.trendLabel === 'slightly_rising' ? '\u2197'
-                    : activePir.trendLabel === 'slightly_falling' ? '\u2198'
-                    : '\u2193'}
-                </span>
-              )}
-          </span>
-        </div>
-      ) : null}
+          {player.name}
+          {player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
+        </span>
 
-      {/* Non-compact badges — clickable for edit */}
-      {!compact && !hideExtras && onChangeName ? (
-        <button
-          ref={!compact ? editBtnRef : undefined}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            setNameValue(player.name);
-            setNrValue(player.number ?? "");
-            setShowEditPanel((v) => !v);
-          }}
-          className="flex items-center gap-1 shrink-0 hover:ring-1 hover:ring-emerald-400/40 rounded px-0.5 py-0.5 transition-all cursor-pointer"
-          title="Klicka för att redigera spelare"
-        >
-          {player.captainRole && (
-            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${
-              player.captainRole === "C"
-                ? "bg-yellow-400/20 text-yellow-300 border-yellow-400/40"
-                : "bg-orange-400/20 text-orange-300 border-orange-400/40"
-            }`}>{player.captainRole}</span>
-          )}
-          <TeamColorIndicator teamColor={player.teamColor ?? null} mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />
-          <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
-            {displayPosition}
-          </span>
-          {player.mostPlayedPosition ? (
-            <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0 ${
-              player.mostPlayedPosition === displayPosition ? 'opacity-40' : ''
-            }`}
-              title={`Vanligaste position: ${player.mostPlayedPosition}`}>
-              {player.mostPlayedPosition}
-            </span>
+        {!hideExtras && (() => {
+          const hasPirData = (player.pirMatchesPlayed ?? 0) >= 3 || (player.pirAdjustment ?? 0) !== 0;
+          const badges = (
+            <>
+              {/* Rad 1: C/A först, sedan lag och position – linjerar till höger på alla rader */}
+              <span className="flex items-center gap-0.5 justify-end">
+                {player.captainRole && (
+                  <span className={`text-[9px] leading-none font-black px-1 py-[3px] rounded border shrink-0 ${
+                    player.captainRole === "C"
+                      ? "bg-yellow-400/20 text-yellow-300 border-yellow-400/40"
+                      : "bg-orange-400/20 text-orange-300 border-orange-400/40"
+                  }`} title={player.captainRole === "C" ? "Lagkapten" : "Assisterande lagkapten"}>{player.captainRole}</span>
+                )}
+                <TeamColorIndicator teamColor={player.teamColor ?? null} compact mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />
+                <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`} title={`Position: ${displayPosition}`}>
+                  {displayPosition}
+                </span>
+              </span>
+              {/* Rad 2: speltid, vanligaste position, PIR (bara med matchdata) */}
+              {(iceTimeMinutes != null || player.mostPlayedPosition || (pirEnabled && pirSettings.showRating && hasPirData)) && (
+                <span className="flex items-center gap-0.5 justify-end">
+                  {iceTimeMinutes != null && (
+                    <span className="ice-time-badge ice-time-badge-compact shrink-0" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
+                      {iceTimeMinutes}ʼ
+                    </span>
+                  )}
+                  {player.mostPlayedPosition && player.mostPlayedPosition !== displayPosition && (
+                    <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0`}
+                      title={`Vanligaste position: ${player.mostPlayedPosition}`}>
+                      {player.mostPlayedPosition}
+                    </span>
+                  )}
+                  {pirEnabled && pirSettings.showRating && hasPirData && activePir.rating != null && (
+                    <span
+                      className={`text-[9px] leading-none font-bold px-1 py-[3px] rounded shrink-0 border ${
+                        activePir.rating >= 1050 ? "bg-amber-400/15 text-amber-300 border-amber-400/30"
+                        : activePir.rating >= 1000 ? "bg-white/5 text-white/50 border-white/15"
+                        : "bg-sky-400/10 text-sky-300/60 border-sky-400/20"
+                      }`}
+                      title={`PIR${activePir.label ? ` (${activePir.label})` : ""}: ${activePir.rating} | Matcher: ${activePir.matchesPlayed}`}
+                    >
+                      {activePir.rating}
+                      {pirSettings.showTrend && activePir.trendLabel && activePir.trendLabel !== "stable" && (
+                        <span className={activePir.trendLabel.includes("rising") ? "text-emerald-400 ml-px" : "text-red-400 ml-px"}>
+                          {activePir.trendLabel.includes("rising") ? "↑" : "↓"}
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </span>
+              )}
+            </>
+          );
+          return onChangeName ? (
+            <button
+              ref={editBtnRef}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                setNameValue(player.name);
+                setNrValue(player.number ?? "");
+                setShowEditPanel((v) => !v);
+              }}
+              className="flex flex-col gap-0.5 shrink-0 rounded px-0.5 py-0.5 hover:ring-1 hover:ring-emerald-400/40 transition-all cursor-pointer"
+              title="Tryck för att redigera spelaren"
+            >
+              {badges}
+            </button>
           ) : (
-            /* Tom plats så att ikonerna linjerar i listan */
-            <span className="w-[20px] h-[18px] shrink-0" aria-hidden="true" />
-          )}
-          {iceTimeMinutes != null && (
-            <span className="ice-time-badge shrink-0" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
-              {iceTimeMinutes}ʼ
-            </span>
-          )}
-        </button>
-      ) : !compact && !hideExtras ? (
-        <div className="flex items-center gap-1 shrink-0">
-          {player.captainRole && (
-            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${
-              player.captainRole === "C"
-                ? "bg-yellow-400/20 text-yellow-300 border-yellow-400/40"
-                : "bg-orange-400/20 text-orange-300 border-orange-400/40"
-            }`}>{player.captainRole}</span>
-          )}
-          <TeamColorIndicator teamColor={player.teamColor ?? null} mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />
-          <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
-            {displayPosition}
-          </span>
-          {player.mostPlayedPosition ? (
-            <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0 ${
-              player.mostPlayedPosition === displayPosition ? 'opacity-40' : ''
-            }`}
-              title={`Vanligaste position: ${player.mostPlayedPosition}`}>
-              {player.mostPlayedPosition}
-            </span>
-          ) : (
-            /* Tom plats så att ikonerna linjerar i listan */
-            <span className="w-[20px] h-[18px] shrink-0" aria-hidden="true" />
-          )}
-          {iceTimeMinutes != null && (
-            <span className="ice-time-badge shrink-0" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
-              {iceTimeMinutes}ʼ
-            </span>
-          )}
-        </div>
-      ) : null}
+            <span className="flex flex-col gap-0.5 shrink-0">{badges}</span>
+          );
+        })()}
+      </div>
 
       {/* PortalDropdown edit panel */}
       {onChangeName && (
@@ -768,11 +603,12 @@ export function TeamColorIndicator({ teamColor, compact, mostPlayedTeam }: { tea
     ? "w-[16px] h-[16px] rounded-[4px] shrink-0"
     : "w-[20px] h-[18px] rounded-[5px] shrink-0";
 
+  const letter = `flex items-center justify-center font-black leading-none ${compact ? "text-[9px]" : "text-[10px]"}`;
   if (teamColor === "green") {
-    return <div title="Gröna" className={`${cls} bg-emerald-400 border border-emerald-300/60`} />;
+    return <div title="Tillhör Gröna" className={`${cls} ${letter} bg-emerald-400 border border-emerald-300/60 text-emerald-950`}>G</div>;
   }
   if (teamColor === "white") {
-    return <div title="Vita" className={`${cls} bg-white border border-white/60`} />;
+    return <div title="Tillhör Vita" className={`${cls} ${letter} bg-white border border-white/60 text-slate-900`}>V</div>;
   }
 
   // Ghost variant: show faded most-played team color for unassigned players
@@ -796,7 +632,7 @@ export function TeamColorIndicator({ teamColor, compact, mostPlayedTeam }: { tea
     );
   }
 
-  return <div className={`${cls} border border-white/20 bg-white/5`} />;
+  return <div title="Inget lag" className={`${cls} border border-white/20 bg-white/5`} />;
 }
 
 // Drag overlay card

@@ -7,6 +7,17 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.6.1 – 2026-09-26
+
+**Lineup: spelarkort, omtag**
+- Samma kort i truppen och i uppställningen: namnet till vänster (upp till två rader), märkena i två rader till höger.
+  - Rad 1: C/A först, sedan lag och position – linjerar till höger på alla rader.
+  - Rad 2: speltid, vanligaste position (bara om den skiljer sig) och PIR.
+- Anmälan (färgad kant) visas nu även i truppen.
+- Lagrutan har bokstav: V = tillhör Vita, G = tillhör Gröna. Tom ruta = inget lag.
+- PIR visas bara för spelare med minst 3 matcher (eller manuell justering) – inga "1000" för alla.
+- Mindre luft: kortet inne i en plats har ingen egen ruta.
+
 ## 2.6.0 – 2026-09-26
 
 **Lineup: nya spelarkort**

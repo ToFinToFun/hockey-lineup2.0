@@ -78,7 +78,7 @@ export function PlayerSlot({
 
       {/* Player card or empty placeholder */}
       {player ? (
-        <div className="flex-1 min-w-0 overflow-visible flex items-center px-1.5">
+        <div className="flex-1 min-w-0 overflow-visible flex items-center pl-1 pr-0.5">
           <DraggablePlayerCard
             player={player}
             onRemove={onRemove}
@@ -91,6 +91,7 @@ export function PlayerSlot({
             onDelete={onDelete}
             slotType={slot.type}
             compact
+            embedded
             iceTimeMinutes={iceTimeMinutes}
           />
         </div>

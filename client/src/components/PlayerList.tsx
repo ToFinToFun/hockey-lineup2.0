@@ -357,7 +357,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
         <span className="flex items-center gap-1"><span className="w-[3px] h-3 rounded-sm bg-emerald-400" />Anmäld</span>
         <span className="flex items-center gap-1"><span className="w-[3px] h-3 rounded-sm bg-red-500" />Kommer inte</span>
         <span className="flex items-center gap-1"><span className="w-[3px] h-3 rounded-sm bg-white/15" />Inte svarat</span>
-        <span className="flex items-center gap-1 ml-auto"><span className="w-2.5 h-2.5 rounded-sm bg-white" /><span className="w-2.5 h-2.5 rounded-sm bg-emerald-400" />Lag</span>
+        <span className="flex items-center gap-1 ml-auto"><span className="w-3 h-3 rounded-sm bg-white text-slate-900 text-[8px] font-black flex items-center justify-center">V</span><span className="w-3 h-3 rounded-sm bg-emerald-400 text-emerald-950 text-[8px] font-black flex items-center justify-center">G</span>Lag</span>
       </div>
 
       {/* Player list */}
