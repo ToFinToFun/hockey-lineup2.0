@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.5.1 – 2026-09-26
+
+- Lineup, truppen: ikonerna till höger linjerar nu på alla rader. Rader utan "vanligaste position" får en tom plats, och C/A står först.
+- Lineup, korten i uppställningen: C/A visas före lagfärg och position.
+
 ## 2.5.0 – 2026-09-26
 
 **Ny grund inför säsongen – all historik nollställd (beslut av styrelsen)**

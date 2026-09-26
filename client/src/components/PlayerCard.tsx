@@ -309,6 +309,13 @@ export function DraggablePlayerCard({
           {!hideExtras && player.isDeclined && !player.isRegistered && (
             <span className="text-red-400 text-[8px] shrink-0" title="Avböjd">✗</span>
           )}
+          {player.captainRole && (
+            <span className={`text-[8px] font-black px-1 py-0.5 rounded shrink-0 ${
+              player.captainRole === "C"
+                ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/40"
+                : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
+            }`}>{player.captainRole}</span>
+          )}
           <TeamColorIndicator teamColor={player.teamColor ?? null} compact mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />
           <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
             {displayPosition}
@@ -325,13 +332,6 @@ export function DraggablePlayerCard({
             <span className="ice-time-badge ice-time-badge-compact shrink-0" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
               {iceTimeMinutes}ʼ
             </span>
-          )}
-          {player.captainRole && (
-            <span className={`text-[8px] font-black px-1 py-0.5 rounded shrink-0 ${
-              player.captainRole === "C"
-                ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/40"
-                : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
-            }`}>{player.captainRole}</span>
           )}
         </button>
       ) : compact && !hideExtras ? (
@@ -342,6 +342,13 @@ export function DraggablePlayerCard({
           {player.isDeclined && !player.isRegistered && (
             <span className="text-red-400 text-[8px] shrink-0" title="Avböjd">✗</span>
           )}
+          {player.captainRole && (
+            <span className={`text-[8px] font-black px-1 py-0.5 rounded shrink-0 ${
+              player.captainRole === "C"
+                ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/40"
+                : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
+            }`}>{player.captainRole}</span>
+          )}
           <TeamColorIndicator teamColor={player.teamColor ?? null} compact mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />
           <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
             {displayPosition}
@@ -358,13 +365,6 @@ export function DraggablePlayerCard({
             <span className="ice-time-badge ice-time-badge-compact shrink-0" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
               {iceTimeMinutes}ʼ
             </span>
-          )}
-          {player.captainRole && (
-            <span className={`text-[8px] font-black px-1 py-0.5 rounded shrink-0 ${
-              player.captainRole === "C"
-                ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/40"
-                : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
-            }`}>{player.captainRole}</span>
           )}
         </div>
       ) : null}
@@ -394,13 +394,16 @@ export function DraggablePlayerCard({
           <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
             {displayPosition}
           </span>
-          {player.mostPlayedPosition && (
+          {player.mostPlayedPosition ? (
             <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0 ${
               player.mostPlayedPosition === displayPosition ? 'opacity-40' : ''
             }`}
               title={`Vanligaste position: ${player.mostPlayedPosition}`}>
               {player.mostPlayedPosition}
             </span>
+          ) : (
+            /* Tom plats så att ikonerna linjerar i listan */
+            <span className="w-[20px] h-[18px] shrink-0" aria-hidden="true" />
           )}
           {iceTimeMinutes != null && (
             <span className="ice-time-badge shrink-0" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
@@ -421,13 +424,16 @@ export function DraggablePlayerCard({
           <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
             {displayPosition}
           </span>
-          {player.mostPlayedPosition && (
+          {player.mostPlayedPosition ? (
             <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0 ${
               player.mostPlayedPosition === displayPosition ? 'opacity-40' : ''
             }`}
               title={`Vanligaste position: ${player.mostPlayedPosition}`}>
               {player.mostPlayedPosition}
             </span>
+          ) : (
+            /* Tom plats så att ikonerna linjerar i listan */
+            <span className="w-[20px] h-[18px] shrink-0" aria-hidden="true" />
           )}
           {iceTimeMinutes != null && (
             <span className="ice-time-badge shrink-0" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
