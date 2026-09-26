@@ -11,7 +11,15 @@ import { eq } from "drizzle-orm";
 import { getDb, tableChecksum } from "./db";
 import { lineupState } from "../drizzle/schema";
 import { sseManager } from "./sse";
-import { applyOps, diffDocs, normalizeDoc, type LineupDoc, type LineupOp } from "../shared/lineupDoc";
+import { applyOps, diffDocs, normalizeDoc, type LineupDoc, type LineupOp, type Player } from "../shared/lineupDoc";
+import {
+  createPlayer,
+  getRegistryMap,
+  onRegistryChange,
+  resolveId,
+  toLineupFields,
+  updatePlayer,
+} from "./playersDb";
 
 const STATE_ROW_ID = 1;
 const RECENT_PATCH_LIMIT = 500;
@@ -73,6 +81,7 @@ function startWatcher() {
   // Även när ingen använder appen: upptäck externa ändringar och meddela enheterna.
   watcher = setInterval(() => {
     void serialize(() => checkExternalChange(true)).catch(() => {});
+    void getRegistryMap().catch(() => {}); // upptäcker ändringar direkt i spelarregistret
   }, EXTERNAL_CHECK_MS);
   watcher.unref?.();
 }
@@ -133,9 +142,122 @@ export function applyLineupPatch(patchId: string, ops: LineupOp[], clientId?: st
     if (recentPatchIds.length > RECENT_PATCH_LIMIT) recentPatchIds.shift();
 
     sseManager.notifyLineupPatch({ version, patchId, clientId: clientId ?? null, ops });
+    void writeThroughToRegistry(next, ops).catch((err) =>
+      console.error("[lineup] Kunde inte uppdatera spelarregistret:", err)
+    );
     return { version, duplicate: false };
   });
 }
+
+// ─── Synk med spelarregistret ────────────────────────────────────────────────
+
+const REGISTRY_FIELDS = ["name", "number", "position", "teamColor", "captainRole"] as const;
+
+function allDocPlayers(d: LineupDoc): Player[] {
+  return [...d.players, ...Object.values(d.lineup)];
+}
+
+/**
+ * Ändringar gjorda i Lineup (namn, nummer, position, lag, C/A, nya och
+ * borttagna spelare) skrivs till registret.
+ */
+async function writeThroughToRegistry(next: LineupDoc, ops: LineupOp[]) {
+  const touched = new Map<string, Player>();
+  for (const op of ops) {
+    if (op.t === "slot" && op.player) touched.set(op.player.id, op.player);
+    if (op.t === "rosterUpsert") touched.set(op.player.id, op.player);
+  }
+  const removed = ops.filter((o): o is Extract<LineupOp, { t: "rosterRemove" }> => o.t === "rosterRemove").map((o) => o.id);
+  if (touched.size === 0 && removed.length === 0) return;
+
+  const registry = await getRegistryMap();
+  const inDoc = new Set(allDocPlayers(next).map((p) => p.id));
+  for (const p of touched.values()) {
+    if (!inDoc.has(p.id)) continue;
+    const row = registry.get(p.id);
+    if (!row) {
+      await createPlayer({
+        id: p.id,
+        name: String(p.name ?? "").trim() || "Namnlös",
+        number: String(p.number ?? ""),
+        position: p.position ?? "F",
+        teamColor: p.teamColor ?? null,
+        captainRole: p.captainRole ?? null,
+        // Ny spelare i Lineup: inte i medlemsregistret förrän styrelsen säger det.
+        isMember: (p as Player & { isMember?: boolean }).isMember ?? false,
+        active: true,
+      });
+      continue;
+    }
+    const diff: Record<string, unknown> = {};
+    for (const key of REGISTRY_FIELDS) {
+      const a = (p as unknown as Record<string, unknown>)[key] ?? null;
+      const b = (row as unknown as Record<string, unknown>)[key] ?? null;
+      if (String(a ?? "") !== String(b ?? "")) diff[key] = a;
+    }
+    if (!row.active) diff.active = true;
+    if (Object.keys(diff).length) await updatePlayer(p.id, diff);
+  }
+  for (const id of removed) {
+    // Borttagen ur Lineup (inte bara flyttad till en plats) → inaktiv i registret.
+    if (!inDoc.has(id) && registry.get(id)?.active) await updatePlayer(id, { active: false });
+  }
+}
+
+/**
+ * Registret → uppställningen: nya uppgifter, nya aktiva spelare, inaktiva
+ * och ihopslagna tas bort. Körs när registret ändrats (styrelsen, import,
+ * direkt i databasen). Blir det inga skillnader händer ingenting.
+ */
+async function reconcileWithRegistry() {
+  const registry = await getRegistryMap();
+  if (registry.size === 0) return;
+  const { doc: current } = await getLineupSnapshot();
+  const ops: LineupOp[] = [];
+  const seen = new Set<string>();
+
+  const updated = (p: Player): Player | null => {
+    const row = registry.get(p.id);
+    if (!row) return p; // okänd för registret – lämnas (skrivs in vid nästa ändring)
+    if (row.mergedInto || resolveId(registry, p.id) !== p.id || !row.active) return null;
+    return { ...p, ...toLineupFields(row) } as Player;
+  };
+  const same = (a: Player, b: Player) =>
+    REGISTRY_FIELDS.every((k) => String((a as any)[k] ?? "") === String((b as any)[k] ?? "")) &&
+    (a as any).isMember === (b as any).isMember &&
+    ((a as any).lagetName ?? undefined) === ((b as any).lagetName ?? undefined);
+
+  for (const [slot, p] of Object.entries(current.lineup)) {
+    seen.add(p.id);
+    const u = updated(p);
+    if (!u) ops.push({ t: "slot", slot, player: null });
+    else if (!same(p, u)) ops.push({ t: "slot", slot, player: u });
+  }
+  current.players.forEach((p, index) => {
+    seen.add(p.id);
+    const u = updated(p);
+    if (!u) ops.push({ t: "rosterRemove", id: p.id });
+    else if (!same(p, u)) ops.push({ t: "rosterUpsert", player: u, index });
+  });
+  let end = current.players.length;
+  for (const row of registry.values()) {
+    if (!row.active || row.mergedInto || seen.has(row.id)) continue;
+    ops.push({ t: "rosterUpsert", player: { id: row.id, ...toLineupFields(row) } as unknown as Player, index: end++ });
+  }
+  if (ops.length) await applyLineupPatch(`registry-${Date.now()}-${Math.random().toString(36).slice(2)}`, ops);
+}
+
+let reconcileTimer: ReturnType<typeof setTimeout> | null = null;
+onRegistryChange(() => {
+  if (reconcileTimer) clearTimeout(reconcileTimer);
+  reconcileTimer = setTimeout(() => {
+    reconcileTimer = null;
+    void reconcileWithRegistry().catch((err) => console.error("[lineup] Synk med registret misslyckades:", err));
+  }, 300);
+});
+
+/** För tester: kör synken med registret direkt. */
+export const reconcileWithRegistryForTests = reconcileWithRegistry;
 
 /**
  * Äldre klienter skickar hela uppställningen. Den görs om till en patch mot

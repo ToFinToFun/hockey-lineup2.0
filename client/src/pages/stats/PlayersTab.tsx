@@ -160,7 +160,7 @@ function PlayerProfile({
 
   const playerPir = useMemo(() => {
     if (!pirData) return null;
-    return pirData.find((p: any) => p.playerKey === name);
+    return pirData.find((p: any) => p.label === name || p.name === name);
   }, [pirData, name]);
 
   if (isLoading) {
@@ -700,7 +700,7 @@ export default function PlayersTab({
     const pirMap = new Map<string, any>();
     if (pirData) {
       for (const p of pirData) {
-        pirMap.set(p.playerKey, p);
+        pirMap.set(p.label, p);
       }
     }
     return topScorers.map((p: any) => ({

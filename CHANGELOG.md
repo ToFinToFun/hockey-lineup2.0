@@ -7,6 +7,20 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.4.0 – 2026-09-26
+
+**Spelarregister**
+- Ny tabell `players`: en rad per person med fast ID. Namn, nummer, position, lag, C/A, medlem ja/nej, aktiv ja/nej, namn i laget.se, externt ID och tidigare namn (alias).
+- Byggs automatiskt vid uppstart (engångsmigrering): nuvarande trupp blir aktiva medlemmar; spelare som bara finns i gamla matcher blir inaktiva och "ej medlem"; samma person med gammalt ID slås ihop; gamla namn/nummer sparas som alias; gamla mål och assist kopplas till spelar-ID; PIR-justeringar flyttas till spelar-ID.
+- Registret och Lineup hålls i synk åt båda hållen, live. Ändringar i Lineup (namn, nummer, position, lag, C/A, nya och borttagna spelare) sparas i registret; ändringar i registret syns direkt i Lineup och Score Tracker. Nya spelare från Lineup blir "ej medlem" tills styrelsen ändrar.
+- Statistik och PIR räknas per spelar-ID. Byter en spelare namn eller nummer följer hela historiken med. Nya mål sparas med målskyttens och assistens ID.
+- Laget.se-anmälningar matchas även mot "namn i laget.se".
+
+**Ny sida: Spelare (styrelsen)**
+- Lista med sök och filter (i truppen, inaktiva, ej medlemmar, alla), redigera, lägg till, slå ihop dubbletter.
+- "Att se över": möjliga dubbletter och medlemmar utan nummer.
+- Exportera till CSV (öppnas i Excel) och importera tillbaka med förhandsgranskning av nya, ändrade och saknade spelare. Valet "filen är hela medlemsregistret" flaggar saknade som ej medlem – ingen tas bort.
+
 ## 2.3.4 – 2026-09-26
 
 - Databasanslutningen använder kryptering (TLS) automatiskt när MySQL kräver det (`require_secure_transport=ON`). v2.3.3 kunde inte starta av den anledningen. Styrs med `DATABASE_SSL` (auto/on/off) och valfritt `DATABASE_SSL_CA` för certifikatkontroll.

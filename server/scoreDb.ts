@@ -5,6 +5,7 @@
 
 import { eq, inArray, desc } from "drizzle-orm";
 import { getDb, tableChecksum } from "./db";
+import { canonicalizeMatch, getRegistryMap, onRegistryChange } from "./playersDb";
 import { matchResults, appConfig, type InsertMatchResult } from "../drizzle/schema";
 
 // ─── Match Results ─────────────────────────────────────────────────
@@ -19,16 +20,18 @@ let matchCacheChecksum: string | null = null;
 let lastExternalCheck = 0;
 const EXTERNAL_CHECK_MS = 5_000;
 
-/** Anropas efter varje ändring av matcher. */
+/** Anropas efter varje ändring av matcher (och av spelarregistret). */
 function invalidateMatches() {
   matchCache = null;
   matchCacheVersion++;
 }
+onRegistryChange(invalidateMatches);
 
 /** Har tabellen ändrats utanför appen sedan cachen laddades? Då laddas den om. */
 async function checkExternalMatchChanges() {
   if (!matchCache || Date.now() - lastExternalCheck < EXTERNAL_CHECK_MS) return;
   lastExternalCheck = Date.now();
+  await getRegistryMap(); // upptäcker även ändringar direkt i spelarregistret
   const sum = await tableChecksum("match_results");
   if (sum != null && matchCacheChecksum != null && sum !== matchCacheChecksum) {
     console.log("[matcher] Ändring direkt i databasen upptäckt – laddar om");
@@ -47,7 +50,10 @@ async function loadAllMatches(): Promise<MatchRow[]> {
   const db = await getDb();
   if (!db) return [];
   matchCacheChecksum = await tableChecksum("match_results");
-  matchCache = await db.select().from(matchResults).orderBy(desc(matchResults.id));
+  const rows = await db.select().from(matchResults).orderBy(desc(matchResults.id));
+  // Spelarnas nuvarande namn/nummer via ID – historiken följer med vid namnbyte.
+  const registry = await getRegistryMap();
+  matchCache = rows.map((m) => canonicalizeMatch(m, registry));
   lastExternalCheck = Date.now();
   return matchCache;
 }

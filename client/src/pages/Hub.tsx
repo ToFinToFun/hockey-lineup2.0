@@ -172,6 +172,23 @@ export default function Hub() {
           </Link>
           )}
 
+          {isAdmin && (
+          <Link href="/players">
+            <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] hover:border-sky-500/60 transition-all duration-300 cursor-pointer">
+              <div className="p-5 sm:p-6 flex items-center gap-4">
+                <div className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
+                  <Users size={24} className="text-sky-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold tracking-tight">Spelare</h2>
+                  <p className="text-white/40 text-xs sm:text-sm mt-0.5">Spelarregister: namn, nummer, position, lag och medlemskap</p>
+                </div>
+                <ChevronRight size={20} className="text-white/20 group-hover:text-sky-400 transition-colors flex-shrink-0" />
+              </div>
+            </div>
+          </Link>
+          )}
+
           {/* Stats Card */}
           {isAdmin && (
           <Link href="/stats">

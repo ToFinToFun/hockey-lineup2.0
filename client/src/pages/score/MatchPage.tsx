@@ -369,10 +369,19 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
   const saveGoalDetails = () => {
     if (selectedGoalIndex === null) return;
     const updated = [...goalHistory];
+    // Koppla målskytt/assist till spelarens fasta ID (statistiken följer med vid namnbyte).
+    const idForLabel = (label: string) => {
+      if (!label || !lineupState) return undefined;
+      const all = [...(lineupState.players ?? []), ...Object.values(lineupState.lineup ?? {})];
+      const found = all.find((p) => (p.number ? `${p.name} #${p.number}` : p.name) === label) ?? all.find((p) => p.name === label);
+      return found?.id;
+    };
     updated[selectedGoalIndex] = {
       ...updated[selectedGoalIndex],
       scorer: scorerName || undefined,
+      scorerId: idForLabel(scorerName),
       assist: assistName || undefined,
+      assistId: idForLabel(assistName),
       other: otherInfo || undefined,
     };
     setGoalHistory(updated);

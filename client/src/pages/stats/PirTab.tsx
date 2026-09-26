@@ -212,7 +212,7 @@ export default function PirTab() {
               <tbody>
                 {players.map((p) => (
                   <tr key={p.playerKey} className="border-t border-white/5 text-white/80">
-                    <td className="py-1.5 pr-2">{p.playerKey}</td>
+                    <td className="py-1.5 pr-2">{p.name}</td>
                     <td className={`text-right font-semibold ${p.matchesPlayed < 3 ? "text-white/30" : ""}`}>{p.rating}</td>
                     <td className="text-right">{p.outfieldRating ?? "–"}</td>
                     <td className="text-right">{p.goalkeeperRating ?? "–"}</td>

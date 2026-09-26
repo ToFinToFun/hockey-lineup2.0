@@ -204,12 +204,12 @@ function PirTopList({ pirData, onPlayerClick }: { pirData: any[]; onPlayerClick:
         return (
           <button
             key={p.playerKey}
-            onClick={() => onPlayerClick(p.playerKey)}
+            onClick={() => onPlayerClick(p.label ?? p.name)}
             className="w-full flex items-center gap-2 group hover:bg-[#1a1a1a] rounded-lg px-2 py-1 transition-colors"
           >
             <span className="text-[#687076] text-xs w-4 text-right">{i + 1}.</span>
             <span className="text-[#ECEDEE] text-xs w-28 truncate text-left group-hover:text-[#0a7ea4] transition-colors">
-              {p.playerKey}
+              {p.name}
             </span>
             <div className="flex-1 h-3 bg-[#1a1a1a] rounded-full overflow-hidden">
               <div

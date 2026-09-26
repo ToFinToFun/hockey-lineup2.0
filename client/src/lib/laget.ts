@@ -101,6 +101,7 @@ export function matchRegisteredPlayers(
   const nameMap = new Map<string, Player>();
   for (const p of unique) {
     nameMap.set(normalizeName(p.name), p);
+    if (p.lagetName) nameMap.set(normalizeName(p.lagetName), p);
   }
 
   const matchedIds: string[] = [];
@@ -144,6 +145,7 @@ export function matchDeclinedPlayers(
   const nameMap = new Map<string, Player>();
   for (const p of unique) {
     nameMap.set(normalizeName(p.name), p);
+    if (p.lagetName) nameMap.set(normalizeName(p.lagetName), p);
   }
 
   const matchedIds: string[] = [];

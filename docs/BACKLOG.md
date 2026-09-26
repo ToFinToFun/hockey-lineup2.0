@@ -44,3 +44,9 @@ Prioriterad lista från genomgången 2026-09-24. Bocka av när klart.
 - [x] PIR: mål/assist/målvakt, manuell justering, träffsäkerhetsanalys, förslag på vikter – v2.3.0
 - [x] Auto-fördelning: lagfärg → antal → position → PIR – v2.3.0
 - [ ] Kör "Ta fram förslag" löpande under säsongen (försiktiga förslag från 6 matcher)
+
+## Spelare
+- [x] Spelarregister med fast ID, medlemsflagga, alias – v2.4.0
+- [x] Statistik och PIR per spelar-ID – v2.4.0
+- [x] Export/import (CSV) med förhandsgranskning – v2.4.0
+- [ ] Automatisk synk från medlemsregistret (laget.se) – förberett med laget-namn och externt ID

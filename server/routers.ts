@@ -1,12 +1,14 @@
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, lineupProcedure, adminProcedure, router } from "./_core/trpc";
 import { authRouter } from "./routers/auth";
+import { playersRouter } from "./routers/players";
 import { fetchAttendance, updateAttendance, type AttendingStatus } from "./lagetSe";
 import { scoreRouter } from "./routers/score";
 import { scoreStatsRouter } from "./routers/scoreStats";
 import { getAllMatchResults, getConfigValue, setConfigValue, getMatchCacheVersion, refreshMatchCacheVersion } from "./scoreDb";
 import { calculatePIR, DEFAULT_PIR_WEIGHTS, type PirWeights } from "./pir";
 import { analyzePir, sanitizeWeights, type PirAnalysis } from "./pirAnalysis";
+import { getRegistryMap, getRegistryVersion } from "./playersDb";
 import { getLineupSnapshot, applyLineupPatch, applyFullState } from "./lineupSync";
 import type { LineupOp } from "../shared/lineupDoc";
 import {
@@ -35,7 +37,7 @@ const lineupOpSchema = z.union([
   z.object({ t: z.literal("field"), key: z.literal("deletedPlayerIds"), value: z.array(z.string().max(100)).max(1000) }),
 ]);
 
-let pirCache: { key: string; result: ReturnType<typeof calculatePIR> } | null = null;
+let pirCache: { key: string; result: Array<ReturnType<typeof calculatePIR>[number] & { label: string }> } | null = null;
 let analysisCache: { key: string; result: PirAnalysis } | null = null;
 
 // PIR-inställningar i app_config (vikter och manuella justeringar per spelare).
@@ -53,10 +55,16 @@ async function loadPirConfig(): Promise<{ weights: PirWeights; adjustments: Reco
 }
 
 async function getPirRatings() {
-  const key = `${await refreshMatchCacheVersion()}:${pirConfigVersion}`;
+  const key = `${await refreshMatchCacheVersion()}:${pirConfigVersion}:${getRegistryVersion()}`;
   if (!pirCache || pirCache.key !== key) {
     const { weights, adjustments } = await loadPirConfig();
-    pirCache = { key, result: calculatePIR(await getAllMatchResults(), { weights, adjustments }) };
+    const registry = await getRegistryMap();
+    // Etikett "Namn #nr" som statistiksidorna använder för att identifiera spelaren.
+    const result = calculatePIR(await getAllMatchResults(), { weights, adjustments }).map((r) => {
+      const reg = registry.get(r.playerKey);
+      return { ...r, name: reg?.name ?? r.name, label: reg ? (reg.number ? `${reg.name} #${reg.number}` : reg.name) : r.name };
+    });
+    pirCache = { key, result };
   }
   return pirCache.result;
 }
@@ -64,6 +72,7 @@ async function getPirRatings() {
 export const appRouter = router({
   system: systemRouter,
   auth: authRouter,
+  players: playersRouter,
   score: scoreRouter,
   scoreStats: scoreStatsRouter,
   laget: router({
@@ -151,8 +160,8 @@ export const appRouter = router({
         for (const [slotId, p] of Object.entries(lineupEntries)) {
           if (!p || typeof p !== "object" || !(p as any).name) continue;
           const pl = p as any;
-          // Use just the name as key to consolidate across matches
-          const playerKey = (pl.name as string).trim();
+          // Spelarens fasta ID (namn bara för gammal data utan ID)
+          const playerKey = pl.id ? String(pl.id) : (pl.name as string).trim();
 
           // Extract position from slot ID
           let position = "";

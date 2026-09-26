@@ -78,7 +78,7 @@ export async function getDb() {
  * Kontrollsumma för en tabell. Används för att upptäcka ändringar som görs
  * direkt i databasen (utanför appen), så att appens minne inte blir inaktuellt.
  */
-export async function tableChecksum(table: "lineup_state" | "match_results"): Promise<string | null> {
+export async function tableChecksum(table: "lineup_state" | "match_results" | "players"): Promise<string | null> {
   const db = await getDb();
   if (!db) return null;
   try {

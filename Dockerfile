@@ -23,7 +23,7 @@ COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/drizzle ./drizzle
 COPY package.json start.sh ./
-COPY scripts/migrate.mjs ./scripts/migrate.mjs
+COPY scripts/migrate.mjs scripts/dataMigrations.mjs ./scripts/
 RUN chmod +x start.sh
 
 # Kör inte som root.

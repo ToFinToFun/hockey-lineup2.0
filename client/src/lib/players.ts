@@ -24,6 +24,10 @@ export interface Player {
   position: Position;
   teamColor?: TeamColor;
   captainRole?: CaptainRole;
+  /** Finns i klubbens medlemsregister (styrs från spelarregistret). */
+  isMember?: boolean;
+  /** Namnet som det står i laget.se om det skiljer sig. */
+  lagetName?: string;
   isRegistered?: boolean;   // Anmäld till dagens match ("Kommer")
   isDeclined?: boolean;     // Avböjt dagens match ("Kommer inte")
   gamesPlayed?: number;     // Antal matcher spelade

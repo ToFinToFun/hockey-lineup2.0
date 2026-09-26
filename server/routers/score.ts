@@ -125,6 +125,8 @@ export const scoreRouter = router({
                 team: z.string().max(20),
                 scorer: z.string().max(100).optional().default(""),
                 assist: z.string().max(100).optional(),
+                scorerId: z.string().max(64).optional(),
+                assistId: z.string().max(64).optional(),
                 other: z.string().max(100).optional(),
                 sponsor: z.string().max(100).optional(),
                 timestamp: z.string().max(40),

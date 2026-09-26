@@ -312,7 +312,7 @@ export default function Home() {
     const enriched: any = { ...p };
     const posHistory = posHistoryRef.current;
     if (posHistory) {
-      const hist = posHistory[key] ?? posHistory[nameOnly];
+      const hist = posHistory[p.id] ?? posHistory[key] ?? posHistory[nameOnly];
       if (hist?.mostPlayed) {
         enriched.mostPlayedPosition = hist.mostPlayed;
         if (hist.mostPlayedTeam === "green" || hist.mostPlayedTeam === "white") {
@@ -322,7 +322,7 @@ export default function Home() {
     }
     const pirMap = pirMapRef.current;
     if (pirMap) {
-      const pir = pirMap[key] ?? pirMap[nameOnly];
+      const pir = pirMap[p.id] ?? pirMap[key] ?? pirMap[nameOnly];
       if (pir) {
         Object.assign(enriched, {
           pir: pir.rating, pirConfidence: pir.confidence, pirRecent: pir.recentRating,

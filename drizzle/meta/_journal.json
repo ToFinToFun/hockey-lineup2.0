@@ -43,6 +43,13 @@
       "when": 1790331540564,
       "tag": "0005_share_expiry_drop_operations",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1790443754780,
+      "tag": "0006_players_register",
+      "breakpoints": true
     }
   ]
 }

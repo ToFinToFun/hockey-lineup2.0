@@ -139,6 +139,7 @@ traefik.http.middlewares.lineup-buffering.buffering.maxResponseBodyBytes=0
 
 | Tabell | Beskrivning |
 |---|---|
+| `players` | Spelarregistret – en rad per person med fast ID, medlemsflagga och tidigare namn |
 | `lineup_state` | Aktuell uppställning (spelare, lag, konfiguration) |
 | `lineup_operations` | Ändringslogg för SSE-synkronisering |
 | `saved_lineups` | Sparade uppställningar |

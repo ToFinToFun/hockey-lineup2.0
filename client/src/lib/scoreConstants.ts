@@ -18,7 +18,10 @@ export interface GoalEvent {
   team: "white" | "green";
   timestamp: string;
   scorer?: string;
+  /** Spelarens fasta ID (spelarregistret) */
+  scorerId?: string;
   assist?: string;
+  assistId?: string;
   other?: string;
   sponsor?: string;
 }

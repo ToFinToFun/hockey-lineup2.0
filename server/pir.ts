@@ -27,7 +27,10 @@ import type { MatchResult } from "../drizzle/schema";
 // ─── Types ─────────────────────────────────────────────────────────
 
 export interface PIRResult {
+  /** Spelarens ID (eller namn för gammal data utan ID). */
   playerKey: string;
+  /** Spelarens namn (senast kända). */
+  name: string;
   /** Manuell justering (ingår redan i rating och rollbetygen). */
   adjustment: number;
   /** Overall rating (time-weighted) */
@@ -120,6 +123,8 @@ interface MatchPlayerData {
   playerRoles: Map<string, MatchRole>;
   /** Mål och assist per spelare i matchen */
   points: Map<string, { goals: number; assists: number }>;
+  /** Visningsnamn per spelarnyckel */
+  playerNames: Map<string, string>;
 }
 
 // ─── Constants ─────────────────────────────────────────────────────
@@ -189,13 +194,18 @@ function extractMatchData(matches: MatchResult[]): MatchPlayerData[] {
     const whiteTeam: string[] = [];
     const greenTeam: string[] = [];
     const playerRoles = new Map<string, MatchRole>();
+    const playerNames = new Map<string, string>();
+    const labelToKey = new Map<string, string>();
 
     for (const [slotId, p] of Object.entries(lineupEntries)) {
       if (!p || typeof p !== "object" || !(p as any).name) continue;
       const pl = p as any;
-      // Use just the name as key to consolidate players across matches
-      // where they may have had different or missing numbers
-      const playerKey = (pl.name as string).trim();
+      // Spelarens fasta ID (registret) – namnet bara för mycket gammal data utan ID.
+      const playerKey = pl.id ? String(pl.id) : (pl.name as string).trim();
+      playerNames.set(playerKey, String(pl.name).trim());
+      const label = pl.number ? `${String(pl.name).trim()} #${pl.number}` : String(pl.name).trim();
+      labelToKey.set(label.toLowerCase(), playerKey);
+      labelToKey.set(String(pl.name).trim().toLowerCase(), playerKey);
 
       // Determine role from slot ID
       const role: MatchRole = isGoalkeeperSlot(slotId) ? "goalkeeper" : "outfield";
@@ -212,13 +222,15 @@ function extractMatchData(matches: MatchResult[]): MatchPlayerData[] {
 
     // Mål och assist per spelare (målskytt sparas som "Namn #nr" eller fritext)
     const points = new Map<string, { goals: number; assists: number }>();
-    const goalList = (match.goalHistory as Array<{ scorer?: string; assist?: string; other?: string }> | null) ?? [];
+    const goalList = (match.goalHistory as Array<{ scorer?: string; assist?: string; scorerId?: string; assistId?: string; other?: string }> | null) ?? [];
     for (const g of goalList) {
       if (g.other === "Självmål") continue; // ingen poäng för självmål
-      for (const [field, kind] of [["scorer", "goals"], ["assist", "assists"]] as const) {
+      for (const [field, idField, kind] of [["scorer", "scorerId", "goals"], ["assist", "assistId", "assists"]] as const) {
         const label = g[field];
-        if (!label) continue;
-        const key = playerKeyFromLabel(label);
+        const key =
+          (g[idField] && playerRoles.has(g[idField]!) ? g[idField] : undefined) ??
+          (label ? labelToKey.get(label.trim().toLowerCase()) ?? playerKeyFromLabel(label) : undefined);
+        if (!key) continue;
         if (!playerRoles.has(key)) continue; // okänd spelare (inte i uppställningen)
         const entry = points.get(key) ?? { goals: 0, assists: 0 };
         entry[kind]++;
@@ -239,6 +251,7 @@ function extractMatchData(matches: MatchResult[]): MatchPlayerData[] {
         greenScore: match.teamGreenScore,
         playerRoles,
         points,
+        playerNames,
       });
     }
   }
@@ -474,9 +487,11 @@ function calculatePIRFromData(matchData: MatchPlayerData[], options: PirOptions 
 
   // Collect all unique players
   const allPlayers = new Set<string>();
+  const latestName = new Map<string, string>();
   for (const m of matchData) {
     for (const p of m.whiteTeam) allPlayers.add(p);
     for (const p of m.greenTeam) allPlayers.add(p);
+    for (const [k, n] of m.playerNames) latestName.set(k, n); // äldst → nyast, senaste vinner
   }
 
   // ── Stats (count once) ──
@@ -694,6 +709,7 @@ function calculatePIRFromData(matchData: MatchPlayerData[], options: PirOptions 
 
     results.push({
       playerKey: p,
+      name: latestName.get(p) ?? p,
       rating: rating + adj,
       recentRating: recentRating + adj,
       adjustment: adj,

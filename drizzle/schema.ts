@@ -116,3 +116,39 @@ export const matchResults = mysqlTable("match_results", {
 
 export type MatchResult = typeof matchResults.$inferSelect;
 export type InsertMatchResult = typeof matchResults.$inferInsert;
+
+// ─── Spelarregister ──────────────────────────────────────────────────────────
+// En rad per person. Fast ID som aldrig ändras – namn, nummer, position och lag
+// kan ändras utan att historiken tappas. Uppställningen innehåller kopior av
+// spelarna; registret är källan för spelardata och hålls i synk av servern.
+
+export const players = mysqlTable("players", {
+  /** Fast ID (samma som i uppställningen och matchernas uppställningar). */
+  id: varchar("id", { length: 64 }).primaryKey(),
+  name: varchar("name", { length: 120 }).notNull(),
+  number: varchar("number", { length: 10 }).default("").notNull(),
+  /** MV, B, F, C, IB */
+  position: varchar("position", { length: 4 }).default("F").notNull(),
+  /** white | green | null */
+  teamColor: varchar("teamColor", { length: 10 }),
+  /** C | A | null */
+  captainRole: varchar("captainRole", { length: 2 }),
+  /** Finns i klubbens medlemsregister. Spelare som inte gör det flaggas men finns kvar. */
+  isMember: boolean("isMember").default(true).notNull(),
+  /** Aktiv = ingår i truppen i Lineup. Inaktiva finns kvar för historiken. */
+  active: boolean("active").default(true).notNull(),
+  /** Namnet som det står i laget.se (om det skiljer sig), för anmälningsmatchning. */
+  lagetName: varchar("lagetName", { length: 150 }),
+  /** ID i ett externt medlemsregister (förberett för framtida synk). */
+  externalId: varchar("externalId", { length: 64 }),
+  /** Tidigare namn/etiketter ("Namn #nr") – kopplar gammal historik. */
+  aliases: json("aliases").$type<string[]>(),
+  /** Om spelaren slagits ihop med en annan: den spelarens ID. */
+  mergedInto: varchar("mergedInto", { length: 64 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PlayerRow = typeof players.$inferSelect;
+export type InsertPlayerRow = typeof players.$inferInsert;
