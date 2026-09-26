@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { adminProcedure, router } from "../_core/trpc";
+import { seasonHistory, seasonOf } from "../playerHistory";
+import { getAllMatchResults } from "../scoreDb";
 import {
   createPlayer,
   listPlayers,
@@ -114,6 +116,28 @@ function planImport(rows: ImportRow[], registry: RegistryPlayer[], markMissingAs
 export const playersRouter = router({
   /** Alla spelare i registret (även inaktiva och ihopslagna). */
   list: adminProcedure.query(() => listPlayers()),
+
+  /** Matcher, positioner, lag, mål och assist per säsong för en spelare. */
+  history: adminProcedure
+    .input(z.object({ id: z.string().min(1).max(64) }))
+    .query(async ({ input }) => {
+      const all = seasonHistory(await getAllMatchResults());
+      return all.get(input.id) ?? [];
+    }),
+
+  /** Antal matcher per spelare för en säsong (standard: innevarande). */
+  seasonCounts: adminProcedure
+    .input(z.object({ season: z.string().max(9).optional() }).optional())
+    .query(async ({ input }) => {
+      const season = input?.season ?? seasonOf(new Date());
+      const all = seasonHistory(await getAllMatchResults());
+      const counts: Record<string, number> = {};
+      for (const [id, lines] of all) {
+        const l = lines.find((x) => x.season === season);
+        if (l) counts[id] = l.matches;
+      }
+      return { season, counts };
+    }),
 
   update: adminProcedure
     .input(z.object({ id: z.string().max(64), fields: fieldsSchema }))

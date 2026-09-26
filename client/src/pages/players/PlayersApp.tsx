@@ -309,6 +309,8 @@ function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]
         <button onClick={save} disabled={!payload.name || update.isPending || create.isPending}
           className="w-full py-2.5 rounded-xl bg-[#0a7ea4] font-semibold disabled:opacity-40">Spara</button>
 
+        {row && <SeasonHistory id={row.id} />}
+
         {row && (
           <div className="border-t border-white/5 pt-3 space-y-2">
             <p className="text-xs text-white/50">Samma person registrerad två gånger? Slå ihop – historiken samlas på den valda spelaren och den här tas bort ur truppen.</p>
@@ -326,6 +328,52 @@ function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── Historik per säsong ─────────────────────────────────────────────────────
+
+function SeasonHistory({ id }: { id: string }) {
+  const history = trpc.players.history.useQuery({ id });
+  if (history.isLoading) return null;
+  const lines = history.data ?? [];
+  return (
+    <div className="border-t border-white/5 pt-3">
+      <p className="text-xs font-semibold text-white/70 mb-1">Historik per säsong</p>
+      {lines.length === 0 ? (
+        <p className="text-[11px] text-white/40">Inga godkända matcher än.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-[11px] text-white/75">
+            <thead className="text-white/40">
+              <tr>
+                <th className="text-left font-normal py-1">Säsong</th>
+                <th className="text-right font-normal">M</th>
+                <th className="text-right font-normal">V-O-F</th>
+                <th className="text-right font-normal">Mål</th>
+                <th className="text-right font-normal">Ass</th>
+                <th className="text-right font-normal">MV/B/C/F</th>
+                <th className="text-right font-normal">Vit/Grön</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((l) => (
+                <tr key={l.season} className="border-t border-white/5">
+                  <td className="py-1">{l.season}</td>
+                  <td className="text-right">{l.matches}</td>
+                  <td className="text-right">{l.wins}-{l.draws}-{l.losses}</td>
+                  <td className="text-right">{l.goals}</td>
+                  <td className="text-right">{l.assists}</td>
+                  <td className="text-right">{l.positions.MV}/{l.positions.B}/{l.positions.C}/{l.positions.F}</td>
+                  <td className="text-right">{l.teams.white}/{l.teams.green}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="text-[10px] text-white/30 mt-1">Säsong räknas 1 aug–31 jul. Bara godkända matcher.</p>
+        </div>
+      )}
     </div>
   );
 }

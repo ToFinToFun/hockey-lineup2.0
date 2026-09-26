@@ -16,6 +16,9 @@ Versionen höjs i `package.json` vid varje deploy till `production`, och commite
 - Statistik och PIR räknas per spelar-ID. Byter en spelare namn eller nummer följer hela historiken med. Nya mål sparas med målskyttens och assistens ID.
 - Laget.se-anmälningar matchas även mot "namn i laget.se".
 
+**Historik per säsong**
+- Per spelare och säsong (1 aug–31 jul): matcher, vinst/oavgjort/förlust, mål, assist, antal matcher per position (MV/B/C/F) och i vilket lag. Räknas från godkända matchers sparade uppställningar och följer spelarens ID. Visas i spelardialogen.
+
 **Ny sida: Spelare (styrelsen)**
 - Lista med sök och filter (i truppen, inaktiva, ej medlemmar, alla), redigera, lägg till, slå ihop dubbletter.
 - "Att se över": möjliga dubbletter och medlemmar utan nummer.
