@@ -18,7 +18,7 @@ export function MatchPredictionBar({ lineup, teamAName, teamBName, dark }: {
     <div className={`mx-auto w-full max-w-3xl px-3 py-2 ${dark ? "text-white/70" : "text-gray-700"}`}>
       <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider mb-1">
         <span>{teamAName} {a}%</span>
-        <span className={dark ? "text-white/35" : "text-gray-400"}>Prediktion (test)</span>
+        <span className={dark ? "text-white/35" : "text-gray-400"}>Prediktion</span>
         <span>{b}% {teamBName}</span>
       </div>
       <div className={`h-1.5 rounded-full overflow-hidden flex ${dark ? "bg-white/10" : "bg-gray-200"}`}>

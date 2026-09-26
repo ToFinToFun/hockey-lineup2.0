@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.3.2 – 2026-09-25
+
+- Lineup: speltidstexten under varje lag är större och tydligare, en rad per grupp (backar, centrar, forwards). Backarna visas nu också.
+- Lineup: ger ett förslag på jämnare fördelning (antal backar/centrar/forwards) när speltiden skiljer mycket mellan grupperna – samma beräkning som IceTime.
+- Matchprediktionen: "(test)" borttaget ur rubriken.
+
 ## 2.3.1 – 2026-09-25
 
 **Auto-fördelning**

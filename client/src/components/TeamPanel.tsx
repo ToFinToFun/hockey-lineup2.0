@@ -523,10 +523,17 @@ export function TeamPanel({
 
         {/* ── Ice time rotation summary ── */}
         {iceTimeSummary && (
-          <div className={`border-t border-white/[0.04] ${compact ? 'mt-1.5 pt-1.5 px-0.5' : 'mt-2 pt-2 px-1'}`}>
-            <p className={`${compact ? 'text-[7px]' : 'text-[9px]'} italic text-white/25 leading-relaxed`}>
-              {iceTimeSummary}
-            </p>
+          <div className={`border-t border-white/[0.06] ${compact ? 'mt-1.5 pt-1.5 px-0.5' : 'mt-2 pt-2 px-1'}`}>
+            {iceTimeSummary.map((line, i) => (
+              <p
+                key={i}
+                className={`${compact ? 'text-[10px]' : 'text-[11px]'} leading-snug ${
+                  line.startsWith('Jämnare') ? 'text-amber-300/80' : 'text-white/55'
+                }`}
+              >
+                {line}
+              </p>
+            ))}
           </div>
         )}
       </div>
