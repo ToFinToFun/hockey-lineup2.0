@@ -80,3 +80,12 @@ describe("laget.se nyheter (adminformuläret)", () => {
     expect(f.filter(([k]) => k === "IsTopNews").map(([, v]) => v)).toEqual(["true", "false"]);
   });
 });
+
+import { extractAccountName } from "./lagetSe";
+
+describe("laget.se kontonamn", () => {
+  it("läser inloggade kontots namn", () => {
+    expect(extractAccountName(`{"user":{"is_loggedin":true,"name":"Jerry Paasovaara","first_name":"Jerry"}}`)).toBe("Jerry Paasovaara");
+    expect(extractAccountName(`{"user":{"is_loggedin":false}}`)).toBeNull();
+  });
+});

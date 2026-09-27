@@ -2,9 +2,8 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, lineupProcedure, adminProcedure, router } from "./_core/trpc";
 import { authRouter } from "./routers/auth";
 import { playersRouter } from "./routers/players";
-import { fetchAttendance, updateAttendance, publishNews, type AttendingStatus } from "./lagetSe";
+import { fetchAttendance, updateAttendance, publishNews, fetchAccountName, NEWS_ADMIN_URL, type AttendingStatus } from "./lagetSe";
 import { seasonHistory, seasonOf } from "./playerHistory";
-import { ENV } from "./_core/env";
 import { listSponsors, createSponsor, updateSponsor, deleteSponsor, moveSponsor, recordSponsorNews } from "./sponsorsDb";
 import { scoreRouter } from "./routers/score";
 import { scoreStatsRouter } from "./routers/scoreStats";
@@ -128,8 +127,8 @@ export const appRouter = router({
       return { lastHome };
     }),
 
-    /** Kontot som publicerar på laget.se (LAGET_SE_USERNAME i Coolify), för att visa i nyhetsrutan. */
-    newsAccount: lineupProcedure.query(() => ({ username: ENV.lagetSeUsername || null })),
+    /** Namnet på laget.se-kontot som publicerar (inte e-postadressen) och adressen till nyhetsadministrationen. */
+    newsAccount: lineupProcedure.query(async () => ({ name: await fetchAccountName(), adminUrl: NEWS_ADMIN_URL })),
 
     /** Senast publicerade nyheten från appen (för att kunna ersätta den vid ändringar). */
     newsLastPublished: lineupProcedure.query(() => readLastPublished()),

@@ -878,3 +878,35 @@ export async function deleteNews(newsId: number): Promise<{ success: boolean; er
     return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
+
+/** Adress till nyhetsadministrationen på laget.se. */
+export const NEWS_ADMIN_URL = `${ADMIN_BASE_URL}/${TEAM_SLUG}/NewsManagement`;
+
+/** Inloggade kontots namn ur en laget.se-sida ("user":{"is_loggedin":true,"name":"…"}). Exporteras för test. */
+export function extractAccountName(html: string): string | null {
+  const m = html.match(/"is_loggedin"\s*:\s*true\s*,\s*"name"\s*:\s*"([^"]+)"/);
+  return m ? m[1].replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16))) : null;
+}
+
+// Namnet ändras sällan – spara det en stund per konto så att rutan inte loggar in varje gång.
+let accountNameCache: { username: string; name: string | null; at: number } | null = null;
+const ACCOUNT_NAME_TTL = 6 * 60 * 60 * 1000;
+
+/** Namnet på laget.se-kontot som publicerar (LAGET_SE_USERNAME), t.ex. "Styrelsen". */
+export async function fetchAccountName(): Promise<string | null> {
+  const username = ENV.lagetSeUsername;
+  if (!username) return null;
+  if (accountNameCache && accountNameCache.username === username && Date.now() - accountNameCache.at < ACCOUNT_NAME_TTL) {
+    return accountNameCache.name;
+  }
+  const { client, followRedirects } = createClient();
+  try {
+    if (!(await login(client, followRedirects))) return null;
+    const page = await followRedirects(await client.get(`${BASE_URL}/${TEAM_SLUG}`));
+    const name = typeof page.data === "string" ? extractAccountName(page.data) : null;
+    accountNameCache = { username, name, at: Date.now() };
+    return name;
+  } catch {
+    return null;
+  }
+}

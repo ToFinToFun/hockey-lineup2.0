@@ -495,8 +495,16 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
               </div>
               <label className="flex items-center gap-2 text-xs text-white/70 pt-1">
                 <input type="checkbox" checked={showPublisher} onChange={(e) => setShowPublisher(e.target.checked)} />
-                <span className="min-w-0 truncate">Visa avsändare ({newsAccount.data?.username ?? "kontot som publicerar"})</span>
+                <span className="min-w-0 truncate">Visa avsändare ({newsAccount.data?.name ?? "kontot som publicerar"})</span>
               </label>
+              <a
+                href={newsAccount.data?.adminUrl ?? "https://admin.laget.se/Stalstadens/NewsManagement"}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] text-sky-300/80 hover:text-sky-200 underline-offset-2 hover:underline"
+              >
+                Alla nyheter i laget.se-admin <ExternalLink className="w-3 h-3" />
+              </a>
             </div>
 
             {publishError && (
@@ -516,7 +524,7 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
                 <a href={published.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 underline underline-offset-2">
                   Öppna nyheten <ExternalLink className="w-3 h-3" />
                 </a>
-                {published.publishAt && <p className="text-emerald-200/70 text-[10px]">Länken fungerar när nyheten gått ut. Tills dess syns den under Nyheter i laget.se-admin.</p>}
+                {published.publishAt && <p className="text-emerald-200/70 text-[10px]">Länken fungerar när nyheten gått ut. Tills dess finns den under Alla nyheter i laget.se-admin.</p>}
               </div>
             )}
           </div>

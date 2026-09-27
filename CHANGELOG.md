@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.13.3 – 2026-09-27
+
+- Laget.se-nyheten: "Visa avsändare" visar kontots namn på laget.se (inte e-postadressen). Namnet hämtas vid inloggning och sparas i sex timmar; byts kontot i Coolify hämtas det nya namnet direkt.
+- Länk till "Alla nyheter i laget.se-admin" (NewsManagement) för vidare administration.
+
 ## 2.13.2 – 2026-09-27
 
 - Laget.se-nyheten: publiceringstid väljs i egna listor (datum, timme, minut) – alltid 24-timmarsformat oavsett webbläsarens språk.
