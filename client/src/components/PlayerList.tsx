@@ -4,6 +4,7 @@
 import { useState, useCallback } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard, TeamColorIndicator } from "./PlayerCard";
+import { sortRoster, positionsForSlot, slotTeamColor } from "@/lib/rosterSort";
 import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
 import { ALL_POSITIONS, POSITION_LABELS, getPositionBadgeColor } from "@/lib/players";
 import { Search, UserPlus, X, ArrowUpDown, ClipboardCheck, CheckSquare, Square, Loader2 } from "lucide-react";
@@ -28,6 +29,10 @@ interface PlayerListProps {
   totalRegistered?: number;
   totalDeclined?: number;
   totalPlayers?: number;
+  /** Vald tom plats (desktop): listan sorteras för platsen och ett klick placerar spelaren där. */
+  targetSlot?: { slotType: string; slotLabel: string; teamName: string; teamId: string } | null;
+  onPickForTarget?: (player: Player) => void;
+  onCancelTarget?: () => void;
 }
 
 type PosFilter = Position | "Alla";
@@ -80,7 +85,7 @@ function sortPlayers(players: Player[], key: SortKey, dir: SortDir): Player[] {
   });
 }
 
-export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber, onChangeName, onChangeCaptainRole, onChangeRegistered, onSyncToLaget, syncingPlayerIds, onBulkSyncToLaget, onChangeGamesPlayed, onBulkRegister, onEventInfoUpdate, totalRegistered, totalDeclined, totalPlayers }: PlayerListProps) {
+export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber, onChangeName, onChangeCaptainRole, onChangeRegistered, onSyncToLaget, syncingPlayerIds, onBulkSyncToLaget, onChangeGamesPlayed, onBulkRegister, onEventInfoUpdate, totalRegistered, totalDeclined, totalPlayers, targetSlot, onPickForTarget, onCancelTarget }: PlayerListProps) {
   const { colors: fc } = useForwardColor();
   const [bulkSelectMode, setBulkSelectMode] = useState(false);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
@@ -121,7 +126,12 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
     return matchesSearch && matchesPos && matchesTeam;
   });
 
-  const sorted = sortPlayers(filtered, sortKey, sortDir);
+  // Vald plats: samma ordning som mobilen (närvaro, position som passar, lag, namn).
+  // Annars listans vanliga sortering.
+  const sorted = targetSlot
+    ? sortRoster(filtered, positionsForSlot(targetSlot.slotType, targetSlot.slotLabel), slotTeamColor(targetSlot.teamName, targetSlot.teamId))
+    : sortPlayers(filtered, sortKey, sortDir);
+  const picking = !!targetSlot && !!onPickForTarget && !bulkSelectMode;
 
   const handleAddPlayer = () => {
     if (!newName.trim()) return;
@@ -360,6 +370,20 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
         <span className="flex items-center gap-0.5 ml-auto"><span className="w-3 h-3 rounded-sm bg-white text-slate-900 text-[8px] font-black flex items-center justify-center">V</span><span className="w-3 h-3 rounded-sm bg-emerald-400 text-emerald-950 text-[8px] font-black flex items-center justify-center">G</span><span className="w-3 h-3 rounded-sm border border-white/20 text-white/45 text-[8px] font-black flex items-center justify-center">W</span></span>
       </div>
 
+      {/* Vald plats: tala om vad ett klick gör */}
+      {targetSlot && (
+        <div className="mx-2 mt-2 flex items-center gap-2 rounded-md border border-emerald-400/50 bg-emerald-500/15 px-2.5 py-1.5 text-[11px] text-emerald-200">
+          <span className="flex-1 min-w-0 truncate">
+            Välj spelare till <b>{targetSlot.teamName} · {targetSlot.slotLabel}</b>
+          </span>
+          {onCancelTarget && (
+            <button onClick={onCancelTarget} className="shrink-0 text-emerald-200/70 hover:text-white underline-offset-2 hover:underline">
+              Avbryt
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Player list */}
       <div className="overflow-y-auto p-2 space-y-0.5" style={{ maxHeight: "560px", overscrollBehavior: "auto" }}>
         {sorted.length === 0 ? (
@@ -388,7 +412,14 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
                   )}
                 </button>
               )}
-              <div className="flex-1 relative">
+              <div
+                className={`flex-1 relative ${picking ? "cursor-pointer rounded-md hover:ring-1 hover:ring-emerald-400/60" : ""}`}
+                onClick={picking ? (e) => {
+                  // Klick i spelarens redigeringspanel (portal) ska inte placera spelaren
+                  if (!e.currentTarget.contains(e.target as Node)) return;
+                  onPickForTarget!(player);
+                } : undefined}
+              >
                 {syncingPlayerIds?.has(player.id) && (
                   <div className="absolute top-1 right-1 z-10">
                     <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin" />

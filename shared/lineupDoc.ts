@@ -58,11 +58,11 @@ export function emptyDoc(): LineupDoc {
 // ─── Spelardata ───────────────────────────────────────────────────────────────
 
 /**
- * Fält som räknas fram i klienten (PIR, vanligaste position) och som inte ska
+ * Fält som räknas fram i klienten (PIR, vanligaste position, statistik) och som inte ska
  * synkas – annars skulle varje ny PIR-beräkning se ut som en ändring.
  */
 function isDerivedKey(key: string): boolean {
-  return key.startsWith("pir") || key === "mostPlayedPosition" || key === "mostPlayedTeam" || key === "positionStats";
+  return key.startsWith("pir") || key.startsWith("stats") || key === "mostPlayedPosition" || key === "mostPlayedTeam" || key === "positionStats";
 }
 
 /** Spelaren utan framräknade fält, med nycklarna i fast ordning (stabil jämförelse). */

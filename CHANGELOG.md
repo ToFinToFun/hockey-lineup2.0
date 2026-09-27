@@ -7,6 +7,14 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.11.0 – 2026-09-27
+
+**Lineup – truppen och spelarkortet**
+- Desktop: truppen visar en rad per spelare i stället för två. Ikonerna i samma ordning som i mobilen: C/A, lag, position, formpil (PIR-trend), speltid, PIR.
+- Desktop: klicka på en tom plats i ett lag – platsen markeras och truppen sorteras som i mobilen (anmälda, rätt position, platsens lag, waivers, namn). Klicka på en spelare så hamnar den där och listan går tillbaka till vanlig sortering. Klicka på platsen igen, Avbryt eller Esc för att avbryta.
+- Spelarkortet (desktop och mobil): ny statistikdel längst ner med matcher, mål, assist, poäng och vinstprocent – innevarande säsong och totalt (godkända matcher).
+- Spelarkortet: "Spelat" (andel per position) står nu direkt vid positionsvalet.
+
 ## 2.10.0 – 2026-09-27
 
 **Sponsorer**

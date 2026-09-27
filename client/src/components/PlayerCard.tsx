@@ -5,9 +5,9 @@
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { X, Trash2 } from "lucide-react";
-import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
+import type { Player, Position, TeamColor, CaptainRole, PlayerRecord } from "@/lib/players";
 import { getPositionBadgeColor, ALL_POSITIONS } from "@/lib/players";
-import { useState, useRef } from "react";
+import { useState, useRef, Fragment } from "react";
 import { PortalDropdown } from "./PortalDropdown";
 import { useForwardColor } from "@/hooks/useForwardColor";
 import { usePirSettings } from "@/hooks/usePirEnabled";
@@ -249,6 +249,18 @@ export function DraggablePlayerCard({
               {pirSettings.showTrend && <TrendIcon trendLabel={activePir.trendLabel} matchesPlayed={activePir.matchesPlayed} className="!w-auto !h-auto !text-[9px] ml-0.5" />}
             </span>
           ) : null;
+          const pirRatingBadge = showPir ? (
+            <span
+              className={`text-[9px] leading-none font-bold px-1 py-[3px] rounded border text-center shrink-0 ${
+                activePir.rating! >= 1050 ? "bg-amber-400/15 text-amber-300 border-amber-400/30"
+                : activePir.rating! >= 1000 ? "bg-white/5 text-white/50 border-white/15"
+                : "bg-sky-400/10 text-sky-300/60 border-sky-400/20"
+              }`}
+              title={`PIR${activePir.label ? ` (${activePir.label})` : ""}: ${activePir.rating} | Matcher: ${activePir.matchesPlayed}`}
+            >
+              {activePir.rating}
+            </span>
+          ) : null;
           const teamBadge = <TeamColorIndicator teamColor={player.teamColor ?? null} compact mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />;
           const posBadge = (
             <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`} title={`Position: ${displayPosition}`}>
@@ -264,36 +276,28 @@ export function DraggablePlayerCard({
               {pirBadge && <span className="col-span-2 flex [&>*]:flex-1">{pirBadge}</span>}
             </span>
           ) : (
-            <>
-              {/* Rad 1: C/A först, sedan lag och position – linjerar till höger på alla rader */}
-              <span className="flex items-center gap-0.5 justify-end">
-                {player.captainRole && (
-                  <span className={`text-[9px] leading-none font-black px-1 py-[3px] rounded border shrink-0 ${
-                    player.captainRole === "C"
-                      ? "bg-yellow-400/20 text-yellow-300 border-yellow-400/40"
-                      : "bg-orange-400/20 text-orange-300 border-orange-400/40"
-                  }`} title={player.captainRole === "C" ? "Lagkapten" : "Assisterande lagkapten"}>{player.captainRole}</span>
-                )}
-                {teamBadge}
-                {posBadge}
-              </span>
-              {(iceTimeMinutes != null || player.mostPlayedPosition || pirBadge) && (
-                <span className="flex items-center gap-0.5 justify-end">
-                  {iceTimeMinutes != null && (
-                    <span className="ice-time-badge ice-time-badge-compact shrink-0" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
-                      {iceTimeMinutes}ʼ
-                    </span>
-                  )}
-                  {player.mostPlayedPosition && player.mostPlayedPosition !== displayPosition && (
-                    <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0`}
-                      title={`Vanligaste position: ${player.mostPlayedPosition}`}>
-                      {player.mostPlayedPosition}
-                    </span>
-                  )}
-                  {pirBadge}
+            /* Truppen: en rad i samma ordning som mobilen – C/A, lag, position,
+               formpil (PIR-trend), speltid, PIR. */
+            <span className="flex items-center gap-0.5 justify-end">
+              {player.captainRole && (
+                <span className={`text-[9px] leading-none font-black px-1 py-[3px] rounded border shrink-0 ${
+                  player.captainRole === "C"
+                    ? "bg-yellow-400/20 text-yellow-300 border-yellow-400/40"
+                    : "bg-orange-400/20 text-orange-300 border-orange-400/40"
+                }`} title={player.captainRole === "C" ? "Lagkapten" : "Assisterande lagkapten"}>{player.captainRole}</span>
+              )}
+              {teamBadge}
+              {posBadge}
+              {pirEnabled && pirSettings.showTrend && (
+                <TrendIcon trendLabel={activePir.trendLabel} matchesPlayed={activePir.matchesPlayed} />
+              )}
+              {iceTimeMinutes != null && (
+                <span className="ice-time-badge ice-time-badge-compact shrink-0" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
+                  {iceTimeMinutes}ʼ
                 </span>
               )}
-            </>
+              {pirRatingBadge}
+            </span>
           );
           return onChangeName ? (
             <button
@@ -407,6 +411,10 @@ export function DraggablePlayerCard({
                       {pos}
                     </button>
                   ))}
+                  <span className="flex items-center gap-1 ml-1 pl-1.5 border-l border-white/10">
+                    <span className="text-white/40 text-[10px]">Spelat:</span>
+                    <PositionShare stats={player.positionStats} />
+                  </span>
                 </div>
               )}
               {/* Number + Captain role */}
@@ -476,10 +484,6 @@ export function DraggablePlayerCard({
                     <AttendanceButtons player={player} onSync={onSyncToLaget} onLocal={onChangeRegistered} />
                   </div>
                 )}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-white/40 text-[10px]">Spelat:</span>
-                  <PositionShare stats={player.positionStats} />
-                </div>
                 {onChangeGamesPlayed && (
                   <div className="flex items-center gap-1.5">
                     <span className="text-white/40 text-[10px]">Matcher:</span>
@@ -502,6 +506,7 @@ export function DraggablePlayerCard({
                   </div>
                 )}
               </div>
+              <PlayerStatsSection player={player} />
               {/* Delete player */}
               {onDelete && (
                 <div className="pt-1.5 border-t border-white/10">
@@ -614,6 +619,39 @@ export function AttendanceButtons({ player, onSync, onLocal, size = "sm" }: {
 const ROLES = ["MV", "B", "C", "LW", "RW"] as const;
 
 /** Andel matcher per position (MV, B, C, LW, RW). 0 % överallt utan matcher. */
+/** Statistik längst ner i spelarkortet: innevarande säsong och totalt. */
+export function PlayerStatsSection({ player }: { player: Player }) {
+  const rows: { label: string; r: PlayerRecord }[] = [];
+  if (player.statsSeason) rows.push({ label: player.statsSeason.label, r: player.statsSeason });
+  if (player.statsTotal) rows.push({ label: "Totalt", r: player.statsTotal });
+  const cols = ["Matcher", "Mål", "Assist", "Poäng", "Vinst"];
+  return (
+    <div className="pt-2 border-t border-white/10">
+      <p className="text-white/40 text-[10px] mb-1">Statistik</p>
+      {rows.length === 0 ? (
+        <p className="text-white/30 text-[10px] italic">Inga registrerade matcher ännu</p>
+      ) : (
+        <div className="grid grid-cols-[auto_repeat(5,minmax(0,1fr))] gap-x-2 gap-y-0.5 text-[10px] tabular-nums">
+          <span />
+          {cols.map((c) => <span key={c} className="text-white/35 text-right">{c}</span>)}
+          {rows.map(({ label, r }) => (
+            <Fragment key={label}>
+              <span className="text-white/50">{label}</span>
+              <span className="text-right text-white/85">{r.matches}</span>
+              <span className="text-right text-white/85">{r.goals}</span>
+              <span className="text-right text-white/85">{r.assists}</span>
+              <span className="text-right text-white font-semibold">{r.goals + r.assists}</span>
+              <span className="text-right text-white/85" title={`${r.wins} vinster, ${r.draws} oavgjorda, ${r.losses} förluster`}>
+                {r.matches ? `${Math.round((r.wins / r.matches) * 100)}%` : "–"}
+              </span>
+            </Fragment>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PositionShare({ stats }: { stats?: Record<string, number> | null }) {
   const counts = ROLES.map((r) => stats?.[r] ?? 0);
   const total = counts.reduce((a, b) => a + b, 0);

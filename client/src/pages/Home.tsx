@@ -22,7 +22,7 @@ import {
   type DragOverEvent,
   type CollisionDetection,
 } from "@dnd-kit/core";
-import { initialPlayers, type Player, type Position, type TeamColor, type CaptainRole } from "@/lib/players";
+import { initialPlayers, type Player, type Position, type TeamColor, type CaptainRole, type PlayerRecord } from "@/lib/players";
 import { useIsMobile } from "@/hooks/useMobile";
 import { createTeamSlots, DEFAULT_TEAM_CONFIG, MAX_TEAM_CONFIG, type TeamConfig } from "@/lib/lineup";
 import { PlayerList } from "@/components/PlayerList";
@@ -30,6 +30,7 @@ import { TeamPanel } from "@/components/TeamPanel";
 import { PlayerCardOverlay } from "@/components/PlayerCard";
 import { ExportModal } from "@/components/ExportModal";
 import { LagetNewsModal } from "@/components/LagetNewsModal";
+import { SlotHighlightContext } from "@/components/PlayerSlot";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { MobileRosterDrawer } from "@/components/MobileRosterDrawer";
@@ -302,7 +303,10 @@ export default function Home() {
     outfieldRating: number | null; outfieldTrend: number | null; outfieldTrendLabel: string | null;
     outfieldMatchesPlayed: number; outfieldConfidence: number;
   };
-  type PosEntry = { mostPlayed: string; stats: Record<string, number>; mostPlayedTeam?: string; teamStats?: Record<string, number> };
+  type PosEntry = {
+    mostPlayed: string; stats: Record<string, number>; mostPlayedTeam?: string; teamStats?: Record<string, number>;
+    record?: { season: PlayerRecord & { label: string }; total: PlayerRecord };
+  };
   const posHistoryRef = useRef<Record<string, PosEntry> | null>(null);
   const pirMapRef = useRef<Record<string, PirEntry> | null>(null);
 
@@ -313,6 +317,10 @@ export default function Home() {
     if (posHistory) {
       const hist = posHistory[p.id];
       if (hist?.stats) enriched.positionStats = hist.stats;
+      if (hist?.record) {
+        enriched.statsSeason = hist.record.season;
+        enriched.statsTotal = hist.record.total;
+      }
       if (hist?.mostPlayed) {
         enriched.mostPlayedPosition = hist.mostPlayed;
         if (hist.mostPlayedTeam === "green" || hist.mostPlayedTeam === "white") {
@@ -1080,6 +1088,28 @@ export default function Home() {
     const slot = TEAM_B_SLOTS.find(s => s.id === slotId);
     setMobileSlotPicker({ slotId, slotType, teamId: "team-b", teamName: teamBName, slotLabel: slot?.shortLabel ?? slotType });
   }, [TEAM_B_SLOTS, teamBName]);
+
+  // ─── Desktop: vald tom plats → truppen sorteras för platsen, klick placerar ───
+  const [desktopTarget, setDesktopTarget] = useState<{ slotId: string; slotType: string; teamId: string; teamName: string; slotLabel: string } | null>(null);
+  const handleDesktopSlotClickA = useCallback((slotId: string, slotType: string) => {
+    const slot = TEAM_A_SLOTS.find(s => s.id === slotId);
+    setDesktopTarget(prev => prev?.slotId === slotId ? null : { slotId, slotType, teamId: "team-a", teamName: teamAName, slotLabel: slot?.shortLabel ?? slotType });
+  }, [TEAM_A_SLOTS, teamAName]);
+  const handleDesktopSlotClickB = useCallback((slotId: string, slotType: string) => {
+    const slot = TEAM_B_SLOTS.find(s => s.id === slotId);
+    setDesktopTarget(prev => prev?.slotId === slotId ? null : { slotId, slotType, teamId: "team-b", teamName: teamBName, slotLabel: slot?.shortLabel ?? slotType });
+  }, [TEAM_B_SLOTS, teamBName]);
+  // Platsen fylldes på annat sätt (dra och släpp, synk) → släpp valet
+  useEffect(() => {
+    if (desktopTarget && lineup[desktopTarget.slotId]) setDesktopTarget(null);
+  }, [desktopTarget, lineup]);
+  // Esc avbryter
+  useEffect(() => {
+    if (!desktopTarget) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setDesktopTarget(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [desktopTarget]);
 
   // Tap-to-assign: placera en spelare i nästa lediga slot i valt lag
   const handleTapAssign = useCallback((player: Player, team: "team-a" | "team-b") => {
@@ -1940,8 +1970,9 @@ export default function Home() {
             {/* Villkorlig rendering: ANTINGEN desktop ELLER mobil – aldrig båda */}
             {/* Detta eliminerar dubbla droppables som förvirrar dnd-kit */}
             {!isMobile ? (
-              /* Desktop layout – standard eller sidoläge */
-              sideLayout ? (
+              <SlotHighlightContext.Provider value={desktopTarget?.slotId ?? null}>
+              {/* Desktop layout – standard eller sidoläge */}
+              {sideLayout ? (
                 /* Sidoläge: Trupp till vänster (fast bredd), lagen bredvid varandra */
                 <div className="flex gap-1.5 w-full max-w-full">
                   {/* Spelarlista (vänster) – fast bredd */}
@@ -1969,6 +2000,9 @@ export default function Home() {
                          totalRegistered={totalRegistered}
                          totalDeclined={totalDeclined}
                          totalPlayers={totalPlayers}
+                         targetSlot={desktopTarget}
+                         onPickForTarget={(player) => { if (desktopTarget) { handleTapAssignToSlot(player, desktopTarget.slotId); setDesktopTarget(null); } }}
+                         onCancelTarget={() => setDesktopTarget(null)}
                        />
                     </div>
                     <SavedLineupsPanel
@@ -1984,6 +2018,7 @@ export default function Home() {
                     {/* Lag A (VITA) – vänster */}
                     <TeamPanel
                       teamId="team-a"
+                      onEmptySlotClick={handleDesktopSlotClickA}
                       teamName={teamAName}
                       slots={TEAM_A_SLOTS}
                       lineup={teamALineup}
@@ -2001,6 +2036,7 @@ export default function Home() {
                     {/* Lag B (GRÖNA) – höger */}
                     <TeamPanel
                       teamId="team-b"
+                      onEmptySlotClick={handleDesktopSlotClickB}
                       teamName={teamBName}
                       slots={TEAM_B_SLOTS}
                       lineup={teamBLineup}
@@ -2027,6 +2063,7 @@ export default function Home() {
                   {/* Lag A (VITA) – vänster */}
                   <TeamPanel
                     teamId="team-a"
+                    onEmptySlotClick={handleDesktopSlotClickA}
                     teamName={teamAName}
                     slots={TEAM_A_SLOTS}
                     lineup={teamALineup}
@@ -2064,6 +2101,9 @@ export default function Home() {
                         totalRegistered={totalRegistered}
                         totalDeclined={totalDeclined}
                         totalPlayers={totalPlayers}
+                        targetSlot={desktopTarget}
+                        onPickForTarget={(player) => { if (desktopTarget) { handleTapAssignToSlot(player, desktopTarget.slotId); setDesktopTarget(null); } }}
+                        onCancelTarget={() => setDesktopTarget(null)}
                       />
                     </div>
                     <SavedLineupsPanel
@@ -2077,6 +2117,7 @@ export default function Home() {
                   {/* Lag B (GRÖNA) – höger */}
                   <TeamPanel
                     teamId="team-b"
+                    onEmptySlotClick={handleDesktopSlotClickB}
                     teamName={teamBName}
                     slots={TEAM_B_SLOTS}
                     lineup={teamBLineup}
@@ -2092,7 +2133,8 @@ export default function Home() {
                     compact
                   />
                 </div>
-              )
+              )}
+              </SlotHighlightContext.Provider>
             ) : null}
 
             {/* Desktop inline remove drop zone – directly below the lineup */}

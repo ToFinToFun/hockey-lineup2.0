@@ -17,6 +17,16 @@ export type TeamColor = "green" | "white" | null;
 
 export type CaptainRole = "C" | "A" | null;
 
+/** Matcher, resultat och poäng för en spelare (godkända matcher). */
+export interface PlayerRecord {
+  matches: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goals: number;
+  assists: number;
+}
+
 export interface Player {
   id: string;
   number: string;
@@ -28,6 +38,10 @@ export interface Player {
   isMember?: boolean;
   /** Antal matcher per position (MV, B, C, LW, RW) – räknas fram, synkas inte. */
   positionStats?: Record<string, number>;
+  /** Statistik innevarande säsong – räknas fram, synkas inte. */
+  statsSeason?: PlayerRecord & { label: string };
+  /** Statistik alla säsonger – räknas fram, synkas inte. */
+  statsTotal?: PlayerRecord;
   /** Namnet som det står i laget.se om det skiljer sig. */
   lagetName?: string;
   isRegistered?: boolean;   // Anmäld till dagens match ("Kommer")

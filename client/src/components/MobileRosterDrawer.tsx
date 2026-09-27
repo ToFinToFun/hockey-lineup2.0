@@ -10,8 +10,8 @@ import { ALL_POSITIONS, getPositionBadgeColor } from "@/lib/players";
 import type { Slot, TeamConfig } from "@/lib/lineup";
 import { useForwardColor } from "@/hooks/useForwardColor";
 import { usePirSettings, usePirEnabled } from "@/hooks/usePirEnabled";
-import { TeamColorIndicator, TrendIcon, AttendanceButtons, PositionShare } from "@/components/PlayerCard";
-import { sortRoster, positionsForSlot } from "@/lib/rosterSort";
+import { TeamColorIndicator, TrendIcon, AttendanceButtons, PositionShare, PlayerStatsSection } from "@/components/PlayerCard";
+import { sortRoster, positionsForSlot, slotTeamColor } from "@/lib/rosterSort";
 
 interface MobileRosterDrawerProps {
   open: boolean;
@@ -151,7 +151,7 @@ export function MobileRosterDrawer({
       return matchesSearch && matchesPos;
     }),
     targetSlot ? positionsForSlot(targetSlot.slotType, targetSlot.slotLabel) : undefined,
-    targetSlot ? (targetSlot.teamName.toLowerCase().includes("vit") ? "white" : targetSlot.teamName.toLowerCase().includes("grön") ? "green" : targetSlot.teamId === "team-b" ? "green" : "white") : undefined
+    targetSlot ? slotTeamColor(targetSlot.teamName, targetSlot.teamId) : undefined
   );
 
   const handlePlayerTap = useCallback((player: Player) => {
@@ -890,6 +890,11 @@ export function MobileRosterDrawer({
                   </div>
                 </div>
               )}
+              {/* Spelade positioner – direkt under positionsvalet */}
+              <div className="flex items-center gap-2 -mt-1">
+                <span className="text-white/40 text-[10px] w-8 shrink-0">Spelat:</span>
+                <PositionShare stats={editingPlayer.positionStats} />
+              </div>
 
               {/* Captain role */}
               {onChangeCaptainRole && (
@@ -943,11 +948,7 @@ export function MobileRosterDrawer({
                 </div>
               )}
 
-              {/* Spelade positioner */}
-              <div className="flex items-center gap-2">
-                <span className="text-white/40 text-[10px] w-8 shrink-0">Spelat:</span>
-                <PositionShare stats={editingPlayer.positionStats} />
-              </div>
+              <PlayerStatsSection player={editingPlayer} />
 
               {/* Delete player */}
               {onDeletePlayer && (

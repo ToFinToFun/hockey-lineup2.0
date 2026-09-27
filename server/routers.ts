@@ -3,6 +3,7 @@ import { publicProcedure, lineupProcedure, adminProcedure, router } from "./_cor
 import { authRouter } from "./routers/auth";
 import { playersRouter } from "./routers/players";
 import { fetchAttendance, updateAttendance, type AttendingStatus } from "./lagetSe";
+import { seasonHistory, seasonOf } from "./playerHistory";
 import { listSponsors, createSponsor, updateSponsor, deleteSponsor, moveSponsor, recordSponsorNews } from "./sponsorsDb";
 import { scoreRouter } from "./routers/score";
 import { scoreStatsRouter } from "./routers/scoreStats";
@@ -71,6 +72,8 @@ async function getPirRatings() {
 }
 
 const NEWS_LAST_HOME_KEY = "laget_news_last_home";
+
+type PlayerRecord = { matches: number; wins: number; draws: number; losses: number; goals: number; assists: number };
 
 /** Logga: PNG som data-URL, redan skalad i webbläsaren (max ca 1,5 MB). */
 const logoSchema = z
@@ -243,8 +246,28 @@ export const appRouter = router({
         }
       }
 
+      // Matcher, vinster, mål och assist – innevarande säsong och totalt
+      const seasonNow = seasonOf(new Date());
+      const records: Record<string, { season: PlayerRecord & { label: string }; total: PlayerRecord }> = {};
+      for (const [id, lines] of seasonHistory(allMatches)) {
+        const total: PlayerRecord = { matches: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0 };
+        for (const l of lines) {
+          total.matches += l.matches; total.wins += l.wins; total.draws += l.draws;
+          total.losses += l.losses; total.goals += l.goals; total.assists += l.assists;
+        }
+        const cur = lines.find((l) => l.season === seasonNow);
+        records[id] = {
+          season: {
+            label: seasonNow,
+            matches: cur?.matches ?? 0, wins: cur?.wins ?? 0, draws: cur?.draws ?? 0,
+            losses: cur?.losses ?? 0, goals: cur?.goals ?? 0, assists: cur?.assists ?? 0,
+          },
+          total,
+        };
+      }
+
       // For each player, find the most-played position and team
-      const result: Record<string, { mostPlayed: string; stats: Record<string, number>; mostPlayedTeam?: string; teamStats?: Record<string, number> }> = {};
+      const result: Record<string, { mostPlayed: string; stats: Record<string, number>; mostPlayedTeam?: string; teamStats?: Record<string, number>; record?: (typeof records)[string] }> = {};
       for (const [playerKey, stats] of Object.entries(positionCounts)) {
         let mostPlayed = "";
         let maxCount = 0;
@@ -268,7 +291,7 @@ export const appRouter = router({
           }
         }
 
-        result[playerKey] = { mostPlayed, stats, mostPlayedTeam, teamStats: tStats };
+        result[playerKey] = { mostPlayed, stats, mostPlayedTeam, teamStats: tStats, record: records[playerKey] };
       }
 
       return result;

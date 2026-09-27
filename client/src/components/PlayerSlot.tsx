@@ -4,6 +4,7 @@
 // When a goalkeeper (MV) is placed in an outfield slot, PlayerCard shows their
 // most-played outfield position instead of "MV".
 // Edit props forwarded to DraggablePlayerCard for inline editing.
+import { createContext, useContext } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard } from "./PlayerCard";
 import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
@@ -29,6 +30,12 @@ interface PlayerSlotProps {
   onEmptySlotClick?: () => void;
 }
 
+/**
+ * Den tomma plats som valts på desktop och väntar på en spelare från truppen.
+ * Markeras tydligt tills en spelare valts eller valet avbrutits.
+ */
+export const SlotHighlightContext = createContext<string | null>(null);
+
 /* Badge color mapping using CSS classes from design system */
 function getBadgeClass(role: string): string {
   switch (role) {
@@ -53,11 +60,14 @@ export function PlayerSlot({
   onEmptySlotClick,
 }: PlayerSlotProps) {
   const { isOver, setNodeRef } = useDroppable({ id: slot.id });
+  const highlighted = useContext(SlotHighlightContext) === slot.id && !player;
 
   const badgeClass = getBadgeClass(slot.role);
 
   const dropHighlight = isOver
     ? "ring-1 ring-emerald-400/40 bg-emerald-400/[0.06]"
+    : highlighted
+    ? "ring-2 ring-emerald-400 bg-emerald-400/[0.10] shadow-[0_0_14px_rgba(52,211,153,0.35)]"
     : "";
 
   return (
@@ -106,7 +116,7 @@ export function PlayerSlot({
           onClick={onEmptySlotClick}
           className={`${compact ? 'text-[9px]' : 'text-[11px]'} italic flex-1 text-white/20 ${isOver ? "!text-white/50" : ""} flex items-center px-2 hover:text-white/40 hover:bg-white/[0.03] transition-colors rounded-r-md cursor-pointer`}
         >
-          {isOver ? "Släpp här" : "Välj spelare..."}
+          {isOver ? "Släpp här" : highlighted ? "Välj i truppen" : "Välj spelare..."}
         </button>
       ) : (
         <span className={`${compact ? 'text-[9px]' : 'text-[11px]'} italic flex-1 text-white/20 ${isOver ? "!text-white/50" : ""} flex items-center px-2`}>

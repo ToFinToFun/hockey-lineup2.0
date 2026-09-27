@@ -45,3 +45,11 @@ export function sortRoster(
     return a.name.localeCompare(b.name, "sv");
   });
 }
+
+/** Platsens lagfärg för sorteringen: lagnamnet avgör, annars lag A = vit. */
+export function slotTeamColor(teamName: string, teamId?: string): "white" | "green" {
+  const n = teamName.toLowerCase();
+  if (n.includes("vit")) return "white";
+  if (n.includes("grön")) return "green";
+  return teamId === "team-b" ? "green" : "white";
+}
