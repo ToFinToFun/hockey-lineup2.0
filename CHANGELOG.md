@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.13.2 – 2026-09-27
+
+- Laget.se-nyheten: publiceringstid väljs i egna listor (datum, timme, minut) – alltid 24-timmarsformat oavsett webbläsarens språk.
+- Tipset om fet stil står direkt under textfältet. "Visa avsändare" ligger sist och visar kontot från LAGET_SE_USERNAME.
+
 ## 2.13.1 – 2026-09-27
 
 - Laget.se-nyheten: avsändaren (kontot som publicerar) visas inte som standard. Texten om öppen publicering borttagen.

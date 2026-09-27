@@ -40,6 +40,26 @@ interface EventDetails {
   location?: string;
 }
 
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+
+/** De kommande två veckorna som "tis 29/9" (plus valt datum om det ligger utanför). */
+function publishDateOptions(today: Date, selected: string): { value: string; label: string }[] {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const label = (d: Date) => `${d.toLocaleDateString("sv-SE", { weekday: "short" })} ${d.getDate()}/${d.getMonth() + 1}`;
+  const out: { value: string; label: string }[] = [];
+  for (let i = 0; i < 15; i++) {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+    out.push({ value: iso(d), label: i === 0 ? `Idag ${d.getDate()}/${d.getMonth() + 1}` : label(d) });
+  }
+  const m = selected.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m && !out.some((o) => o.value === selected)) {
+    const d = new Date(+m[1], +m[2] - 1, +m[3]);
+    out.push({ value: selected, label: label(d) });
+  }
+  return out;
+}
+
 function weekdayLine(isoDate: string | undefined): string {
   const m = isoDate?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date();
@@ -80,10 +100,17 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
   const [publishDate, setPublishDate] = useState("");
   const [publishTime, setPublishTime] = useState("21:15");
   const scheduleInitialized = useRef(false);
+  const dateOptions = useMemo(() => publishDateOptions(new Date(), publishDate), [publishDate]);
+  const minuteOptions = useMemo(() => {
+    const list = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, "0"));
+    const cur = publishTime.slice(3, 5);
+    return list.includes(cur) ? list : [...list, cur].sort();
+  }, [publishTime]);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [published, setPublished] = useState<{ url: string; updated: boolean; publishAt: string | null } | null>(null);
   const utils = trpc.useUtils();
   const lastPublished = trpc.laget.newsLastPublished.useQuery(undefined, { refetchOnWindowFocus: false });
+  const newsAccount = trpc.laget.newsAccount.useQuery(undefined, { refetchOnWindowFocus: false, staleTime: Infinity });
   const publishNews = trpc.laget.publishNews.useMutation();
   const blobRef = useRef<Blob | null>(null);
   const homeRecorded = useRef(false);
@@ -407,13 +434,10 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
                 rows={10}
                 className="w-full rounded-lg bg-white/5 border border-white/10 text-white text-xs font-mono px-3 py-2"
               />
+              <p className="text-white/35 text-[10px] mt-1">Fet stil: omge text med &lt;b&gt; och &lt;/b&gt;.</p>
             </div>
 
             <div className="space-y-1.5">
-              <label className="flex items-center gap-2 text-xs text-white/70">
-                <input type="checkbox" checked={showPublisher} onChange={(e) => setShowPublisher(e.target.checked)} />
-                Visa avsändare (kontot som publicerar)
-              </label>
               {previous && (
                 <label className="flex items-start gap-2 text-xs text-white/70">
                   <input type="checkbox" className="mt-0.5" checked={updateExisting} onChange={(e) => setUpdateExisting(e.target.checked)} />
@@ -438,25 +462,41 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
                 </div>
                 {scheduled && (
                   <div className="flex gap-2 mt-2">
-                    <input
-                      type="date"
+                    {/* Egna listor i stället för webbläsarens datum/tid – alltid 24-timmarsformat */}
+                    <select
                       value={publishDate}
                       onChange={(e) => setPublishDate(e.target.value)}
-                      className="flex-1 rounded-lg bg-white/5 border border-white/10 text-white text-sm px-3 py-1.5 [color-scheme:dark]"
+                      className="flex-1 min-w-0 rounded-lg bg-white/5 border border-white/10 text-white text-sm px-2 py-1.5"
                       aria-label="Datum"
-                    />
-                    <input
-                      type="time"
-                      value={publishTime}
-                      step={60}
-                      onChange={(e) => setPublishTime(e.target.value)}
-                      className="w-28 rounded-lg bg-white/5 border border-white/10 text-white text-sm px-3 py-1.5 [color-scheme:dark]"
-                      aria-label="Tid"
-                    />
+                    >
+                      {dateOptions.map((d) => (
+                        <option key={d.value} value={d.value} className="text-black">{d.label}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={publishTime.slice(0, 2)}
+                      onChange={(e) => setPublishTime(`${e.target.value}:${publishTime.slice(3, 5)}`)}
+                      className="w-16 rounded-lg bg-white/5 border border-white/10 text-white text-sm px-2 py-1.5 tabular-nums"
+                      aria-label="Timme"
+                    >
+                      {HOURS.map((h) => <option key={h} value={h} className="text-black">{h}</option>)}
+                    </select>
+                    <span className="self-center text-white/50">:</span>
+                    <select
+                      value={publishTime.slice(3, 5)}
+                      onChange={(e) => setPublishTime(`${publishTime.slice(0, 2)}:${e.target.value}`)}
+                      className="w-16 rounded-lg bg-white/5 border border-white/10 text-white text-sm px-2 py-1.5 tabular-nums"
+                      aria-label="Minut"
+                    >
+                      {minuteOptions.map((m) => <option key={m} value={m} className="text-black">{m}</option>)}
+                    </select>
                   </div>
                 )}
               </div>
-              <p className="text-white/35 text-[10px]">Fet stil: omge text med &lt;b&gt; och &lt;/b&gt;.</p>
+              <label className="flex items-center gap-2 text-xs text-white/70 pt-1">
+                <input type="checkbox" checked={showPublisher} onChange={(e) => setShowPublisher(e.target.checked)} />
+                <span className="min-w-0 truncate">Visa avsändare ({newsAccount.data?.username ?? "kontot som publicerar"})</span>
+              </label>
             </div>
 
             {publishError && (
