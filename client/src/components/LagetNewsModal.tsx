@@ -112,6 +112,8 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
   const lastPublished = trpc.laget.newsLastPublished.useQuery(undefined, { refetchOnWindowFocus: false });
   const newsAccount = trpc.laget.newsAccount.useQuery(undefined, { refetchOnWindowFocus: false, staleTime: Infinity });
   const publishNews = trpc.laget.publishNews.useMutation();
+  const deleteNews = trpc.laget.deleteNews.useMutation();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const blobRef = useRef<Blob | null>(null);
   const homeRecorded = useRef(false);
 
@@ -303,6 +305,24 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
     }
   };
 
+  const handleDelete = async () => {
+    if (!previous) return;
+    setPublishError(null);
+    try {
+      const res = await deleteNews.mutateAsync({ id: previous.id });
+      if (!res.success) {
+        setPublishError(res.error);
+        return;
+      }
+      setConfirmDelete(false);
+      setPublished(null);
+      void utils.laget.newsLastPublished.invalidate();
+      toast.success("Nyheten är borttagen från laget.se");
+    } catch (err) {
+      setPublishError((err as Error)?.message || "Nyheten kunde inte tas bort");
+    }
+  };
+
   const handleCopyText = async () => {
     try {
       await navigator.clipboard.writeText(`${title}\n\n${body}`);
@@ -447,6 +467,27 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
                     <span className="block text-white/40 text-[10px]">"{previous.title}" skrivs över med den nya bilden och texten</span>
                   </span>
                 </label>
+              )}
+              {previous && (
+                <div className="pl-6 text-[11px]">
+                  {!confirmDelete ? (
+                    <button onClick={() => setConfirmDelete(true)} className="text-red-300/70 hover:text-red-300 underline-offset-2 hover:underline">
+                      Ta bort nyheten från laget.se
+                    </button>
+                  ) : (
+                    <span className="flex flex-wrap items-center gap-2 text-red-200">
+                      Ta bort "{previous.title}"?
+                      <button
+                        onClick={handleDelete}
+                        disabled={deleteNews.isPending}
+                        className="px-2 py-0.5 rounded border border-red-400/50 bg-red-500/20 font-semibold disabled:opacity-50"
+                      >
+                        {deleteNews.isPending ? "Tar bort…" : "Ja, ta bort"}
+                      </button>
+                      <button onClick={() => setConfirmDelete(false)} className="text-white/50 hover:text-white/80">Avbryt</button>
+                    </span>
+                  )}
+                </div>
               )}
               <div className="pt-1">
                 <p className="text-white/50 text-[11px] mb-1.5">Publicering</p>

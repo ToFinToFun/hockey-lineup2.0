@@ -2,7 +2,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, lineupProcedure, adminProcedure, router } from "./_core/trpc";
 import { authRouter } from "./routers/auth";
 import { playersRouter } from "./routers/players";
-import { fetchAttendance, updateAttendance, publishNews, fetchAccountName, NEWS_ADMIN_URL, type AttendingStatus } from "./lagetSe";
+import { fetchAttendance, updateAttendance, publishNews, deleteNews, fetchAccountName, NEWS_ADMIN_URL, type AttendingStatus } from "./lagetSe";
 import { seasonHistory, seasonOf } from "./playerHistory";
 import { listSponsors, createSponsor, updateSponsor, deleteSponsor, moveSponsor, recordSponsorNews } from "./sponsorsDb";
 import { scoreRouter } from "./routers/score";
@@ -177,6 +177,17 @@ export const appRouter = router({
         };
         await setConfigValue(NEWS_LAST_PUBLISHED_KEY, JSON.stringify(published));
         return { success: true as const, id: result.id, url: result.url, updated: !!input.updateId, publishAt: published.publishAt };
+      }),
+
+    /** Ta bort en nyhet som appen publicerat (samma som "Ta bort" i laget.se-admin). */
+    deleteNews: lineupProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const result = await deleteNews(input.id);
+        if (!result.success) return { success: false as const, error: result.error ?? "Nyheten kunde inte tas bort" };
+        const last = await readLastPublished();
+        if (last?.id === input.id) await setConfigValue(NEWS_LAST_PUBLISHED_KEY, "");
+        return { success: true as const };
       }),
 
     /** Spara hemmalaget när en nyhet skapats, så att nästa nyhet växlar automatiskt. */

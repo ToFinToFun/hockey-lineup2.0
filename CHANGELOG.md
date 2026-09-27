@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.14.0 – 2026-09-27
+
+- Laget.se-nyheten: "Ta bort nyheten från laget.se" för nyheten som appen publicerat för samma dag, med bekräftelse. Samma borttagning som "Ta bort" i laget.se-admin; efteråt publiceras nästa nyhet som ny.
+
 ## 2.13.4 – 2026-09-27
 
 - Rättning: publicering via laget.se-admin gav "The FileId field is required". Bild-id skickas nu som 0, precis som webbläsaren gör när en bild väljs (både ny och uppdaterad nyhet).
