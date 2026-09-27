@@ -71,6 +71,13 @@
       "when": 1790507765779,
       "tag": "0009_sponsors",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1790520424943,
+      "tag": "0010_player_photos",
+      "breakpoints": true
     }
   ]
 }

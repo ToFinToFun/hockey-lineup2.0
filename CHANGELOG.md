@@ -7,6 +7,13 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.15.0 – 2026-09-27
+
+**Spelarkortet**
+- Spelarkortet (desktop och mobil) har nästan helt täckande bakgrund, så allt går att läsa oavsett vad som ligger bakom.
+- Profilbild till vänster om statistiken. Tom diskret ruta tills någon laddar upp: tryck på rutan och välj bild. Bilden beskärs till kvadrat (lite ovanför mitten för stående bilder), förminskas till 320×320 px JPEG (oftast 15–40 kB) i telefonen och sparas i databasen. Liten × tar bort bilden.
+- Bilden hämtas först när kortet öppnas (GET /api/players/:id/photo), aldrig i listor. ETag gör att webbläsaren återanvänder den tills den byts. Bara för inloggade (styrelsen/tillfällig länk) – visas inte i delade länkar.
+
 ## 2.14.0 – 2026-09-27
 
 - Laget.se-nyheten: "Ta bort nyheten från laget.se" för nyheten som appen publicerat för samma dag, med bekräftelse. Samma borttagning som "Ta bort" i laget.se-admin; efteråt publiceras nästa nyhet som ny.

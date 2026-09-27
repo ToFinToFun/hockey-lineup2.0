@@ -9,6 +9,7 @@ import type { Player, Position, TeamColor, CaptainRole, PlayerRecord } from "@/l
 import { getPositionBadgeColor, ALL_POSITIONS } from "@/lib/players";
 import { useState, useRef, Fragment } from "react";
 import { PortalDropdown } from "./PortalDropdown";
+import { PlayerPhoto } from "./PlayerPhoto";
 import { useForwardColor } from "@/hooks/useForwardColor";
 import { usePirSettings } from "@/hooks/usePirEnabled";
 
@@ -326,6 +327,7 @@ export function DraggablePlayerCard({
             anchorRef={editBtnRef}
             open={showEditPanel}
             onClose={() => setShowEditPanel(false)}
+            solid
           >
             <div className="px-3 py-2.5 flex flex-col gap-2" onPointerDown={(e) => e.stopPropagation()}>
               {/* Name field */}
@@ -626,7 +628,9 @@ export function PlayerStatsSection({ player }: { player: Player }) {
   if (player.statsTotal) rows.push({ label: "Totalt", r: player.statsTotal });
   const cols = ["Matcher", "Mål", "Assist", "Poäng", "Vinst"];
   return (
-    <div className="pt-2 border-t border-white/10">
+    <div className="pt-2 border-t border-white/10 flex gap-3 items-start">
+      <PlayerPhoto playerId={player.id} />
+      <div className="flex-1 min-w-0">
       <p className="text-white/40 text-[10px] mb-1">Statistik</p>
       {rows.length === 0 ? (
         <p className="text-white/30 text-[10px] italic">Inga registrerade matcher ännu</p>
@@ -648,6 +652,7 @@ export function PlayerStatsSection({ player }: { player: Player }) {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

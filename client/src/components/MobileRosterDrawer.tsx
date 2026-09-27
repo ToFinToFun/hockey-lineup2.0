@@ -757,7 +757,7 @@ export function MobileRosterDrawer({
           />
           {/* Edit sheet panel */}
           <div
-            className="fixed bottom-0 left-0 right-0 z-[61] glass-panel-strong rounded-t-2xl shadow-2xl animate-in slide-in-from-bottom duration-200"
+            className="fixed bottom-0 left-0 right-0 z-[61] glass-panel-strong panel-solid rounded-t-2xl shadow-2xl animate-in slide-in-from-bottom duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Handle bar */}

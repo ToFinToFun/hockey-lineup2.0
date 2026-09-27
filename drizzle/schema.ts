@@ -227,3 +227,15 @@ export const sponsorNews = mysqlTable("sponsor_news", {
   index("sponsor_news_sponsor_idx").on(t.sponsorId),
   index("sponsor_news_created_idx").on(t.createdAt),
 ]);
+
+// ─── Spelarbilder ────────────────────────────────────────────────────────────
+// Liten profilbild per spelare (kvadratisk JPEG, redan förminskad i webbläsaren).
+// Egen tabell så att spelarlistan aldrig laddar bilderna; de hämtas bara när
+// spelarkortet öppnas (GET /api/players/:id/photo).
+
+export const playerPhotos = mysqlTable("player_photos", {
+  playerId: varchar("playerId", { length: 64 }).primaryKey(),
+  /** JPEG som base64 (utan data:-prefix). */
+  image: mediumtext("image").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});

@@ -1,9 +1,11 @@
+import { TRPCError } from "@trpc/server";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, lineupProcedure, adminProcedure, router } from "./_core/trpc";
 import { authRouter } from "./routers/auth";
 import { playersRouter } from "./routers/players";
 import { fetchAttendance, updateAttendance, publishNews, deleteNews, fetchAccountName, NEWS_ADMIN_URL, type AttendingStatus } from "./lagetSe";
 import { seasonHistory, seasonOf } from "./playerHistory";
+import { setPlayerPhoto, deletePlayerPhoto, MAX_PHOTO_BASE64 } from "./playerPhotos";
 import { listSponsors, createSponsor, updateSponsor, deleteSponsor, moveSponsor, recordSponsorNews } from "./sponsorsDb";
 import { scoreRouter } from "./routers/score";
 import { scoreStatsRouter } from "./routers/scoreStats";
@@ -195,6 +197,29 @@ export const appRouter = router({
       .input(z.object({ home: z.enum(["a", "b"]) }))
       .mutation(async ({ input }) => {
         await setConfigValue(NEWS_LAST_HOME_KEY, input.home);
+        return { success: true };
+      }),
+  }),
+
+  // ─── Spelarbilder ──────────────────────────────────────────────────────────
+  // Visas via GET /api/players/:id/photo (se server/_core/index.ts).
+
+  playerPhotos: router({
+    set: lineupProcedure
+      .input(z.object({
+        playerId: z.string().min(1).max(64),
+        imageBase64: z.string().max(MAX_PHOTO_BASE64, "Bilden är för stor").regex(/^[A-Za-z0-9+/=]+$/),
+      }))
+      .mutation(async ({ input }) => {
+        // JPEG börjar alltid med FF D8
+        if (!input.imageBase64.startsWith("/9j/")) throw new TRPCError({ code: "BAD_REQUEST", message: "Bilden måste vara JPEG" });
+        await setPlayerPhoto(input.playerId, input.imageBase64);
+        return { success: true };
+      }),
+    delete: lineupProcedure
+      .input(z.object({ playerId: z.string().min(1).max(64) }))
+      .mutation(async ({ input }) => {
+        await deletePlayerPhoto(input.playerId);
         return { success: true };
       }),
   }),

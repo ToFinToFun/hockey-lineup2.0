@@ -8,6 +8,8 @@ import express from "express";
 import helmet from "helmet";
 import { createServer } from "http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
+import { readSession } from "../auth";
+import { getPlayerPhoto } from "../playerPhotos";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -71,6 +73,24 @@ async function startServer() {
     });
   });
 
+
+  // Spelarbild – bara för inloggade (styrelsen/tillfällig länk). Hämtas först när
+  // spelarkortet öppnas; ETag gör att webbläsaren återanvänder bilden tills den byts.
+  app.get("/api/players/:id/photo", async (req, res) => {
+    try {
+      const session = await readSession(req);
+      if (!session) return res.status(401).end();
+      const photo = await getPlayerPhoto(String(req.params.id).slice(0, 64));
+      if (!photo) return res.status(404).end();
+      const etag = `"${photo.updatedAt.getTime()}"`;
+      res.setHeader("Cache-Control", "private, no-cache");
+      res.setHeader("ETag", etag);
+      if (req.headers["if-none-match"] === etag) return res.status(304).end();
+      res.type("image/jpeg").send(photo.image);
+    } catch {
+      res.status(500).end();
+    }
+  });
 
   // Health check endpoint for Coolify / Docker
   app.get("/api/health", (_req, res) => {

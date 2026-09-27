@@ -14,12 +14,14 @@ interface PortalDropdownProps {
   open: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  /** Täckande bakgrund (spelarkortet) i stället för halvgenomskinlig. */
+  solid?: boolean;
 }
 
 const MARGIN = 8;
 const NARROW_SCREEN = 520;
 
-export function PortalDropdown({ anchorRef, open, onClose, children }: PortalDropdownProps) {
+export function PortalDropdown({ anchorRef, open, onClose, children, solid = false }: PortalDropdownProps) {
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -94,7 +96,7 @@ export function PortalDropdown({ anchorRef, open, onClose, children }: PortalDro
         maxHeight: `calc(100vh - ${MARGIN * 2}px)`,
         overflowY: "auto",
       }}
-      className="glass-panel-strong rounded-lg shadow-2xl"
+      className={`glass-panel-strong rounded-lg shadow-2xl ${solid ? "panel-solid" : ""}`}
       onPointerDown={(e) => e.stopPropagation()}
     >
       {children}
