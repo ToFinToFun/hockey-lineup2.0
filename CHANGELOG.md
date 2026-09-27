@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.8.1 – 2026-09-27
+
+- Redigeringspanelen när man trycker på en spelare hamnar alltid helt innanför skärmen. På mobil centreras den vågrätt; får den inte plats under spelaren läggs den ovanför. Tidigare räknade panelen med fel bredd och kunde hamna delvis utanför till höger (särskilt för spelare i Gröna).
+
 ## 2.8.0 – 2026-09-27
 
 **Anmälan synkas till laget.se igen – på mobil också**
