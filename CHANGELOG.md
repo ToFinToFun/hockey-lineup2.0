@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.13.1 – 2026-09-27
+
+- Laget.se-nyheten: avsändaren (kontot som publicerar) visas inte som standard. Texten om öppen publicering borttagen.
+
 ## 2.13.0 – 2026-09-27
 
 **Nyheten via laget.se-admin**

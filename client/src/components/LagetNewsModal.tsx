@@ -73,7 +73,7 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [rendering, setRendering] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showPublisher, setShowPublisher] = useState(true);
+  const [showPublisher, setShowPublisher] = useState(false);
   const [updateExisting, setUpdateExisting] = useState(true);
   // Publiceringstid: direkt eller tidsinställd (standard evenemangsdagen 21:15)
   const [scheduled, setScheduled] = useState(false);
@@ -456,7 +456,7 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
                   </div>
                 )}
               </div>
-              <p className="text-white/35 text-[10px]">Nyheter publiceras öppet på lagets sida. Fet stil: omge text med &lt;b&gt; och &lt;/b&gt;.</p>
+              <p className="text-white/35 text-[10px]">Fet stil: omge text med &lt;b&gt; och &lt;/b&gt;.</p>
             </div>
 
             {publishError && (
