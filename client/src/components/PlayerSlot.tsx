@@ -72,8 +72,13 @@ export function PlayerSlot({
       `}
     >
       {/* Slot position badge — fills full row height, flush left with rounded left corners */}
-      <span className={`slot-badge ${badgeClass} ${compact ? 'slot-badge-compact' : ''}`}>
+      <span className={`slot-badge ${badgeClass} ${compact ? 'slot-badge-compact' : ''} flex-col gap-0.5`}>
         {slot.shortLabel}
+        {player && iceTimeMinutes != null && (
+          <span className="text-[9px] font-semibold opacity-75 normal-case tracking-normal" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
+            {iceTimeMinutes}ʼ
+          </span>
+        )}
       </span>
 
       {/* Player card or empty placeholder */}
@@ -92,7 +97,6 @@ export function PlayerSlot({
             slotType={slot.type}
             compact
             embedded
-            iceTimeMinutes={iceTimeMinutes}
           />
         </div>
       ) : onEmptySlotClick ? (

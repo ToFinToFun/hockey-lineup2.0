@@ -451,6 +451,18 @@ export function MobileRosterDrawer({
               </div>
             )}
 
+            {/* Förklaring: kanten = anmälan, rutan = lag (V/G, W = waivers) */}
+            <div className="flex items-center gap-3 px-3 py-1.5 text-[10px] text-white/45 border-b border-white/5">
+              <span className="flex items-center gap-1"><span className="w-[3px] h-3 rounded-sm bg-emerald-400" />Anmäld</span>
+              <span className="flex items-center gap-1"><span className="w-[3px] h-3 rounded-sm bg-red-500" />Kommer inte</span>
+              <span className="flex items-center gap-1"><span className="w-[3px] h-3 rounded-sm bg-white/15" />Ej svarat</span>
+              <span className="flex items-center gap-0.5 ml-auto">
+                <span className="w-3 h-3 rounded-sm bg-white text-slate-900 text-[8px] font-black flex items-center justify-center">V</span>
+                <span className="w-3 h-3 rounded-sm bg-emerald-400 text-emerald-950 text-[8px] font-black flex items-center justify-center">G</span>
+                <span className="w-3 h-3 rounded-sm border border-white/20 text-white/45 text-[8px] font-black flex items-center justify-center">W</span>
+              </span>
+            </div>
+
             {/* Spelarlista — 3-cell grid layout */}
             <div className="flex-1 overflow-y-auto px-2 py-1.5">
               <div className="space-y-0.5">
@@ -462,7 +474,8 @@ export function MobileRosterDrawer({
                     <div
                       key={player.id}
                       className={`
-                        grid items-center gap-1 px-2 py-1.5 rounded-lg transition-all
+                        grid items-center gap-1 pl-2 pr-2 py-1.5 rounded-r-lg rounded-l-sm transition-all !border-l-[3px]
+                        ${player.isRegistered ? "!border-l-emerald-400" : player.isDeclined ? "!border-l-red-500" : "!border-l-white/10"}
                         ${isSelected
                           ? "bg-emerald-500/20 border border-emerald-400/40 ring-1 ring-emerald-400/20"
                           : "bg-white/3 border border-transparent hover:bg-white/5"
@@ -475,11 +488,6 @@ export function MobileRosterDrawer({
                         onClick={() => handlePlayerTap(player)}
                         className="flex items-center gap-1.5 min-w-0 text-left"
                       >
-                        {/* Anmäld-indikator */}
-                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                          player.isRegistered ? "bg-emerald-400" : player.isDeclined ? "bg-red-400" : "bg-white/15"
-                        }`} />
-
                         {/* Namn + nummer */}
                         <span className="text-[11px] text-white/80 font-medium truncate">
                           {player.name}
@@ -492,29 +500,31 @@ export function MobileRosterDrawer({
 
                       {/* Cell 2: Badges — fixed width, vertically aligned across rows */}
                       <div className="flex items-center gap-0.5 shrink-0">
-                        <TeamColorIndicator teamColor={player.teamColor ?? null} compact mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />
-                        <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
-                          {displayPosition}
-                        </span>
-                        {player.mostPlayedPosition && (
-                          <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0 ${
-                            player.mostPlayedPosition === displayPosition ? 'opacity-30' : ''
-                          }`}
-                            title={`Vanligaste position: ${player.mostPlayedPosition}`}>
-                            {player.mostPlayedPosition}
-                          </span>
-                        )}
-                        {iceTimeMinutes != null && (
-                          <span className="ice-time-badge ice-time-badge-compact shrink-0" title={`Matcher: ${iceTimeMinutes}`}>
-                            {iceTimeMinutes}ʼ
-                          </span>
-                        )}
                         {player.captainRole && (
                           <span className={`text-[8px] font-black px-1 py-0.5 rounded shrink-0 ${
                             player.captainRole === "C"
                               ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/40"
                               : "bg-orange-400/20 text-orange-300 border border-orange-400/40"
                           }`}>{player.captainRole}</span>
+                        )}
+                        <TeamColorIndicator teamColor={player.teamColor ?? null} compact mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />
+                        <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
+                          {displayPosition}
+                        </span>
+                        {player.mostPlayedPosition ? (
+                          <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0 ${
+                            player.mostPlayedPosition === displayPosition ? 'opacity-30' : ''
+                          }`}
+                            title={`Vanligaste position: ${player.mostPlayedPosition}`}>
+                            {player.mostPlayedPosition}
+                          </span>
+                        ) : (
+                          <span className="w-[20px] h-[18px] shrink-0" aria-hidden="true" />
+                        )}
+                        {iceTimeMinutes != null && (
+                          <span className="ice-time-badge ice-time-badge-compact shrink-0" title={`Matcher: ${iceTimeMinutes}`}>
+                            {iceTimeMinutes}ʼ
+                          </span>
                         )}
                         {(() => {
                           // Dual PIR: select based on player's registered position

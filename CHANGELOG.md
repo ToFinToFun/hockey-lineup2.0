@@ -7,6 +7,22 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.6.2 – 2026-09-27
+
+**Lineup, uppställningen (mobil)**
+- Högst 2×2 märken: lag och position överst, PIR under (dubbel bredd, visas alltid när PIR är påslaget i inställningarna, med trendpil).
+- C/A visas inte i uppställningen – bara i truppen och när man trycker på spelaren.
+- Speltiden står diskret under positionen i rutan till vänster (t.ex. LW / 60ʼ).
+- Mer plats för namnet.
+
+**Truppen (mobil)**
+- Anmälan visas som färgad kant, samma som i uppställningen.
+- C/A står först bland märkena, och rader utan "vanligaste position" får en tom plats – allt linjerar.
+- Förklaring av färger och V/G/W överst i listan.
+
+**Båda**
+- Spelare utan lag visas med W (waivers) i stället för en tom grå ruta.
+
 ## 2.6.1 – 2026-09-26
 
 **Lineup: spelarkort, omtag**

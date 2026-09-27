@@ -221,8 +221,39 @@ export function DraggablePlayerCard({
         </span>
 
         {!hideExtras && (() => {
-          const hasPirData = (player.pirMatchesPlayed ?? 0) >= 3 || (player.pirAdjustment ?? 0) !== 0;
-          const badges = (
+          const showPir = pirEnabled && pirSettings.showRating && activePir.rating != null;
+          const pirBadge = showPir ? (
+            <span
+              className={`text-[9px] leading-none font-bold px-1 py-[3px] rounded border text-center ${
+                activePir.rating! >= 1050 ? "bg-amber-400/15 text-amber-300 border-amber-400/30"
+                : activePir.rating! >= 1000 ? "bg-white/5 text-white/50 border-white/15"
+                : "bg-sky-400/10 text-sky-300/60 border-sky-400/20"
+              }`}
+              title={`PIR${activePir.label ? ` (${activePir.label})` : ""}: ${activePir.rating} | Matcher: ${activePir.matchesPlayed}`}
+            >
+              {activePir.rating}
+              {pirSettings.showTrend && activePir.trendLabel && activePir.trendLabel !== "stable" && (
+                <span className={activePir.trendLabel.includes("rising") ? "text-emerald-400 ml-px" : "text-red-400 ml-px"}>
+                  {activePir.trendLabel.includes("rising") ? "↑" : "↓"}
+                </span>
+              )}
+            </span>
+          ) : null;
+          const teamBadge = <TeamColorIndicator teamColor={player.teamColor ?? null} compact mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />;
+          const posBadge = (
+            <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`} title={`Position: ${displayPosition}`}>
+              {displayPosition}
+            </span>
+          );
+          const badges = compact ? (
+            /* Uppställningen: högst 2×2 – lag och position överst, PIR under (dubbel bredd).
+               Speltid visas i positionsrutan till vänster, C/A i truppen och i spelarkortet. */
+            <span className="grid grid-cols-2 gap-0.5 justify-items-stretch">
+              {teamBadge}
+              {posBadge}
+              {pirBadge && <span className="col-span-2 flex [&>*]:flex-1">{pirBadge}</span>}
+            </span>
+          ) : (
             <>
               {/* Rad 1: C/A först, sedan lag och position – linjerar till höger på alla rader */}
               <span className="flex items-center gap-0.5 justify-end">
@@ -233,13 +264,10 @@ export function DraggablePlayerCard({
                       : "bg-orange-400/20 text-orange-300 border-orange-400/40"
                   }`} title={player.captainRole === "C" ? "Lagkapten" : "Assisterande lagkapten"}>{player.captainRole}</span>
                 )}
-                <TeamColorIndicator teamColor={player.teamColor ?? null} compact mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />
-                <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`} title={`Position: ${displayPosition}`}>
-                  {displayPosition}
-                </span>
+                {teamBadge}
+                {posBadge}
               </span>
-              {/* Rad 2: speltid, vanligaste position, PIR (bara med matchdata) */}
-              {(iceTimeMinutes != null || player.mostPlayedPosition || (pirEnabled && pirSettings.showRating && hasPirData)) && (
+              {(iceTimeMinutes != null || player.mostPlayedPosition || pirBadge) && (
                 <span className="flex items-center gap-0.5 justify-end">
                   {iceTimeMinutes != null && (
                     <span className="ice-time-badge ice-time-badge-compact shrink-0" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
@@ -252,23 +280,7 @@ export function DraggablePlayerCard({
                       {player.mostPlayedPosition}
                     </span>
                   )}
-                  {pirEnabled && pirSettings.showRating && hasPirData && activePir.rating != null && (
-                    <span
-                      className={`text-[9px] leading-none font-bold px-1 py-[3px] rounded shrink-0 border ${
-                        activePir.rating >= 1050 ? "bg-amber-400/15 text-amber-300 border-amber-400/30"
-                        : activePir.rating >= 1000 ? "bg-white/5 text-white/50 border-white/15"
-                        : "bg-sky-400/10 text-sky-300/60 border-sky-400/20"
-                      }`}
-                      title={`PIR${activePir.label ? ` (${activePir.label})` : ""}: ${activePir.rating} | Matcher: ${activePir.matchesPlayed}`}
-                    >
-                      {activePir.rating}
-                      {pirSettings.showTrend && activePir.trendLabel && activePir.trendLabel !== "stable" && (
-                        <span className={activePir.trendLabel.includes("rising") ? "text-emerald-400 ml-px" : "text-red-400 ml-px"}>
-                          {activePir.trendLabel.includes("rising") ? "↑" : "↓"}
-                        </span>
-                      )}
-                    </span>
-                  )}
+                  {pirBadge}
                 </span>
               )}
             </>
@@ -598,12 +610,12 @@ export function DraggablePlayerCard({
 
 // Team color indicator — rounded-rect matching pos-badge-sm size
 export function TeamColorIndicator({ teamColor, compact, mostPlayedTeam }: { teamColor: TeamColor; compact?: boolean; mostPlayedTeam?: "green" | "white" }) {
+  const letter = `flex items-center justify-center font-black leading-none ${compact ? "text-[9px]" : "text-[10px]"}`;
   // Match pos-badge-sm: 20×18px normal, slightly smaller in compact
   const cls = compact
     ? "w-[16px] h-[16px] rounded-[4px] shrink-0"
     : "w-[20px] h-[18px] rounded-[5px] shrink-0";
 
-  const letter = `flex items-center justify-center font-black leading-none ${compact ? "text-[9px]" : "text-[10px]"}`;
   if (teamColor === "green") {
     return <div title="Tillhör Gröna" className={`${cls} ${letter} bg-emerald-400 border border-emerald-300/60 text-emerald-950`}>G</div>;
   }
@@ -632,7 +644,7 @@ export function TeamColorIndicator({ teamColor, compact, mostPlayedTeam }: { tea
     );
   }
 
-  return <div title="Inget lag" className={`${cls} border border-white/20 bg-white/5`} />;
+  return <div title="Waivers – inget lag" className={`${cls} ${letter} border border-white/20 bg-white/5 text-white/45`}>W</div>;
 }
 
 // Drag overlay card
