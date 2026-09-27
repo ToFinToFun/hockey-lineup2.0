@@ -24,7 +24,7 @@ describe("historik per säsong", () => {
     ]);
     const a = h.get("a")!;
     expect(a.map((l) => l.season)).toEqual(["2026/27", "2025/26"]);
-    expect(a[0]).toMatchObject({ matches: 2, wins: 1, draws: 1, losses: 0, assists: 1, positions: { MV: 1, B: 0, C: 0, F: 1 }, teams: { white: 2, green: 0 } });
+    expect(a[0]).toMatchObject({ matches: 2, wins: 1, draws: 1, losses: 0, assists: 1, positions: { MV: 1, B: 0, C: 0, LW: 1, RW: 0 }, teams: { white: 2, green: 0 } });
     expect(a[1]).toMatchObject({ matches: 1, losses: 1, positions: { B: 1 } });
     expect(h.get("c")![0]).toMatchObject({ matches: 2, goals: 1, positions: { C: 2 }, teams: { white: 1, green: 1 } });
     expect(h.get("b")![0]).toMatchObject({ matches: 1, losses: 1, positions: { B: 1 } });

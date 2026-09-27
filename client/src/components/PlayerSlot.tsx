@@ -23,6 +23,7 @@ interface PlayerSlotProps {
   onChangeTeamColor?: (color: TeamColor) => void;
   onChangeCaptainRole?: (role: CaptainRole) => void;
   onChangeRegistered?: (isRegistered: boolean) => void;
+  onSyncToLaget?: (status: "Attending" | "NotAttending" | "NotAnswered") => Promise<void>;
   onDelete?: () => void;
   /** Called when an empty slot is tapped (mobile) */
   onEmptySlotClick?: () => void;
@@ -48,7 +49,7 @@ function getBadgeClass(role: string): string {
 
 export function PlayerSlot({
   slot, player, onRemove, onChangePosition, compact = false, iceTimeMinutes,
-  onChangeName, onChangeNumber, onChangeTeamColor, onChangeCaptainRole, onChangeRegistered, onDelete,
+  onChangeName, onChangeNumber, onChangeTeamColor, onChangeCaptainRole, onChangeRegistered, onSyncToLaget, onDelete,
   onEmptySlotClick,
 }: PlayerSlotProps) {
   const { isOver, setNodeRef } = useDroppable({ id: slot.id });
@@ -93,6 +94,7 @@ export function PlayerSlot({
             onChangeTeamColor={onChangeTeamColor}
             onChangeCaptainRole={onChangeCaptainRole}
             onChangeRegistered={onChangeRegistered}
+            onSyncToLaget={onSyncToLaget}
             onDelete={onDelete}
             slotType={slot.type}
             compact

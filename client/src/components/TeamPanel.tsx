@@ -35,6 +35,7 @@ interface TeamPanelProps {
   onChangeTeamColor?: (playerId: string, color: TeamColor) => void;
   onChangeCaptainRole?: (playerId: string, role: CaptainRole) => void;
   onChangeRegistered?: (playerId: string, isRegistered: boolean) => void;
+  onSyncToLaget?: (playerId: string, playerName: string, status: "Attending" | "NotAttending" | "NotAnswered") => Promise<void>;
   onDeletePlayer?: (playerId: string) => void;
   /** Called when an empty slot is tapped (mobile) */
   onEmptySlotClick?: (slotId: string, slotType: string) => void;
@@ -53,7 +54,7 @@ const groupColors: Record<string, string> = {
 /* ── GroupCard ── */
 function GroupCard({
   group, lineup, onRemovePlayer, onChangePosition, type, compact, iceTimeMap,
-  onChangeName, onChangeNumber, onChangeTeamColor, onChangeCaptainRole, onChangeRegistered, onDeletePlayer,
+  onChangeName, onChangeNumber, onChangeTeamColor, onChangeCaptainRole, onChangeRegistered, onSyncToLaget, onDeletePlayer,
   onEmptySlotClick,
 }: {
   group: { groupLabel: string; slots: Slot[] };
@@ -68,6 +69,7 @@ function GroupCard({
   onChangeTeamColor?: (playerId: string, color: TeamColor) => void;
   onChangeCaptainRole?: (playerId: string, role: CaptainRole) => void;
   onChangeRegistered?: (playerId: string, isRegistered: boolean) => void;
+  onSyncToLaget?: (playerId: string, playerName: string, status: "Attending" | "NotAttending" | "NotAnswered") => Promise<void>;
   onDeletePlayer?: (playerId: string) => void;
   onEmptySlotClick?: (slotId: string, slotType: string) => void;
 }) {
@@ -96,6 +98,7 @@ function GroupCard({
               onChangeTeamColor={p && onChangeTeamColor ? (color) => onChangeTeamColor(p.id, color) : undefined}
               onChangeCaptainRole={p && onChangeCaptainRole ? (role) => onChangeCaptainRole(p.id, role) : undefined}
               onChangeRegistered={p && onChangeRegistered ? (val) => onChangeRegistered(p.id, val) : undefined}
+              onSyncToLaget={p && onSyncToLaget ? (status) => onSyncToLaget(p.id, p.name, status) : undefined}
               onDelete={p && onDeletePlayer ? () => onDeletePlayer(p.id) : undefined}
               onEmptySlotClick={!p && onEmptySlotClick ? () => onEmptySlotClick(slot.id, slot.type) : undefined}
             />
@@ -197,7 +200,7 @@ export function TeamPanel({
   isWhite = false, config, onConfigChange, compact = false,
   otherConfig,
   matchTime = 60,
-  onChangeName, onChangeNumber, onChangeTeamColor, onChangeCaptainRole, onChangeRegistered, onDeletePlayer,
+  onChangeName, onChangeNumber, onChangeTeamColor, onChangeCaptainRole, onChangeRegistered, onSyncToLaget, onDeletePlayer,
   onEmptySlotClick,
 }: TeamPanelProps) {
   const logo = isWhite ? LOGO_WHITE : LOGO_GREEN;
@@ -433,6 +436,7 @@ export function TeamPanel({
                   onChangeTeamColor={p && onChangeTeamColor ? (color) => onChangeTeamColor(p.id, color) : undefined}
                   onChangeCaptainRole={p && onChangeCaptainRole ? (role) => onChangeCaptainRole(p.id, role) : undefined}
                   onChangeRegistered={p && onChangeRegistered ? (val) => onChangeRegistered(p.id, val) : undefined}
+              onSyncToLaget={p && onSyncToLaget ? (status) => onSyncToLaget(p.id, p.name, status) : undefined}
                   onDelete={p && onDeletePlayer ? () => onDeletePlayer(p.id) : undefined}
                   onEmptySlotClick={!p && onEmptySlotClick ? () => onEmptySlotClick(slot.id, slot.type) : undefined}
                 />
@@ -471,7 +475,7 @@ export function TeamPanel({
               type="defense" compact={compact} iceTimeMap={iceTimeMap}
               onChangeName={onChangeName} onChangeNumber={onChangeNumber}
               onChangeTeamColor={onChangeTeamColor} onChangeCaptainRole={onChangeCaptainRole}
-              onChangeRegistered={onChangeRegistered} onDeletePlayer={onDeletePlayer}
+              onChangeRegistered={onChangeRegistered} onSyncToLaget={onSyncToLaget} onDeletePlayer={onDeletePlayer}
               onEmptySlotClick={onEmptySlotClick}
             />
           ))}
@@ -507,7 +511,7 @@ export function TeamPanel({
               type="forward" compact={compact} iceTimeMap={iceTimeMap}
               onChangeName={onChangeName} onChangeNumber={onChangeNumber}
               onChangeTeamColor={onChangeTeamColor} onChangeCaptainRole={onChangeCaptainRole}
-              onChangeRegistered={onChangeRegistered} onDeletePlayer={onDeletePlayer}
+              onChangeRegistered={onChangeRegistered} onSyncToLaget={onSyncToLaget} onDeletePlayer={onDeletePlayer}
               onEmptySlotClick={onEmptySlotClick}
             />
           ))}

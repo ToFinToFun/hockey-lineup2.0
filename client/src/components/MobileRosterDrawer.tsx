@@ -10,7 +10,7 @@ import { ALL_POSITIONS, getPositionBadgeColor } from "@/lib/players";
 import type { Slot, TeamConfig } from "@/lib/lineup";
 import { useForwardColor } from "@/hooks/useForwardColor";
 import { usePirSettings, usePirEnabled } from "@/hooks/usePirEnabled";
-import { TeamColorIndicator, TrendIcon } from "@/components/PlayerCard";
+import { TeamColorIndicator, TrendIcon, AttendanceButtons, PositionShare } from "@/components/PlayerCard";
 import { sortRoster, positionsForSlot } from "@/lib/rosterSort";
 
 interface MobileRosterDrawerProps {
@@ -25,6 +25,7 @@ interface MobileRosterDrawerProps {
   onChangeName?: (id: string, name: string) => void;
   onChangeCaptainRole?: (id: string, role: CaptainRole) => void;
   onChangeRegistered?: (id: string, registered: boolean) => void;
+  onSyncToLaget?: (id: string, name: string, status: "Attending" | "NotAttending" | "NotAnswered") => Promise<void>;
   onBulkRegister?: (forceRefresh?: boolean) => Promise<{ matched: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string; noEvent?: boolean }>;
   onEventInfoUpdate?: (info: { title: string; date: string } | null) => void;
   totalRegistered?: number;
@@ -66,6 +67,7 @@ export function MobileRosterDrawer({
   onChangeName,
   onChangeCaptainRole,
   onChangeRegistered,
+  onSyncToLaget,
   onBulkRegister,
   onEventInfoUpdate,
   totalRegistered = 0,
@@ -773,9 +775,6 @@ export function MobileRosterDrawer({
                   {editingPlayer.name}
                   {editingPlayer.number && <span className="text-white/40 font-normal ml-1">#{editingPlayer.number}</span>}
                 </span>
-                {editingPlayer.mostPlayedPosition && editingPlayer.mostPlayedPosition !== editingPlayer.position && (
-                  <span className="text-[10px] text-white/45">spelat mest som {editingPlayer.mostPlayedPosition}</span>
-                )}
               </div>
               <button
                 onClick={handleCloseEdit}
@@ -925,26 +924,30 @@ export function MobileRosterDrawer({
                 </div>
               )}
 
-              {/* Registered toggle */}
-              {onChangeRegistered && (
+              {/* Anmälan (uppdaterar laget.se när kopplingen finns) */}
+              {(onChangeRegistered || onSyncToLaget) && (
                 <div className="flex items-center gap-2">
                   <span className="text-white/40 text-[10px] w-8 shrink-0">Anm:</span>
-                  <button
-                    onClick={() => {
-                      const newVal = !editingPlayer.isRegistered;
-                      onChangeRegistered(editingPlayer.id, newVal);
-                      setEditingPlayer({ ...editingPlayer, isRegistered: newVal });
-                    }}
-                    className={`text-[10px] font-bold px-3 py-1.5 rounded border transition-all ${
-                      editingPlayer.isRegistered
-                        ? "bg-emerald-400/25 text-emerald-300 border-emerald-400/50 ring-1 ring-emerald-400/30"
-                        : "bg-white/5 text-white/30 border-white/10 hover:bg-white/10 hover:text-white/50"
-                    }`}
-                  >
-                    {editingPlayer.isRegistered ? "✓ Anmäld" : "Ej anmäld"}
-                  </button>
+                  <AttendanceButtons
+                    size="md"
+                    player={editingPlayer}
+                    onSync={onSyncToLaget ? async (status) => {
+                      await onSyncToLaget(editingPlayer.id, editingPlayer.name, status);
+                      setEditingPlayer((p) => p ? { ...p, isRegistered: status === "Attending", isDeclined: status === "NotAttending" } : p);
+                    } : undefined}
+                    onLocal={onChangeRegistered ? (val) => {
+                      onChangeRegistered(editingPlayer.id, val);
+                      setEditingPlayer((p) => p ? { ...p, isRegistered: val } : p);
+                    } : undefined}
+                  />
                 </div>
               )}
+
+              {/* Spelade positioner */}
+              <div className="flex items-center gap-2">
+                <span className="text-white/40 text-[10px] w-8 shrink-0">Spelat:</span>
+                <PositionShare stats={editingPlayer.positionStats} />
+              </div>
 
               {/* Delete player */}
               {onDeletePlayer && (

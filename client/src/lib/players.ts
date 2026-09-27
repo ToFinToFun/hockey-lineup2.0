@@ -26,6 +26,8 @@ export interface Player {
   captainRole?: CaptainRole;
   /** Finns i klubbens medlemsregister (styrs från spelarregistret). */
   isMember?: boolean;
+  /** Antal matcher per position (MV, B, C, LW, RW) – räknas fram, synkas inte. */
+  positionStats?: Record<string, number>;
   /** Namnet som det står i laget.se om det skiljer sig. */
   lagetName?: string;
   isRegistered?: boolean;   // Anmäld till dagens match ("Kommer")

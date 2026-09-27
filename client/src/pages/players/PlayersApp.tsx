@@ -350,7 +350,7 @@ function SeasonHistory({ id }: { id: string }) {
                 <th className="text-right font-normal">V-O-F</th>
                 <th className="text-right font-normal">Mål</th>
                 <th className="text-right font-normal">Ass</th>
-                <th className="text-right font-normal">MV/B/C/F</th>
+                <th className="text-right font-normal">MV/B/C/LW/RW</th>
                 <th className="text-right font-normal">Vit/Grön</th>
               </tr>
             </thead>
@@ -362,7 +362,7 @@ function SeasonHistory({ id }: { id: string }) {
                   <td className="text-right">{l.wins}-{l.draws}-{l.losses}</td>
                   <td className="text-right">{l.goals}</td>
                   <td className="text-right">{l.assists}</td>
-                  <td className="text-right">{l.positions.MV}/{l.positions.B}/{l.positions.C}/{l.positions.F}</td>
+                  <td className="text-right">{l.positions.MV}/{l.positions.B}/{l.positions.C}/{l.positions.LW}/{l.positions.RW}</td>
                   <td className="text-right">{l.teams.white}/{l.teams.green}</td>
                 </tr>
               ))}

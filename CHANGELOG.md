@@ -7,6 +7,15 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.8.0 – 2026-09-27
+
+**Anmälan synkas till laget.se igen – på mobil också**
+- Samma tre knappar överallt när man trycker på en spelare: Kommer / Kommer inte / Ej svarat. Med laget.se-koppling uppdateras laget.se först och appen när det lyckats. Tidigare fanns synken bara i truppen på datorn; på mobilen och i uppställningen ändrades bara appen.
+
+**Spelade positioner i procent**
+- Andel matcher per position – MV, B, C, LW, RW – visas när man trycker på en spelare. Utan matcher: 0 % överallt.
+- Säsongshistoriken på sidan Spelare visar LW och RW separat.
+
 ## 2.7.2 – 2026-09-27
 
 - Tom plats → lagordningen ändrad: platsens lag först, sedan waivers, sist motståndarlaget. Tom back i Vita: vita backar, waiver-backar, gröna backar, vita forwards, waiver-forwards, gröna forwards (anmälda först, sedan ej svarat, sist kommer inte). Truppen: närvaro, sedan namn.

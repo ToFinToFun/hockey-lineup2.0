@@ -310,6 +310,7 @@ export default function Home() {
     const posHistory = posHistoryRef.current;
     if (posHistory) {
       const hist = posHistory[p.id];
+      if (hist?.stats) enriched.positionStats = hist.stats;
       if (hist?.mostPlayed) {
         enriched.mostPlayedPosition = hist.mostPlayed;
         if (hist.mostPlayedTeam === "green" || hist.mostPlayedTeam === "white") {
@@ -2110,6 +2111,7 @@ export default function Home() {
                     onChangeTeamColor={handleChangeTeamColor}
                     onChangeCaptainRole={handleChangeCaptainRole}
                     onChangeRegistered={handleChangeRegistered}
+                    onSyncToLaget={handleSyncToLaget}
                     onDeletePlayer={handleDeletePlayer}
                     onEmptySlotClick={handleEmptySlotClickA}
                   />
@@ -2137,6 +2139,7 @@ export default function Home() {
                     onChangeTeamColor={handleChangeTeamColor}
                     onChangeCaptainRole={handleChangeCaptainRole}
                     onChangeRegistered={handleChangeRegistered}
+                    onSyncToLaget={handleSyncToLaget}
                     onDeletePlayer={handleDeletePlayer}
                     onEmptySlotClick={handleEmptySlotClickB}
                   />
@@ -2222,6 +2225,7 @@ export default function Home() {
           onChangeName={handleChangeName}
           onChangeCaptainRole={handleChangeCaptainRole}
           onChangeRegistered={handleChangeRegistered}
+          onSyncToLaget={handleSyncToLaget}
           onBulkRegister={handleBulkRegister}
           onEventInfoUpdate={(info) => setEventInfo(info)}
           totalRegistered={totalRegistered}

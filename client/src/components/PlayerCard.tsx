@@ -470,75 +470,16 @@ export function DraggablePlayerCard({
               )}
               {/* Registered + Sync to laget.se */}
               <div className="flex items-center gap-3 flex-wrap">
-                {onChangeRegistered && (
+                {(onChangeRegistered || onSyncToLaget) && (
                   <div className="flex items-center gap-1.5">
-                    <span className="text-white/40 text-[10px]">Anmäld:</span>
-                    <button
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onChangeRegistered(!player.isRegistered);
-                      }}
-                      className={`text-[9px] font-bold px-2.5 py-1 rounded border transition-all ${
-                        player.isRegistered
-                          ? "bg-emerald-400/25 text-emerald-300 border-emerald-400/50 ring-1 ring-emerald-400/30"
-                          : "bg-white/5 text-white/30 border-white/10 hover:bg-white/10 hover:text-white/50"
-                      }`}
-                    >
-                      {player.isRegistered ? "✓ Ja" : "Nej"}
-                    </button>
+                    <span className="text-white/40 text-[10px]">Anmälan:</span>
+                    <AttendanceButtons player={player} onSync={onSyncToLaget} onLocal={onChangeRegistered} />
                   </div>
                 )}
-                {onSyncToLaget && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-white/40 text-[10px]">Laget.se:</span>
-                    <button
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSyncingToLaget(true);
-                        onSyncToLaget("Attending").finally(() => setSyncingToLaget(false));
-                      }}
-                      disabled={syncingToLaget}
-                      className={`text-[8px] font-bold px-1.5 py-0.5 rounded border transition-all ${
-                        player.isRegistered
-                          ? "bg-emerald-400/25 text-emerald-300 border-emerald-400/50"
-                          : "bg-white/5 text-white/40 border-white/10 hover:bg-emerald-400/15 hover:text-emerald-300 hover:border-emerald-400/40"
-                      }`}
-                    >
-                      Deltar
-                    </button>
-                    <button
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSyncingToLaget(true);
-                        onSyncToLaget("NotAttending").finally(() => setSyncingToLaget(false));
-                      }}
-                      disabled={syncingToLaget}
-                      className={`text-[8px] font-bold px-1.5 py-0.5 rounded border transition-all ${
-                        player.isDeclined
-                          ? "bg-red-400/25 text-red-300 border-red-400/50"
-                          : "bg-white/5 text-white/40 border-white/10 hover:bg-red-400/15 hover:text-red-300 hover:border-red-400/40"
-                      }`}
-                    >
-                      Deltar ej
-                    </button>
-                    <button
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSyncingToLaget(true);
-                        onSyncToLaget("NotAnswered").finally(() => setSyncingToLaget(false));
-                      }}
-                      disabled={syncingToLaget}
-                      className="text-[8px] font-bold px-1.5 py-0.5 rounded border transition-all bg-white/5 text-white/30 border-white/10 hover:bg-white/10 hover:text-white/50"
-                    >
-                      Ej svarat
-                    </button>
-                    {syncingToLaget && <span className="text-[8px] text-amber-300 animate-pulse">Synkar...</span>}
-                  </div>
-                )}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-white/40 text-[10px]">Spelat:</span>
+                  <PositionShare stats={player.positionStats} />
+                </div>
                 {onChangeGamesPlayed && (
                   <div className="flex items-center gap-1.5">
                     <span className="text-white/40 text-[10px]">Matcher:</span>
@@ -624,6 +565,71 @@ export function DraggablePlayerCard({
  * ↑ stigande (> +20), ↗ svagt stigande (+8…+20), → stabil, ↘ svagt fallande, ↓ fallande (< −20).
  * ? = för lite data (färre än 3 matcher).
  */
+/**
+ * Anmälan – samma tre knappar överallt. Med laget.se-koppling uppdateras
+ * laget.se (och appen när det lyckats), annars bara appen.
+ */
+export function AttendanceButtons({ player, onSync, onLocal, size = "sm" }: {
+  player: Player;
+  onSync?: (status: "Attending" | "NotAttending" | "NotAnswered") => Promise<void>;
+  onLocal?: (isRegistered: boolean) => void;
+  size?: "sm" | "md";
+}) {
+  const [busy, setBusy] = useState(false);
+  const current = player.isRegistered ? "Attending" : player.isDeclined ? "NotAttending" : "NotAnswered";
+  const choose = (status: "Attending" | "NotAttending" | "NotAnswered") => {
+    if (onSync) {
+      setBusy(true);
+      onSync(status).finally(() => setBusy(false));
+    } else if (onLocal) {
+      onLocal(status === "Attending");
+    }
+  };
+  const btn = size === "md" ? "text-[11px] px-3 py-1.5" : "text-[9px] px-2 py-1";
+  const opts: Array<{ status: "Attending" | "NotAttending" | "NotAnswered"; label: string; on: string }> = [
+    { status: "Attending", label: "Kommer", on: "bg-emerald-400/25 text-emerald-300 border-emerald-400/50" },
+    { status: "NotAttending", label: "Kommer inte", on: "bg-red-400/25 text-red-300 border-red-400/50" },
+    { status: "NotAnswered", label: "Ej svarat", on: "bg-white/15 text-white/70 border-white/30" },
+  ];
+  return (
+    <div className="flex items-center gap-1 flex-wrap" onPointerDown={(e) => e.stopPropagation()}>
+      {opts.filter((o) => onSync || o.status !== "NotAttending").map((o) => (
+        <button
+          key={o.status}
+          disabled={busy}
+          onClick={(e) => { e.stopPropagation(); choose(o.status); }}
+          className={`${btn} font-bold rounded border transition-all disabled:opacity-50 ${
+            current === o.status ? o.on : "bg-white/5 text-white/40 border-white/10 hover:bg-white/10"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+      {busy && <span className="text-[9px] text-amber-300 animate-pulse">Uppdaterar laget.se…</span>}
+      {!onSync && <span className="text-[9px] text-white/30">(bara i appen)</span>}
+    </div>
+  );
+}
+
+const ROLES = ["MV", "B", "C", "LW", "RW"] as const;
+
+/** Andel matcher per position (MV, B, C, LW, RW). 0 % överallt utan matcher. */
+export function PositionShare({ stats }: { stats?: Record<string, number> | null }) {
+  const counts = ROLES.map((r) => stats?.[r] ?? 0);
+  const total = counts.reduce((a, b) => a + b, 0);
+  return (
+    <div className="flex items-center gap-1 flex-wrap">
+      {ROLES.map((r, i) => (
+        <span key={r} className="flex items-center gap-0.5 text-[10px] text-white/70">
+          <span className={`pos-badge pos-badge-xs pos-badge-${r.toLowerCase()}`}>{r}</span>
+          {total ? Math.round((counts[i] / total) * 100) : 0}%
+        </span>
+      ))}
+      <span className="text-[9px] text-white/35 ml-1">{total} {total === 1 ? "match" : "matcher"}</span>
+    </div>
+  );
+}
+
 export function TrendIcon({ trendLabel, matchesPlayed, className = "" }: {
   trendLabel?: string | null;
   matchesPlayed?: number | null;

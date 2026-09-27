@@ -8,7 +8,7 @@
  */
 import type { MatchResult } from "../drizzle/schema";
 
-export type PositionCode = "MV" | "B" | "C" | "F";
+export type PositionCode = "MV" | "B" | "C" | "LW" | "RW";
 
 export interface SeasonLine {
   season: string;
@@ -38,12 +38,13 @@ function positionOfSlot(slot: string): PositionCode {
   if (slot.includes("-gk-")) return "MV";
   if (slot.includes("-def-")) return "B";
   if (slot.endsWith("-c")) return "C";
-  return "F";
+  if (slot.endsWith("-rw")) return "RW";
+  return "LW";
 }
 
 const empty = (season: string): SeasonLine => ({
   season, matches: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0,
-  positions: { MV: 0, B: 0, C: 0, F: 0 }, teams: { white: 0, green: 0 },
+  positions: { MV: 0, B: 0, C: 0, LW: 0, RW: 0 }, teams: { white: 0, green: 0 },
 });
 
 /** Historik per säsong för alla spelare (nyckel: spelar-ID). */
