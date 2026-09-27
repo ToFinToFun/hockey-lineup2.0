@@ -10,6 +10,7 @@ import { Link } from "wouter";
 import { toast } from "sonner";
 import { ArrowLeft, Download, Upload, Plus, Search, Loader2, X, AlertTriangle, GitMerge } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { PlayerProfileView } from "./PlayerProfile";
 
 type Row = {
   id: string; name: string; number: string; position: string; teamColor: string | null; captainRole: string | null;
@@ -269,6 +270,7 @@ function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]
     lagetName: row?.lagetName ?? "", notes: row?.notes ?? "",
   });
   const [mergeInto, setMergeInto] = useState("");
+  const [tab, setTab] = useState<"profile" | "edit">(row ? "profile" : "edit");
   const update = trpc.players.update.useMutation({ onSuccess: () => { toast.success("Sparat"); onSaved(); onClose(); } });
   const create = trpc.players.create.useMutation({ onSuccess: () => { toast.success("Spelaren är tillagd"); onSaved(); onClose(); } });
   const merge = trpc.players.merge.useMutation({ onSuccess: () => { toast.success("Ihopslagna"); onSaved(); onClose(); } });
@@ -283,11 +285,29 @@ function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
-      <div className="w-full sm:max-w-md bg-[#161616] rounded-t-2xl sm:rounded-2xl border border-white/10 p-4 space-y-3 max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between">
-          <h2 className="font-bold">{row ? "Redigera spelare" : "Ny spelare"}</h2>
-          <button onClick={onClose} className="text-white/50"><X size={18} /></button>
+      <div className="w-full sm:max-w-xl bg-[#161616] rounded-t-2xl sm:rounded-2xl border border-white/10 p-4 space-y-3 max-h-[92dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between gap-3">
+          {row ? (
+            <div className="flex gap-1 p-1 rounded-lg bg-white/5 border border-white/10">
+              {([["profile", "Profil"], ["edit", "Redigera"]] as const).map(([k, l]) => (
+                <button key={k} onClick={() => setTab(k)}
+                  className={`text-xs px-3 py-1 rounded-md ${tab === k ? "bg-white/15 text-white font-semibold" : "text-white/50"}`}>{l}</button>
+              ))}
+            </div>
+          ) : (
+            <h2 className="font-bold">Ny spelare</h2>
+          )}
+          <button onClick={onClose} className="text-white/50" aria-label="Stäng"><X size={18} /></button>
         </div>
+
+        {row && tab === "profile" && (
+          <>
+            <PlayerProfileView player={row} all={all} />
+            <SeasonHistory id={row.id} />
+          </>
+        )}
+
+        {tab === "edit" && (<>
         <div className="grid grid-cols-4 gap-2">
           <label className="col-span-3 text-xs text-white/50">Namn<input className={input} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
           <label className="text-xs text-white/50">Nr<input className={input} inputMode="numeric" value={f.number} onChange={(e) => setF({ ...f, number: e.target.value })} /></label>
@@ -306,8 +326,6 @@ function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]
         <button onClick={save} disabled={!payload.name || update.isPending || create.isPending}
           className="w-full py-2.5 rounded-xl bg-[#0a7ea4] font-semibold disabled:opacity-40">Spara</button>
 
-        {row && <SeasonHistory id={row.id} />}
-
         {row && (
           <div className="border-t border-white/5 pt-3 space-y-2">
             <p className="text-xs text-white/50">Samma person registrerad två gånger? Slå ihop – matcher och mål flyttas till den valda spelaren och den här tas bort.</p>
@@ -324,6 +342,7 @@ function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]
             </div>
           </div>
         )}
+        </>)}
       </div>
     </div>
   );

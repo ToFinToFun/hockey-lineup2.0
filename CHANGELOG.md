@@ -7,6 +7,18 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.17.0 – 2026-09-27
+
+**Spelarsidan – profil**
+- Spelarens ruta har flikarna Profil och Redigera (ny spelare öppnas direkt i Redigera).
+- Profil: stående profilbild (samma som i Lineup, hämtas först när rutan öppnas), form senaste 10 matcherna och pågående svit.
+- Sammanfattning totalt: matcher, mål, assist, poäng (per match) och vinstprocent (V-O-F).
+- Rekord: bästa match (poäng, mål+assist, datum), längsta vinstsvit, längst obesegrad.
+- Kemi: vinstprocent med kedjekamrater/backpartner (min 2 matcher; målvakter: hela laget), bäst och svårast med i laget (min 3), samt vinner oftast mot och svårast mot (min 3).
+- Matchlogg: datum, lag, position, resultat, egna mål och assist – de 10 senaste, "Visa alla".
+- Jämför med en annan spelare: sida vid sida (bäst markerat), form, samt hur det gått i samma lag och mot varandra.
+- Historik per säsong finns kvar under profilen.
+
 ## 2.16.0 – 2026-09-27
 
 - Form de senaste 10 matcherna: i spelarkortet (per spelare, oavsett lag) och bredvid lagnamnet för Vita och Gröna (så många som får plats, nyast till höger). V = vinst, O = oavgjort, F = förlust.

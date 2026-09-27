@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { adminProcedure, router } from "../_core/trpc";
 import { seasonHistory, seasonOf } from "../playerHistory";
+import { playerProfile } from "../playerProfile";
 import { getAllMatchResults } from "../scoreDb";
 import {
   createPlayer,
@@ -125,6 +126,15 @@ export const playersRouter = router({
     .query(async ({ input }) => {
       const all = seasonHistory(await getAllMatchResults());
       return all.get(input.id) ?? [];
+    }),
+
+  /** Profil: matchlogg, form, rekord och kemi (kedjekamrater, lagkamrater, motståndare). */
+  profile: adminProcedure
+    .input(z.object({ id: z.string().min(1).max(64) }))
+    .query(async ({ input }) => {
+      const players = await listPlayers();
+      const names = new Map(players.map((p) => [p.id, p.name] as [string, string]));
+      return playerProfile(await getAllMatchResults(), input.id, names);
     }),
 
   /** Antal matcher per spelare för en säsong (standard: innevarande). */
