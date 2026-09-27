@@ -114,3 +114,14 @@ describe("form senaste matcherna", () => {
     expect(recentForm(many, 10).players.get("p")).toHaveLength(10);
   });
 });
+
+import { recentWinners } from "./playerHistory";
+
+describe("resultatraden", () => {
+  it("vinnare äldst först, högst n", () => {
+    const mk = (day: number, w: number, g: number) => ({ teamWhiteScore: w, teamGreenScore: g, matchEndTime: new Date(2026, 8, day) }) as never;
+    const r = recentWinners([mk(3, 1, 2), mk(1, 3, 1), mk(2, 2, 2)], 2);
+    expect(r.map((x) => x.winner)).toEqual(["O", "G"]);
+    expect(r[1]).toMatchObject({ white: 1, green: 2 });
+  });
+});

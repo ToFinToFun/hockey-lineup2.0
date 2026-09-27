@@ -135,3 +135,19 @@ export function recentForm(matches: MatchResult[], n = 10): RecentForm {
   for (const [id, list] of players) players.set(id, list.slice(-n));
   return { players, teams: { white: teams.white.slice(-n), green: teams.green.slice(-n) } };
 }
+
+/** Vinnare i en match: V = Vita, G = Gröna, O = oavgjort. */
+export interface MatchWinner { winner: "V" | "G" | "O"; date: string; white: number; green: number }
+
+/** De senaste `n` matchernas vinnare, äldst först. */
+export function recentWinners(matches: MatchResult[], n = 30): MatchWinner[] {
+  return [...matches]
+    .sort((a, b) => matchDate(a).getTime() - matchDate(b).getTime())
+    .slice(-n)
+    .map((m) => ({
+      winner: m.teamWhiteScore > m.teamGreenScore ? "V" : m.teamWhiteScore < m.teamGreenScore ? "G" : "O",
+      date: matchDate(m).toISOString(),
+      white: m.teamWhiteScore,
+      green: m.teamGreenScore,
+    }));
+}

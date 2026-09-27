@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.21.0 – 2026-09-27
+
+- Rensa lag går att ångra och körs direkt (ingen varning). Notis "GRÖNA rensat" med Ångra i fem sekunder. Lagets storlek återställs också vid ångra.
+- Resultatrad under prediktionen: ett litet block per match för de senaste 30 – vitt = Vita vann, grönt = Gröna vann, grått = oavgjort, tomma block för ännu ej spelade. Antal vinster per lag i kanterna, datum och resultat vid hovring. Ersätter formraden vid lagnamnen.
+- Anmälda-kvittot: antal som tackat nej visas som röd siffra.
+
 ## 2.20.0 – 2026-09-27
 
 - Auto går att ångra och körs direkt vid klick (ingen varning). En notis med "Ångra" visas i fem sekunder.

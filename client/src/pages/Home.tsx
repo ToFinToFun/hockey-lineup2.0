@@ -29,6 +29,7 @@ import { PlayerList } from "@/components/PlayerList";
 import { TeamPanel } from "@/components/TeamPanel";
 import { PlayerCardOverlay } from "@/components/PlayerCard";
 import { LagetNewsModal } from "@/components/LagetNewsModal";
+import { MatchResultsBar } from "@/components/MatchResultsBar";
 import { SlotHighlightContext } from "@/components/PlayerSlot";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
@@ -244,7 +245,6 @@ export default function Home() {
   const skipNextUndoSnapshot = useRef(false); // hoppa över snapshot vid ångra-återställning
 
   // Bekräftelsedialog för Rensa
-  const [confirmClear, setConfirmClear] = useState<{ teamPrefix: string; teamName: string } | null>(null);
 
   // Bekräftelsedialog för Auto-fördela
 
@@ -449,6 +449,7 @@ export default function Home() {
   // firing multiple times as we set multiple state values. The save-effect
   // will fire once after all state updates are batched by React.
   const undoInProgressRef = useRef(false);
+  const handleUndoRef = useRef<() => void>(() => {});
   const handleUndo = useCallback(() => {
     setUndoStack((prev) => {
       if (prev.length === 0) return prev;
@@ -463,6 +464,7 @@ export default function Home() {
       return prev.slice(0, prev.length - 1);
     });
   }, []);
+  useEffect(() => { handleUndoRef.current = handleUndo; }, [handleUndo]);
 
   // Ctrl+Z / Cmd+Z tangentbordsgenväg
   useEffect(() => {
@@ -623,9 +625,26 @@ export default function Home() {
   }, []);
 
   // Öppna bekräftelsedialog för Rensa
+  // Rensa ett lag direkt – går att ångra, därför ingen bekräftelsedialog
   const handleRequestClearTeam = useCallback((teamPrefix: string, teamName: string) => {
-    setConfirmClear({ teamPrefix, teamName });
-  }, []);
+    pushUndo(); // spara snapshot innan rensning (även lagets storlek)
+    const currentLineup = lineupRef.current;
+    const removedPlayers: Player[] = [];
+    const newLineup: Record<string, Player> = {};
+    for (const [slotId, player] of Object.entries(currentLineup)) {
+      if (slotId.startsWith(teamPrefix)) removedPlayers.push(player);
+      else newLineup[slotId] = player;
+    }
+    if (removedPlayers.length > 0) {
+      setLineup(newLineup);
+      setAvailablePlayers((prev) => [...removedPlayers, ...prev]);
+    }
+    // Tillbaka till 1 målvakt, 1 backpar och 1 kedja
+    const defaultConfig = { goalkeepers: 1, defensePairs: 1, forwardLines: 1 };
+    if (teamPrefix === "team-a-") setTeamAConfig(defaultConfig);
+    else setTeamBConfig(defaultConfig);
+    toast(`${teamName} rensat`, { action: { label: "Ångra", onClick: () => handleUndoRef.current() }, duration: 5000 });
+  }, [pushUndo]);
 
   // Auto-fördela anmälda spelare på lagen
   const handleAutoDistribute = useCallback((shuffle = false) => {
@@ -751,38 +770,6 @@ export default function Home() {
     setDemoActive(true);
   }, [demoActive]);
 
-  // Utför Rensa efter bekräftelse
-  const handleConfirmClearTeam = useCallback(() => {
-    if (!confirmClear) return;
-    setConfirmClear(null);
-
-    const { teamPrefix } = confirmClear;
-
-    const currentLineup = lineupRef.current;
-    const removedPlayers: Player[] = [];
-    const newLineup: Record<string, Player> = {};
-    for (const [slotId, player] of Object.entries(currentLineup)) {
-      if (slotId.startsWith(teamPrefix)) {
-        removedPlayers.push(player);
-      } else {
-        newLineup[slotId] = player;
-      }
-    }
-
-    if (removedPlayers.length > 0) {
-      pushUndo(); // spara snapshot innan rensning
-      setLineup(newLineup);
-      setAvailablePlayers((prev) => [...removedPlayers, ...prev]);
-    }
-
-    // Reset config to defaults: 1 goalkeeper, 1 defense pair, 1 forward line
-    const defaultConfig = { goalkeepers: 1, defensePairs: 1, forwardLines: 1 };
-    if (teamPrefix === "team-a-") {
-      setTeamAConfig(defaultConfig);
-    } else {
-      setTeamBConfig(defaultConfig);
-    }
-  }, [confirmClear, pushUndo]);
 
   // Ladda en sparad uppställning
   const handleLoadLineup = useCallback((saved: { id: string; name: string; teamAName: string; teamBName: string; lineup: Record<string, Player>; savedAt: number }) => {
@@ -1371,9 +1358,8 @@ export default function Home() {
             <span className="flex items-center gap-1 tabular-nums normal-case tracking-normal">
               <Check className={icon} />
               <span>{syncReceipt.matched}</span>
-              <span className="text-white/50">/</span>
-              <span className="text-red-200">{syncReceipt.declined}</span>
-              {withLabels && <span className="font-medium text-white/80">anmälda/nej</span>}
+              <span className="ml-0.5 px-1 rounded bg-red-500 text-white" title="Tackat nej">{syncReceipt.declined}</span>
+              {withLabels && <span className="font-medium text-white/80">anmälda / nej</span>}
             </span>
           ) : syncReceipt ? (
             <><XIconSmall className={icon} />{label("Fel")}</>
@@ -1640,6 +1626,9 @@ export default function Home() {
           {isAdmin && pirSettings.enabled && pirSettings.showPrediction && (
             <MatchPredictionBar lineup={lineup} teamAName={teamAName} teamBName={teamBName} dark={isLineupDark} />
           )}
+
+          {/* Resultatrad: vem som vunnit de senaste matcherna (tomma block = ännu ej spelade) */}
+          <MatchResultsBar dark={isLineupDark} />
 
           {/* Expanderbar statistik-panel */}
           {showStats && (() => {
@@ -2059,17 +2048,6 @@ export default function Home() {
       <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} pirSettings={pirSettings} onPirSettingsChange={handlePirSettingsChange} />
 
       {/* Bekäftelsedialog för Rensa */}
-      {confirmClear && (
-        <ConfirmDialog
-          title="Rensa lag"
-          message={`Vill du flytta tillbaka alla spelare från ${confirmClear.teamName} till spelartruppen?`}
-          confirmLabel="Rensa"
-          cancelLabel="Avbryt"
-          danger
-          onConfirm={handleConfirmClearTeam}
-          onCancel={() => setConfirmClear(null)}
-        />
-      )}
 
       {/* Mobile Roster Drawer */}
       {isMobile && (

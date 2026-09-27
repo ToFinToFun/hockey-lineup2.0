@@ -4,7 +4,7 @@ import { publicProcedure, lineupProcedure, adminProcedure, router } from "./_cor
 import { authRouter } from "./routers/auth";
 import { playersRouter } from "./routers/players";
 import { fetchAttendance, updateAttendance, publishNews, deleteNews, fetchAccountName, NEWS_ADMIN_URL, type AttendingStatus } from "./lagetSe";
-import { seasonHistory, seasonOf, recentForm } from "./playerHistory";
+import { seasonHistory, seasonOf, recentForm, recentWinners } from "./playerHistory";
 import { setPlayerPhoto, deletePlayerPhoto, MAX_PHOTO_BASE64 } from "./playerPhotos";
 import { listSponsors, createSponsor, updateSponsor, deleteSponsor, moveSponsor, recordSponsorNews } from "./sponsorsDb";
 import { scoreRouter } from "./routers/score";
@@ -301,11 +301,8 @@ export const appRouter = router({
      * Calculate the most-played position for each player from match history.
      * Returns a map: playerKey -> { mostPlayed: "B", stats: { B: 10, C: 2, ... } }
      */
-    /** Lagens form (Vita/Gröna) de senaste 10 matcherna, äldst först, t.ex. "VVFOV…". */
-    teamForm: lineupProcedure.query(async () => {
-      const { teams } = recentForm(await getAllMatchResults(), 10);
-      return { white: teams.white.join(""), green: teams.green.join("") };
-    }),
+    /** De senaste 30 matchernas vinnare (Vita/Gröna/oavgjort), äldst först – resultatraden under prediktionen. */
+    recentResults: lineupProcedure.query(async () => recentWinners(await getAllMatchResults(), 30)),
 
     positionHistory: lineupProcedure.query(async () => {
       const allMatches = await getAllMatchResults();
