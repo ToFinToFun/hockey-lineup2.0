@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import PullToRefresh from "@/components/score/PullToRefresh";
 import { type AppState, type Slot, createTeamSlots, groupSlots, MAX_TEAM_CONFIG } from "@/lib/lineup";
 import { generateLineupText } from "@/lib/lineupText";
+import { positionRowColors, CAPTAIN_COLORS } from "@/lib/positionColors";
 import { type Player } from "@/lib/players";
 
 interface LineupPageProps {
@@ -23,16 +24,7 @@ interface LineupPageProps {
 }
 
 // Position badge colors matching the native app
-/** Samma positionsfärger som i Lineup (se .pos-badge-* i index.css). */
-const POSITION_COLORS: Record<string, string> = {
-  MV: "#f97316", RES: "#f97316", B: "#3b82f6", C: "#8b5cf6", LW: "#06b6d4", RW: "#06b6d4", F: "#06b6d4", IB: "#a8b8c8",
-};
-
-function getPositionColors(shortLabel: string) {
-  const color = POSITION_COLORS[shortLabel];
-  if (!color) return { bg: "#ffffff10", text: "#ffffff80", border: "#ffffff20" };
-  return { bg: `${color}1f`, text: "#ffffff", border: color };
-}
+const getPositionColors = positionRowColors;
 
 // ─── Slot Row ────────────────────────────────────────────────────────────────
 
@@ -59,7 +51,7 @@ function SlotRow({ player, label, shortLabel }: { player: Player | undefined; la
       </div>
       {player.captainRole && (
         <span className="shrink-0 text-[9px] font-bold"
-          style={{ color: player.captainRole === "C" ? "#fde047" : "#fdba74" }}>
+          style={{ color: CAPTAIN_COLORS[player.captainRole as "C" | "A"] }}>
           {player.captainRole}
         </span>
       )}

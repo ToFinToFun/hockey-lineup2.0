@@ -2,6 +2,7 @@
 // Design: Industrial Ice Arena – mörk, polerad, läsbar
 
 import { useParams, Link } from "wouter";
+import { positionRowColors, CAPTAIN_COLORS } from "@/lib/positionColors";
 import { trpc } from "@/lib/trpc";
 import { createTeamSlots, groupSlots, MAX_TEAM_CONFIG } from "@/lib/lineup";
 import type { Player } from "@/lib/players";
@@ -40,52 +41,36 @@ function formatHeadingDate(ts: number): string {
 }
 
 // Positionsfärg baserat på slot-shortLabel (spelarens roll i uppställningen)
-function getSlotRowStyle(shortLabel: string): { border: string; bg: string; badgeColor: string } {
-  switch (shortLabel) {
-    case "MV":
-    case "RES": return { border: "border-l-2 border-l-amber-400/70",   bg: "bg-amber-500/8",   badgeColor: "bg-amber-500/25 text-amber-300" };
-    case "B":   return { border: "border-l-2 border-l-blue-400/70",    bg: "bg-blue-500/8",    badgeColor: "bg-blue-500/25 text-blue-300" };
-    case "C":   return { border: "border-l-2 border-l-purple-400/70",  bg: "bg-purple-500/8",  badgeColor: "bg-purple-500/25 text-purple-300" };
-    case "LW":
-    case "RW":  return { border: "border-l-2 border-l-emerald-400/70", bg: "bg-emerald-500/8", badgeColor: "bg-emerald-500/25 text-emerald-300" };
-    default:    return { border: "border-l-2 border-l-white/15",       bg: "bg-white/4",       badgeColor: "bg-white/10 text-white/50" };
-  }
-}
-
 // En enskild slot-rad i den skrivskyddade vyn
 function SlotRow({ player, label, shortLabel }: { player: Player | undefined; label: string; shortLabel: string }) {
-  const rowStyle = player ? getSlotRowStyle(shortLabel) : null;
+  // Samma färger som i Lineup och Score Tracker
+  const c = positionRowColors(shortLabel);
+  if (!player) {
+    return (
+      <div className="flex items-center gap-2 px-2 py-1.5 rounded-md border-l-2 text-xs"
+        style={{ borderLeftColor: "#ffffff15", backgroundColor: "#ffffff08" }}>
+        <span className="shrink-0 w-7 h-[18px] rounded flex items-center justify-center text-[9px] font-bold"
+          style={{ backgroundColor: "#ffffff10", color: "#ffffff30" }}>—</span>
+        <span className="text-white/25 italic truncate flex-1">{label}</span>
+      </div>
+    );
+  }
   return (
-    <div
-      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors border border-white/8 ${
-        rowStyle ? `${rowStyle.border} ${rowStyle.bg}` : "bg-white/3 border-white/5"
-      }`}
-    >
-      {player ? (
-        <>
-          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded shrink-0 ${rowStyle?.badgeColor ?? ""}`}>
-            {shortLabel}
-          </span>
-          <span className="text-white/90 font-semibold truncate flex-1">
-            {player.name}
-            {player.number && (
-              <span className="text-white/45 font-normal ml-1.5">#{player.number}</span>
-            )}
-            {player.captainRole && (
-              <span className={`ml-1.5 font-black ${
-                player.captainRole === "C" ? "text-yellow-300" : "text-sky-300"
-              }`}>{player.captainRole}</span>
-            )}
-          </span>
-        </>
-      ) : (
-        <>
-          <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-white/5 text-white/20 shrink-0">
-            —
-          </span>
-          <span className="text-white/20 italic truncate flex-1">{label}</span>
-        </>
+    <div className="flex items-center gap-2 px-2 py-1.5 rounded-md border-l-2 text-xs"
+      style={{ borderLeftColor: c.border, backgroundColor: c.bg }}>
+      <span className="shrink-0 w-7 h-[18px] rounded flex items-center justify-center text-[9px] font-bold"
+        style={{ backgroundColor: c.border, color: c.text }}>
+        {shortLabel}
+      </span>
+      {player.captainRole && (
+        <span className="shrink-0 text-[10px] font-black" style={{ color: CAPTAIN_COLORS[player.captainRole as "C" | "A"] }}>
+          {player.captainRole}
+        </span>
       )}
+      <span className="text-white/90 font-semibold truncate flex-1">
+        {player.name}
+        {player.number && <span className="text-white/45 font-normal ml-1.5">#{player.number}</span>}
+      </span>
     </div>
   );
 }

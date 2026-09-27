@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.8.2 – 2026-09-27
+
+- Delad länk: samma positionsfärger som i Lineup och Score Tracker (MV orange, B blå, C lila, forwards turkos), samma radutseende och C/A-färger (C gul, A orange). Ingen PIR eller annan extra information.
+- Positionsfärgerna ligger på ett ställe i koden och används av alla vyer.
+
 ## 2.8.1 – 2026-09-27
 
 - Redigeringspanelen när man trycker på en spelare hamnar alltid helt innanför skärmen. På mobil centreras den vågrätt; får den inte plats under spelaren läggs den ovanför. Tidigare räknade panelen med fel bredd och kunde hamna delvis utanför till höger (särskilt för spelare i Gröna).
