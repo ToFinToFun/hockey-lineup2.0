@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.11.1 – 2026-09-27
+
+- Laget.se-nyheten: matchbandets innehåll (datum, loggor, sponsor) hålls inom mittersta ca 2,4:1, så att även smalare listvyer och delningar visar allt. Sponsorloggan max 64 px hög.
+
 ## 2.11.0 – 2026-09-27
 
 **Lineup – truppen och spelarkortet**

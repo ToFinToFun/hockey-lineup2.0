@@ -249,12 +249,12 @@ function drawBand(
   ctx.font = `700 58px ${FONT_HEAD}`;
   ctx.fillStyle = "#ffffff";
   ctx.letterSpacing = "5px";
-  ctx.fillText(opts.dateLine.toUpperCase(), mid, y + 92);
+  ctx.fillText(opts.dateLine.toUpperCase(), mid, y + 100);
   ctx.letterSpacing = "0px";
   if (opts.placeLine) {
     ctx.font = `500 30px ${FONT_BODY}`;
     ctx.fillStyle = "rgba(255,255,255,0.7)";
-    ctx.fillText(fitText(ctx, opts.placeLine, W - 160), mid, y + 138);
+    ctx.fillText(fitText(ctx, opts.placeLine, W - 160), mid, y + 144);
   }
 
   // Lagloggor: hemmalaget till vänster
@@ -281,7 +281,9 @@ function drawBand(
 
   // Matchsponsor: etikett + logga, eller namnet om loggan saknas
   if (opts.sponsor) {
-    const sy = y + h - 64;
+    // Allt viktigt hålls inom mittersta ca 2,4:1 (45 px marginal i topp och botten),
+    // så att även smala listvyer och delningar visar hela innehållet.
+    const sy = y + h - 82;
     const label = "MATCHSPONSOR";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
@@ -293,7 +295,7 @@ function drawBand(
     let contentW: number;
     let drawContent: (cx: number) => void;
     if (sponsorLogo) {
-      const scale = Math.min(80 / sponsorLogo.height, 360 / sponsorLogo.width);
+      const scale = Math.min(64 / sponsorLogo.height, 360 / sponsorLogo.width);
       const lw = sponsorLogo.width * scale;
       const lh = sponsorLogo.height * scale;
       contentW = lw;
