@@ -29,6 +29,7 @@ import { PlayerList } from "@/components/PlayerList";
 import { TeamPanel } from "@/components/TeamPanel";
 import { PlayerCardOverlay } from "@/components/PlayerCard";
 import { ExportModal } from "@/components/ExportModal";
+import { LagetNewsModal } from "@/components/LagetNewsModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { MobileRosterDrawer } from "@/components/MobileRosterDrawer";
@@ -39,7 +40,7 @@ import { useLineupDocSync } from "@/hooks/useLineupDocSync";
 import { useAuth } from "@/hooks/useAuth";
 import { MatchPredictionBar } from "@/components/MatchPredictionBar";
 import type { Player as PlayerType } from "@/lib/players";
-import { Download, Wifi, WifiOff, Share2, FileText, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Settings, Sun, Moon, Home as HomeIcon, Users, HelpCircle, FlaskConical, MoreVertical, X as XIcon } from "lucide-react";
+import { Newspaper, Download, Wifi, WifiOff, Share2, FileText, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Settings, Sun, Moon, Home as HomeIcon, Users, HelpCircle, FlaskConical, MoreVertical, X as XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useLineupTheme } from "@/hooks/useLineupTheme";
 import { useForwardColor } from "@/hooks/useForwardColor";
@@ -188,6 +189,7 @@ export default function Home() {
   const [activePlayer, setActivePlayer] = useState<Player | null>(null);
   const [isDragOutside, setIsDragOutside] = useState(false);
   const [showExport, setShowExport] = useState(false);
+  const [showNews, setShowNews] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [demoCount, setDemoCount] = useState(16);
@@ -1494,6 +1496,15 @@ export default function Home() {
                             <FileText className="w-4 h-4" />
                             <span>Dela som text</span>
                           </button>
+                          <button
+                            onClick={() => { setShowNews(true); setShowHeaderMenu(false); }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
+                              isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            <Newspaper className="w-4 h-4" />
+                            <span>Nyhet till laget.se</span>
+                          </button>
 
                           {/* Separator */}
                           <div className={`my-1 border-t ${isLineupDark ? 'border-white/5' : 'border-gray-100'}`} />
@@ -1716,6 +1727,12 @@ export default function Home() {
                         className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] ${isLineupDark ? 'text-white/70 hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'}`}
                       >
                         <FileText className="w-3.5 h-3.5" /> Dela som text
+                      </button>
+                      <button
+                        onClick={() => { setShowNews(true); setShowShareMenu(false); }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] ${isLineupDark ? 'text-white/70 hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'}`}
+                      >
+                        <Newspaper className="w-3.5 h-3.5" /> Nyhet till laget.se
                       </button>
                     </div>
                   </>
@@ -2179,6 +2196,23 @@ export default function Home() {
            bgUrl={BG_URL}
            allPlayers={availablePlayers}
          />
+      )}
+
+      {/* Nyhet till laget.se */}
+      {showNews && (
+        <LagetNewsModal
+          onClose={() => setShowNews(false)}
+          teamAName={teamAName}
+          teamBName={teamBName}
+          teamASlots={TEAM_A_SLOTS}
+          teamBSlots={TEAM_B_SLOTS}
+          teamALineup={teamALineup}
+          teamBLineup={teamBLineup}
+          lineupText={lineupStateToText({ teamAName, teamBName, teamAConfig, teamBConfig, lineup })}
+          logoWhite={LOGO_WHITE}
+          logoGreen={LOGO_GREEN}
+          bgUrl={BG_URL}
+        />
       )}
 
       {/* Inställningar-modal */}

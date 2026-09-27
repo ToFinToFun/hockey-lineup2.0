@@ -1,0 +1,366 @@
+// LagetNewsModal – förhandsgranska "Dagens lag" som nyhet till laget.se.
+// Steg 1: bilden och texten skapas här (spara bild / kopiera text).
+// Publicering direkt till laget.se kopplas in när formuläret är kartlagt.
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { X, Download, Copy, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import type { Player } from "@/lib/players";
+import type { Slot } from "@/lib/lineup";
+import { trpc } from "@/lib/trpc";
+import { fetchAttendanceFromApi } from "@/lib/laget";
+import { SPONSORS, getRandomSponsor } from "@/lib/scoreConstants";
+import {
+  buildNewsBody,
+  defaultHome,
+  formatNewsTitle,
+  shortDate,
+  sponsorLogoPath,
+  type TeamKey,
+} from "@/lib/lagetNews";
+import { renderNewsImage } from "@/lib/newsImage";
+
+interface LagetNewsModalProps {
+  onClose: () => void;
+  teamAName: string;
+  teamBName: string;
+  teamASlots: Slot[];
+  teamBSlots: Slot[];
+  teamALineup: Record<string, Player>;
+  teamBLineup: Record<string, Player>;
+  lineupText: string;
+  logoWhite: string;
+  logoGreen: string;
+  bgUrl: string;
+}
+
+interface EventDetails {
+  date?: string;
+  time?: string;
+  location?: string;
+}
+
+function weekdayLine(isoDate: string | undefined): string {
+  const m = isoDate?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date();
+  const wd = d.toLocaleDateString("sv-SE", { weekday: "long" });
+  return `${wd.charAt(0).toUpperCase()}${wd.slice(1)} ${shortDate(isoDate)}`;
+}
+
+export function LagetNewsModal(props: LagetNewsModalProps) {
+  const { onClose, teamAName, teamBName, teamASlots, teamBSlots, teamALineup, teamBLineup, lineupText, logoWhite, logoGreen, bgUrl } = props;
+
+  const [event, setEvent] = useState<EventDetails | null>(null);
+  const [eventLoaded, setEventLoaded] = useState(false);
+  const [sponsor, setSponsor] = useState<string>(() => getRandomSponsor());
+  const [home, setHome] = useState<TeamKey>("a");
+  const [title, setTitle] = useState("");
+  const [titleEdited, setTitleEdited] = useState(false);
+  const [body, setBody] = useState("");
+  const [bodyEdited, setBodyEdited] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [rendering, setRendering] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const blobRef = useRef<Blob | null>(null);
+  const homeRecorded = useRef(false);
+
+  const lastHomeQuery = trpc.laget.newsLastHome.useQuery(undefined, { refetchOnWindowFocus: false });
+  const setLastHome = trpc.laget.setNewsLastHome.useMutation();
+
+  // Standard: motsatt hemmalag mot förra nyheten
+  useEffect(() => {
+    if (lastHomeQuery.data) setHome(defaultHome(lastHomeQuery.data.lastHome));
+  }, [lastHomeQuery.data]);
+
+  // Datum, tid och plats från evenemanget (senaste hämtningen återanvänds om den är färsk)
+  useEffect(() => {
+    let cancelled = false;
+    fetchAttendanceFromApi(false)
+      .then((d) => {
+        if (cancelled) return;
+        setEvent(d.noEvent ? null : { date: d.eventDate || undefined, time: d.eventTime, location: d.eventLocation });
+      })
+      .catch(() => {
+        if (!cancelled) setEvent(null);
+      })
+      .finally(() => {
+        if (!cancelled) setEventLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const autoTitle = useMemo(
+    () => formatNewsTitle({ date: event?.date, location: event?.location, time: event?.time }),
+    [event]
+  );
+  useEffect(() => {
+    if (!titleEdited) setTitle(autoTitle);
+  }, [autoTitle, titleEdited]);
+
+  const autoBody = useMemo(() => buildNewsBody(sponsor, lineupText), [sponsor, lineupText]);
+  useEffect(() => {
+    if (!bodyEdited) setBody(autoBody);
+  }, [autoBody, bodyEdited]);
+
+  const placeLine = [event?.location, event?.time].filter(Boolean).join(" ");
+
+  // Lineup-sidan renderas om ofta (live-synk). Bilden ritas bara om när innehållet faktiskt ändras.
+  const latestProps = useRef(props);
+  latestProps.current = props;
+  const contentKey = JSON.stringify([
+    teamAName,
+    teamBName,
+    teamASlots.map((s) => s.id),
+    teamBSlots.map((s) => s.id),
+    teamALineup,
+    teamBLineup,
+    logoWhite,
+    logoGreen,
+    bgUrl,
+  ]);
+
+  // Rita bilden när något som syns i den ändras
+  useEffect(() => {
+    if (!eventLoaded) return;
+    let cancelled = false;
+    setRendering(true);
+    const p = latestProps.current;
+    renderNewsImage({
+      teamA: { name: p.teamAName, slots: p.teamASlots, lineup: p.teamALineup, logoUrl: p.logoWhite, accent: "#e2e8f0" },
+      teamB: { name: p.teamBName, slots: p.teamBSlots, lineup: p.teamBLineup, logoUrl: p.logoGreen, accent: "#34d399" },
+      home,
+      dateLine: weekdayLine(event?.date),
+      placeLine,
+      sponsor,
+      sponsorLogoUrl: sponsor ? sponsorLogoPath(sponsor) : undefined,
+      backgroundUrl: p.bgUrl,
+    })
+      .then(
+        (canvas) =>
+          new Promise<Blob | null>((resolve) => canvas.toBlob((b) => resolve(b), "image/jpeg", 0.92))
+      )
+      .then((blob) => {
+        if (cancelled) return;
+        if (!blob) throw new Error("Bilden kunde inte skapas");
+        blobRef.current = blob;
+        setImageUrl(URL.createObjectURL(blob));
+      })
+      .catch((err) => {
+        if (!cancelled) toast.error("Bilden kunde inte skapas", { description: String(err?.message ?? err) });
+      })
+      .finally(() => {
+        if (!cancelled) setRendering(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [eventLoaded, home, sponsor, placeLine, event?.date, contentKey]);
+
+  useEffect(() => () => {
+    if (imageUrl) URL.revokeObjectURL(imageUrl);
+  }, [imageUrl]);
+
+  const recordHome = () => {
+    if (homeRecorded.current) return;
+    homeRecorded.current = true;
+    setLastHome.mutate({ home });
+  };
+
+  const fileName = `lagen-${shortDate(event?.date).replace("/", "-")}.jpg`;
+
+  const handleSaveImage = async () => {
+    const blob = blobRef.current;
+    if (!blob) return;
+    setSaving(true);
+    try {
+      const file = new File([blob], fileName, { type: "image/jpeg" });
+      const canShareFile =
+        typeof navigator !== "undefined" &&
+        !!navigator.canShare?.({ files: [file] }) &&
+        window.matchMedia("(pointer: coarse)").matches;
+      if (canShareFile) {
+        await navigator.share({ files: [file], title });
+      } else {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = fileName;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        toast.success("Bilden sparad", { description: fileName });
+      }
+      recordHome();
+    } catch (err) {
+      if ((err as DOMException)?.name !== "AbortError") toast.error("Bilden kunde inte sparas");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCopyText = async () => {
+    try {
+      await navigator.clipboard.writeText(`${title}\n\n${body}`);
+      toast.success("Rubrik och text kopierade");
+      recordHome();
+    } catch {
+      toast.error("Texten kunde inte kopieras");
+    }
+  };
+
+  const teamLabel = (k: TeamKey) => (k === "a" ? teamAName : teamBName);
+
+  return (
+    <div
+      className="fixed inset-0 z-[99999] flex items-stretch sm:items-center justify-center sm:p-4"
+      style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)" }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="glass-panel-strong sm:rounded-2xl shadow-2xl flex flex-col w-full sm:max-w-3xl sm:max-h-[92vh] overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
+          <h2 className="text-white font-black text-base uppercase tracking-widest" style={{ fontFamily: "'Oswald', sans-serif" }}>
+            Nyhet till laget.se
+          </h2>
+          <button onClick={onClose} aria-label="Stäng" className="text-white/50 hover:text-white p-1">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 grid gap-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          {/* Förhandsgranskning */}
+          <div className="space-y-4">
+            <div>
+              <p className="text-white/50 text-[11px] mb-1.5">Så syns den i flödet</p>
+              <div className="rounded-lg overflow-hidden border border-white/10 bg-white">
+                <div className="relative w-full bg-black" style={{ aspectRatio: "2 / 1" }}>
+                  {imageUrl && (
+                    <img src={imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover object-center" />
+                  )}
+                  {rendering && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                      <Loader2 className="w-5 h-5 text-white/70 animate-spin" />
+                    </div>
+                  )}
+                </div>
+                <div className="px-3 py-2">
+                  <p className="text-[#12202e] font-bold text-sm leading-snug">{title || "Rubrik"}</p>
+                  <p className="text-gray-500 text-xs mt-0.5 truncate">{body.split("\n")[0]}</p>
+                </div>
+              </div>
+            </div>
+            <div>
+              <p className="text-white/50 text-[11px] mb-1.5">Hela bilden i nyheten</p>
+              <div className="rounded-lg overflow-hidden border border-white/10 bg-black min-h-24">
+                {imageUrl && <img src={imageUrl} alt="Laguppställningen som bild" className="w-full h-auto block" />}
+              </div>
+            </div>
+          </div>
+
+          {/* Inställningar */}
+          <div className="space-y-4">
+            <div>
+              <p className="text-white/50 text-[11px] mb-1.5">Hemmalag</p>
+              <div className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-white/5 border border-white/10">
+                {(["a", "b"] as TeamKey[]).map((k) => (
+                  <button
+                    key={k}
+                    onClick={() => setHome(k)}
+                    className={`py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-colors ${
+                      home === k
+                        ? k === "a"
+                          ? "bg-slate-200 text-slate-900"
+                          : "bg-emerald-500 text-emerald-950"
+                        : "text-white/60 hover:bg-white/5"
+                    }`}
+                  >
+                    {teamLabel(k)}
+                  </button>
+                ))}
+              </div>
+              <p className="text-white/35 text-[10px] mt-1">Hemmalaget står till vänster i matchbilden. Växlar automatiskt varannan gång.</p>
+            </div>
+
+            <div>
+              <label className="block text-white/50 text-[11px] mb-1.5" htmlFor="news-sponsor">Matchsponsor</label>
+              <select
+                id="news-sponsor"
+                value={sponsor}
+                onChange={(e) => setSponsor(e.target.value)}
+                className="w-full rounded-lg bg-white/5 border border-white/10 text-white text-sm px-3 py-2"
+              >
+                {SPONSORS.map((s) => (
+                  <option key={s} value={s} className="text-black">
+                    {s}
+                  </option>
+                ))}
+                <option value="" className="text-black">
+                  Ingen sponsor
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-white/50 text-[11px] mb-1.5" htmlFor="news-title">Rubrik</label>
+              <input
+                id="news-title"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  setTitleEdited(true);
+                }}
+                className="w-full rounded-lg bg-white/5 border border-white/10 text-white text-sm px-3 py-2"
+              />
+              {eventLoaded && !event?.location && (
+                <p className="text-amber-300/70 text-[10px] mt-1">Platsen kunde inte läsas från evenemanget. Skriv in den i rubriken vid behov.</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-white/50 text-[11px] mb-1.5" htmlFor="news-body">Text i nyheten</label>
+              <textarea
+                id="news-body"
+                value={body}
+                onChange={(e) => {
+                  setBody(e.target.value);
+                  setBodyEdited(true);
+                }}
+                rows={10}
+                className="w-full rounded-lg bg-white/5 border border-white/10 text-white text-xs font-mono px-3 py-2"
+              />
+            </div>
+
+            <p className="text-white/40 text-[11px]">
+              Publicering direkt till laget.se kommer i nästa steg. Tills dess: spara bilden och kopiera texten till en ny nyhet.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-2 px-4 py-3 border-t border-white/10 shrink-0">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg border border-white/15 text-white/70 text-xs font-bold uppercase tracking-wider hover:bg-white/5"
+          >
+            Avbryt
+          </button>
+          <div className="flex-1" />
+          <button
+            onClick={handleCopyText}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-300 text-xs font-bold uppercase tracking-wider hover:bg-sky-500/30"
+          >
+            <Copy className="w-3.5 h-3.5" /> Kopiera text
+          </button>
+          <button
+            onClick={handleSaveImage}
+            disabled={!imageUrl || rendering || saving}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-bold uppercase tracking-wider hover:bg-emerald-500/30 disabled:opacity-50"
+          >
+            <Download className="w-3.5 h-3.5" /> Spara bild
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+

@@ -69,6 +69,8 @@ async function getPirRatings() {
   return pirCache.result;
 }
 
+const NEWS_LAST_HOME_KEY = "laget_news_last_home";
+
 export const appRouter = router({
   system: systemRouter,
   auth: authRouter,
@@ -96,6 +98,21 @@ export const appRouter = router({
           input.status as AttendingStatus
         );
         return result;
+      }),
+
+    /** Vilket lag som var hemmalag i senaste laget.se-nyheten ("a" = lag A, "b" = lag B). */
+    newsLastHome: lineupProcedure.query(async () => {
+      const value = await getConfigValue(NEWS_LAST_HOME_KEY);
+      const lastHome: "a" | "b" | null = value === "a" || value === "b" ? value : null;
+      return { lastHome };
+    }),
+
+    /** Spara hemmalaget när en nyhet skapats, så att nästa nyhet växlar automatiskt. */
+    setNewsLastHome: lineupProcedure
+      .input(z.object({ home: z.enum(["a", "b"]) }))
+      .mutation(async ({ input }) => {
+        await setConfigValue(NEWS_LAST_HOME_KEY, input.home);
+        return { success: true };
       }),
   }),
 

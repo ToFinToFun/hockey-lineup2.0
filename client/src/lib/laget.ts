@@ -11,6 +11,10 @@ export interface AttendanceData {
   registeredNames: string[];
   declinedNames?: string[];
   totalRegistered: number;
+  /** Starttid "HH:MM" från evenemanget, om den kunde läsas ut */
+  eventTime?: string;
+  /** Plats från evenemanget, om den kunde läsas ut */
+  eventLocation?: string;
   error?: string;
   noEvent?: boolean;
 }

@@ -25,6 +25,10 @@ export interface AttendanceResult {
   registeredNames: string[];
   declinedNames: string[];
   totalRegistered: number;
+  /** Starttid "HH:MM" om den gick att läsa ut */
+  eventTime?: string;
+  /** Plats från evenemanget om den gick att läsa ut */
+  eventLocation?: string;
   error?: string;
   noEvent?: boolean;
 }
@@ -157,6 +161,7 @@ function findNextEventFromCalendar(html: string): {
   eventId: string;
   eventDate: string;
   eventTitle: string;
+  eventTime?: string;
 } | null {
   const $ = cheerio.load(html);
   const today = new Date();
@@ -166,6 +171,7 @@ function findNextEventFromCalendar(html: string): {
     eventId: string;
     eventDate: string;
     eventTitle: string;
+    eventTime?: string;
   }
 
   const events: CalendarEvent[] = [];
@@ -184,12 +190,13 @@ function findNextEventFromCalendar(html: string): {
     if (text === "Redigera" || text === "Redigera denna och kommande") return;
 
     // Texten innehåller datum + typ, t.ex. "2026-02-05 22:00 Träning"
-    const dateMatch = text.match(/(\d{4}-\d{2}-\d{2})\s+\d{2}:\d{2}\s+(.*)/);
+    const dateMatch = text.match(/(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s+(.*)/);
     if (dateMatch) {
       events.push({
         eventId,
         eventDate: dateMatch[1],
-        eventTitle: dateMatch[2].trim(),
+        eventTime: dateMatch[2],
+        eventTitle: dateMatch[3].trim(),
       });
     }
   });
@@ -233,7 +240,7 @@ function findNextEventFromCalendar(html: string): {
         const typeMatch = rowText.match(/(?:Träning|Match|Möte|Cup)/i);
         const eventTitle = typeMatch ? typeMatch[0] : "Träning";
 
-        events.push({ eventId, eventDate, eventTitle });
+        events.push({ eventId, eventDate, eventTitle, eventTime: dateMatch[3] });
       }
     });
   }
@@ -306,6 +313,37 @@ function findNextEventId(html: string): {
   if (futureEvents.length > 0) return futureEvents[0];
 
   return null;
+}
+
+/**
+ * Läs ut plats (och starttid som reserv) från admin-redigeringssidan för ett event.
+ * Formulärets fältnamn är inte dokumenterade, så vi letar efter fält vars
+ * name/id ser ut som plats respektive starttid. Returnerar bara det som hittas.
+ */
+export function extractEventDetailsFromEditPage(html: string): { location?: string; time?: string } {
+  const $ = cheerio.load(html);
+  const result: { location?: string; time?: string } = {};
+
+  $("input, select, textarea").each((_, el) => {
+    const $el = $(el);
+    const type = ($el.attr("type") || "").toLowerCase();
+    if (type === "hidden" || type === "checkbox" || type === "radio") return;
+    const tag = ((el as { tagName?: string }).tagName || "").toLowerCase();
+    const value =
+      tag === "select" ? $el.find("option:selected").text().trim()
+      : tag === "textarea" ? $el.text().trim()
+      : ($el.attr("value") || "").trim();
+    if (!value) return;
+    const key = `${$el.attr("name") || ""} ${$el.attr("id") || ""}`.toLowerCase().trim();
+    if (!result.location && /(location|plats|place|venue|arena)/.test(key) && !/(id|lat|lng|lon)\b/.test(key)) {
+      result.location = value.replace(/\s+/g, " ");
+    }
+    if (!result.time && /start/.test(key) && /^\d{1,2}:\d{2}$/.test(value)) {
+      result.time = value.padStart(5, "0");
+    }
+  });
+
+  return result;
 }
 
 /**
@@ -578,7 +616,7 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
     }
 
     // Steg 2: Försök hämta via admin-kalendern först
-    let eventInfo: { eventId: string; eventDate: string; eventTitle: string } | null = null;
+    let eventInfo: { eventId: string; eventDate: string; eventTitle: string; eventTime?: string } | null = null;
 
     try {
       const calendarResp = await client.get(`${ADMIN_BASE_URL}/${TEAM_SLUG}/Calendar`);
@@ -596,11 +634,14 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
 
           if (editPage.status === 200 && typeof editPage.data === "string") {
             const { registered, declined } = extractAttendeesFromEditPage(editPage.data);
+            const details = extractEventDetailsFromEditPage(editPage.data);
 
             if (registered.length > 0 || declined.length > 0) {
               return {
                 eventTitle: eventInfo.eventTitle || "Träning",
                 eventDate: eventInfo.eventDate,
+                eventTime: eventInfo.eventTime || details.time,
+                eventLocation: details.location,
                 registeredNames: registered,
                 declinedNames: declined,
                 totalRegistered: registered.length,

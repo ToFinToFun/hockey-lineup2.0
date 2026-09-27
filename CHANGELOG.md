@@ -7,6 +7,18 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.9.0 – 2026-09-27
+
+**Nyhet till laget.se (steg 1 – manuell publicering)**
+- Nytt val i Dela-menyn i Lineup: "Nyhet till laget.se". Öppnar en förhandsgranskning med bild, rubrik och text.
+- Bilden har samma stil som delad länk (arenabakgrund, positionsbrickor, C/A). Vita överst, Gröna underst, matchbandet i mitten med lagloggor, datum, plats/tid och matchsponsor.
+- Matchbandet ligger alltid exakt i bildens mitt och är 2:1 – det är den delen som syns i laget.se-flödet. Det mindre laget fylls ut så att mitten håller oavsett antal spelare.
+- Hemmalag väljs med en knapp och står till vänster i matchbandet. Standard är motsatt mot förra nyheten (sparas i databasen).
+- Rubrik "Lagen D/M – plats tid" från evenemanget på laget.se, går att ändra. Brödtexten börjar med "Dagens matchsponsor: …" följt av uppställningen som text.
+- Spara bild (delningsmenyn på mobil, nedladdning på dator) och Kopiera text. Publicering direkt till laget.se kommer i nästa steg.
+- Sponsorloggor läses från `/images/sponsors/<namn>.png`; saknas loggan skrivs namnet ut.
+- laget.se-hämtningen läser nu också starttid och (om möjligt) plats från evenemanget.
+
 ## 2.8.2 – 2026-09-27
 
 - Delad länk: samma positionsfärger som i Lineup och Score Tracker (MV orange, B blå, C lila, forwards turkos), samma radutseende och C/A-färger (C gul, A orange). Ingen PIR eller annan extra information.
