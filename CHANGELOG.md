@@ -7,6 +7,16 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.12.0 – 2026-09-27
+
+**Publicera på laget.se**
+- "Nyhet till laget.se" har nu knappen Publicera. Servern loggar in med föreningens konto och publicerar via samma väg som laget.se:s egen "Lägg till nyhet" på lagsidan (api.laget.se/v1/news): rubrik, text, bild och avsändare.
+- Återkoppling i rutan: länk till den publicerade nyheten, eller felmeddelandet från laget.se.
+- Val: visa avsändare (standard på). Om appen redan publicerat en nyhet för samma dag kan den ersättas – den nya publiceras och den gamla tas bort (via Nyheter i laget.se-admin), så den nya hamnar överst.
+- Nyheter från den här vägen är alltid öppna; laget.se har inget val för dolda nyheter där.
+- Spara bild och Kopiera text finns kvar för manuell publicering.
+- Servern tar emot upp till 8 MB per anrop (bilden skickas som base64).
+
 ## 2.11.1 – 2026-09-27
 
 - Laget.se-nyheten: matchbandets innehåll (datum, loggor, sponsor) hålls inom mittersta ca 2,4:1, så att även smalare listvyer och delningar visar allt. Sponsorloggan max 64 px hög.

@@ -1,9 +1,9 @@
 // LagetNewsModal – förhandsgranska "Dagens lag" som nyhet till laget.se.
-// Steg 1: bilden och texten skapas här (spara bild / kopiera text).
-// Publicering direkt till laget.se kopplas in när formuläret är kartlagt.
+// Publicera direkt på laget.se (servern loggar in med föreningens konto),
+// eller spara bilden och kopiera texten för att lägga in den manuellt.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { X, Download, Copy, Loader2 } from "lucide-react";
+import { X, Download, Copy, Loader2, Send, ExternalLink, CheckCircle2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import type { Player } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
@@ -72,6 +72,13 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [rendering, setRendering] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showPublisher, setShowPublisher] = useState(true);
+  const [replaceOld, setReplaceOld] = useState(true);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [published, setPublished] = useState<{ url: string; replaceFailed?: string } | null>(null);
+  const utils = trpc.useUtils();
+  const lastPublished = trpc.laget.newsLastPublished.useQuery(undefined, { refetchOnWindowFocus: false });
+  const publishNews = trpc.laget.publishNews.useMutation();
   const blobRef = useRef<Blob | null>(null);
   const homeRecorded = useRef(false);
 
@@ -210,6 +217,45 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
     }
   };
 
+  // Finns redan en nyhet från appen för samma evenemang kan den ersättas
+  const previous = lastPublished.data && event?.date && lastPublished.data.eventDate === event.date ? lastPublished.data : null;
+
+  const blobToBase64 = (blob: Blob) =>
+    new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result).split(",")[1] ?? "");
+      r.onerror = () => reject(new Error("Bilden kunde inte läsas"));
+      r.readAsDataURL(blob);
+    });
+
+  const handlePublish = async () => {
+    const blob = blobRef.current;
+    if (!blob || publishNews.isPending) return;
+    setPublishError(null);
+    try {
+      const res = await publishNews.mutateAsync({
+        title: title.trim(),
+        content: body,
+        imageBase64: await blobToBase64(blob),
+        imageType: "image/jpeg",
+        imageName: fileName,
+        showPublisher,
+        eventDate: event?.date ?? null,
+        replaceId: previous && replaceOld ? previous.id : undefined,
+      });
+      if (!res.success) {
+        setPublishError(res.error);
+        return;
+      }
+      recordHome();
+      setPublished({ url: res.url, replaceFailed: res.replaced && !res.replaced.success ? res.replaced.error ?? "okänt fel" : undefined });
+      void utils.laget.newsLastPublished.invalidate();
+      toast.success("Nyheten är publicerad på laget.se");
+    } catch (err) {
+      setPublishError((err as Error)?.message || "Publiceringen misslyckades");
+    }
+  };
+
   const handleCopyText = async () => {
     try {
       await navigator.clipboard.writeText(`${title}\n\n${body}`);
@@ -343,18 +389,49 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
               />
             </div>
 
-            <p className="text-white/40 text-[11px]">
-              Publicering direkt till laget.se kommer i nästa steg. Tills dess: spara bilden och kopiera texten till en ny nyhet.
-            </p>
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-2 text-xs text-white/70">
+                <input type="checkbox" checked={showPublisher} onChange={(e) => setShowPublisher(e.target.checked)} />
+                Visa avsändare (kontot som publicerar)
+              </label>
+              {previous && (
+                <label className="flex items-start gap-2 text-xs text-white/70">
+                  <input type="checkbox" className="mt-0.5" checked={replaceOld} onChange={(e) => setReplaceOld(e.target.checked)} />
+                  <span>
+                    Ersätt tidigare nyhet för samma dag
+                    <span className="block text-white/40 text-[10px]">"{previous.title}" tas bort när den nya är publicerad</span>
+                  </span>
+                </label>
+              )}
+              <p className="text-white/35 text-[10px]">Nyheter publiceras öppet på lagets sida. laget.se har inget val för dolda nyheter vid den här publiceringen.</p>
+            </div>
+
+            {publishError && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-px" />
+                <span>{publishError.replace(/^[A-Z_]+:\s*/, "")}</span>
+              </div>
+            )}
+            {published && (
+              <div className="rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200 space-y-1">
+                <p className="flex items-center gap-2 font-semibold"><CheckCircle2 className="w-4 h-4" /> Publicerad på laget.se</p>
+                <a href={published.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 underline underline-offset-2">
+                  Öppna nyheten <ExternalLink className="w-3 h-3" />
+                </a>
+                {published.replaceFailed && (
+                  <p className="text-amber-200/90">Den tidigare nyheten kunde inte tas bort ({published.replaceFailed}). Ta bort den manuellt under Nyheter i laget.se-admin.</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="flex gap-2 px-4 py-3 border-t border-white/10 shrink-0">
+        <div className="flex flex-wrap gap-2 px-4 py-3 border-t border-white/10 shrink-0">
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-lg border border-white/15 text-white/70 text-xs font-bold uppercase tracking-wider hover:bg-white/5"
           >
-            Avbryt
+            {published ? "Stäng" : "Avbryt"}
           </button>
           <div className="flex-1" />
           <button
@@ -370,6 +447,16 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
           >
             <Download className="w-3.5 h-3.5" /> Spara bild
           </button>
+          {!published && (
+            <button
+              onClick={handlePublish}
+              disabled={!imageUrl || rendering || publishNews.isPending || !title.trim()}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500 text-emerald-950 text-xs font-black uppercase tracking-wider hover:bg-emerald-400 disabled:opacity-50"
+            >
+              {publishNews.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              {publishNews.isPending ? "Publicerar…" : "Publicera"}
+            </button>
+          )}
         </div>
       </div>
     </div>

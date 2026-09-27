@@ -713,3 +713,104 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
     };
   }
 }
+
+// ─── Nyheter ──────────────────────────────────────────────────────────────────
+// Samma väg som laget.se:s "Lägg till nyhet"-ruta på lagsidan:
+//   POST https://api.laget.se/v1/news (multipart: Title, Content, ShowPublisher, SiteName, Image)
+// med huvudet auth-token = användarens refId, som finns i sidans HTML när man är inloggad.
+// Borttagning går via admin: GET /{lag}/NewsManagement/Delete/{id}/1.
+
+const API_BASE_URL = "https://api.laget.se";
+
+export interface PublishNewsInput {
+  title: string;
+  /** Vanlig text. Radbrytningar blir <br> hos laget.se. */
+  content: string;
+  image: Buffer;
+  imageName: string;
+  imageType: string;
+  showPublisher: boolean;
+}
+
+export type PublishNewsResult =
+  | { success: true; id: number; url: string }
+  | { success: false; error: string };
+
+/** refId (auth-token för api.laget.se) ur en inloggad sida. Exporteras för test. */
+export function extractAuthToken(html: string): string | null {
+  const m = html.match(/"refId"\s*:\s*"([^"]+)"/);
+  return m ? m[1] : null;
+}
+
+/** Felmeddelande ur api.laget.se:s svar. Exporteras för test. */
+export function apiErrorMessage(status: number, body: unknown): string {
+  const b = body as { validationErrors?: Array<{ message?: string }>; message?: string } | null;
+  const msg = b?.validationErrors?.[0]?.message || b?.message;
+  if (msg) return `laget.se: ${msg}`;
+  if (status === 401 || status === 403) return "AUTH_ERROR: laget.se nekade publiceringen. Kontrollera att kontot är admin för laget.";
+  if (status === 429) return "RATE_LIMITED: laget.se blockerar tillfälligt. Vänta och försök igen.";
+  return `laget.se svarade med fel (${status}).`;
+}
+
+export async function publishNews(input: PublishNewsInput): Promise<PublishNewsResult> {
+  const { client, followRedirects } = createClient();
+  try {
+    const loggedIn = await login(client, followRedirects);
+    if (!loggedIn) return { success: false, error: "LOGIN_FAILED: Kunde inte logga in på laget.se." };
+
+    const page = await followRedirects(await client.get(`${BASE_URL}/${TEAM_SLUG}`));
+    const token = typeof page.data === "string" ? extractAuthToken(page.data) : null;
+    if (!token) return { success: false, error: "AUTH_ERROR: Hittade ingen inloggningsnyckel på lagsidan. Har laget.se ändrat sidan?" };
+
+    const form = new FormData();
+    form.append("Title", input.title);
+    form.append("Content", input.content);
+    form.append("ShowPublisher", String(input.showPublisher));
+    form.append("SiteName", TEAM_SLUG);
+    form.append("Image", new Blob([new Uint8Array(input.image)], { type: input.imageType }), input.imageName);
+
+    const resp = await fetch(`${API_BASE_URL}/v1/news`, {
+      method: "POST",
+      headers: {
+        "auth-token": token,
+        "x-laget-sitename": TEAM_SLUG,
+        "x-product-domain": "laget.se",
+        Origin: BASE_URL,
+        Referer: `${BASE_URL}/${TEAM_SLUG}`,
+        Accept: "*/*",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      },
+      body: form,
+      signal: AbortSignal.timeout(60_000),
+    });
+    const text = await resp.text();
+    let body: unknown = null;
+    try { body = JSON.parse(text); } catch { /* inte JSON */ }
+
+    const ok = body as { id?: number; url?: string } | null;
+    if (resp.ok && ok?.id) {
+      return { success: true, id: ok.id, url: ok.url || `${BASE_URL}/${TEAM_SLUG}/news/${ok.id}` };
+    }
+    return { success: false, error: apiErrorMessage(resp.status, body) };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: msg.startsWith("NO_CREDENTIALS") ? msg : `Kunde inte nå laget.se: ${msg}` };
+  }
+}
+
+export async function deleteNews(newsId: number): Promise<{ success: boolean; error?: string }> {
+  const { client, followRedirects } = createClient();
+  try {
+    const loggedIn = await login(client, followRedirects);
+    if (!loggedIn) return { success: false, error: "LOGIN_FAILED: Kunde inte logga in på laget.se." };
+    const resp = await followRedirects(
+      await client.get(`${ADMIN_BASE_URL}/${TEAM_SLUG}/NewsManagement/Delete/${newsId}/1`)
+    );
+    if (resp.status !== 200) return { success: false, error: `laget.se svarade med fel (${resp.status}).` };
+    // Efter borttagning visas nyhetslistan utan nyheten
+    const stillThere = typeof resp.data === "string" && resp.data.includes(`/NewsManagement/Update/${newsId}"`);
+    return stillThere ? { success: false, error: "Nyheten finns kvar på laget.se." } : { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}

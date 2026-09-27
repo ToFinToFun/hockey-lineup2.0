@@ -16,3 +16,19 @@ describe("extractEventDetailsFromEditPage", () => {
     expect(extractEventDetailsFromEditPage(`<input name="Location" value="">`)).toEqual({});
   });
 });
+
+import { extractAuthToken, apiErrorMessage } from "./lagetSe";
+
+describe("laget.se nyheter", () => {
+  it("läser refId (auth-token) ur inloggad sida", () => {
+    const html = `<script>var x = {"user":{"is_loggedin":true,"id":1,"refId":"123_abc-def","username":"X"}};</script>`;
+    expect(extractAuthToken(html)).toBe("123_abc-def");
+    expect(extractAuthToken("<html>utloggad</html>")).toBeNull();
+  });
+
+  it("felmeddelanden från api.laget.se", () => {
+    expect(apiErrorMessage(400, { validationErrors: [{ message: "Rubrik saknas" }] })).toBe("laget.se: Rubrik saknas");
+    expect(apiErrorMessage(401, null)).toMatch(/^AUTH_ERROR/);
+    expect(apiErrorMessage(500, "x")).toBe("laget.se svarade med fel (500).");
+  });
+});

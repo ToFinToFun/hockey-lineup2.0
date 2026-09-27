@@ -56,7 +56,7 @@ async function startServer() {
       })
     );
   }
-  app.use(express.json({ limit: "2mb" }));
+  app.use(express.json({ limit: "8mb" })); // nyhetsbilden till laget.se skickas som base64
   app.use(express.urlencoded({ limit: "2mb", extended: true }));
 
   // SSE endpoint for real-time lineup sync
