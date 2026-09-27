@@ -25,7 +25,7 @@ describe("gemensam sortering av spelarlistor", () => {
     expect(positionsForSlot("forward", "C")).toEqual(["C"]);
   });
 
-  it("tom back i Vita: waiver-, vita, gröna backar, sedan forwards i samma lagordning", () => {
+  it("tom back i Vita: vita, waiver-, gröna backar, sedan forwards i samma lagordning", () => {
     const players = [
       p("Gf", "F", { isRegistered: true, teamColor: "green" }),
       p("Vf", "F", { isRegistered: true, teamColor: "white" }),
@@ -36,6 +36,6 @@ describe("gemensam sortering av spelarlistor", () => {
       p("Ejsvar", "B", { teamColor: "white" }),
     ];
     expect(sortRoster(players, positionsForSlot("defense"), "white").map((x) => x.name))
-      .toEqual(["Wb", "Vb", "Gb", "Wf", "Vf", "Gf", "Ejsvar"]);
+      .toEqual(["Vb", "Wb", "Gb", "Vf", "Wf", "Gf", "Ejsvar"]);
   });
 });

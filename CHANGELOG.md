@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.7.2 – 2026-09-27
+
+- Tom plats → lagordningen ändrad: platsens lag först, sedan waivers, sist motståndarlaget. Tom back i Vita: vita backar, waiver-backar, gröna backar, vita forwards, waiver-forwards, gröna forwards (anmälda först, sedan ej svarat, sist kommer inte). Truppen: närvaro, sedan namn.
+
 ## 2.7.1 – 2026-09-27
 
 - Tom plats → spelarmenyn sorteras: närvaro, passande position, lag (waivers först, sedan platsens lag, sist motståndarlaget), namn. Exempel för en tom back i Vita: waiver-backar, vita backar, gröna backar, waiver-forwards, vita forwards, gröna forwards.

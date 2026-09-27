@@ -3,13 +3,14 @@
  *
  * 1. Närvaro: anmälda först, sedan de som inte svarat, sist de som inte kommer.
  * 2. Om en plats valts: spelare vars position passar platsen först.
- * 3. Om en plats valts: lag – waivers (inget lag) först, sedan platsens lag,
- *    sist motståndarlaget. Waivers kan spela var som helst.
+ * 3. Om en plats valts: lag – platsens lag först, sedan waivers (inget lag),
+ *    sist motståndarlaget.
  * 4. Namn (svensk ordning).
  *
- * Exempel, tom back i Vita: waiver-backar, vita backar, gröna backar,
- * waiver-forwards, vita forwards, gröna forwards – först för anmälda, sedan
+ * Exempel, tom back i Vita: vita backar, waiver-backar, gröna backar,
+ * vita forwards, waiver-forwards, gröna forwards – först för anmälda, sedan
  * samma ordning för de som inte svarat och sist för de som inte kommer.
+ * Utan vald plats (truppen): närvaro, sedan namn.
  */
 import type { Player } from "@/lib/players";
 
@@ -28,7 +29,7 @@ export function sortRoster(
   preferredPositions?: string[],
   slotTeam?: "white" | "green"
 ): Player[] {
-  const teamRank = (p: Player) => (!p.teamColor ? 0 : p.teamColor === slotTeam ? 1 : 2);
+  const teamRank = (p: Player) => (p.teamColor === slotTeam ? 0 : !p.teamColor ? 1 : 2);
   return [...players].sort((a, b) => {
     const att = attendanceRank(a) - attendanceRank(b);
     if (att !== 0) return att;
