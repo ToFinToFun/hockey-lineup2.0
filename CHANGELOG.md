@@ -7,6 +7,15 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.13.0 – 2026-09-27
+
+**Nyheten via laget.se-admin**
+- Publiceringen går nu via adminformuläret (Nyheter → Lägg till nyhet) i stället för snabbrutan på lagsidan. Det ger tidsinställning, fet text och riktig uppdatering.
+- Tidsinställd publicering: "Direkt" eller "Vid tid". Standard är evenemangsdagen kl 21:15; har den tiden passerat blir det Direkt.
+- Fet stil (<b>) på sponsornamnet, lagnamnen, positionerna och C/A. Namn görs HTML-säkra. Egen fet text: omge med <b> och </b>.
+- Finns redan en nyhet från appen för samma dag uppdateras den på plats (samma nyhet, ny bild och text) i stället för att tas bort och publiceras om.
+- Återkopplingen visar Publicerad, Uppdaterad eller Tidsinställd med tid.
+
 ## 2.12.0 – 2026-09-27
 
 **Publicera på laget.se**

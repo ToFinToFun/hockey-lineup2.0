@@ -28,9 +28,14 @@ export function formatNewsTitle(opts: { date?: string; location?: string; time?:
   return extra ? `${base} – ${extra}` : base;
 }
 
-/** Brödtexten: sponsorraden först (syns under rubriken i flödet), sedan uppställningen som text. */
-export function buildNewsBody(sponsor: string | undefined, lineupText: string): string {
-  const sponsorLine = sponsor?.trim() ? `Dagens matchsponsor: ${sponsor.trim()}` : "";
+/**
+ * Brödtexten: sponsorraden först (syns under rubriken i flödet), sedan uppställningen.
+ * Med bold blir sponsornamnet fett (<b>) – laget.se:s nyhetsformulär tar <b>-taggar.
+ */
+export function buildNewsBody(sponsor: string | undefined, lineupText: string, bold = false): string {
+  const name = sponsor?.trim() ?? "";
+  const shown = bold ? `<b>${name.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</b>` : name;
+  const sponsorLine = name ? `Dagens matchsponsor: ${shown}` : "";
   return [sponsorLine, lineupText.trim()].filter(Boolean).join("\n\n");
 }
 
@@ -149,4 +154,19 @@ export function computeNewsLayout(heightA: number, heightB: number): NewsLayout 
     band: { y: bandY, h: BAND_H },
     panelB: { y: bandY + BAND_H + L.BAND_GAP, h: heightB },
   };
+}
+
+/**
+ * Standardtid för publicering: evenemangsdagen kl 21:15. Har den tiden redan
+ * passerat (eller saknas evenemang) blir det "direkt" (null).
+ */
+export function defaultPublishAt(
+  eventDate: string | undefined,
+  now: Date = new Date(),
+  time = { hour: "21", minute: "15" }
+): { date: string; hour: string; minute: string } | null {
+  if (!eventDate || !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) return null;
+  const [y, m, d] = eventDate.split("-").map(Number);
+  const at = new Date(y, m - 1, d, Number(time.hour), Number(time.minute));
+  return at.getTime() > now.getTime() ? { date: eventDate, ...time } : null;
 }

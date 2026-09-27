@@ -12,6 +12,7 @@ import { fetchAttendanceFromApi } from "@/lib/laget";
 import { useSponsors, pickLeastShown } from "@/lib/sponsors";
 import {
   buildNewsBody,
+  defaultPublishAt,
   defaultHome,
   formatNewsTitle,
   shortDate,
@@ -73,9 +74,14 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
   const [rendering, setRendering] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showPublisher, setShowPublisher] = useState(true);
-  const [replaceOld, setReplaceOld] = useState(true);
+  const [updateExisting, setUpdateExisting] = useState(true);
+  // Publiceringstid: direkt eller tidsinställd (standard evenemangsdagen 21:15)
+  const [scheduled, setScheduled] = useState(false);
+  const [publishDate, setPublishDate] = useState("");
+  const [publishTime, setPublishTime] = useState("21:15");
+  const scheduleInitialized = useRef(false);
   const [publishError, setPublishError] = useState<string | null>(null);
-  const [published, setPublished] = useState<{ url: string; replaceFailed?: string } | null>(null);
+  const [published, setPublished] = useState<{ url: string; updated: boolean; publishAt: string | null } | null>(null);
   const utils = trpc.useUtils();
   const lastPublished = trpc.laget.newsLastPublished.useQuery(undefined, { refetchOnWindowFocus: false });
   const publishNews = trpc.laget.publishNews.useMutation();
@@ -117,7 +123,18 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
     if (!titleEdited) setTitle(autoTitle);
   }, [autoTitle, titleEdited]);
 
-  const autoBody = useMemo(() => buildNewsBody(sponsor, lineupText), [sponsor, lineupText]);
+  const autoBody = useMemo(() => buildNewsBody(sponsor, lineupText, true), [sponsor, lineupText]);
+
+  // Standard: tidsinställ till evenemangsdagen 21:15 om den tiden ligger framåt
+  useEffect(() => {
+    if (!eventLoaded || scheduleInitialized.current) return;
+    scheduleInitialized.current = true;
+    const d = defaultPublishAt(event?.date);
+    const today = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    setPublishDate(d?.date ?? event?.date ?? `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`);
+    setScheduled(!!d);
+  }, [eventLoaded, event?.date]);
   useEffect(() => {
     if (!bodyEdited) setBody(autoBody);
   }, [autoBody, bodyEdited]);
@@ -235,22 +252,25 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
     try {
       const res = await publishNews.mutateAsync({
         title: title.trim(),
-        content: body,
+        body,
         imageBase64: await blobToBase64(blob),
         imageType: "image/jpeg",
         imageName: fileName,
         showPublisher,
         eventDate: event?.date ?? null,
-        replaceId: previous && replaceOld ? previous.id : undefined,
+        publishAt: scheduled && publishDate && /^\d{2}:\d{2}$/.test(publishTime)
+          ? { date: publishDate, hour: publishTime.slice(0, 2), minute: publishTime.slice(3, 5) }
+          : undefined,
+        updateId: previous && updateExisting ? previous.id : undefined,
       });
       if (!res.success) {
         setPublishError(res.error);
         return;
       }
       recordHome();
-      setPublished({ url: res.url, replaceFailed: res.replaced && !res.replaced.success ? res.replaced.error ?? "okänt fel" : undefined });
+      setPublished({ url: res.url, updated: res.updated, publishAt: res.publishAt ?? null });
       void utils.laget.newsLastPublished.invalidate();
-      toast.success("Nyheten är publicerad på laget.se");
+      toast.success(res.publishAt ? `Nyheten är tidsinställd till ${res.publishAt}` : res.updated ? "Nyheten är uppdaterad på laget.se" : "Nyheten är publicerad på laget.se");
     } catch (err) {
       setPublishError((err as Error)?.message || "Publiceringen misslyckades");
     }
@@ -304,7 +324,7 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
                 </div>
                 <div className="px-3 py-2">
                   <p className="text-[#12202e] font-bold text-sm leading-snug">{title || "Rubrik"}</p>
-                  <p className="text-gray-500 text-xs mt-0.5 truncate">{body.split("\n")[0]}</p>
+                  <p className="text-gray-500 text-xs mt-0.5 truncate">{body.split("\n")[0].replace(/<\/?b>/gi, "")}</p>
                 </div>
               </div>
             </div>
@@ -396,14 +416,47 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
               </label>
               {previous && (
                 <label className="flex items-start gap-2 text-xs text-white/70">
-                  <input type="checkbox" className="mt-0.5" checked={replaceOld} onChange={(e) => setReplaceOld(e.target.checked)} />
+                  <input type="checkbox" className="mt-0.5" checked={updateExisting} onChange={(e) => setUpdateExisting(e.target.checked)} />
                   <span>
-                    Ersätt tidigare nyhet för samma dag
-                    <span className="block text-white/40 text-[10px]">"{previous.title}" tas bort när den nya är publicerad</span>
+                    Uppdatera befintlig nyhet för samma dag
+                    <span className="block text-white/40 text-[10px]">"{previous.title}" skrivs över med den nya bilden och texten</span>
                   </span>
                 </label>
               )}
-              <p className="text-white/35 text-[10px]">Nyheter publiceras öppet på lagets sida. laget.se har inget val för dolda nyheter vid den här publiceringen.</p>
+              <div className="pt-1">
+                <p className="text-white/50 text-[11px] mb-1.5">Publicering</p>
+                <div className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-white/5 border border-white/10">
+                  {[{ v: false, l: "Direkt" }, { v: true, l: "Vid tid" }].map(({ v, l }) => (
+                    <button
+                      key={l}
+                      onClick={() => setScheduled(v)}
+                      className={`py-1.5 rounded-md text-xs font-bold transition-colors ${scheduled === v ? "bg-white/15 text-white" : "text-white/50 hover:bg-white/5"}`}
+                    >
+                      {l}
+                    </button>
+                  ))}
+                </div>
+                {scheduled && (
+                  <div className="flex gap-2 mt-2">
+                    <input
+                      type="date"
+                      value={publishDate}
+                      onChange={(e) => setPublishDate(e.target.value)}
+                      className="flex-1 rounded-lg bg-white/5 border border-white/10 text-white text-sm px-3 py-1.5 [color-scheme:dark]"
+                      aria-label="Datum"
+                    />
+                    <input
+                      type="time"
+                      value={publishTime}
+                      step={60}
+                      onChange={(e) => setPublishTime(e.target.value)}
+                      className="w-28 rounded-lg bg-white/5 border border-white/10 text-white text-sm px-3 py-1.5 [color-scheme:dark]"
+                      aria-label="Tid"
+                    />
+                  </div>
+                )}
+              </div>
+              <p className="text-white/35 text-[10px]">Nyheter publiceras öppet på lagets sida. Fet stil: omge text med &lt;b&gt; och &lt;/b&gt;.</p>
             </div>
 
             {publishError && (
@@ -414,13 +467,16 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
             )}
             {published && (
               <div className="rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200 space-y-1">
-                <p className="flex items-center gap-2 font-semibold"><CheckCircle2 className="w-4 h-4" /> Publicerad på laget.se</p>
+                <p className="flex items-center gap-2 font-semibold">
+                  <CheckCircle2 className="w-4 h-4" />
+                  {published.publishAt
+                    ? `${published.updated ? "Uppdaterad och tidsinställd" : "Tidsinställd"} – går ut ${published.publishAt}`
+                    : published.updated ? "Uppdaterad på laget.se" : "Publicerad på laget.se"}
+                </p>
                 <a href={published.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 underline underline-offset-2">
                   Öppna nyheten <ExternalLink className="w-3 h-3" />
                 </a>
-                {published.replaceFailed && (
-                  <p className="text-amber-200/90">Den tidigare nyheten kunde inte tas bort ({published.replaceFailed}). Ta bort den manuellt under Nyheter i laget.se-admin.</p>
-                )}
+                {published.publishAt && <p className="text-emerald-200/70 text-[10px]">Länken fungerar när nyheten gått ut. Tills dess syns den under Nyheter i laget.se-admin.</p>}
               </div>
             )}
           </div>
@@ -454,7 +510,7 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500 text-emerald-950 text-xs font-black uppercase tracking-wider hover:bg-emerald-400 disabled:opacity-50"
             >
               {publishNews.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-              {publishNews.isPending ? "Publicerar…" : "Publicera"}
+              {publishNews.isPending ? "Skickar…" : previous && updateExisting ? "Uppdatera" : scheduled ? "Tidsinställ" : "Publicera"}
             </button>
           )}
         </div>

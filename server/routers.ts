@@ -2,7 +2,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, lineupProcedure, adminProcedure, router } from "./_core/trpc";
 import { authRouter } from "./routers/auth";
 import { playersRouter } from "./routers/players";
-import { fetchAttendance, updateAttendance, publishNews, deleteNews, type AttendingStatus } from "./lagetSe";
+import { fetchAttendance, updateAttendance, publishNews, type AttendingStatus } from "./lagetSe";
 import { seasonHistory, seasonOf } from "./playerHistory";
 import { listSponsors, createSponsor, updateSponsor, deleteSponsor, moveSponsor, recordSponsorNews } from "./sponsorsDb";
 import { scoreRouter } from "./routers/score";
@@ -75,7 +75,7 @@ const NEWS_LAST_HOME_KEY = "laget_news_last_home";
 /** Senast publicerade nyheten (JSON: id, url, title, eventDate, publishedAt). */
 const NEWS_LAST_PUBLISHED_KEY = "laget_news_last_published";
 
-type PublishedNews = { id: number; url: string; title: string; eventDate: string | null; publishedAt: string };
+type PublishedNews = { id: number; url: string; title: string; eventDate: string | null; publishedAt: string; publishAt?: string | null };
 
 async function readLastPublished(): Promise<PublishedNews | null> {
   const raw = await getConfigValue(NEWS_LAST_PUBLISHED_KEY);
@@ -131,42 +131,49 @@ export const appRouter = router({
     newsLastPublished: lineupProcedure.query(() => readLastPublished()),
 
     /**
-     * Publicera "Dagens lag" på laget.se. Med replaceId tas den tidigare nyheten
-     * bort efter att den nya publicerats (den nya hamnar överst i flödet).
+     * Publicera "Dagens lag" på laget.se via adminformuläret – direkt eller
+     * tidsinställt. Med updateId uppdateras den nyheten i stället (samma plats i flödet).
      */
     publishNews: lineupProcedure
       .input(
         z.object({
           title: z.string().trim().min(1).max(200),
-          content: z.string().max(20_000),
+          body: z.string().max(7000),
           imageBase64: z.string().max(7_000_000).regex(/^[A-Za-z0-9+/=]+$/),
           imageType: z.enum(["image/jpeg", "image/png"]),
           imageName: z.string().max(100),
           showPublisher: z.boolean(),
+          publishAt: z
+            .object({
+              date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+              hour: z.string().regex(/^([01]\d|2[0-3])$/),
+              minute: z.string().regex(/^[0-5]\d$/),
+            })
+            .optional(),
           eventDate: z.string().max(10).nullable(),
-          replaceId: z.number().int().positive().optional(),
+          updateId: z.number().int().positive().optional(),
         })
       )
       .mutation(async ({ input }) => {
         const result = await publishNews({
+          id: input.updateId,
           title: input.title,
-          content: input.content,
+          body: input.body,
           image: Buffer.from(input.imageBase64, "base64"),
           imageName: input.imageName,
           imageType: input.imageType,
           showPublisher: input.showPublisher,
+          publishAt: input.publishAt,
         });
         if (!result.success) return { success: false as const, error: result.error };
 
         const published: PublishedNews = {
-          id: result.id, url: result.url, title: input.title,
-          eventDate: input.eventDate, publishedAt: new Date().toISOString(),
+          id: result.id, url: result.url, title: input.title, eventDate: input.eventDate,
+          publishedAt: new Date().toISOString(),
+          publishAt: input.publishAt ? `${input.publishAt.date} ${input.publishAt.hour}:${input.publishAt.minute}` : null,
         };
         await setConfigValue(NEWS_LAST_PUBLISHED_KEY, JSON.stringify(published));
-
-        let replaced: { success: boolean; error?: string } | null = null;
-        if (input.replaceId && input.replaceId !== result.id) replaced = await deleteNews(input.replaceId);
-        return { success: true as const, id: result.id, url: result.url, replaced };
+        return { success: true as const, id: result.id, url: result.url, updated: !!input.updateId, publishAt: published.publishAt };
       }),
 
     /** Spara hemmalaget när en nyhet skapats, så att nästa nyhet växlar automatiskt. */

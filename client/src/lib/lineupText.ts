@@ -5,20 +5,30 @@
 import { type AppState, type Slot, createTeamSlots, groupSlots, MAX_TEAM_CONFIG } from "@/lib/lineup";
 import { type Player } from "@/lib/players";
 
+export interface LineupTextOptions {
+  /** Fet stil med <b>-taggar (lagnamn, positioner, C/A) och HTML-säkra namn – för laget.se-nyheter. */
+  bold?: boolean;
+}
+
+const escapeHtml = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
 export function generateLineupText(
   lineupState: AppState,
   teamASlots: Slot[],
   teamBSlots: Slot[],
   teamALineup: Record<string, Player>,
-  teamBLineup: Record<string, Player>
+  teamBLineup: Record<string, Player>,
+  options: LineupTextOptions = {}
 ): string {
+  const b = (t: string) => (options.bold ? `<b>${t}</b>` : t);
+  const txt = (t: string) => (options.bold ? escapeHtml(t) : t);
   const formatTeam = (
     teamName: string,
     slots: Slot[],
     lineup: Record<string, Player>
   ): string => {
     const lines: string[] = [];
-    lines.push(teamName.toUpperCase());
+    lines.push(b(txt(teamName.toUpperCase())));
     lines.push("");
 
     const sections: Slot["type"][] = ["goalkeeper", "defense", "forward"];
@@ -41,10 +51,10 @@ export function generateLineupText(
         for (const slot of filledInGroup) {
           const p = lineup[slot.id];
           if (!p) continue;
-          const pos = slot.shortLabel.padEnd(3);
-          const captain = p.captainRole ? ` (${p.captainRole})` : "";
-          const num = p.number ? ` #${p.number}` : "";
-          lines.push(`${pos}  ${p.name}${num}${captain}`);
+          const pos = b(slot.shortLabel) + " ".repeat(Math.max(0, 3 - slot.shortLabel.length));
+          const captain = p.captainRole ? ` ${b(`(${p.captainRole})`)}` : "";
+          const num = p.number ? ` #${txt(p.number)}` : "";
+          lines.push(`${pos}  ${txt(p.name)}${num}${captain}`);
         }
         isFirstGroup = false;
       }
@@ -70,7 +80,10 @@ export function generateLineupText(
 }
 
 /** Bygger texten direkt från uppställningens tillstånd. */
-export function lineupStateToText(state: Pick<AppState, "teamAName" | "teamBName" | "teamAConfig" | "teamBConfig" | "lineup">): string {
+export function lineupStateToText(
+  state: Pick<AppState, "teamAName" | "teamBName" | "teamAConfig" | "teamBConfig" | "lineup">,
+  options: LineupTextOptions = {}
+): string {
   const teamASlots = createTeamSlots("team-a", state.teamAConfig ?? MAX_TEAM_CONFIG);
   const teamBSlots = createTeamSlots("team-b", state.teamBConfig ?? MAX_TEAM_CONFIG);
   const teamALineup: Record<string, Player> = {};
@@ -79,7 +92,7 @@ export function lineupStateToText(state: Pick<AppState, "teamAName" | "teamBName
     if (slotId.startsWith("team-a-")) teamALineup[slotId] = player as Player;
     else if (slotId.startsWith("team-b-")) teamBLineup[slotId] = player as Player;
   }
-  return generateLineupText(state as AppState, teamASlots, teamBSlots, teamALineup, teamBLineup);
+  return generateLineupText(state as AppState, teamASlots, teamBSlots, teamALineup, teamBLineup, options);
 }
 
 /** Delar via telefonens dela-meny om den finns, annars kopieras till urklipp. */

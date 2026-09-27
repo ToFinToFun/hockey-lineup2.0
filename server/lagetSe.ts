@@ -715,83 +715,148 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
 }
 
 // ─── Nyheter ──────────────────────────────────────────────────────────────────
-// Samma väg som laget.se:s "Lägg till nyhet"-ruta på lagsidan:
-//   POST https://api.laget.se/v1/news (multipart: Title, Content, ShowPublisher, SiteName, Image)
-// med huvudet auth-token = användarens refId, som finns i sidans HTML när man är inloggad.
-// Borttagning går via admin: GET /{lag}/NewsManagement/Delete/{id}/1.
-
-const API_BASE_URL = "https://api.laget.se";
+// Samma formulär som laget.se-admin "Nyheter → Lägg till nyhet":
+//   POST admin.laget.se/{lag}/NewsManagement/Add (multipart)
+// Formuläret klarar direkt eller tidsinställd publicering, <b>-taggar i texten,
+// och uppdatering av en befintlig nyhet (samma adress med nyhetens Id).
+// Svaret är en redirect till nyhetslistan; nyhetens id läses därifrån.
 
 export interface PublishNewsInput {
+  /** Befintlig nyhet att uppdatera, annars skapas en ny. */
+  id?: number;
   title: string;
-  /** Vanlig text. Radbrytningar blir <br> hos laget.se. */
-  content: string;
+  /** Text med radbrytningar; <b>…</b> ger fet stil. Max 7000 tecken hos laget.se. */
+  body: string;
   image: Buffer;
   imageName: string;
   imageType: string;
   showPublisher: boolean;
+  /** Tidsinställd publicering (svensk tid). Utelämnas = publicera direkt. */
+  publishAt?: { date: string; hour: string; minute: string };
 }
 
 export type PublishNewsResult =
   | { success: true; id: number; url: string }
   | { success: false; error: string };
 
-/** refId (auth-token för api.laget.se) ur en inloggad sida. Exporteras för test. */
-export function extractAuthToken(html: string): string | null {
-  const m = html.match(/"refId"\s*:\s*"([^"]+)"/);
-  return m ? m[1] : null;
+export interface NewsListItem { id: number; title: string; date: string; scheduled: boolean }
+
+/** Nyheterna i admin-listan (NewsManagement). Exporteras för test. */
+export function parseNewsList(html: string): NewsListItem[] {
+  const $ = cheerio.load(html);
+  const items: NewsListItem[] = [];
+  $("#news_container tr").each((_, tr) => {
+    const row = $(tr);
+    const href = row.find('a[href*="/NewsManagement/Update/"]').attr("href") || "";
+    const m = href.match(/\/NewsManagement\/Update\/(\d+)/);
+    if (!m) return;
+    items.push({
+      id: Number(m[1]),
+      title: row.find(".listNewsNameDesktop").text().replace(/\s+/g, " ").trim(),
+      date: row.find(".listNewsDataDate").text().replace(/\s+/g, " ").trim(),
+      scheduled: row.find(".icon-time").length > 0,
+    });
+  });
+  return items;
 }
 
-/** Felmeddelande ur api.laget.se:s svar. Exporteras för test. */
-export function apiErrorMessage(status: number, body: unknown): string {
-  const b = body as { validationErrors?: Array<{ message?: string }>; message?: string } | null;
-  const msg = b?.validationErrors?.[0]?.message || b?.message;
-  if (msg) return `laget.se: ${msg}`;
-  if (status === 401 || status === 403) return "AUTH_ERROR: laget.se nekade publiceringen. Kontrollera att kontot är admin för laget.";
-  if (status === 429) return "RATE_LIMITED: laget.se blockerar tillfälligt. Vänta och försök igen.";
-  return `laget.se svarade med fel (${status}).`;
+/** Nuvarande värden i redigeringsformuläret (för uppdatering). Exporteras för test. */
+export function parseNewsForm(html: string): { fileId: string; whoCanComment: string; isTopNews: boolean } {
+  const $ = cheerio.load(html);
+  const form = $("#createNewsForm");
+  return {
+    fileId: (form.find('input[name="Picture.FileId"]').attr("value") || "").trim(),
+    whoCanComment: form.find('input[name="WhoCanComment"][checked]').attr("value") || "LoggedInUsers",
+    isTopNews: form.find('input#intTopNews[checked]').length > 0,
+  };
+}
+
+/** Fältet laget.se skickar när man trycker Publicera/Tidsinställ. Exporteras för test. */
+export function buildNewsFormFields(
+  input: Omit<PublishNewsInput, "image" | "imageName" | "imageType">,
+  existing: { fileId: string; whoCanComment: string; isTopNews: boolean } | null
+): Array<[string, string]> {
+  const f: Array<[string, string]> = [
+    ["validationUrl", "/Common/Validation/ValidateFile"],
+    ["hdfTinyMaxChars", "7000"],
+    ["Id", String(input.id ?? 0)],
+    ["Picture.FileId", existing?.fileId ?? ""],
+    ["Name", input.title],
+    ["Body", input.body.replace(/\r?\n/g, "\r\n")],
+  ];
+  // Kryssrutor i ASP.NET: "true" + dold "false" när ikryssad, bara "false" annars
+  if (existing?.isTopNews) f.push(["IsTopNews", "true"]);
+  f.push(["IsTopNews", "false"]);
+  if (input.publishAt) {
+    f.push(["PublishNow", "false"]);
+    f.push(["NewsTime", input.publishAt.date]);
+    f.push(["PublishHourSelect", input.publishAt.hour]);
+    f.push(["PublishMinuteSelect", input.publishAt.minute]);
+  } else {
+    // Tidsfälten är avstängda (skickas inte) när "Publicera direkt" är valt
+    f.push(["PublishNow", "true"]);
+  }
+  f.push(["WhoCanComment", existing?.whoCanComment ?? "LoggedInUsers"]);
+  if (input.showPublisher) f.push(["ShowPublisher", "true"]);
+  f.push(["ShowPublisher", "false"]);
+  f.push(["selectedSubSiteIdsContainer", ""]);
+  return f;
+}
+
+/** Felmeddelanden som formuläret visar när något inte godtas. */
+function formErrors(html: string): string[] {
+  const $ = cheerio.load(html);
+  return $(".field-validation-error, .validation-summary-errors li, .textboxError")
+    .map((_, el) => $(el).text().replace(/\s+/g, " ").trim())
+    .get()
+    .filter(Boolean);
 }
 
 export async function publishNews(input: PublishNewsInput): Promise<PublishNewsResult> {
+  if (input.body.length > 7000) return { success: false, error: "Texten är för lång för laget.se (max 7000 tecken)." };
   const { client, followRedirects } = createClient();
   try {
     const loggedIn = await login(client, followRedirects);
     if (!loggedIn) return { success: false, error: "LOGIN_FAILED: Kunde inte logga in på laget.se." };
 
-    const page = await followRedirects(await client.get(`${BASE_URL}/${TEAM_SLUG}`));
-    const token = typeof page.data === "string" ? extractAuthToken(page.data) : null;
-    if (!token) return { success: false, error: "AUTH_ERROR: Hittade ingen inloggningsnyckel på lagsidan. Har laget.se ändrat sidan?" };
+    let existing: ReturnType<typeof parseNewsForm> | null = null;
+    if (input.id) {
+      const page = await followRedirects(await client.get(`${ADMIN_BASE_URL}/${TEAM_SLUG}/NewsManagement/Update/${input.id}`));
+      if (page.status !== 200 || typeof page.data !== "string" || !page.data.includes("createNewsForm")) {
+        return { success: false, error: "Den tidigare nyheten finns inte längre på laget.se. Avmarkera Uppdatera och publicera som ny." };
+      }
+      existing = parseNewsForm(page.data);
+    }
 
     const form = new FormData();
-    form.append("Title", input.title);
-    form.append("Content", input.content);
-    form.append("ShowPublisher", String(input.showPublisher));
-    form.append("SiteName", TEAM_SLUG);
-    form.append("Image", new Blob([new Uint8Array(input.image)], { type: input.imageType }), input.imageName);
-
-    const resp = await fetch(`${API_BASE_URL}/v1/news`, {
-      method: "POST",
-      headers: {
-        "auth-token": token,
-        "x-laget-sitename": TEAM_SLUG,
-        "x-product-domain": "laget.se",
-        Origin: BASE_URL,
-        Referer: `${BASE_URL}/${TEAM_SLUG}`,
-        Accept: "*/*",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      },
-      body: form,
-      signal: AbortSignal.timeout(60_000),
-    });
-    const text = await resp.text();
-    let body: unknown = null;
-    try { body = JSON.parse(text); } catch { /* inte JSON */ }
-
-    const ok = body as { id?: number; url?: string } | null;
-    if (resp.ok && ok?.id) {
-      return { success: true, id: ok.id, url: ok.url || `${BASE_URL}/${TEAM_SLUG}/news/${ok.id}` };
+    for (const [k, v] of buildNewsFormFields(input, existing)) {
+      form.append(k, v);
+      // Bilden ligger direkt efter ShowPublisher i formuläret
+      if (k === "ShowPublisher" && v === "false") {
+        form.append("newsImage", new Blob([new Uint8Array(input.image)], { type: input.imageType }), input.imageName);
+      }
     }
-    return { success: false, error: apiErrorMessage(resp.status, body) };
+
+    const resp = await client.post(`${ADMIN_BASE_URL}/${TEAM_SLUG}/NewsManagement/Add`, form, {
+      headers: { Origin: ADMIN_BASE_URL, Referer: `${ADMIN_BASE_URL}/${TEAM_SLUG}/NewsManagement/Add` },
+      timeout: 60_000,
+    });
+
+    if (resp.status !== 302) {
+      const errors = typeof resp.data === "string" ? formErrors(resp.data) : [];
+      return { success: false, error: errors.length ? `laget.se: ${errors.join(" ")}` : `laget.se godtog inte nyheten (${resp.status}).` };
+    }
+
+    // Nyhetslistan: vid uppdatering är id:t känt, annars den nyaste med samma rubrik
+    let id = input.id;
+    if (!id) {
+      const list = await followRedirects(await client.get(`${ADMIN_BASE_URL}/${TEAM_SLUG}/NewsManagement`));
+      const items = typeof list.data === "string" ? parseNewsList(list.data) : [];
+      const match = items.filter((n) => n.title === input.title.replace(/\s+/g, " ").trim()).sort((a, b) => b.id - a.id)[0];
+      if (!match) return { success: false, error: "Nyheten skickades men hittades inte i listan på laget.se. Kontrollera under Nyheter." };
+      id = match.id;
+    }
+    return { success: true, id, url: `${BASE_URL}/${TEAM_SLUG}/News/${id}` };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return { success: false, error: msg.startsWith("NO_CREDENTIALS") ? msg : `Kunde inte nå laget.se: ${msg}` };
@@ -807,8 +872,7 @@ export async function deleteNews(newsId: number): Promise<{ success: boolean; er
       await client.get(`${ADMIN_BASE_URL}/${TEAM_SLUG}/NewsManagement/Delete/${newsId}/1`)
     );
     if (resp.status !== 200) return { success: false, error: `laget.se svarade med fel (${resp.status}).` };
-    // Efter borttagning visas nyhetslistan utan nyheten
-    const stillThere = typeof resp.data === "string" && resp.data.includes(`/NewsManagement/Update/${newsId}"`);
+    const stillThere = typeof resp.data === "string" && parseNewsList(resp.data).some((n) => n.id === newsId);
     return stillThere ? { success: false, error: "Nyheten finns kvar på laget.se." } : { success: true };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : String(err) };

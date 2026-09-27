@@ -6,6 +6,7 @@ import {
   computeNewsLayout,
   defaultHome,
   formatNewsTitle,
+  defaultPublishAt,
   shortDate,
   teamColumns,
   teamPanelHeight,
@@ -40,6 +41,17 @@ describe("rubrik och text", () => {
   it("sponsorraden först i brödtexten", () => {
     expect(buildNewsBody("Polar", "VITA\nMV  Carbin")).toBe("Dagens matchsponsor: Polar\n\nVITA\nMV  Carbin");
     expect(buildNewsBody("", "VITA")).toBe("VITA");
+  });
+
+  it("fet sponsor och HTML-säkert namn", () => {
+    expect(buildNewsBody("Polar & Co", "X", true)).toBe("Dagens matchsponsor: <b>Polar &amp; Co</b>\n\nX");
+  });
+
+  it("standardtid 21:15 på evenemangsdagen, annars direkt", () => {
+    const now = new Date(2026, 8, 29, 16, 0);
+    expect(defaultPublishAt("2026-09-29", now)).toEqual({ date: "2026-09-29", hour: "21", minute: "15" });
+    expect(defaultPublishAt("2026-09-29", new Date(2026, 8, 29, 21, 30))).toBeNull();
+    expect(defaultPublishAt(undefined, now)).toBeNull();
   });
 
   it("hemmalaget växlar varannan gång", () => {
@@ -81,5 +93,28 @@ describe("bildlayout", () => {
     const slots = createTeamSlots("team-a", MAX_TEAM_CONFIG);
     const h = teamPanelHeight(teamColumns(slots, {}));
     expect(h).toBe(NEWS_IMAGE.PANEL_PAD * 2 + NEWS_IMAGE.HEADER_H);
+  });
+});
+
+import { lineupStateToText } from "./lineupText";
+
+describe("uppställningen med fet stil", () => {
+  it("lagnamn, positioner och C/A blir feta, namn HTML-säkra", () => {
+    const text = lineupStateToText(
+      {
+        teamAName: "Vita",
+        teamBName: "Gröna",
+        teamAConfig: MAX_TEAM_CONFIG,
+        teamBConfig: MAX_TEAM_CONFIG,
+        lineup: {
+          "team-a-def-1-1": { id: "1", name: "Henrik <Björling>", number: "81", position: "B" } as never,
+          "team-a-fwd-1-lw": { id: "2", name: "Hampus Bergman Lahti", number: "16", position: "F", captainRole: "C" } as never,
+        },
+      },
+      { bold: true }
+    );
+    expect(text).toContain("<b>VITA</b>");
+    expect(text).toContain("<b>B</b>    Henrik &lt;Björling&gt; #81");
+    expect(text).toContain("<b>LW</b>   Hampus Bergman Lahti #16 <b>(C)</b>");
   });
 });

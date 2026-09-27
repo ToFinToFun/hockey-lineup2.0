@@ -2250,7 +2250,7 @@ export default function Home() {
           teamBSlots={TEAM_B_SLOTS}
           teamALineup={teamALineup}
           teamBLineup={teamBLineup}
-          lineupText={lineupStateToText({ teamAName, teamBName, teamAConfig, teamBConfig, lineup })}
+          lineupText={lineupStateToText({ teamAName, teamBName, teamAConfig, teamBConfig, lineup }, { bold: true })}
           logoWhite={LOGO_WHITE}
           logoGreen={LOGO_GREEN}
           bgUrl={BG_URL}
