@@ -21,6 +21,10 @@ const profiles: Record<string, unknown> = {
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+    pir: { player: { useQuery: ({ id }: { id: string }) => ({ isLoading: false, data: id === "p1" ? {
+      outfieldRating: 1062, outfieldTrendLabel: "rising", outfieldMatchesPlayed: 12, outfieldConfidence: 1, outfieldRank: { rank: 2, of: 30 },
+      goalkeeperRating: null, goalkeeperRank: null, adjustment: 0,
+    } : null }) } },
     players: { profile: { useQuery: ({ id }: { id: string }, opts?: { enabled?: boolean }) =>
       opts?.enabled === false || !id ? { isLoading: false, data: undefined } : { isLoading: false, data: profiles[id] } } },
   },
@@ -37,6 +41,8 @@ describe("PlayerProfileView", () => {
     ];
     render(<PlayerProfileView player={all[0]} all={all} />);
     expect(screen.getByText("Rekord")).toBeTruthy();
+    expect(screen.getByText("PIR")).toBeTruthy();
+    expect(screen.getByText(/#2 av 30/)).toBeTruthy();
     expect(screen.getByText("Kemi")).toBeTruthy();
     expect(screen.getByText("Matchlogg (12)")).toBeTruthy();
     expect(screen.getAllByText("Pelle Andersson").length).toBeGreaterThan(0);

@@ -7,11 +7,12 @@ import { Loader2 } from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "../../../../server/routers";
 import { trpc } from "@/lib/trpc";
-import { FormStrip } from "@/components/PlayerCard";
+import { FormStrip, TrendIcon } from "@/components/PlayerCard";
 import { PlayerPhoto } from "@/components/PlayerPhoto";
 import { positionName } from "@/lib/players";
 
 type Profile = inferRouterOutputs<AppRouter>["players"]["profile"];
+type Pir = inferRouterOutputs<AppRouter>["pir"]["player"];
 type Mate = Profile["teammates"][number];
 interface Basic { id: string; name: string; number: string; position: string; teamColor: string | null }
 
@@ -68,9 +69,11 @@ function bestWorst(list: Mate[], min: number, n: number) {
 
 export function PlayerProfileView({ player, all }: { player: Basic; all: Basic[] }) {
   const profile = trpc.players.profile.useQuery({ id: player.id });
+  const pir = trpc.pir.player.useQuery({ id: player.id });
   const [showAllMatches, setShowAllMatches] = useState(false);
   const [compareId, setCompareId] = useState("");
   const compare = trpc.players.profile.useQuery({ id: compareId }, { enabled: !!compareId });
+  const comparePir = trpc.pir.player.useQuery({ id: compareId }, { enabled: !!compareId });
   const others = useMemo(() => all.filter((p) => p.id !== player.id).sort((a, b) => a.name.localeCompare(b.name, "sv")), [all, player.id]);
 
   if (profile.isLoading) return <div className="flex justify-center py-8"><Loader2 className="animate-spin text-white/40" /></div>;
@@ -116,6 +119,9 @@ export function PlayerProfileView({ player, all }: { player: Basic; all: Basic[]
             <Stat label="Poäng" value={points} sub={`${p.records.pointsPerMatch}/match`} />
             <Stat label="Vinst" value={pct(t.wins, t.matches)} sub={`${t.wins}-${t.draws}-${t.losses}`} />
           </div>
+
+          {/* PIR */}
+          {pir.data && <PirSection pir={pir.data} />}
 
           {/* Rekord */}
           <Section title="Rekord">
@@ -211,14 +217,62 @@ export function PlayerProfileView({ player, all }: { player: Basic; all: Basic[]
         </select>
         {compareId && compare.isLoading && <Loader2 className="animate-spin text-white/40 mt-2" />}
         {other && compare.data && (
-          <CompareTable a={{ name: player.name, p }} b={{ id: other.id, name: other.name, p: compare.data }} />
+          <CompareTable a={{ name: player.name, p, pir: pir.data ?? null }} b={{ id: other.id, name: other.name, p: compare.data, pir: comparePir.data ?? null }} />
         )}
       </Section>
     </div>
   );
 }
 
-function CompareTable({ a, b }: { a: { name: string; p: Profile }; b: { id: string; name: string; p: Profile } }) {
+function PirTile({ label, rating, trendLabel, matches, rank, confidence }: {
+  label: string; rating: number; trendLabel: string | null; matches: number; rank: { rank: number; of: number } | null; confidence: number;
+}) {
+  const tone = rating >= 1050 ? "text-amber-300" : rating >= 1000 ? "text-white" : "text-sky-300/80";
+  return (
+    <div className="rounded-lg bg-white/[0.04] border border-white/[0.06] px-2.5 py-2">
+      <p className="text-[10px] text-white/40">{label}</p>
+      <p className={`text-xl font-bold tabular-nums leading-tight flex items-center gap-1 ${tone}`}>
+        {rating}
+        <TrendIcon trendLabel={trendLabel} matchesPlayed={matches} />
+      </p>
+      <p className="text-[10px] text-white/40">
+        {rank ? `#${rank.rank} av ${rank.of}` : ""}{rank ? " · " : ""}{matches} matcher · säkerhet {Math.round(confidence * 100)}%
+      </p>
+    </div>
+  );
+}
+
+function PirSection({ pir }: { pir: NonNullable<Pir> }) {
+  const hasOut = pir.outfieldRating != null;
+  const hasGk = pir.goalkeeperRating != null;
+  return (
+    <section className="border-t border-white/5 pt-3">
+      <p className="text-xs font-semibold text-white/70">PIR</p>
+      <p className="text-[10px] text-white/30 mb-1.5">
+        Player Impact Rating – 1000 är snittet. Pilen visar formen de senaste matcherna. Placering bland alla med betyg i samma roll.
+      </p>
+      {!hasOut && !hasGk ? (
+        <p className="text-[11px] text-white/30">För få matcher för ett betyg än (minst 3 i en roll).</p>
+      ) : (
+        <div className={`grid gap-1.5 ${hasOut && hasGk ? "grid-cols-2" : "grid-cols-1"}`}>
+          {hasOut && (
+            <PirTile label="Utespelare" rating={pir.outfieldRating!} trendLabel={pir.outfieldTrendLabel} matches={pir.outfieldMatchesPlayed}
+              rank={pir.outfieldRank} confidence={pir.outfieldConfidence} />
+          )}
+          {hasGk && (
+            <PirTile label="Målvakt" rating={pir.goalkeeperRating!} trendLabel={pir.goalkeeperTrendLabel} matches={pir.goalkeeperMatchesPlayed}
+              rank={pir.goalkeeperRank} confidence={pir.goalkeeperConfidence} />
+          )}
+        </div>
+      )}
+      {pir.adjustment !== 0 && (
+        <p className="text-[10px] text-white/35 mt-1">Inklusive manuell justering {pir.adjustment > 0 ? "+" : ""}{pir.adjustment}.</p>
+      )}
+    </section>
+  );
+}
+
+function CompareTable({ a, b }: { a: { name: string; p: Profile; pir: Pir | null }; b: { id: string; name: string; p: Profile; pir: Pir | null } }) {
   const row = (label: string, va: number, vb: number, fmt: (v: number) => string = String, higherIsBetter = true) => {
     const better = va === vb ? 0 : (va > vb) === higherIsBetter ? -1 : 1;
     return (
@@ -250,6 +304,8 @@ function CompareTable({ a, b }: { a: { name: string; p: Profile }; b: { id: stri
           {row("Poäng/match", a.p.records.pointsPerMatch, b.p.records.pointsPerMatch)}
           {row("Vinst %", winPct(a.p), winPct(b.p), (v) => `${v}%`)}
           {row("Längsta vinstsvit", a.p.records.longestWinStreak, b.p.records.longestWinStreak)}
+          {a.pir?.outfieldRating != null && b.pir?.outfieldRating != null && row("PIR ute", a.pir.outfieldRating, b.pir.outfieldRating)}
+          {a.pir?.goalkeeperRating != null && b.pir?.goalkeeperRating != null && row("PIR målvakt", a.pir.goalkeeperRating, b.pir.goalkeeperRating)}
           <tr className="border-t border-white/5">
             <td className="py-1"><FormStrip form={a.p.form} size="xs" /></td>
             <td className="text-center text-white/40 px-2">Form</td>

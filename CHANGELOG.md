@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.18.0 – 2026-09-27
+
+- Spelarprofilen: PIR som utespelare och/eller målvakt – betyg, formpil, placering bland alla med betyg i samma roll (t.ex. #5 av 48), antal matcher och säkerhet. Manuell justering visas om den finns.
+- Jämförelsen visar även PIR ute/målvakt när båda spelarna har betyg.
+
 ## 2.17.0 – 2026-09-27
 
 **Spelarsidan – profil**

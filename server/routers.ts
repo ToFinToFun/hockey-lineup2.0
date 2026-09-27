@@ -564,6 +564,22 @@ export const appRouter = router({
       return getPirRatings();
     }),
 
+    /** En spelares PIR med placering bland alla med betyg i samma roll (spelarprofilen). */
+    player: lineupProcedure
+      .input(z.object({ id: z.string().min(1).max(64) }))
+      .query(async ({ input }) => {
+        const all = await getPirRatings();
+        const me = all.find((r) => r.playerKey === input.id);
+        if (!me) return null;
+        const rank = (key: "outfieldRating" | "goalkeeperRating") => {
+          const mine = me[key];
+          if (mine == null) return null;
+          const rated = all.filter((r) => r[key] != null);
+          return { rank: rated.filter((r) => (r[key] as number) > mine).length + 1, of: rated.length };
+        };
+        return { ...me, outfieldRank: rank("outfieldRating"), goalkeeperRank: rank("goalkeeperRating") };
+      }),
+
     /** Vikter och manuella justeringar (styrelsen). */
     getConfig: adminProcedure.query(async () => {
       const cfg = await loadPirConfig();
