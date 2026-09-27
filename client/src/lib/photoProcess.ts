@@ -1,15 +1,20 @@
 /**
- * Gör en uppladdad bild till en liten profilbild: kvadrat beskuren från mitten
- * (lite ovanför mitten för porträtt), 320×320 px, JPEG. Blir oftast 15–40 kB.
+ * Gör en uppladdad bild till en liten stående profilbild (3:4, som ett porträtt):
+ * beskuren från mitten i bredd och lite ovanför mitten i höjd, 240×320 px, JPEG.
+ * Blir oftast 15–35 kB.
  */
-export const PHOTO_SIZE = 320;
+export const PHOTO_W = 240;
+export const PHOTO_H = 320;
 
-/** Kvadratisk beskärning: mitten i bredd, ovanför mitten i höjd (ansikten sitter ofta högt). Exporteras för test. */
-export function squareCrop(w: number, h: number): { sx: number; sy: number; side: number } {
-  const side = Math.min(w, h);
-  const sx = Math.round((w - side) / 2);
-  const sy = h > w ? Math.round((h - side) * 0.3) : Math.round((h - side) / 2);
-  return { sx, sy, side };
+/** Stående 3:4-beskärning. Ansikten sitter ofta högt, så höjdöverskottet tas mest nedifrån. Exporteras för test. */
+export function portraitCrop(w: number, h: number): { sx: number; sy: number; sw: number; sh: number } {
+  const ratio = PHOTO_W / PHOTO_H; // 0.75
+  if (w / h > ratio) {
+    const sw = Math.round(h * ratio);
+    return { sx: Math.round((w - sw) / 2), sy: 0, sw, sh: h };
+  }
+  const sh = Math.round(w / ratio);
+  return { sx: 0, sy: Math.round((h - sh) * 0.3), sw: w, sh };
 }
 
 async function decode(file: File): Promise<CanvasImageSource & { width: number; height: number }> {
@@ -37,16 +42,16 @@ async function decode(file: File): Promise<CanvasImageSource & { width: number; 
 /** Returnerar JPEG som base64 (utan data:-prefix). */
 export async function processPlayerPhoto(file: File): Promise<string> {
   const img = await decode(file);
-  const { sx, sy, side } = squareCrop(img.width, img.height);
+  const { sx, sy, sw, sh } = portraitCrop(img.width, img.height);
   const canvas = document.createElement("canvas");
-  canvas.width = PHOTO_SIZE;
-  canvas.height = PHOTO_SIZE;
+  canvas.width = PHOTO_W;
+  canvas.height = PHOTO_H;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Webbläsaren kan inte bearbeta bilder");
   ctx.imageSmoothingQuality = "high";
   ctx.fillStyle = "#1b1f1d";
-  ctx.fillRect(0, 0, PHOTO_SIZE, PHOTO_SIZE);
-  ctx.drawImage(img, sx, sy, side, side, 0, 0, PHOTO_SIZE, PHOTO_SIZE);
+  ctx.fillRect(0, 0, PHOTO_W, PHOTO_H);
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, PHOTO_W, PHOTO_H);
   if ("close" in img && typeof img.close === "function") img.close();
   return canvas.toDataURL("image/jpeg", 0.85).split(",")[1] ?? "";
 }

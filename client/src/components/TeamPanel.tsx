@@ -1,6 +1,8 @@
 // Hockey Lineup App – TeamPanel – v4 (section alignment with spacers)
 import { useMemo, useState } from "react";
 import { Plus, Minus } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { FormStrip } from "./PlayerCard";
 import { PlayerSlot } from "./PlayerSlot";
 import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
@@ -204,6 +206,7 @@ export function TeamPanel({
   onEmptySlotClick,
 }: TeamPanelProps) {
   const logo = isWhite ? LOGO_WHITE : LOGO_GREEN;
+  const teamForm = trpc.lineup.teamForm.useQuery(undefined, { staleTime: 5 * 60_000, refetchOnWindowFocus: false });
   const accentColor = isWhite ? "text-slate-200" : "text-emerald-400";
   // Subtle top border accent for team identity
   const topBorderColor = isWhite
@@ -353,16 +356,19 @@ export function TeamPanel({
           alt={teamName}
           className={`${compact ? 'w-6 h-6' : 'w-8 h-8'} object-contain shrink-0`}
         />
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex items-center gap-2">
           <input
             type="text"
             value={teamName}
             onChange={(e) => onRenameTeam(e.target.value)}
-            className={`bg-transparent border-none outline-none font-black ${compact ? 'text-sm' : 'text-lg'} w-full tracking-widest uppercase ${accentColor}`}
+            size={Math.max(3, teamName.length + 1)}
+            className={`bg-transparent border-none outline-none font-black ${compact ? 'text-sm' : 'text-lg'} min-w-0 shrink tracking-widest uppercase ${accentColor}`}
             style={{ fontFamily: "'Oswald', sans-serif" }}
             placeholder="Lagnamn..."
             maxLength={30}
           />
+          {/* Lagets form de senaste matcherna – så många som får plats, nyast till höger */}
+          <FormStrip form={isWhite ? teamForm.data?.white : teamForm.data?.green} size={compact ? "xs" : "sm"} className="flex-1" />
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {!compact && (

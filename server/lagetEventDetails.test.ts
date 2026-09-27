@@ -90,3 +90,27 @@ describe("laget.se kontonamn", () => {
     expect(extractAccountName(`{"user":{"is_loggedin":false}}`)).toBeNull();
   });
 });
+
+import { recentForm } from "./playerHistory";
+
+describe("form senaste matcherna", () => {
+  const m = (id: number, day: number, white: number, green: number, lineup: Record<string, { id: string }>) =>
+    ({ id, teamWhiteScore: white, teamGreenScore: green, matchEndTime: new Date(2026, 8, day), lineup: { teamAName: "VITA", teamBName: "GRÖNA", lineup } }) as never;
+
+  it("per spelare oavsett lag, äldst först; per lag", () => {
+    const f = recentForm([
+      m(2, 10, 1, 3, { "team-a-gk-1": { id: "p1" }, "team-b-gk-1": { id: "p2" } }),
+      m(1, 3, 2, 2, { "team-b-def-1-1": { id: "p1" } }),
+      m(3, 17, 4, 1, { "team-b-fwd-1-c": { id: "p1" } }),
+    ]);
+    expect(f.players.get("p1")?.join("")).toBe("OFF");
+    expect(f.players.get("p2")?.join("")).toBe("V");
+    expect(f.teams.white.join("")).toBe("OFV");
+    expect(f.teams.green.join("")).toBe("OVF");
+  });
+
+  it("högst n matcher", () => {
+    const many = Array.from({ length: 14 }, (_, i) => m(i + 1, i + 1, 1, 0, { "team-a-gk-1": { id: "p" } }));
+    expect(recentForm(many, 10).players.get("p")).toHaveLength(10);
+  });
+});

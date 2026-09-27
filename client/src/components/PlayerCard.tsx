@@ -6,7 +6,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { X, Trash2 } from "lucide-react";
 import type { Player, Position, TeamColor, CaptainRole, PlayerRecord } from "@/lib/players";
-import { getPositionBadgeColor, ALL_POSITIONS } from "@/lib/players";
+import { getPositionBadgeColor, ALL_POSITIONS, positionName } from "@/lib/players";
 import { useState, useRef, Fragment } from "react";
 import { PortalDropdown } from "./PortalDropdown";
 import { PlayerPhoto } from "./PlayerPhoto";
@@ -264,7 +264,7 @@ export function DraggablePlayerCard({
           ) : null;
           const teamBadge = <TeamColorIndicator teamColor={player.teamColor ?? null} compact mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />;
           const posBadge = (
-            <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`} title={`Position: ${displayPosition}`}>
+            <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`} title={positionName(displayPosition)}>
               {displayPosition}
             </span>
           );
@@ -398,6 +398,7 @@ export function DraggablePlayerCard({
                   <span className="text-white/40 text-[10px] w-6">Pos:</span>
                   {ALL_POSITIONS.map((pos) => (
                     <button
+                      title={positionName(pos)}
                       key={pos}
                       onPointerDown={(e) => e.stopPropagation()}
                       onClick={(e) => {
@@ -621,6 +622,33 @@ export function AttendanceButtons({ player, onSync, onLocal, size = "sm" }: {
 const ROLES = ["MV", "B", "C", "LW", "RW"] as const;
 
 /** Andel matcher per position (MV, B, C, LW, RW). 0 % överallt utan matcher. */
+/**
+ * Form de senaste matcherna som små rutor, äldst till vänster och nyast till höger.
+ * Får inte alla plats klipps de äldsta bort (vänster).
+ */
+export function FormStrip({ form, size = "sm", className = "" }: { form?: string | null; size?: "xs" | "sm"; className?: string }) {
+  if (!form) return null;
+  const cls = size === "xs" ? "w-3.5 h-3.5 text-[8px]" : "w-4 h-4 text-[9px]";
+  const color: Record<string, string> = {
+    V: "bg-emerald-500/80 text-emerald-950",
+    O: "bg-white/25 text-white/80",
+    F: "bg-red-500/75 text-red-950",
+  };
+  const name: Record<string, string> = { V: "vinst", O: "oavgjort", F: "förlust" };
+  return (
+    <span
+      className={`flex items-center justify-end gap-0.5 overflow-hidden min-w-0 ${className}`}
+      title={`Senaste ${form.length} matcherna, nyast till höger: ${form.split("").map((c) => name[c] ?? c).join(", ")}`}
+    >
+      {form.split("").map((c, i) => (
+        <span key={i} className={`${cls} shrink-0 rounded-[3px] font-black leading-none flex items-center justify-center ${color[c] ?? "bg-white/10"}`}>
+          {c}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 /** Statistik längst ner i spelarkortet: innevarande säsong och totalt. */
 export function PlayerStatsSection({ player }: { player: Player }) {
   const rows: { label: string; r: PlayerRecord }[] = [];
@@ -652,6 +680,12 @@ export function PlayerStatsSection({ player }: { player: Player }) {
           ))}
         </div>
       )}
+      {player.statsForm && (
+        <div className="flex items-center gap-2 mt-1.5">
+          <span className="text-white/35 text-[10px] shrink-0">Form</span>
+          <FormStrip form={player.statsForm} className="justify-start" />
+        </div>
+      )}
       </div>
     </div>
   );
@@ -664,7 +698,7 @@ export function PositionShare({ stats }: { stats?: Record<string, number> | null
     <div className="flex items-center gap-1 flex-wrap">
       {ROLES.map((r, i) => (
         <span key={r} className="flex items-center gap-0.5 text-[10px] text-white/70">
-          <span className={`pos-badge pos-badge-xs pos-badge-${r.toLowerCase()}`}>{r}</span>
+          <span className={`pos-badge pos-badge-xs pos-badge-${r.toLowerCase()}`} title={positionName(r)}>{r}</span>
           {total ? Math.round((counts[i] / total) * 100) : 0}%
         </span>
       ))}

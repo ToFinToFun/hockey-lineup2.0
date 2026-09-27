@@ -305,7 +305,7 @@ export default function Home() {
   };
   type PosEntry = {
     mostPlayed: string; stats: Record<string, number>; mostPlayedTeam?: string; teamStats?: Record<string, number>;
-    record?: { season: PlayerRecord & { label: string }; total: PlayerRecord };
+    record?: { season: PlayerRecord & { label: string }; total: PlayerRecord; form?: string };
   };
   const posHistoryRef = useRef<Record<string, PosEntry> | null>(null);
   const pirMapRef = useRef<Record<string, PirEntry> | null>(null);
@@ -320,6 +320,7 @@ export default function Home() {
       if (hist?.record) {
         enriched.statsSeason = hist.record.season;
         enriched.statsTotal = hist.record.total;
+        enriched.statsForm = hist.record.form ?? "";
       }
       if (hist?.mostPlayed) {
         enriched.mostPlayedPosition = hist.mostPlayed;
@@ -2019,6 +2020,13 @@ export default function Home() {
                     <TeamPanel
                       teamId="team-a"
                       onEmptySlotClick={handleDesktopSlotClickA}
+                      onChangeName={handleChangeName}
+                      onChangeNumber={handleChangeNumber}
+                      onChangeTeamColor={handleChangeTeamColor}
+                      onChangeCaptainRole={handleChangeCaptainRole}
+                      onChangeRegistered={handleChangeRegistered}
+                      onSyncToLaget={handleSyncToLaget}
+                      onDeletePlayer={handleDeletePlayer}
                       teamName={teamAName}
                       slots={TEAM_A_SLOTS}
                       lineup={teamALineup}
@@ -2037,6 +2045,13 @@ export default function Home() {
                     <TeamPanel
                       teamId="team-b"
                       onEmptySlotClick={handleDesktopSlotClickB}
+                      onChangeName={handleChangeName}
+                      onChangeNumber={handleChangeNumber}
+                      onChangeTeamColor={handleChangeTeamColor}
+                      onChangeCaptainRole={handleChangeCaptainRole}
+                      onChangeRegistered={handleChangeRegistered}
+                      onSyncToLaget={handleSyncToLaget}
+                      onDeletePlayer={handleDeletePlayer}
                       teamName={teamBName}
                       slots={TEAM_B_SLOTS}
                       lineup={teamBLineup}
@@ -2064,6 +2079,13 @@ export default function Home() {
                   <TeamPanel
                     teamId="team-a"
                     onEmptySlotClick={handleDesktopSlotClickA}
+                    onChangeName={handleChangeName}
+                    onChangeNumber={handleChangeNumber}
+                    onChangeTeamColor={handleChangeTeamColor}
+                    onChangeCaptainRole={handleChangeCaptainRole}
+                    onChangeRegistered={handleChangeRegistered}
+                    onSyncToLaget={handleSyncToLaget}
+                    onDeletePlayer={handleDeletePlayer}
                     teamName={teamAName}
                     slots={TEAM_A_SLOTS}
                     lineup={teamALineup}
@@ -2118,6 +2140,13 @@ export default function Home() {
                   <TeamPanel
                     teamId="team-b"
                     onEmptySlotClick={handleDesktopSlotClickB}
+                    onChangeName={handleChangeName}
+                    onChangeNumber={handleChangeNumber}
+                    onChangeTeamColor={handleChangeTeamColor}
+                    onChangeCaptainRole={handleChangeCaptainRole}
+                    onChangeRegistered={handleChangeRegistered}
+                    onSyncToLaget={handleSyncToLaget}
+                    onDeletePlayer={handleDeletePlayer}
                     teamName={teamBName}
                     slots={TEAM_B_SLOTS}
                     lineup={teamBLineup}

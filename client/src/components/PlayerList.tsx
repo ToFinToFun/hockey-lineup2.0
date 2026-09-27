@@ -6,7 +6,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard, TeamColorIndicator } from "./PlayerCard";
 import { sortRoster, positionsForSlot, slotTeamColor } from "@/lib/rosterSort";
 import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
-import { ALL_POSITIONS, POSITION_LABELS, getPositionBadgeColor } from "@/lib/players";
+import { ALL_POSITIONS, POSITION_LABELS, getPositionBadgeColor, positionName } from "@/lib/players";
 import { Search, UserPlus, X, ArrowUpDown, ClipboardCheck, CheckSquare, Square, Loader2 } from "lucide-react";
 import { useForwardColor } from "@/hooks/useForwardColor";
 
@@ -238,6 +238,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
           {positionFilters.map((f) => (
             <button
               key={f.value}
+              title={f.value === "Alla" ? "Alla positioner" : positionName(f.value)}
               onClick={() => setPosFilter(f.value)}
               className={`
                 flex-1 text-[10px] font-bold py-1 rounded-md transition-all
@@ -505,6 +506,7 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
               <span className="text-white/40 text-[10px] w-6">Pos:</span>
               {ALL_POSITIONS.map((pos) => (
                 <button
+                  title={positionName(pos)}
                   key={pos}
                   onClick={() => setNewPosition(pos)}
                   className={`text-[9px] font-bold px-1.5 py-0.5 rounded transition-all ${

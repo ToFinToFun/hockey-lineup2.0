@@ -92,3 +92,46 @@ export function seasonHistory(matches: MatchResult[]): Map<string, SeasonLine[]>
   }
   return out;
 }
+
+// ─── Form (senaste matcherna) ────────────────────────────────────────────────
+
+/** V = vinst, O = oavgjort, F = förlust */
+export type MatchOutcome = "V" | "O" | "F";
+
+export interface RecentForm {
+  /** Per spelare: senaste matcherna, äldst först (nyast sist), oavsett lag. */
+  players: Map<string, MatchOutcome[]>;
+  /** Per lag (Vita/Gröna): senaste matcherna, äldst först. */
+  teams: { white: MatchOutcome[]; green: MatchOutcome[] };
+}
+
+const outcome = (own: number, opp: number): MatchOutcome => (own > opp ? "V" : own < opp ? "F" : "O");
+
+/** Formen de senaste `n` matcherna, räknat ur godkända matcher. */
+export function recentForm(matches: MatchResult[], n = 10): RecentForm {
+  const sorted = [...matches].sort((a, b) => matchDate(a).getTime() - matchDate(b).getTime());
+  const players = new Map<string, MatchOutcome[]>();
+  const teams = { white: [] as MatchOutcome[], green: [] as MatchOutcome[] };
+
+  for (const m of sorted) {
+    teams.white.push(outcome(m.teamWhiteScore, m.teamGreenScore));
+    teams.green.push(outcome(m.teamGreenScore, m.teamWhiteScore));
+
+    const wrap = m.lineup as { teamAName?: string; lineup?: Record<string, { id?: string }> } | null;
+    if (!wrap?.lineup) continue;
+    const teamAWhite = (wrap.teamAName ?? "VITA").toLowerCase().includes("vit");
+    const seen = new Set<string>();
+    for (const [slot, p] of Object.entries(wrap.lineup)) {
+      if (!p?.id || seen.has(p.id)) continue;
+      seen.add(p.id);
+      const white = slot.startsWith("team-a") === teamAWhite;
+      const res = white ? outcome(m.teamWhiteScore, m.teamGreenScore) : outcome(m.teamGreenScore, m.teamWhiteScore);
+      let list = players.get(p.id);
+      if (!list) players.set(p.id, (list = []));
+      list.push(res);
+    }
+  }
+
+  for (const [id, list] of players) players.set(id, list.slice(-n));
+  return { players, teams: { white: teams.white.slice(-n), green: teams.green.slice(-n) } };
+}

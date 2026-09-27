@@ -11,6 +11,17 @@ export const POSITION_LABELS: Record<Position, string> = {
   IB: "Ice Box",
 };
 
+/** Namn för hovring/skärmläsare – även platsernas LW/RW/RES. */
+export function positionName(code: string): string {
+  const names: Record<string, string> = {
+    ...POSITION_LABELS,
+    LW: "Vänsterforward",
+    RW: "Högerforward",
+    RES: "Reservmålvakt",
+  };
+  return names[code] ?? code;
+}
+
 export const ALL_POSITIONS: Position[] = ["MV", "B", "F", "C", "IB"];
 
 export type TeamColor = "green" | "white" | null;
@@ -42,6 +53,8 @@ export interface Player {
   statsSeason?: PlayerRecord & { label: string };
   /** Statistik alla säsonger – räknas fram, synkas inte. */
   statsTotal?: PlayerRecord;
+  /** Form de senaste 10 matcherna, äldst först ("VFVVO…") – räknas fram, synkas inte. */
+  statsForm?: string;
   /** Namnet som det står i laget.se om det skiljer sig. */
   lagetName?: string;
   isRegistered?: boolean;   // Anmäld till dagens match ("Kommer")

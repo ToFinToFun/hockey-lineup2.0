@@ -8,6 +8,7 @@ import { createContext, useContext } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard } from "./PlayerCard";
 import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
+import { positionName } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
 
 interface PlayerSlotProps {
@@ -83,7 +84,7 @@ export function PlayerSlot({
       `}
     >
       {/* Slot position badge — fills full row height, flush left with rounded left corners */}
-      <span className={`slot-badge ${badgeClass} ${compact ? 'slot-badge-compact' : ''} flex-col gap-0.5`}>
+      <span className={`slot-badge ${badgeClass} ${compact ? 'slot-badge-compact' : ''} flex-col gap-0.5`} title={positionName(slot.shortLabel)}>
         {slot.shortLabel}
         {player && iceTimeMinutes != null && (
           <span className="text-[9px] font-semibold opacity-75 normal-case tracking-normal" title={`Beräknad speltid: ${iceTimeMinutes} min`}>

@@ -7,6 +7,13 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.16.0 – 2026-09-27
+
+- Form de senaste 10 matcherna: i spelarkortet (per spelare, oavsett lag) och bredvid lagnamnet för Vita och Gröna (så många som får plats, nyast till höger). V = vinst, O = oavgjort, F = förlust.
+- Profilbilden är stående 3:4 (240×320 px) i stället för kvadratisk.
+- Desktop: placerade spelare går att redigera igen genom att klicka på ikonerna, som i truppen.
+- Hovring visar positionens namn (t.ex. IB = Ice Box, LW = Vänsterforward) på brickor, filter och val.
+
 ## 2.15.0 – 2026-09-27
 
 **Spelarkortet**

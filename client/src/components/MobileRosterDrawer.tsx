@@ -6,7 +6,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { X, Search, Users, ChevronRight, ChevronLeft, ClipboardCheck, Plus, Pencil, Trash2 } from "lucide-react";
 import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
-import { ALL_POSITIONS, getPositionBadgeColor } from "@/lib/players";
+import { ALL_POSITIONS, getPositionBadgeColor, positionName } from "@/lib/players";
 import type { Slot, TeamConfig } from "@/lib/lineup";
 import { useForwardColor } from "@/hooks/useForwardColor";
 import { usePirSettings, usePirEnabled } from "@/hooks/usePirEnabled";
@@ -526,7 +526,7 @@ export function MobileRosterDrawer({
                           }`}>{player.captainRole}</span>
                         )}
                         <TeamColorIndicator teamColor={player.teamColor ?? null} compact mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />
-                        <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
+                        <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`} title={positionName(displayPosition)}>
                           {displayPosition}
                         </span>
                         {pirEnabled && pirSettings.showTrend && (() => {
@@ -873,6 +873,7 @@ export function MobileRosterDrawer({
                   <div className="flex items-center gap-1 flex-wrap">
                     {ALL_POSITIONS.map((pos) => (
                       <button
+                        title={positionName(pos)}
                         key={pos}
                         onClick={() => {
                           onChangePosition(editingPlayer.id, pos);

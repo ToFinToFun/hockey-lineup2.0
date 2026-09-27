@@ -4,7 +4,7 @@ import { publicProcedure, lineupProcedure, adminProcedure, router } from "./_cor
 import { authRouter } from "./routers/auth";
 import { playersRouter } from "./routers/players";
 import { fetchAttendance, updateAttendance, publishNews, deleteNews, fetchAccountName, NEWS_ADMIN_URL, type AttendingStatus } from "./lagetSe";
-import { seasonHistory, seasonOf } from "./playerHistory";
+import { seasonHistory, seasonOf, recentForm } from "./playerHistory";
 import { setPlayerPhoto, deletePlayerPhoto, MAX_PHOTO_BASE64 } from "./playerPhotos";
 import { listSponsors, createSponsor, updateSponsor, deleteSponsor, moveSponsor, recordSponsorNews } from "./sponsorsDb";
 import { scoreRouter } from "./routers/score";
@@ -301,6 +301,12 @@ export const appRouter = router({
      * Calculate the most-played position for each player from match history.
      * Returns a map: playerKey -> { mostPlayed: "B", stats: { B: 10, C: 2, ... } }
      */
+    /** Lagens form (Vita/Gröna) de senaste 10 matcherna, äldst först, t.ex. "VVFOV…". */
+    teamForm: lineupProcedure.query(async () => {
+      const { teams } = recentForm(await getAllMatchResults(), 10);
+      return { white: teams.white.join(""), green: teams.green.join("") };
+    }),
+
     positionHistory: lineupProcedure.query(async () => {
       const allMatches = await getAllMatchResults();
       // playerKey -> { position -> count }
@@ -346,7 +352,8 @@ export const appRouter = router({
 
       // Matcher, vinster, mål och assist – innevarande säsong och totalt
       const seasonNow = seasonOf(new Date());
-      const records: Record<string, { season: PlayerRecord & { label: string }; total: PlayerRecord }> = {};
+      const form = recentForm(allMatches, 10);
+      const records: Record<string, { season: PlayerRecord & { label: string }; total: PlayerRecord; form: string }> = {};
       for (const [id, lines] of seasonHistory(allMatches)) {
         const total: PlayerRecord = { matches: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0 };
         for (const l of lines) {
@@ -361,6 +368,7 @@ export const appRouter = router({
             losses: cur?.losses ?? 0, goals: cur?.goals ?? 0, assists: cur?.assists ?? 0,
           },
           total,
+          form: (form.players.get(id) ?? []).join(""),
         };
       }
 

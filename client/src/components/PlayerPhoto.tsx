@@ -1,6 +1,6 @@
 /**
  * Profilbild i spelarkortet. Hämtas först när kortet öppnas (komponenten
- * monteras bara då). Tryck för att ladda upp; bilden förminskas i telefonen.
+ * monteras bara då). Tryck för att ladda upp; bilden förminskas i telefonen till ett stående 3:4-porträtt.
  */
 import { useRef, useState } from "react";
 import { Camera, Loader2, UserRound, X } from "lucide-react";
@@ -8,7 +8,8 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { processPlayerPhoto } from "@/lib/photoProcess";
 
-export function PlayerPhoto({ playerId, size = 64, editable = true }: { playerId: string; size?: number; editable?: boolean }) {
+export function PlayerPhoto({ playerId, width = 54, editable = true }: { playerId: string; width?: number; editable?: boolean }) {
+  const height = Math.round((width * 4) / 3); // stående 3:4
   // version ändras efter uppladdning så att den nya bilden hämtas direkt
   const [version, setVersion] = useState(0);
   const [hasPhoto, setHasPhoto] = useState<boolean | null>(null);
@@ -48,7 +49,7 @@ export function PlayerPhoto({ playerId, size = 64, editable = true }: { playerId
   };
 
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }} onPointerDown={(e) => e.stopPropagation()}>
+    <div className="relative shrink-0" style={{ width, height }} onPointerDown={(e) => e.stopPropagation()}>
       <button
         type="button"
         disabled={!editable || busy}
@@ -68,7 +69,7 @@ export function PlayerPhoto({ playerId, size = 64, editable = true }: { playerId
         )}
         {!hasPhoto && !busy && (
           <span className="flex flex-col items-center text-white/25 group-hover:text-white/50">
-            <UserRound style={{ width: size * 0.45, height: size * 0.45 }} />
+            <UserRound style={{ width: width * 0.5, height: width * 0.5 }} />
             {editable && hasPhoto === false && <Camera className="w-3 h-3 -mt-0.5" />}
           </span>
         )}
