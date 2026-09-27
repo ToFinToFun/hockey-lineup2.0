@@ -7,6 +7,17 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.7.0 – 2026-09-27
+
+**Lineup: en och samma spelarmeny**
+- Tryck på en tom plats öppnar samma meny som "Trupp" – samma utseende, ikoner och funktioner. Rubriken visar vilken plats du väljer till (t.ex. "VITA · LW"), och ett tryck på en spelare placerar den direkt där.
+- Den gamla separata platsväljaren är borttagen.
+- Samma sortering överallt: anmälda först, sedan de som inte svarat, sist de som inte kommer, sedan namn. Från en plats: passande position först inom varje grupp (LW/RW → F, C → C, B → B, MV → MV). Samma ordning på datorn.
+
+**Trend**
+- Trendikonen står mellan position och PIR och visas alltid: ↑ stigande, ↗ svagt stigande, → stabil, ↘ svagt fallande, ↓ fallande, ? för lite data (färre än 3 matcher). Även i PIR-rutan i uppställningen.
+- "Vanligaste position" visas nu i spelarens redigering ("spelat mest som B") i stället för i listan.
+
 ## 2.6.2 – 2026-09-27
 
 **Lineup, uppställningen (mobil)**

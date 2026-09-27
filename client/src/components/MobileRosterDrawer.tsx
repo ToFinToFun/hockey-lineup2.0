@@ -10,7 +10,8 @@ import { ALL_POSITIONS, getPositionBadgeColor } from "@/lib/players";
 import type { Slot, TeamConfig } from "@/lib/lineup";
 import { useForwardColor } from "@/hooks/useForwardColor";
 import { usePirSettings, usePirEnabled } from "@/hooks/usePirEnabled";
-import { TeamColorIndicator } from "@/components/PlayerCard";
+import { TeamColorIndicator, TrendIcon } from "@/components/PlayerCard";
+import { sortRoster, positionsForSlot } from "@/lib/rosterSort";
 
 interface MobileRosterDrawerProps {
   open: boolean;
@@ -40,6 +41,11 @@ interface MobileRosterDrawerProps {
   teamAConfig?: TeamConfig;
   teamBConfig?: TeamConfig;
   lineup?: Record<string, Player>;
+  /**
+   * Öppnad via en tom plats: tryck på en spelare placerar den direkt där.
+   * Listan sorteras med passande position först (efter närvaro).
+   */
+  targetSlot?: { slotId: string; slotType: string; slotLabel: string; teamName: string } | null;
 }
 
 type AssignStep = "select-player" | "select-team" | "select-slot";
@@ -75,6 +81,7 @@ export function MobileRosterDrawer({
   teamAConfig,
   teamBConfig,
   lineup = {},
+  targetSlot = null,
 }: MobileRosterDrawerProps) {
   const [search, setSearch] = useState("");
   const [posFilter, setPosFilter] = useState<string>("Alla");
@@ -135,13 +142,21 @@ export function MobileRosterDrawer({
     }
   }, [feedback]);
 
-  const filteredPlayers = players.filter((p) => {
-    const matchesSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || (p.number && p.number.includes(search));
-    const matchesPos = posFilter === "Alla" || p.position === posFilter;
-    return matchesSearch && matchesPos;
-  });
+  const filteredPlayers = sortRoster(
+    players.filter((p) => {
+      const matchesSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || (p.number && p.number.includes(search));
+      const matchesPos = posFilter === "Alla" || p.position === posFilter;
+      return matchesSearch && matchesPos;
+    }),
+    targetSlot ? positionsForSlot(targetSlot.slotType, targetSlot.slotLabel) : undefined
+  );
 
   const handlePlayerTap = useCallback((player: Player) => {
+    if (targetSlot && onTapAssignToSlot) {
+      onTapAssignToSlot(player, targetSlot.slotId);
+      onClose();
+      return;
+    }
     if (selectedPlayer?.id === player.id) {
       // Deselect
       setSelectedPlayer(null);
@@ -152,7 +167,7 @@ export function MobileRosterDrawer({
       setAssignStep("select-team");
       setFeedback(null);
     }
-  }, [selectedPlayer]);
+  }, [selectedPlayer, targetSlot, onTapAssignToSlot, onClose]);
 
   const handleSelectTeam = useCallback((team: "team-a" | "team-b") => {
     setSelectedTeam(team);
@@ -325,7 +340,7 @@ export function MobileRosterDrawer({
             )}
             <Users className="w-4 h-4 text-emerald-400" />
             <span className="text-sm font-bold text-white tracking-wider uppercase" style={{ fontFamily: "'Oswald', sans-serif" }}>
-              {assignStep === "select-player" ? "Trupp" : assignStep === "select-team" ? "Välj lag" : `${teamName}`}
+              {targetSlot ? `${targetSlot.teamName} · ${targetSlot.slotLabel}` : assignStep === "select-player" ? "Trupp" : assignStep === "select-team" ? "Välj lag" : `${teamName}`}
             </span>
             {assignStep === "select-player" && (
               <span className="text-[10px] text-white/40">
@@ -511,16 +526,12 @@ export function MobileRosterDrawer({
                         <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`}>
                           {displayPosition}
                         </span>
-                        {player.mostPlayedPosition ? (
-                          <span className={`pos-badge pos-badge-xs pos-badge-${player.mostPlayedPosition.toLowerCase()} shrink-0 ${
-                            player.mostPlayedPosition === displayPosition ? 'opacity-30' : ''
-                          }`}
-                            title={`Vanligaste position: ${player.mostPlayedPosition}`}>
-                            {player.mostPlayedPosition}
-                          </span>
-                        ) : (
-                          <span className="w-[20px] h-[18px] shrink-0" aria-hidden="true" />
-                        )}
+                        {pirEnabled && pirSettings.showTrend && (() => {
+                          const isGk = player.position === 'MV';
+                          const label = isGk && player.pirGoalkeeperTrendLabel ? player.pirGoalkeeperTrendLabel
+                            : !isGk && player.pirOutfieldTrendLabel ? player.pirOutfieldTrendLabel : player.pirTrendLabel;
+                          return <TrendIcon trendLabel={label} matchesPlayed={player.pirMatchesPlayed} />;
+                        })()}
                         {iceTimeMinutes != null && (
                           <span className="ice-time-badge ice-time-badge-compact shrink-0" title={`Matcher: ${iceTimeMinutes}`}>
                             {iceTimeMinutes}ʼ
@@ -548,22 +559,7 @@ export function MobileRosterDrawer({
                                   {rPir.rating}{rPir.label ? <span className="text-[7px] opacity-50 ml-px">{rPir.label}</span> : null}
                                 </span>
                               )}
-                              {pirEnabled && pirSettings.showTrend && rPir.trendLabel && rPir.trendLabel !== 'stable' && (
-                                <span
-                                  className={`text-[9px] shrink-0 ${
-                                    rPir.trendLabel === 'rising' ? 'text-emerald-400'
-                                    : rPir.trendLabel === 'slightly_rising' ? 'text-emerald-400/60'
-                                    : rPir.trendLabel === 'slightly_falling' ? 'text-red-400/60'
-                                    : 'text-red-400'
-                                  }`}
-                                  title={`Trend: ${rPir.trend != null ? (rPir.trend > 0 ? '+' : '') + rPir.trend : '?'}`}
-                                >
-                                  {rPir.trendLabel === 'rising' ? '\u2191'
-                                    : rPir.trendLabel === 'slightly_rising' ? '\u2197'
-                                    : rPir.trendLabel === 'slightly_falling' ? '\u2198'
-                                    : '\u2193'}
-                                </span>
-                              )}
+
                             </>
                           );
                         })()}
@@ -776,6 +772,9 @@ export function MobileRosterDrawer({
                   {editingPlayer.name}
                   {editingPlayer.number && <span className="text-white/40 font-normal ml-1">#{editingPlayer.number}</span>}
                 </span>
+                {editingPlayer.mostPlayedPosition && editingPlayer.mostPlayedPosition !== editingPlayer.position && (
+                  <span className="text-[10px] text-white/45">spelat mest som {editingPlayer.mostPlayedPosition}</span>
+                )}
               </div>
               <button
                 onClick={handleCloseEdit}

@@ -57,9 +57,9 @@ function sortPlayers(players: Player[], key: SortKey, dir: SortDir): Player[] {
   return [...players].sort((a, b) => {
     let cmp = 0;
     if (key === "registered") {
-      const ra = a.isRegistered ? 1 : 0;
-      const rb = b.isRegistered ? 1 : 0;
-      cmp = rb - ra;
+      // Samma ordning som i mobilens meny: anmälda, ej svarat, kommer inte – sedan namn.
+      const rank = (p: Player) => (p.isRegistered ? 0 : p.isDeclined ? 2 : 1);
+      cmp = rank(a) - rank(b);
       if (cmp === 0) cmp = a.name.localeCompare(b.name, "sv");
     } else if (key === "declined") {
       const da = a.isDeclined ? 1 : 0;

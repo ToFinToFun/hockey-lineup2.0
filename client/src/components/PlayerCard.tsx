@@ -232,11 +232,7 @@ export function DraggablePlayerCard({
               title={`PIR${activePir.label ? ` (${activePir.label})` : ""}: ${activePir.rating} | Matcher: ${activePir.matchesPlayed}`}
             >
               {activePir.rating}
-              {pirSettings.showTrend && activePir.trendLabel && activePir.trendLabel !== "stable" && (
-                <span className={activePir.trendLabel.includes("rising") ? "text-emerald-400 ml-px" : "text-red-400 ml-px"}>
-                  {activePir.trendLabel.includes("rising") ? "↑" : "↓"}
-                </span>
-              )}
+              {pirSettings.showTrend && <TrendIcon trendLabel={activePir.trendLabel} matchesPlayed={activePir.matchesPlayed} className="!w-auto !h-auto !text-[9px] ml-0.5" />}
             </span>
           ) : null;
           const teamBadge = <TeamColorIndicator teamColor={player.teamColor ?? null} compact mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />;
@@ -609,6 +605,27 @@ export function DraggablePlayerCard({
 }
 
 // Team color indicator — rounded-rect matching pos-badge-sm size
+/**
+ * PIR-trend som ikon. Nivåer (senaste matcherna jämfört med totalen):
+ * ↑ stigande (> +20), ↗ svagt stigande (+8…+20), → stabil, ↘ svagt fallande, ↓ fallande (< −20).
+ * ? = för lite data (färre än 3 matcher).
+ */
+export function TrendIcon({ trendLabel, matchesPlayed, className = "" }: {
+  trendLabel?: string | null;
+  matchesPlayed?: number | null;
+  className?: string;
+}) {
+  const base = `inline-flex items-center justify-center w-[14px] h-[18px] text-[11px] font-bold leading-none shrink-0 ${className}`;
+  if ((matchesPlayed ?? 0) < 3) return <span className={`${base} text-white/30`} title="För lite matchdata (färre än 3 matcher)">?</span>;
+  switch (trendLabel) {
+    case "rising": return <span className={`${base} text-emerald-400`} title="Stigande form">↑</span>;
+    case "slightly_rising": return <span className={`${base} text-emerald-400/70`} title="Svagt stigande form">↗</span>;
+    case "slightly_falling": return <span className={`${base} text-red-400/70`} title="Svagt fallande form">↘</span>;
+    case "falling": return <span className={`${base} text-red-400`} title="Fallande form">↓</span>;
+    default: return <span className={`${base} text-white/40`} title="Stabil form">→</span>;
+  }
+}
+
 export function TeamColorIndicator({ teamColor, compact, mostPlayedTeam }: { teamColor: TeamColor; compact?: boolean; mostPlayedTeam?: "green" | "white" }) {
   const letter = `flex items-center justify-center font-black leading-none ${compact ? "text-[9px]" : "text-[10px]"}`;
   // Match pos-badge-sm: 20×18px normal, slightly smaller in compact

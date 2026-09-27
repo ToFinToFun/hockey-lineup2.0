@@ -32,7 +32,6 @@ import { ExportModal } from "@/components/ExportModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { MobileRosterDrawer } from "@/components/MobileRosterDrawer";
-import { MobileSlotPicker } from "@/components/MobileSlotPicker";
 import { LongPressTooltip } from "@/components/LongPressTooltip";
 import { trpc } from "@/lib/trpc";
 import { lineupStateToText, shareOrCopy } from "@/lib/lineupText";
@@ -2212,8 +2211,9 @@ export default function Home() {
       {/* Mobile Roster Drawer */}
       {isMobile && (
         <MobileRosterDrawer
-          open={mobileDrawerOpen}
-          onClose={() => setMobileDrawerOpen(false)}
+          open={mobileDrawerOpen || !!mobileSlotPicker}
+          onClose={() => { setMobileDrawerOpen(false); setMobileSlotPicker(null); }}
+          targetSlot={mobileSlotPicker}
           players={availablePlayers}
           onDeletePlayer={handleDeletePlayer}
           onChangePosition={handleChangePosition}
@@ -2240,22 +2240,6 @@ export default function Home() {
         />
       )}
 
-      {/* Mobile slot picker */}
-      {mobileSlotPicker && (
-        <MobileSlotPicker
-          open={!!mobileSlotPicker}
-          onClose={() => setMobileSlotPicker(null)}
-          players={availablePlayers}
-          slotType={mobileSlotPicker.slotType}
-          slotId={mobileSlotPicker.slotId}
-          teamName={mobileSlotPicker.teamName}
-          slotLabel={mobileSlotPicker.slotLabel}
-          onSelectPlayer={(player, slotId) => {
-            handleTapAssignToSlot(player, slotId);
-            setMobileSlotPicker(null);
-          }}
-        />
-      )}
 
       {/* Remote change toast */}
       {remoteChangeToast && (
