@@ -411,6 +411,7 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
               <input
                 id="news-title"
                 value={title}
+                maxLength={60}
                 onChange={(e) => {
                   setTitle(e.target.value);
                   setTitleEdited(true);
@@ -505,6 +506,7 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
               >
                 Alla nyheter i laget.se-admin <ExternalLink className="w-3 h-3" />
               </a>
+              <p className="text-white/30 text-[10px] -mt-1">Kräver att du är admin för laget på laget.se.</p>
             </div>
 
             {publishError && (
@@ -554,7 +556,7 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
           {!published && (
             <button
               onClick={handlePublish}
-              disabled={!imageUrl || rendering || publishNews.isPending || !title.trim()}
+              disabled={!imageUrl || rendering || publishNews.isPending || title.trim().length < 2}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500 text-emerald-950 text-xs font-black uppercase tracking-wider hover:bg-emerald-400 disabled:opacity-50"
             >
               {publishNews.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}

@@ -780,7 +780,9 @@ export function buildNewsFormFields(
     ["validationUrl", "/Common/Validation/ValidateFile"],
     ["hdfTinyMaxChars", "7000"],
     ["Id", String(input.id ?? 0)],
-    ["Picture.FileId", existing?.fileId ?? ""],
+    // Webbläsaren sätter alltid 0 när en ny bild väljs (även vid redigering) – och 0 för nya nyheter.
+    // Tomt värde godtas inte ("The FileId field is required").
+    ["Picture.FileId", "0"],
     ["Name", input.title],
     ["Body", input.body.replace(/\r?\n/g, "\r\n")],
   ];
@@ -813,6 +815,7 @@ function formErrors(html: string): string[] {
 }
 
 export async function publishNews(input: PublishNewsInput): Promise<PublishNewsResult> {
+  if (input.title.trim().length < 2 || input.title.trim().length > 60) return { success: false, error: "Rubriken måste vara 2–60 tecken (laget.se:s gräns)." };
   if (input.body.length > 7000) return { success: false, error: "Texten är för lång för laget.se (max 7000 tecken)." };
   const { client, followRedirects } = createClient();
   try {

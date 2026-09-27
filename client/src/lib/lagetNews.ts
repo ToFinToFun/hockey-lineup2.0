@@ -25,7 +25,8 @@ export function shortDate(isoDate: string | undefined, now: Date = new Date()): 
 export function formatNewsTitle(opts: { date?: string; location?: string; time?: string; now?: Date }): string {
   const base = `Lagen ${shortDate(opts.date, opts.now)}`;
   const extra = [opts.location?.trim(), opts.time?.trim()].filter(Boolean).join(" ");
-  return extra ? `${base} – ${extra}` : base;
+  // laget.se tillåter högst 60 tecken i rubriken
+  return (extra ? `${base} – ${extra}` : base).slice(0, 60).trimEnd();
 }
 
 /**

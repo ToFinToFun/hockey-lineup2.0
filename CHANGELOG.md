@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.13.4 – 2026-09-27
+
+- Rättning: publicering via laget.se-admin gav "The FileId field is required". Bild-id skickas nu som 0, precis som webbläsaren gör när en bild väljs (både ny och uppdaterad nyhet).
+- Rubriken begränsas till 60 tecken (laget.se:s gräns).
+- Diskret notis under länken till nyhetsadmin: kräver att du är admin för laget på laget.se.
+
 ## 2.13.3 – 2026-09-27
 
 - Laget.se-nyheten: "Visa avsändare" visar kontots namn på laget.se (inte e-postadressen). Namnet hämtas vid inloggning och sparas i sex timmar; byts kontot i Coolify hämtas det nya namnet direkt.

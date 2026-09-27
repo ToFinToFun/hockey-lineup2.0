@@ -57,6 +57,7 @@ describe("laget.se nyheter (adminformuläret)", () => {
       null
     );
     expect(f).toContainEqual(["Id", "0"]);
+    expect(f).toContainEqual(["Picture.FileId", "0"]);
     expect(f).toContainEqual(["Body", "a\r\n<b>b</b>"]);
     expect(f).toContainEqual(["PublishNow", "false"]);
     expect(f).toContainEqual(["NewsTime", "2026-09-29"]);
@@ -74,7 +75,7 @@ describe("laget.se nyheter (adminformuläret)", () => {
     expect(f).toContainEqual(["PublishNow", "true"]);
     expect(f.some(([k]) => k === "NewsTime")).toBe(false);
     expect(f).toContainEqual(["Id", "8164219"]);
-    expect(f).toContainEqual(["Picture.FileId", "11986067"]);
+    expect(f).toContainEqual(["Picture.FileId", "0"]);
     expect(f).toContainEqual(["WhoCanComment", "MembersOfSite"]);
     expect(f.filter(([k]) => k === "ShowPublisher").map(([, v]) => v)).toEqual(["false"]);
     expect(f.filter(([k]) => k === "IsTopNews").map(([, v]) => v)).toEqual(["true", "false"]);

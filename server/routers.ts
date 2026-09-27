@@ -140,7 +140,7 @@ export const appRouter = router({
     publishNews: lineupProcedure
       .input(
         z.object({
-          title: z.string().trim().min(1).max(200),
+          title: z.string().trim().min(2).max(60),
           body: z.string().max(7000),
           imageBase64: z.string().max(7_000_000).regex(/^[A-Za-z0-9+/=]+$/),
           imageType: z.enum(["image/jpeg", "image/png"]),
