@@ -9,13 +9,12 @@ import type { Player } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
 import { trpc } from "@/lib/trpc";
 import { fetchAttendanceFromApi } from "@/lib/laget";
-import { SPONSORS, getRandomSponsor } from "@/lib/scoreConstants";
+import { useSponsors, pickLeastShown } from "@/lib/sponsors";
 import {
   buildNewsBody,
   defaultHome,
   formatNewsTitle,
   shortDate,
-  sponsorLogoPath,
   type TeamKey,
 } from "@/lib/lagetNews";
 import { renderNewsImage } from "@/lib/newsImage";
@@ -52,7 +51,19 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
 
   const [event, setEvent] = useState<EventDetails | null>(null);
   const [eventLoaded, setEventLoaded] = useState(false);
-  const [sponsor, setSponsor] = useState<string>(() => getRandomSponsor());
+  const { sponsors, query: sponsorsQuery } = useSponsors();
+  const activeSponsors = useMemo(() => sponsors.filter((s) => s.active), [sponsors]);
+  // null = inte valt än, 0 = ingen sponsor
+  const [sponsorId, setSponsorId] = useState<number | null>(null);
+  const sponsorObj = activeSponsors.find((s) => s.id === sponsorId) ?? null;
+  const sponsor = sponsorObj?.name ?? "";
+  const recordNews = trpc.sponsors.recordNews.useMutation();
+
+  // Standard: den sponsor som visats minst i laguppställningar denna säsong
+  useEffect(() => {
+    if (sponsorId !== null || sponsorsQuery.isLoading) return;
+    setSponsorId(pickLeastShown(activeSponsors, (s) => s.counts.lineups)?.id ?? 0);
+  }, [sponsorId, sponsorsQuery.isLoading, activeSponsors]);
   const [home, setHome] = useState<TeamKey>("a");
   const [title, setTitle] = useState("");
   const [titleEdited, setTitleEdited] = useState(false);
@@ -123,7 +134,7 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
 
   // Rita bilden när något som syns i den ändras
   useEffect(() => {
-    if (!eventLoaded) return;
+    if (!eventLoaded || sponsorId === null) return;
     let cancelled = false;
     setRendering(true);
     const p = latestProps.current;
@@ -134,7 +145,7 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
       dateLine: weekdayLine(event?.date),
       placeLine,
       sponsor,
-      sponsorLogoUrl: sponsor ? sponsorLogoPath(sponsor) : undefined,
+      sponsorLogoUrl: sponsorObj?.logo ?? undefined,
       backgroundUrl: p.bgUrl,
     })
       .then(
@@ -156,7 +167,7 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
     return () => {
       cancelled = true;
     };
-  }, [eventLoaded, home, sponsor, placeLine, event?.date, contentKey]);
+  }, [eventLoaded, home, sponsorId, sponsor, sponsorObj?.logo, placeLine, event?.date, contentKey]);
 
   useEffect(() => () => {
     if (imageUrl) URL.revokeObjectURL(imageUrl);
@@ -166,6 +177,7 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
     if (homeRecorded.current) return;
     homeRecorded.current = true;
     setLastHome.mutate({ home });
+    if (sponsorObj && sponsorObj.id > 0) recordNews.mutate({ sponsorId: sponsorObj.id });
   };
 
   const fileName = `lagen-${shortDate(event?.date).replace("/", "-")}.jpg`;
@@ -286,16 +298,16 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
               <label className="block text-white/50 text-[11px] mb-1.5" htmlFor="news-sponsor">Matchsponsor</label>
               <select
                 id="news-sponsor"
-                value={sponsor}
-                onChange={(e) => setSponsor(e.target.value)}
+                value={sponsorId ?? 0}
+                onChange={(e) => setSponsorId(Number(e.target.value))}
                 className="w-full rounded-lg bg-white/5 border border-white/10 text-white text-sm px-3 py-2"
               >
-                {SPONSORS.map((s) => (
-                  <option key={s} value={s} className="text-black">
-                    {s}
+                {activeSponsors.map((s) => (
+                  <option key={s.id} value={s.id} className="text-black">
+                    {s.name} ({s.counts.lineups} denna säsong)
                   </option>
                 ))}
-                <option value="" className="text-black">
+                <option value={0} className="text-black">
                   Ingen sponsor
                 </option>
               </select>

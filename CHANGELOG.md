@@ -7,6 +7,17 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.10.0 – 2026-09-27
+
+**Sponsorer**
+- Ny sida för styrelsen: Sponsorer (från startsidan). Lägg till med namn och valfri logga – utan logga visas namnet som tidigare.
+- Loggan bearbetas i webbläsaren: tomma kanter beskärs, bilden skalas (max 600×240) och sparas som PNG i databasen, så den följer med i backupen. Val: "Ta bort vit bakgrund" och "Gör loggan vit". Förhandsvisning på mörk bakgrund.
+- Byt namn, byt/ta bort logga, pausa/aktivera, ändra ordning, ta bort. Vid namnbyte följer registrerade mål med.
+- Den sponsor som visats minst väljs, med två räknare: mål i matcher (Score Tracker) och laguppställningar (nyheten till laget.se). Vid lika slumpas det. Räknarna nollas 1 juni; listan visar även förra säsongen.
+- Score Tracker: sponsorlistan sparas i telefonen, så valet fungerar offline. Målhistoriken visar loggan när den finns.
+- Matchrapporten och laget.se-nyheten använder registret. Nyheten visar hur många lagnyheter varje sponsor haft denna säsong i listan.
+- De fyra tidigare hårdkodade sponsorerna läggs in automatiskt.
+
 ## 2.9.0 – 2026-09-27
 
 **Nyhet till laget.se (steg 1 – manuell publicering)**
@@ -16,7 +27,6 @@ Versionen höjs i `package.json` vid varje deploy till `production`, och commite
 - Hemmalag väljs med en knapp och står till vänster i matchbandet. Standard är motsatt mot förra nyheten (sparas i databasen).
 - Rubrik "Lagen D/M – plats tid" från evenemanget på laget.se, går att ändra. Brödtexten börjar med "Dagens matchsponsor: …" följt av uppställningen som text.
 - Spara bild (delningsmenyn på mobil, nedladdning på dator) och Kopiera text. Publicering direkt till laget.se kommer i nästa steg.
-- Sponsorloggor läses från `/images/sponsors/<namn>.png`; saknas loggan skrivs namnet ut.
 - laget.se-hämtningen läser nu också starttid och (om möjligt) plats från evenemanget.
 
 ## 2.8.2 – 2026-09-27

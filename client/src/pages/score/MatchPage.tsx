@@ -5,7 +5,8 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { IMAGES, COLORS, getRandomSponsor, STORAGE_KEY, type GoalEvent, type MatchState } from "@/lib/scoreConstants";
+import { IMAGES, COLORS, STORAGE_KEY, type GoalEvent, type MatchState } from "@/lib/scoreConstants";
+import { useSponsors, pickLeastShown, logoForName } from "@/lib/sponsors";
 import { type AppState, createTeamSlots, MAX_TEAM_CONFIG } from "@/lib/lineup";
 import { type Player } from "@/lib/players";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -38,6 +39,7 @@ function getGoalText(team: "white" | "green"): string {
 
 export default function MatchPage({ lineupState }: MatchPageProps) {
   // ─── State ─────────────────────────────────────────────────────
+  const { sponsors } = useSponsors();
   const [teamWhiteScore, setTeamWhiteScore] = useState(0);
   const [teamGreenScore, setTeamGreenScore] = useState(0);
   const [goalHistory, setGoalHistory] = useState<GoalEvent[]>([]);
@@ -241,7 +243,10 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
   const incrementScore = (team: "white" | "green") => {
     const now = new Date();
     const timestamp = formatTime(now);
-    const sponsor = getRandomSponsor();
+    // Sponsorn som visats minst i matcher denna säsong (inklusive mål i den här matchen)
+    const inThisMatch = (name: string) =>
+      goalHistory.filter((g) => g.sponsor?.trim().toLowerCase() === name.trim().toLowerCase()).length;
+    const sponsor = pickLeastShown(sponsors, (s) => s.counts.matches + inThisMatch(s.name))?.name;
     const newGoal: GoalEvent = { team, timestamp, sponsor };
     const newHistory = [newGoal, ...goalHistory];
     const newMst = matchStartTime || now.toISOString();
@@ -726,9 +731,17 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
                       <span className="text-[8px] mb-0.5" style={{ color: getGoalText(goal.team), opacity: 0.6 }}>
                         Presenteras av
                       </span>
-                      <span className="text-[10px] font-semibold text-center leading-tight">
-                        {goal.sponsor}
-                      </span>
+                      {logoForName(sponsors, goal.sponsor) ? (
+                        <img
+                          src={logoForName(sponsors, goal.sponsor)!}
+                          alt={goal.sponsor}
+                          className="max-h-6 max-w-[70px] object-contain"
+                        />
+                      ) : (
+                        <span className="text-[10px] font-semibold text-center leading-tight">
+                          {goal.sponsor}
+                        </span>
+                      )}
                     </div>
                   )}
                 </button>

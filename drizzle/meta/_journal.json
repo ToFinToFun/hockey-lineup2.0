@@ -64,6 +64,13 @@
       "when": 1790455822576,
       "tag": "0008_match_players_goals",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1790507765779,
+      "tag": "0009_sponsors",
+      "breakpoints": true
     }
   ]
 }

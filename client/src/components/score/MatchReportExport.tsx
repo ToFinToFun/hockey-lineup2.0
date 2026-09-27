@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from "react";
-import { IMAGES, SPONSORS } from "@/lib/scoreConstants";
+import { IMAGES } from "@/lib/scoreConstants";
+import { useSponsors } from "@/lib/sponsors";
 import { Download, Share2, Image, FileText, Loader2, AlertCircle, X, Check, Copy, Sun, Moon } from "lucide-react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
@@ -93,6 +94,8 @@ function truncateText(ctx: CanvasRenderingContext2D, text: string, maxWidth: num
 }
 
 export default function MatchReportExport({ match, open, onOpenChange }: MatchReportExportProps) {
+  const { sponsors } = useSponsors();
+  const sponsorLine = sponsors.filter((s) => s.active).map((s) => s.name).join("  ·  ");
   const [generating, setGenerating] = useState(false);
   const [format, setFormat] = useState<ExportFormat>("social");
   const [theme, setTheme] = useState<ExportTheme>("dark");
@@ -639,7 +642,7 @@ export default function MatchReportExport({ match, open, onOpenChange }: MatchRe
     ctx.fillStyle = colors.footer;
     ctx.font = `${isSocial ? 12 : 8}px system-ui, -apple-system, sans-serif`;
     ctx.textAlign = "center";
-    ctx.fillText(SPONSORS.join("  ·  "), W / 2, H - (isSocial ? 52 : 32));
+    if (sponsorLine) ctx.fillText(sponsorLine, W / 2, H - (isSocial ? 52 : 32));
     ctx.globalAlpha = 1;
 
     // ─── Footer ───
@@ -653,7 +656,7 @@ export default function MatchReportExport({ match, open, onOpenChange }: MatchRe
     ctx.fillRect(0, H - (isSocial ? 4 : 3), W, isSocial ? 4 : 3);
 
     return canvas;
-  }, [format, theme, match, goalHistory, getMatchDate, getLineupData]);
+  }, [format, theme, match, goalHistory, getMatchDate, getLineupData, sponsorLine]);
 
   const generatePreview = useCallback(async () => {
     setGenerating(true);

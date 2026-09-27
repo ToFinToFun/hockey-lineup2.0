@@ -13,6 +13,7 @@ const StatsApp = lazy(() => import("./pages/stats/StatsApp"));
 const CardsApp = lazy(() => import("./pages/cards/CardsApp"));
 const HistoryApp = lazy(() => import("./pages/history/HistoryApp"));
 const PlayersApp = lazy(() => import("./pages/players/PlayersApp"));
+const SponsorsApp = lazy(() => import("./pages/sponsors/SponsorsApp"));
 import InviteRedeem from "./pages/InviteRedeem";
 import { RequireRole } from "./components/auth/RequireRole";
 import { lazy, Suspense, type ComponentType } from "react";
@@ -38,6 +39,7 @@ const StatsPage = guard("admin", StatsApp);
 const CardsPage = guard("admin", CardsApp);
 const HistoryPage = guard("admin", HistoryApp);
 const PlayersPage = guard("admin", PlayersApp);
+const SponsorsPage = guard("admin", SponsorsApp);
 
 function Router() {
   return (
@@ -68,6 +70,7 @@ function Router() {
       {/* Match History app */}
       <Route path="/history" component={HistoryPage} />
       <Route path="/players" component={PlayersPage} />
+      <Route path="/sponsorer" component={SponsorsPage} />
 
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

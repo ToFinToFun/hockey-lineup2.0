@@ -41,17 +41,6 @@ export function defaultHome(lastHome: TeamKey | null | undefined): TeamKey {
   return "a";
 }
 
-/** Filnamn för sponsorns logga: /images/sponsors/<namn i gemener, a–z 0–9 och bindestreck>.png */
-export function sponsorLogoPath(sponsor: string): string {
-  const slug = sponsor
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-  return `/images/sponsors/${slug}.png`;
-}
-
 // ─── Bildlayout (pixlar i bildens egen upplösning) ───────────────────────────
 
 export const NEWS_IMAGE = {

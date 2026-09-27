@@ -6,13 +6,6 @@ export const IMAGES = {
   teamGreenLogo: "/images/logo-green.png",
 } as const;
 
-export const SPONSORS = ["Polar", "lindstromstransport", "Kirunabilfrakt", "Ren"] as const;
-
-export function getRandomSponsor(): string {
-  const idx = Math.floor(Math.random() * SPONSORS.length);
-  return SPONSORS[idx];
-}
-
 // Goal event type
 export interface GoalEvent {
   team: "white" | "green";

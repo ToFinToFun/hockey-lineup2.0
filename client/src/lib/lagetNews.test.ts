@@ -7,7 +7,6 @@ import {
   defaultHome,
   formatNewsTitle,
   shortDate,
-  sponsorLogoPath,
   teamColumns,
   teamPanelHeight,
 } from "./lagetNews";
@@ -47,11 +46,6 @@ describe("rubrik och text", () => {
     expect(defaultHome(null)).toBe("a");
     expect(defaultHome("a")).toBe("b");
     expect(defaultHome("b")).toBe("a");
-  });
-
-  it("sponsorloggans filnamn", () => {
-    expect(sponsorLogoPath("Polar")).toBe("/images/sponsors/polar.png");
-    expect(sponsorLogoPath("Lindström Transport AB")).toBe("/images/sponsors/lindstrom-transport-ab.png");
   });
 });
 

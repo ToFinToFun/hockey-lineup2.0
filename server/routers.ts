@@ -3,6 +3,7 @@ import { publicProcedure, lineupProcedure, adminProcedure, router } from "./_cor
 import { authRouter } from "./routers/auth";
 import { playersRouter } from "./routers/players";
 import { fetchAttendance, updateAttendance, type AttendingStatus } from "./lagetSe";
+import { listSponsors, createSponsor, updateSponsor, deleteSponsor, moveSponsor, recordSponsorNews } from "./sponsorsDb";
 import { scoreRouter } from "./routers/score";
 import { scoreStatsRouter } from "./routers/scoreStats";
 import { getAllMatchResults, getConfigValue, setConfigValue, getMatchCacheVersion, refreshMatchCacheVersion } from "./scoreDb";
@@ -71,6 +72,12 @@ async function getPirRatings() {
 
 const NEWS_LAST_HOME_KEY = "laget_news_last_home";
 
+/** Logga: PNG som data-URL, redan skalad i webbläsaren (max ca 1,5 MB). */
+const logoSchema = z
+  .string()
+  .max(2_000_000, "Loggan är för stor")
+  .regex(/^data:image\/png;base64,[A-Za-z0-9+/=]+$/, "Loggan måste vara en PNG");
+
 export const appRouter = router({
   system: systemRouter,
   auth: authRouter,
@@ -112,6 +119,56 @@ export const appRouter = router({
       .input(z.object({ home: z.enum(["a", "b"]) }))
       .mutation(async ({ input }) => {
         await setConfigValue(NEWS_LAST_HOME_KEY, input.home);
+        return { success: true };
+      }),
+  }),
+
+  // ─── Sponsorer ─────────────────────────────────────────────────────────────
+
+  sponsors: router({
+    /** Alla sponsorer med logga och visningar denna och förra säsongen. Öppen – Score Tracker behöver den. */
+    list: publicProcedure.query(() => listSponsors()),
+
+    create: adminProcedure
+      .input(z.object({ name: z.string().trim().min(1).max(120), logo: logoSchema.nullable(), active: z.boolean().default(true) }))
+      .mutation(async ({ input }) => {
+        await createSponsor(input);
+        return { success: true };
+      }),
+
+    update: adminProcedure
+      .input(
+        z.object({
+          id: z.number().int(),
+          name: z.string().trim().min(1).max(120).optional(),
+          logo: logoSchema.nullable().optional(),
+          active: z.boolean().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        await updateSponsor(input);
+        return { success: true };
+      }),
+
+    move: adminProcedure
+      .input(z.object({ id: z.number().int(), direction: z.enum(["up", "down"]) }))
+      .mutation(async ({ input }) => {
+        await moveSponsor(input.id, input.direction);
+        return { success: true };
+      }),
+
+    delete: adminProcedure
+      .input(z.object({ id: z.number().int() }))
+      .mutation(async ({ input }) => {
+        await deleteSponsor(input.id);
+        return { success: true };
+      }),
+
+    /** En nyhet ("Dagens lag") skapades med den här matchsponsorn. */
+    recordNews: lineupProcedure
+      .input(z.object({ sponsorId: z.number().int() }))
+      .mutation(async ({ input }) => {
+        await recordSponsorNews(input.sponsorId);
         return { success: true };
       }),
   }),

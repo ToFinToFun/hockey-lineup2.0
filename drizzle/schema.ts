@@ -1,4 +1,4 @@
-import { int, json, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, bigint, index } from "drizzle-orm/mysql-core";
+import { int, json, mysqlEnum, mysqlTable, text, mediumtext, timestamp, varchar, boolean, bigint, index } from "drizzle-orm/mysql-core";
 
 // ─── Lineup State ────────────────────────────────────────────────────────────
 // Single-row table holding the current lineup state (replaces Firebase /lineup node)
@@ -196,3 +196,34 @@ export type MatchResult = MatchRow & {
     timestamp: string;
   }> | null;
 };
+
+// ─── Sponsorer ───────────────────────────────────────────────────────────────
+// Styrelsen lägger till sponsorer med namn och (valfritt) logga. Loggan sparas
+// som PNG (data-URL) i databasen så att den följer med i backupen.
+
+export const sponsors = mysqlTable("sponsors", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 120 }).notNull().unique(),
+  /** PNG som data-URL, redan beskuren och skalad. Null = bara text. */
+  logo: mediumtext("logo"),
+  /** Inaktiva visas inte och väljs inte, men finns kvar i statistiken. */
+  active: boolean("active").default(true).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SponsorRow = typeof sponsors.$inferSelect;
+
+/**
+ * En rad per nyhet ("Dagens lag") som skapats med en matchsponsor.
+ * Målsponsorer räknas direkt från match_goals.
+ */
+export const sponsorNews = mysqlTable("sponsor_news", {
+  id: int("id").autoincrement().primaryKey(),
+  sponsorId: int("sponsorId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [
+  index("sponsor_news_sponsor_idx").on(t.sponsorId),
+  index("sponsor_news_created_idx").on(t.createdAt),
+]);

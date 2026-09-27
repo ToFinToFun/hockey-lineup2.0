@@ -1,5 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { IMAGES } from "@/lib/scoreConstants";
+import { useSponsors, logoForName } from "@/lib/sponsors";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowLeft, Trash2, Trophy, Clock, Target, Search, Filter, X, Pencil, GripVertical, Plus, ChevronDown, Users, UserCheck, CheckSquare, Square, XCircle, Share2, Star } from "lucide-react";
@@ -24,6 +25,7 @@ type ResultFilter = "all" | "white" | "green" | "draw";
 const GOAL_TYPES = ["Övrigt", "Skott", "Styrning", "Friläge", "Solo", "Straff", "Självmål"];
 
 export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
+  const { sponsors } = useSponsors();
   const { data: matches, isLoading, refetch } = trpc.score.match.list.useQuery();
   const deleteMutation = trpc.score.match.delete.useMutation({
     onSuccess: () => {
@@ -754,9 +756,13 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                               )}
                             </div>
                             {goal.sponsor && (
-                              <span className="text-[9px] text-[#687076] shrink-0">
-                                {goal.sponsor}
-                              </span>
+                              logoForName(sponsors, goal.sponsor) ? (
+                                <img src={logoForName(sponsors, goal.sponsor)!} alt={goal.sponsor} className="max-h-4 max-w-[56px] object-contain shrink-0 opacity-80" />
+                              ) : (
+                                <span className="text-[9px] text-[#687076] shrink-0">
+                                  {goal.sponsor}
+                                </span>
+                              )
                             )}
                           </div>
                         );
