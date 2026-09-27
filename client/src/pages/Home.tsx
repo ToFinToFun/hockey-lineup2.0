@@ -40,7 +40,7 @@ import { useLineupDocSync } from "@/hooks/useLineupDocSync";
 import { useAuth } from "@/hooks/useAuth";
 import { MatchPredictionBar } from "@/components/MatchPredictionBar";
 import type { Player as PlayerType } from "@/lib/players";
-import { Newspaper, RefreshCw, Wifi, WifiOff, Share2, FileText, Check, CalendarDays, Shuffle, PanelLeft, Columns3, Undo2, BarChart3, Settings, Sun, Moon, Home as HomeIcon, Users, FlaskConical } from "lucide-react";
+import { Newspaper, RefreshCw, TrendingUp, X as XIconSmall, Wifi, WifiOff, Share2, FileText, Check, CalendarDays, Shuffle, PanelLeft, Columns3, Undo2, BarChart3, Settings, Sun, Moon, Home as HomeIcon, Users, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 import { useLineupTheme } from "@/hooks/useLineupTheme";
 import { useForwardColor } from "@/hooks/useForwardColor";
@@ -52,7 +52,7 @@ import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { useSwipe } from "@/hooks/useSwipe";
 import { autoDistribute } from "@/lib/autoDistribute";
 import { RemoveDropZone } from "@/components/RemoveDropZone";
-import { PirSettingsProvider, type PirSettings } from "@/hooks/usePirEnabled";
+import { PirSettingsProvider, loadPirSettings, savePirSettings, type PirSettings } from "@/hooks/usePirEnabled";
 
 type MobileTab = "vita" | "trupp" | "grona";
 
@@ -61,6 +61,7 @@ const BG_URL =
 
 const LOGO_GREEN = "/images/logo-green.png";
 const LOGO_WHITE = "/images/logo-white.png";
+const DEMO_PLAYER_COUNT = 17;
 
 const STORAGE_KEY = "stalstadens-lineup-v2";
 const MAX_UNDO = 30; // max antal steg i ångra-historiken
@@ -191,7 +192,6 @@ export default function Home() {
   const [showNews, setShowNews] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
-  const [demoCount, setDemoCount] = useState(16);
   const [demoActive, setDemoActive] = useState(false);
   const [shareState, setShareState] = useState<"idle" | "saving" | "copied">("idle");
 
@@ -247,7 +247,6 @@ export default function Home() {
   const [confirmClear, setConfirmClear] = useState<{ teamPrefix: string; teamName: string } | null>(null);
 
   // Bekräftelsedialog för Auto-fördela
-  const [confirmAutoDistribute, setConfirmAutoDistribute] = useState(false);
 
   // Layout-toggle: sidoläge (trupp till vänster, lagen bredvid varandra)
   const [sideLayout, setSideLayout] = useState(() => {
@@ -272,11 +271,14 @@ export default function Home() {
   const [showStats, setShowStats] = useState(false);
 
   // PIR visibility (admin-controlled)
-  const [pirEnabled, setPirEnabled] = useState(false);
-  const [pirSettings, setPirSettings] = useState<PirSettings>({
-    enabled: false, showRating: true, showTrend: true,
-    showTeamStrength: true, showPrediction: true, useForBalance: true,
-  });
+  // Sparas per enhet (webbläsaren); standard är allt på
+  const [pirSettings, setPirSettings] = useState<PirSettings>(() => loadPirSettings());
+  const [pirEnabled, setPirEnabled] = useState(() => loadPirSettings().enabled);
+  const handlePirSettingsChange = useCallback((next: PirSettings) => {
+    setPirSettings(next);
+    setPirEnabled(next.enabled);
+    savePirSettings(next);
+  }, []);
 
   const { isAdmin } = useAuth();
 
@@ -400,13 +402,6 @@ export default function Home() {
         .then((res) => (res.ok ? res.json() : null))
         .then((json) => json?.result?.data?.json ?? json?.result?.data ?? null)
         .catch(() => null);
-
-    get("settings.getPirSettings").then((result) => {
-      if (result) {
-        setPirSettings(result);
-        setPirEnabled(result.enabled === true);
-      }
-    });
 
     Promise.all([get("lineup.positionHistory"), get("pir.getRatings")]).then(([posHistory, pirArr]) => {
       posHistoryRef.current = posHistory;
@@ -634,6 +629,7 @@ export default function Home() {
 
   // Auto-fördela anmälda spelare på lagen
   const handleAutoDistribute = useCallback((shuffle = false) => {
+    pushUndo(); // går att ångra – därför ingen bekräftelsedialog
     // Rensa befintliga lag först
     const currentLineup = lineupRef.current;
     const removedPlayers: Player[] = [];
@@ -658,7 +654,7 @@ export default function Home() {
     const placedIds = new Set(Object.values(result.lineup).map(p => p.id));
     const remaining = allPlayers.filter(p => !placedIds.has(p.id));
     setAvailablePlayers(remaining);
-  }, [teamAName, teamBName]);
+  }, [teamAName, teamBName, pushUndo]);
 
   // Demo: simulera X anmälda spelare och kör auto-fördela
   const handleDemo = useCallback(() => {
@@ -705,14 +701,15 @@ export default function Home() {
       return s;
     };
 
-    const count = Math.min(demoCount, allPlayers.length);
+    // Alltid 17 anmälda i demoläget, varav 2 målvakter
+    const count = Math.min(DEMO_PLAYER_COUNT, allPlayers.length);
     const selected = new Set<string>();
 
     // Garantera minst 1 MV (om det finns)
     if (goalkeepers.length > 0) {
       const gk = shuffle(goalkeepers);
       // Ta 1-2 MV beroende på count
-      const mvCount = count >= 20 ? Math.min(2, gk.length) : Math.min(1, gk.length);
+      const mvCount = Math.min(2, gk.length);
       for (let i = 0; i < mvCount; i++) selected.add(gk[i].id);
     }
 
@@ -752,7 +749,7 @@ export default function Home() {
     setLineup({});
     setAvailablePlayers(updatedPlayers);
     setDemoActive(true);
-  }, [demoCount, demoActive]);
+  }, [demoActive]);
 
   // Utför Rensa efter bekräftelse
   const handleConfirmClearTeam = useCallback(() => {
@@ -937,7 +934,7 @@ export default function Home() {
   }, []);
 
   // Hämta anmälningar från laget.se via backend-API och markera matchade spelare
-  const handleBulkRegister = useCallback(async (forceRefresh = false): Promise<{ matched: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string; noEvent?: boolean }> => {
+  const handleBulkRegister = useCallback(async (forceRefresh = false): Promise<{ matched: number; declined?: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string; noEvent?: boolean }> => {
     try {
       const data = await fetchAttendanceFromApi(forceRefresh);
 
@@ -994,7 +991,7 @@ export default function Home() {
       const now = new Date();
       setLastSyncTime(now.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" }));
 
-      return { matched: matchedIds.length, unmatched: unmatchedNames, eventTitle: data.eventTitle, eventDate: data.eventDate };
+      return { matched: matchedIds.length, declined: declinedResult.matchedIds.length, unmatched: unmatchedNames, eventTitle: data.eventTitle, eventDate: data.eventDate };
     } catch (err: any) {
       return { matched: 0, unmatched: [], error: err.message || "Kunde inte hämta data" };
     }
@@ -1296,14 +1293,27 @@ export default function Home() {
   // ─── Snabbknappar: ångra, auto-fördela, nyhet till laget.se, hämta anmälda ───
   // Ligger mellan Trupp och lagräknarna (mobil) respektive ovanför lagen (desktop).
   const [syncingAttendance, setSyncingAttendance] = useState(false);
+  // Kvitto på knappen några sekunder efter hämtningen: anmälda (grönt) / tackat nej (rött)
+  const [syncReceipt, setSyncReceipt] = useState<{ ok: true; matched: number; declined: number } | { ok: false; error: string } | null>(null);
+  const syncReceiptTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleSyncAttendance = async () => {
     if (syncingAttendance) return;
     setSyncingAttendance(true);
+    setSyncReceipt(null);
     try {
       const result = await handleBulkRegister(true);
       if (result.eventTitle) setEventInfo({ title: result.eventTitle, date: result.eventDate || "" });
+      setSyncReceipt(
+        result.error ? { ok: false, error: result.error }
+        : result.noEvent ? { ok: false, error: "Inget kommande evenemang på laget.se" }
+        : { ok: true, matched: result.matched, declined: result.declined ?? 0 }
+      );
+    } catch (err) {
+      setSyncReceipt({ ok: false, error: (err as Error)?.message || "Kunde inte hämta" });
     } finally {
       setSyncingAttendance(false);
+      if (syncReceiptTimer.current) clearTimeout(syncReceiptTimer.current);
+      syncReceiptTimer.current = setTimeout(() => setSyncReceipt(null), 4000);
     }
   };
   const renderQuickActions = (withLabels: boolean) => {
@@ -1312,7 +1322,7 @@ export default function Home() {
     const icon = withLabels ? "w-3.5 h-3.5" : "w-4 h-4";
     const label = (t: string) => (withLabels ? <span>{t}</span> : null);
     return (
-      <div className="flex items-center gap-1">
+      <div className={`flex items-center ${withLabels ? "gap-2" : "gap-1.5"}`}>
         <button
           onClick={handleUndo}
           disabled={undoStack.length === 0}
@@ -1323,8 +1333,11 @@ export default function Home() {
           <Undo2 className={icon} />{label("Ångra")}
         </button>
         <button
-          onClick={() => setConfirmAutoDistribute(true)}
-          title="Fördela anmälda spelare automatiskt"
+          onClick={() => {
+            handleAutoDistribute();
+            toast.success("Anmälda fördelade på lagen", { action: { label: "Ångra", onClick: () => handleUndo() }, duration: 5000 });
+          }}
+          title="Fördela anmälda spelare automatiskt (går att ångra)"
           aria-label="Auto-fördela"
           className={`${btn} ${size} bg-emerald-500 text-white hover:bg-emerald-400`}
         >
@@ -1341,11 +1354,32 @@ export default function Home() {
         <button
           onClick={handleSyncAttendance}
           disabled={syncingAttendance}
-          title="Hämta anmälda från laget.se"
+          title={
+            syncReceipt?.ok ? `Hämtat: ${syncReceipt.matched} anmälda, ${syncReceipt.declined} tackat nej`
+            : syncReceipt ? `Misslyckades: ${syncReceipt.error}`
+            : "Hämta anmälda från laget.se"
+          }
           aria-label="Hämta anmälda från laget.se"
-          className={`${btn} ${size} ${isLineupDark ? "bg-violet-500/20 border border-violet-400/40 text-violet-200 hover:bg-violet-500/30" : "bg-violet-100 border border-violet-200 text-violet-700 hover:bg-violet-200"}`}
+          aria-live="polite"
+          className={`${btn} ${size} ${
+            syncReceipt?.ok ? "bg-emerald-600 text-white border border-emerald-400/60"
+            : syncReceipt ? "bg-red-600 text-white border border-red-400/60"
+            : isLineupDark ? "bg-violet-500/20 border border-violet-400/40 text-violet-200 hover:bg-violet-500/30" : "bg-violet-100 border border-violet-200 text-violet-700 hover:bg-violet-200"
+          }`}
         >
-          <RefreshCw className={`${icon} ${syncingAttendance ? "animate-spin" : ""}`} />{label("Anmälda")}
+          {syncReceipt?.ok ? (
+            <span className="flex items-center gap-1 tabular-nums normal-case tracking-normal">
+              <Check className={icon} />
+              <span>{syncReceipt.matched}</span>
+              <span className="text-white/50">/</span>
+              <span className="text-red-200">{syncReceipt.declined}</span>
+              {withLabels && <span className="font-medium text-white/80">anmälda/nej</span>}
+            </span>
+          ) : syncReceipt ? (
+            <><XIconSmall className={icon} />{label("Fel")}</>
+          ) : (
+            <><RefreshCw className={`${icon} ${syncingAttendance ? "animate-spin" : ""}`} />{label("Anmälda")}</>
+          )}
         </button>
       </div>
     );
@@ -1565,29 +1599,34 @@ export default function Home() {
                           {/* Separator */}
                           <div className={`my-1 border-t ${isLineupDark ? 'border-white/5' : 'border-gray-100'}`} />
 
-                          {/* Demo (only visible when active, otherwise in Settings) */}
-                          {demoActive && (
-                            <button
-                              onClick={() => { handleDemo(); setShowHeaderMenu(false); }}
-                              className="w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all text-amber-300 bg-amber-500/10"
-                            >
-                              <FlaskConical className="w-4 h-4" />
-                              <span>Avsluta demo</span>
-                            </button>
-                          )}
+                          {/* Demoläge: 17 anmälda (2 målvakter) för att testa utan riktiga anmälningar */}
+                          <button
+                            role="switch"
+                            aria-checked={demoActive}
+                            onClick={() => { handleDemo(); setShowHeaderMenu(false); }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
+                              demoActive
+                                ? 'text-amber-300 bg-amber-500/10'
+                                : isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            <FlaskConical className="w-4 h-4" />
+                            <span className="flex-1 text-left">Demoläge</span>
+                            <span className={`w-7 h-4 rounded-full relative shrink-0 ${demoActive ? 'bg-amber-500/70' : isLineupDark ? 'bg-white/15' : 'bg-gray-300'}`}>
+                              <span className="absolute top-0.5 w-3 h-3 rounded-full bg-white shadow" style={{ left: demoActive ? '14px' : '2px' }} />
+                            </span>
+                          </button>
 
-                          {/* Settings */}
+                          {/* PIR-inställningar */}
                           <button
                             onClick={() => { setShowSettings(true); setShowHeaderMenu(false); }}
                             className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
                               isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
                             }`}
                           >
-                            <Settings className="w-4 h-4" />
-                            <span>Fler inställningar</span>
+                            <TrendingUp className="w-4 h-4" />
+                            <span>Player Impact Rating</span>
                           </button>
-
-
                         </div>
                       </>
                     )}
@@ -2017,7 +2056,7 @@ export default function Home() {
       )}
 
       {/* Inställningar-modal */}
-      <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} pirSettings={pirSettings} onPirSettingsChange={(s) => { setPirSettings(s); setPirEnabled(s.enabled); }} demoCount={demoCount} onDemoCountChange={setDemoCount} demoActive={demoActive} onDemoToggle={handleDemo} />
+      <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} pirSettings={pirSettings} onPirSettingsChange={handlePirSettingsChange} />
 
       {/* Bekäftelsedialog för Rensa */}
       {confirmClear && (
@@ -2032,20 +2071,6 @@ export default function Home() {
         />
       )}
 
-      {/* Bekräftelsedialog för Auto-fördela */}
-      {confirmAutoDistribute && (
-        <ConfirmDialog
-          title="Auto-fördela"
-          message="Vill du fördela alla anmälda spelare automatiskt på lagen? Befintliga laguppställningar rensas först."
-          confirmLabel="Fördela"
-          cancelLabel="Avbryt"
-          onConfirm={() => {
-            setConfirmAutoDistribute(false);
-            handleAutoDistribute();
-          }}
-          onCancel={() => setConfirmAutoDistribute(false)}
-        />
-      )}
       {/* Mobile Roster Drawer */}
       {isMobile && (
         <MobileRosterDrawer

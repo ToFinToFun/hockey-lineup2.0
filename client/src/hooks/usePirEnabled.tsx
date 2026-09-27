@@ -20,8 +20,8 @@ export interface PirSettings {
   useForBalance: boolean;
 }
 
-const defaultSettings: PirSettings = {
-  enabled: false,
+export const defaultPirSettings: PirSettings = {
+  enabled: true,
   showRating: true,
   showTrend: true,
   showTeamStrength: true,
@@ -29,7 +29,7 @@ const defaultSettings: PirSettings = {
   useForBalance: true,
 };
 
-const PirSettingsContext = createContext<PirSettings>(defaultSettings);
+const PirSettingsContext = createContext<PirSettings>(defaultPirSettings);
 
 export function PirSettingsProvider({ settings, children }: { settings: PirSettings; children: React.ReactNode }) {
   return (
@@ -48,4 +48,27 @@ export function usePirSettings(): PirSettings {
 export function usePirEnabled(): boolean {
   const settings = useContext(PirSettingsContext);
   return settings.enabled;
+}
+
+// ─── Sparas per enhet ────────────────────────────────────────────────────────
+// Varje användare väljer själv vad som visas; valet sparas i webbläsaren.
+
+const STORAGE_KEY = "stalstadens_pir_settings_v1";
+
+export function loadPirSettings(): PirSettings {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return { ...defaultPirSettings, ...(JSON.parse(raw) as Partial<PirSettings>) };
+  } catch {
+    /* standard */
+  }
+  return defaultPirSettings;
+}
+
+export function savePirSettings(settings: PirSettings) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    /* fullt lagringsutrymme – valet gäller bara den här sessionen */
+  }
 }

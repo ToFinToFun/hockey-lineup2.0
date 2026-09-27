@@ -7,6 +7,15 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.20.0 – 2026-09-27
+
+- Auto går att ångra och körs direkt vid klick (ingen varning). En notis med "Ångra" visas i fem sekunder.
+- Mer luft mellan snabbknapparna.
+- Anmälda-knappen visar ett kvitto i fyra sekunder: grön med antal anmälda / tackat nej, eller röd vid fel.
+- Kugghjulsmenyn: "Demoläge" som reglage (alltid 17 anmälda, varav 2 målvakter) och "Player Impact Rating" i stället för Fler inställningar.
+- PIR-rutan innehåller bara PIR (testa anslutning och demo borttagna). Valen sparas på enheten; standard är allt på.
+- Form visar streck när det inte finns några matcher (spelarkort och lag), och lagstyrkan visar streck i stället för att försvinna.
+
 ## 2.19.0 – 2026-09-27
 
 **Lineup – städning**

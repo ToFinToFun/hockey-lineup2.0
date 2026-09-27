@@ -626,9 +626,18 @@ const ROLES = ["MV", "B", "C", "LW", "RW"] as const;
  * Form de senaste matcherna som små rutor, äldst till vänster och nyast till höger.
  * Får inte alla plats klipps de äldsta bort (vänster).
  */
-export function FormStrip({ form, size = "sm", className = "" }: { form?: string | null; size?: "xs" | "sm"; className?: string }) {
-  if (!form) return null;
+export function FormStrip({ form, size = "sm", className = "", placeholder = 5 }: { form?: string | null; size?: "xs" | "sm"; className?: string; placeholder?: number }) {
   const cls = size === "xs" ? "w-3.5 h-3.5 text-[8px]" : "w-4 h-4 text-[9px]";
+  // Inga matcher än: streck i stället för tomt fält
+  if (!form) {
+    return (
+      <span className={`flex items-center justify-end gap-0.5 overflow-hidden min-w-0 ${className}`} title="Inga registrerade matcher än">
+        {Array.from({ length: placeholder }, (_, i) => (
+          <span key={i} className={`${cls} shrink-0 rounded-[3px] leading-none flex items-center justify-center bg-white/[0.05] text-white/25`}>–</span>
+        ))}
+      </span>
+    );
+  }
   const color: Record<string, string> = {
     V: "bg-emerald-500/80 text-emerald-950",
     O: "bg-white/25 text-white/80",
@@ -680,12 +689,10 @@ export function PlayerStatsSection({ player }: { player: Player }) {
           ))}
         </div>
       )}
-      {player.statsForm && (
-        <div className="flex items-center gap-2 mt-1.5">
-          <span className="text-white/35 text-[10px] shrink-0">Form</span>
-          <FormStrip form={player.statsForm} className="justify-start" />
-        </div>
-      )}
+      <div className="flex items-center gap-2 mt-1.5">
+        <span className="text-white/35 text-[10px] shrink-0">Form</span>
+        <FormStrip form={player.statsForm} className="justify-start" />
+      </div>
       </div>
     </div>
   );

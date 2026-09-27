@@ -401,13 +401,14 @@ export function TeamPanel({
       </div>
 
       {/* ── Team PIR strength bar ── */}
-      {pirSettings.enabled && pirSettings.showTeamStrength && teamPirData && (
+      {/* Visas alltid när påslaget – streck i stället för tomt när ingen har PIR-data än */}
+      {pirSettings.enabled && pirSettings.showTeamStrength && (
         <div className="flex items-center justify-center gap-2 px-2 py-1 border-b border-white/[0.04] text-[9px] text-white/30">
-          <span title="Total PIR-summa">Total {teamPirData.sum}</span>
+          <span title="Total PIR-summa">Total {teamPirData?.sum ?? "–"}</span>
           <span className="text-white/10">|</span>
-          <span title="Genomsnittlig PIR">Snitt {teamPirData.avg}</span>
+          <span title="Genomsnittlig PIR">Snitt {teamPirData?.avg ?? "–"}</span>
           <span className="text-white/10">|</span>
-          <span title="Antal spelare med PIR-data">{teamPirData.count} spelare</span>
+          <span title="Antal spelare med PIR-data (minst 3 matcher)">{teamPirData?.count ?? 0} spelare</span>
         </div>
       )}
 
