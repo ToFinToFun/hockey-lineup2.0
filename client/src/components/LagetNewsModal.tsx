@@ -13,7 +13,7 @@ import { useSponsors, pickLeastShown } from "@/lib/sponsors";
 import {
   buildNewsBody,
   defaultPublishAt,
-  defaultHome,
+  defaultHomeForDate,
   formatNewsTitle,
   shortDate,
   type TeamKey,
@@ -117,13 +117,7 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
   const blobRef = useRef<Blob | null>(null);
   const homeRecorded = useRef(false);
 
-  const lastHomeQuery = trpc.laget.newsLastHome.useQuery(undefined, { refetchOnWindowFocus: false });
   const setLastHome = trpc.laget.setNewsLastHome.useMutation();
-
-  // Standard: motsatt hemmalag mot förra nyheten
-  useEffect(() => {
-    if (lastHomeQuery.data) setHome(defaultHome(lastHomeQuery.data.lastHome));
-  }, [lastHomeQuery.data]);
 
   // Datum, tid och plats från evenemanget (senaste hämtningen återanvänds om den är färsk)
   useEffect(() => {
@@ -143,6 +137,14 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
       cancelled = true;
     };
   }, []);
+
+  // Standard för hemmalaget efter matchdagen (tisdag Gröna, torsdag Vita, annars slump) – en gång när evenemanget är hämtat
+  const homeInitialized = useRef(false);
+  useEffect(() => {
+    if (!eventLoaded || homeInitialized.current) return;
+    homeInitialized.current = true;
+    setHome(defaultHomeForDate(event?.date));
+  }, [eventLoaded, event?.date]);
 
   const autoTitle = useMemo(
     () => formatNewsTitle({ date: event?.date, location: event?.location, time: event?.time }),
@@ -404,7 +406,7 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
                   </button>
                 ))}
               </div>
-              <p className="text-white/35 text-[10px] mt-1">Hemmalaget står till vänster i matchbilden. Växlar automatiskt varannan gång.</p>
+              <p className="text-white/35 text-[10px] mt-1">Hemmalaget står till vänster i matchbilden. Standard: tisdag Gröna, torsdag Vita, andra dagar slumpas.</p>
             </div>
 
             <div>

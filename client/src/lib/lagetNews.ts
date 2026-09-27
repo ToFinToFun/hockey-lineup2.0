@@ -40,11 +40,18 @@ export function buildNewsBody(sponsor: string | undefined, lineupText: string, b
   return [sponsorLine, lineupText.trim()].filter(Boolean).join("\n\n");
 }
 
-/** Hemmalaget växlar varannan gång: motsatt mot förra nyheten, lag A om ingen finns. */
-export function defaultHome(lastHome: TeamKey | null | undefined): TeamKey {
-  if (lastHome === "a") return "b";
-  if (lastHome === "b") return "a";
-  return "a";
+/**
+ * Standard för hemmalaget utifrån matchdagen: tisdag = Gröna (lag B) hemma,
+ * torsdag = Vita (lag A) hemma, andra dagar slumpas. Går alltid att ändra.
+ */
+export function defaultHomeForDate(isoDate: string | undefined, random: () => number = Math.random): TeamKey {
+  const m = isoDate?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) {
+    const day = new Date(+m[1], +m[2] - 1, +m[3]).getDay(); // 0 = söndag
+    if (day === 2) return "b";
+    if (day === 4) return "a";
+  }
+  return random() < 0.5 ? "a" : "b";
 }
 
 // ─── Bildlayout (pixlar i bildens egen upplösning) ───────────────────────────

@@ -4,7 +4,7 @@ import {
   NEWS_IMAGE,
   buildNewsBody,
   computeNewsLayout,
-  defaultHome,
+  defaultHomeForDate,
   formatNewsTitle,
   defaultPublishAt,
   shortDate,
@@ -54,10 +54,11 @@ describe("rubrik och text", () => {
     expect(defaultPublishAt(undefined, now)).toBeNull();
   });
 
-  it("hemmalaget växlar varannan gång", () => {
-    expect(defaultHome(null)).toBe("a");
-    expect(defaultHome("a")).toBe("b");
-    expect(defaultHome("b")).toBe("a");
+  it("hemmalaget: tisdag Gröna, torsdag Vita, annars slump", () => {
+    expect(defaultHomeForDate("2026-09-29")).toBe("b"); // tisdag: Gröna hemma
+    expect(defaultHomeForDate("2026-10-01")).toBe("a"); // torsdag: Vita hemma
+    expect(defaultHomeForDate("2026-10-03", () => 0.1)).toBe("a"); // lördag: slump
+    expect(defaultHomeForDate("2026-10-03", () => 0.9)).toBe("b");
   });
 });
 

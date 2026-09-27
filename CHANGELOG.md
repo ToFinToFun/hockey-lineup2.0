@@ -7,6 +7,13 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.22.0 – 2026-09-27
+
+- Laget.se-nyheten: hemmalaget väljs efter matchdagen – tisdag Gröna hemma, torsdag Vita hemma, andra dagar slumpas. Går att ändra i rutan.
+- Score Tracker: måltyp är Övrigt (standard) eller Straff. Skott, Styrning, Friläge, Solo och Självmål är borttagna vid registrering och redigering; äldre mål behåller sin typ tills den ändras.
+- Score Tracker: Kopiera på Laguppställning borttagen.
+- Nya ljud: mål Vita = ljust pling, mål Gröna = tut-tut, slutsignal = utdraget horn (ca 2,5 s). Ljudet låses upp vid första tryck så att slutsignalen hörs även på mobil.
+
 ## 2.21.0 – 2026-09-27
 
 - Rensa lag går att ångra och körs direkt (ingen varning). Notis "GRÖNA rensat" med Ångra i fem sekunder. Lagets storlek återställs också vid ångra.

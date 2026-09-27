@@ -22,7 +22,8 @@ interface GoalEvent {
 
 type ResultFilter = "all" | "white" | "green" | "draw";
 
-const GOAL_TYPES = ["Övrigt", "Skott", "Styrning", "Friläge", "Solo", "Straff", "Självmål"];
+/** Måltyper vid redigering. Äldre mål med andra typer visar sin typ tills den ändras. */
+const GOAL_TYPES = ["Övrigt", "Straff"];
 
 export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
   const { sponsors } = useSponsors();
@@ -1240,10 +1241,10 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                         </button>
                         {/* Goal type chips */}
                         <div className="flex flex-wrap gap-1">
-                          {GOAL_TYPES.map(type => (
+                          {[...GOAL_TYPES, ...(goal.other && !GOAL_TYPES.includes(goal.other) ? [goal.other] : [])].map(type => (
                             <button
                               key={type}
-                              onClick={() => updateGoal(idx, "other", goal.other === type ? "" : type)}
+                              onClick={() => updateGoal(idx, "other", type)}
                               className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors ${
                                 goal.other === type
                                   ? "bg-[#0a7ea4] text-white"

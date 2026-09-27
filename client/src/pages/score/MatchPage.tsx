@@ -7,6 +7,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { IMAGES, COLORS, STORAGE_KEY, type GoalEvent, type MatchState } from "@/lib/scoreConstants";
 import { useSponsors, pickLeastShown, logoForName } from "@/lib/sponsors";
+import { playGoalSound as playGoalSoundFx, playEndSignal, unlockAudio } from "@/lib/matchSounds";
 import { type AppState, createTeamSlots, MAX_TEAM_CONFIG } from "@/lib/lineup";
 import { type Player } from "@/lib/players";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -37,6 +38,9 @@ function getGoalText(team: "white" | "green"): string {
   return team === "white" ? "#1a1a1a" : "#ffffff";
 }
 
+/** Måltyper vid registrering. Inget val = Övrigt. */
+const GOAL_TYPE_OPTIONS = ["Övrigt", "Straff"];
+
 export default function MatchPage({ lineupState }: MatchPageProps) {
   // ─── State ─────────────────────────────────────────────────────
   const { sponsors } = useSponsors();
@@ -66,24 +70,19 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
   const [endTimeTriggered, setEndTimeTriggered] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
 
-  const playTone = useCallback((frequency: number, duration = 0.25) => {
-    if (isMuted) return;
-    const context = new AudioContext();
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.frequency.value = frequency;
-    gain.gain.setValueAtTime(0.18, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + duration);
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.start();
-    oscillator.stop(context.currentTime + duration);
-    oscillator.addEventListener("ended", () => void context.close(), { once: true });
-  }, [isMuted]);
-
+  // Ljud: pling (Vita), tut-tut (Gröna) och utdraget horn som slutsignal – se lib/matchSounds
   const playGoalSound = useCallback((team: "white" | "green") => {
-    playTone(team === "white" ? 660 : 520, 0.3);
-  }, [playTone]);
+    if (!isMuted) playGoalSoundFx(team);
+  }, [isMuted]);
+  const playEndHorn = useCallback(() => {
+    if (!isMuted) playEndSignal();
+  }, [isMuted]);
+  // Lås upp ljudet vid första tryck så att slutsignalen (från en timer) hörs även på mobil
+  useEffect(() => {
+    const unlock = () => unlockAudio();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    return () => window.removeEventListener("pointerdown", unlock);
+  }, []);
 
   // Check end time every second inside the clock timer
   useEffect(() => {
@@ -96,7 +95,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
       if (currentTimeStr === endTime) {
         setEndTimeTriggered(true);
         // Play sound
-        playTone(330, 0.8);
+        playEndHorn();
         // Show alert after a short delay so sound starts first
         setTimeout(() => {
           alert(`📣 Sluttid! Matchen har nått sluttiden ${endTime}`);
@@ -106,7 +105,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
       }
     }, 1000);
     return () => clearInterval(checkInterval);
-  }, [endTime, endTimeTriggered, playTone]);
+  }, [endTime, endTimeTriggered, playEndHorn]);
 
   const handleSetEndTime = () => {
     const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
@@ -136,7 +135,8 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
   };
 
   const testEndSignalSound = () => {
-    playTone(330, 0.8);
+    unlockAudio();
+    playEndHorn();
   };
 
   // ─── Wake Lock (prevent screen from turning off) ────────────────
@@ -247,7 +247,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
     const inThisMatch = (name: string) =>
       goalHistory.filter((g) => g.sponsor?.trim().toLowerCase() === name.trim().toLowerCase()).length;
     const sponsor = pickLeastShown(sponsors, (s) => s.counts.matches + inThisMatch(s.name))?.name;
-    const newGoal: GoalEvent = { team, timestamp, sponsor };
+    const newGoal: GoalEvent = { team, timestamp, sponsor, other: "Övrigt" };
     const newHistory = [newGoal, ...goalHistory];
     const newMst = matchStartTime || now.toISOString();
 
@@ -387,7 +387,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
       scorerId: idForLabel(scorerName),
       assist: assistName || undefined,
       assistId: idForLabel(assistName),
-      other: otherInfo || undefined,
+      other: otherInfo || "Övrigt",
     };
     setGoalHistory(updated);
     saveState(teamWhiteScore, teamGreenScore, updated, matchStartTime);
@@ -807,15 +807,15 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
                 )}
               </button>
             </div>
-            {/* Goal type options (Övrigt) */}
+            {/* Måltyp: Övrigt (standard) eller Straff */}
             <div>
-              <label className="text-sm font-semibold text-[#9BA1A6] mb-1 block">Övrigt</label>
+              <label className="text-sm font-semibold text-[#9BA1A6] mb-1 block">Måltyp</label>
               <div className="flex flex-wrap gap-1.5 mb-2">
-                {['Övrigt', 'Skott', 'Styrning', 'Friläge', 'Solo', 'Straff', 'Självmål'].map((option) => {
-                  const isSelected = otherInfo === option;
+                {GOAL_TYPE_OPTIONS.map((option) => {
+                  const isSelected = (otherInfo || 'Övrigt') === option;
                   return (
                     <button key={option}
-                      onClick={() => setOtherInfo(isSelected ? '' : option)}
+                      onClick={() => setOtherInfo(option)}
                       className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                         isSelected
                           ? 'bg-[#0a7ea4] border-[#0a7ea4] text-white'

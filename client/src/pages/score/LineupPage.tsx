@@ -7,11 +7,9 @@
 
 import { useMemo } from "react";
 import { IMAGES } from "@/lib/scoreConstants";
-import { RefreshCw, Copy } from "lucide-react";
-import { toast } from "sonner";
+import { RefreshCw } from "lucide-react";
 import PullToRefresh from "@/components/score/PullToRefresh";
 import { type AppState, type Slot, createTeamSlots, groupSlots, MAX_TEAM_CONFIG } from "@/lib/lineup";
-import { generateLineupText } from "@/lib/lineupText";
 import { positionRowColors, CAPTAIN_COLORS } from "@/lib/positionColors";
 import { type Player } from "@/lib/players";
 
@@ -195,20 +193,6 @@ export default function LineupPage({ lineupState, loading, lastSyncTime, refresh
             </p>
           </div>
           <div className="flex gap-1.5">
-            <button
-              onClick={() => {
-                const text = generateLineupText(lineupState, teamASlots, teamBSlots, teamALineup, teamBLineup);
-                navigator.clipboard.writeText(text).then(() => {
-                  toast.success("Kopierad till urklipp!", { description: "Klistra in i valfri chatt" });
-                }).catch(() => {
-                  toast.error("Kunde inte kopiera");
-                });
-              }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#8b5cf6]/15 border border-[#8b5cf6]/30 text-[#8b5cf6] hover:bg-[#8b5cf6]/25 transition-colors text-[10px] font-medium"
-            >
-              <Copy size={12} />
-              Kopiera
-            </button>
             <button
               onClick={onRefresh}
               disabled={refreshing}
