@@ -28,7 +28,6 @@ import { createTeamSlots, DEFAULT_TEAM_CONFIG, MAX_TEAM_CONFIG, type TeamConfig 
 import { PlayerList } from "@/components/PlayerList";
 import { TeamPanel } from "@/components/TeamPanel";
 import { PlayerCardOverlay } from "@/components/PlayerCard";
-import { ExportModal } from "@/components/ExportModal";
 import { LagetNewsModal } from "@/components/LagetNewsModal";
 import { SlotHighlightContext } from "@/components/PlayerSlot";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -41,7 +40,7 @@ import { useLineupDocSync } from "@/hooks/useLineupDocSync";
 import { useAuth } from "@/hooks/useAuth";
 import { MatchPredictionBar } from "@/components/MatchPredictionBar";
 import type { Player as PlayerType } from "@/lib/players";
-import { Newspaper, Download, Wifi, WifiOff, Share2, FileText, Check, CalendarDays, Shuffle, Dices, PanelLeft, Columns3, Undo2, BarChart3, ChevronDown, ChevronUp, Settings, Sun, Moon, Home as HomeIcon, Users, HelpCircle, FlaskConical, MoreVertical, X as XIcon } from "lucide-react";
+import { Newspaper, RefreshCw, Wifi, WifiOff, Share2, FileText, Check, CalendarDays, Shuffle, PanelLeft, Columns3, Undo2, BarChart3, Settings, Sun, Moon, Home as HomeIcon, Users, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 import { useLineupTheme } from "@/hooks/useLineupTheme";
 import { useForwardColor } from "@/hooks/useForwardColor";
@@ -189,7 +188,6 @@ export default function Home() {
 
   const [activePlayer, setActivePlayer] = useState<Player | null>(null);
   const [isDragOutside, setIsDragOutside] = useState(false);
-  const [showExport, setShowExport] = useState(false);
   const [showNews, setShowNews] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
@@ -286,7 +284,6 @@ export default function Home() {
   const [remoteChangeToast, setRemoteChangeToast] = useState<string | null>(null);
   const remoteToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const exportRef = useRef<HTMLDivElement>(null);
 
   // Refs for team names so pushUndo always reads the latest values
   const teamANameRef = useRef(teamAName);
@@ -751,7 +748,7 @@ export default function Home() {
       isDeclined: false,
     }));
 
-    // Uppdatera state: markera som anmälda i spelartruppen, användaren får själv köra Auto/Slumpa
+    // Uppdatera state: markera som anmälda i spelartruppen, användaren får själv köra Auto
     setLineup({});
     setAvailablePlayers(updatedPlayers);
     setDemoActive(true);
@@ -1296,6 +1293,64 @@ export default function Home() {
     return closestCenter(args);
   };
 
+  // ─── Snabbknappar: ångra, auto-fördela, nyhet till laget.se, hämta anmälda ───
+  // Ligger mellan Trupp och lagräknarna (mobil) respektive ovanför lagen (desktop).
+  const [syncingAttendance, setSyncingAttendance] = useState(false);
+  const handleSyncAttendance = async () => {
+    if (syncingAttendance) return;
+    setSyncingAttendance(true);
+    try {
+      const result = await handleBulkRegister(true);
+      if (result.eventTitle) setEventInfo({ title: result.eventTitle, date: result.eventDate || "" });
+    } finally {
+      setSyncingAttendance(false);
+    }
+  };
+  const renderQuickActions = (withLabels: boolean) => {
+    const btn = "flex items-center gap-1.5 rounded-lg font-bold uppercase tracking-wider transition-all disabled:opacity-35 disabled:cursor-not-allowed";
+    const size = withLabels ? "px-3 py-1.5 text-[11px]" : "p-1.5";
+    const icon = withLabels ? "w-3.5 h-3.5" : "w-4 h-4";
+    const label = (t: string) => (withLabels ? <span>{t}</span> : null);
+    return (
+      <div className="flex items-center gap-1">
+        <button
+          onClick={handleUndo}
+          disabled={undoStack.length === 0}
+          title={`Ångra (Ctrl+Z) – ${undoStack.length} steg`}
+          aria-label="Ångra"
+          className={`${btn} ${size} ${isLineupDark ? "bg-white/5 border border-white/10 text-white/70 hover:bg-white/10" : "bg-gray-100 border border-gray-200 text-gray-700 hover:bg-gray-200"}`}
+        >
+          <Undo2 className={icon} />{label("Ångra")}
+        </button>
+        <button
+          onClick={() => setConfirmAutoDistribute(true)}
+          title="Fördela anmälda spelare automatiskt"
+          aria-label="Auto-fördela"
+          className={`${btn} ${size} bg-emerald-500 text-white hover:bg-emerald-400`}
+        >
+          <Shuffle className={icon} />{label("Auto")}
+        </button>
+        <button
+          onClick={() => setShowNews(true)}
+          title="Nyhet till laget.se"
+          aria-label="Nyhet till laget.se"
+          className={`${btn} ${size} bg-sky-500 text-white hover:bg-sky-400`}
+        >
+          <Newspaper className={icon} />{label("Nyhet")}
+        </button>
+        <button
+          onClick={handleSyncAttendance}
+          disabled={syncingAttendance}
+          title="Hämta anmälda från laget.se"
+          aria-label="Hämta anmälda från laget.se"
+          className={`${btn} ${size} ${isLineupDark ? "bg-violet-500/20 border border-violet-400/40 text-violet-200 hover:bg-violet-500/30" : "bg-violet-100 border border-violet-200 text-violet-700 hover:bg-violet-200"}`}
+        >
+          <RefreshCw className={`${icon} ${syncingAttendance ? "animate-spin" : ""}`} />{label("Anmälda")}
+        </button>
+      </div>
+    );
+  };
+
   return (
     <PirSettingsProvider settings={pirSettings}>
     <div className={`overflow-x-hidden max-w-[100vw] ${isLineupDark ? '' : 'lineup-light'}`}>
@@ -1366,8 +1421,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* ── MOBILE TOOLBAR (single compact row) ── */}
-              {isMobile ? (
+              {/* ── VERKTYGSRAD: Hem, anslutning och meny/inställningar (samma på mobil och desktop) ── */}
                 <div className="flex items-center gap-1 flex-1 justify-end">
                   {/* Home icon-only */}
                   <a
@@ -1389,43 +1443,12 @@ export default function Home() {
                     )}
                   </div>
 
-                  {/* Undo icon-only */}
-                  <button
-                    onClick={handleUndo}
-                    disabled={undoStack.length === 0}
-                    title={`Ångra (${undoStack.length} steg)`}
-                    className={`p-1 rounded transition-all ${
-                      undoStack.length > 0
-                        ? 'text-white/60 hover:text-white hover:bg-white/10'
-                        : 'text-white/15 cursor-not-allowed'
-                    }`}
-                  >
-                    <Undo2 className="w-3.5 h-3.5" />
-                  </button>
-
-                  {/* AUTO icon-only */}
-                  <button
-                    onClick={() => setConfirmAutoDistribute(true)}
-                    title="Auto"
-                    className="p-1 rounded-full bg-emerald-500 text-white hover:bg-emerald-400"
-                  >
-                    <Shuffle className="w-3.5 h-3.5" />
-                  </button>
-
-                  {/* SLUMPA icon-only */}
-                  <button
-                    onClick={() => handleAutoDistribute(true)}
-                    title="Slumpa"
-                    className="p-1 rounded-full bg-amber-500 text-white hover:bg-amber-400"
-                  >
-                    <Dices className="w-3.5 h-3.5" />
-                  </button>
-
                   {/* Overflow menu trigger */}
                   <div className="relative">
                     <button
                       onClick={() => setShowHeaderMenu((v) => !v)}
-                      title="Fler alternativ"
+                      data-settings-btn
+                      title="Meny och inställningar"
                       className={`p-1 rounded transition-all ${
                         showHeaderMenu
                           ? 'text-white bg-white/15'
@@ -1434,7 +1457,7 @@ export default function Home() {
                             : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'
                       }`}
                     >
-                      <MoreVertical className="w-4 h-4" />
+                      <Settings className="w-4 h-4" />
                     </button>
 
                     {/* Dropdown menu */}
@@ -1447,24 +1470,6 @@ export default function Home() {
                             ? 'bg-[#1a2744] border-white/10'
                             : 'bg-white border-gray-200'
                         }`}>
-                          {/* Hämta anmälningar från laget.se */}
-                          <button
-                            onClick={() => {
-                              handleBulkRegister(true).then((result) => {
-                                if (result.eventTitle) {
-                                  setEventInfo({ title: result.eventTitle, date: result.eventDate || "" });
-                                }
-                              });
-                              setShowHeaderMenu(false);
-                            }}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
-                              isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
-                            }`}
-                          >
-                            <CalendarDays className="w-4 h-4" />
-                            <span>Hämta anmälningar</span>
-                          </button>
-
                           {/* Matchtid */}
                           <div className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] ${
                             isLineupDark ? 'text-white/60' : 'text-gray-600'
@@ -1492,7 +1497,8 @@ export default function Home() {
                           {/* Separator */}
                           <div className={`my-1 border-t ${isLineupDark ? 'border-white/5' : 'border-gray-100'}`} />
 
-                          {/* Sidoläge */}
+                          {/* Sidoläge – bara desktop */}
+                          {!isMobile && (
                           <button
                             onClick={() => { toggleSideLayout(); setShowHeaderMenu(false); }}
                             className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
@@ -1504,6 +1510,7 @@ export default function Home() {
                             {sideLayout ? <Columns3 className="w-4 h-4" /> : <PanelLeft className="w-4 h-4" />}
                             <span>{sideLayout ? 'Standard-layout' : 'Sidoläge'}</span>
                           </button>
+                          )}
 
                           {/* Dela */}
                           <button
@@ -1526,15 +1533,6 @@ export default function Home() {
                           >
                             <FileText className="w-4 h-4" />
                             <span>Dela som text</span>
-                          </button>
-                          <button
-                            onClick={() => { setShowNews(true); setShowHeaderMenu(false); }}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
-                              isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
-                            }`}
-                          >
-                            <Newspaper className="w-4 h-4" />
-                            <span>Nyhet till laget.se</span>
                           </button>
 
                           {/* Separator */}
@@ -1564,17 +1562,6 @@ export default function Home() {
                             <span>{isLineupDark ? 'Ljust tema' : 'Mörkt tema'}</span>
                           </button>
 
-                          {/* Export */}
-                          <button
-                            onClick={() => { setShowExport(true); setShowHeaderMenu(false); }}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
-                              isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
-                            }`}
-                          >
-                            <Download className="w-4 h-4" />
-                            <span>Exportera</span>
-                          </button>
-
                           {/* Separator */}
                           <div className={`my-1 border-t ${isLineupDark ? 'border-white/5' : 'border-gray-100'}`} />
 
@@ -1597,7 +1584,7 @@ export default function Home() {
                             }`}
                           >
                             <Settings className="w-4 h-4" />
-                            <span>Inställningar</span>
+                            <span>Fler inställningar</span>
                           </button>
 
 
@@ -1606,255 +1593,6 @@ export default function Home() {
                     )}
                   </div>
                 </div>
-              ) : (
-                /* ── DESKTOP TOOLBAR (full layout, unchanged) ── */
-                <>
-              <div className="flex items-center gap-1.5 flex-1 justify-center flex-wrap">
-                {/* Home link */}
-                <LongPressTooltip label="Hem">
-                <a
-                  href="https://app.stalstadens.se"
-                  title="Hem"
-                  className={`p-1.5 rounded transition-all ${isLineupDark ? 'text-white/30 hover:text-white/60 hover:bg-white/8' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}
-                >
-                  <HomeIcon className="w-4 h-4" />
-                </a>
-                </LongPressTooltip>
-
-                {/* Undo icon button */}
-                <LongPressTooltip label={`Ångra (${undoStack.length} steg)`}>
-                <button
-                  onClick={handleUndo}
-                  disabled={undoStack.length === 0}
-                  title={`Ångra (Ctrl+Z) – ${undoStack.length} steg`}
-                  className={`p-1.5 rounded transition-all ${
-                    undoStack.length > 0
-                      ? isLineupDark
-                        ? "text-white/60 hover:text-white hover:bg-white/10"
-                        : "text-gray-500 hover:text-gray-800 hover:bg-gray-200"
-                      : isLineupDark
-                        ? "text-white/15 cursor-not-allowed"
-                        : "text-gray-300 cursor-not-allowed"
-                  }`}
-                >
-                  <Undo2 className="w-4 h-4" />
-                </button>
-                </LongPressTooltip>
-
-                {/* SSE sync icon */}
-                <LongPressTooltip label={sseConnected === null ? "Ansluter..." : sseConnected ? "Synkroniserad" : "Ej ansluten"}>
-                <div className="flex items-center mr-0.5">
-                  {sseConnected === null ? (
-                    <span className={`text-[9px] ${isLineupDark ? 'text-white/30' : 'text-gray-400'}`}>...</span>
-                  ) : sseConnected ? (
-                    <Wifi className={`w-3.5 h-3.5 ${isLineupDark ? 'text-emerald-400/60' : 'text-emerald-600'}`} />
-                  ) : (
-                    <WifiOff className="w-3.5 h-3.5 text-red-400" />
-                  )}
-                </div>
-                </LongPressTooltip>
-
-                {/* Divider */}
-                <div className={`w-px h-5 ${isLineupDark ? 'bg-white/10' : 'bg-gray-300'} mx-0.5`} />
-
-                {/* SIDOLÄGE button */}
-                <LongPressTooltip label={sideLayout ? "Standard" : "Sidoläge"}>
-                <button
-                  onClick={toggleSideLayout}
-                  title={sideLayout ? "Standard-layout" : "Sidoläge"}
-                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider ${
-                    sideLayout
-                      ? isLineupDark
-                        ? "bg-violet-500/30 border border-violet-400/50 text-violet-300 hover:bg-violet-500/40"
-                        : "bg-violet-100 border border-violet-300 text-violet-700 hover:bg-violet-200"
-                      : isLineupDark
-                        ? "border border-white/20 text-white/60 hover:bg-white/10 hover:text-white"
-                        : "border border-gray-300 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
-                  }`}
-                >
-                  {sideLayout ? <Columns3 className="w-3.5 h-3.5" /> : <PanelLeft className="w-3.5 h-3.5" />}
-                  <span>Sidoläge</span>
-                </button>
-                </LongPressTooltip>
-
-                {/* AUTO green pill button */}
-                <LongPressTooltip label="Autofördela">
-                <button
-                  onClick={() => setConfirmAutoDistribute(true)}
-                  title="Fördela anmälda spelare automatiskt"
-                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider ${isLineupDark ? 'bg-emerald-500 text-white hover:bg-emerald-400 shadow-lg shadow-emerald-500/20' : 'bg-emerald-500 text-white hover:bg-emerald-400'}`}
-                >
-                  <Shuffle className="w-3.5 h-3.5" />
-                  <span>Auto</span>
-                </button>
-                </LongPressTooltip>
-
-                {/* SLUMPA yellow/amber pill button */}
-                <LongPressTooltip label="Slumpa">
-                <button
-                  onClick={() => handleAutoDistribute(true)}
-                  title="Slumpa om neutrala spelare"
-                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider ${isLineupDark ? 'bg-amber-500 text-white hover:bg-amber-400 shadow-lg shadow-amber-500/20' : 'bg-amber-500 text-white hover:bg-amber-400'}`}
-                >
-                  <Dices className="w-3.5 h-3.5" />
-                  <span>Slumpa</span>
-                </button>
-                </LongPressTooltip>
-
-                {/* Match time input */}
-                <LongPressTooltip label="Matchtid">
-                <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isLineupDark ? 'border border-white/15 text-white/50' : 'border border-gray-300 text-gray-500'}`}>
-                  <input
-                    type="number"
-                    min={10}
-                    max={120}
-                    value={matchTime}
-                    onChange={(e) => {
-                      const v = parseInt(e.target.value, 10);
-                      if (!isNaN(v) && v >= 1 && v <= 999) setMatchTime(v);
-                    }}
-                    className={`w-[28px] text-center bg-transparent outline-none font-bold tabular-nums ${isLineupDark ? 'text-white/70' : 'text-gray-700'}`}
-                    title="Matchtid i minuter"
-                  />
-                  <span className={`text-[9px] ${isLineupDark ? 'text-white/30' : 'text-gray-400'}`}>min</span>
-                </div>
-                </LongPressTooltip>
-
-                {/* DELA button */}
-                <LongPressTooltip label="Dela">
-                <div className="relative">
-                <button
-                  onClick={() => setShowShareMenu(v => !v)}
-                  disabled={shareState === "saving"}
-                  title="Dela skrivskyddad länk"
-                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider ${
-                    shareState === "copied"
-                      ? isLineupDark
-                        ? "bg-emerald-500/30 border border-emerald-400/60 text-emerald-200"
-                        : "bg-emerald-100 border border-emerald-300 text-emerald-700"
-                      : isLineupDark
-                        ? "border border-white/20 text-white/60 hover:bg-white/10 hover:text-white disabled:opacity-50"
-                        : "border border-gray-300 text-gray-500 hover:bg-gray-200 hover:text-gray-700 disabled:opacity-50"
-                  }`}
-                >
-                  {shareState === "copied"
-                    ? <><Check className="w-3.5 h-3.5" /><span>Kopierad!</span></>
-                    : <><Share2 className="w-3.5 h-3.5" /><span>Dela</span></>}
-                </button>
-                {showShareMenu && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setShowShareMenu(false)} />
-                    <div className={`absolute right-0 top-full mt-1 z-50 min-w-[150px] rounded-lg shadow-xl border py-1 ${
-                      isLineupDark ? 'bg-[#1a1a1a] border-white/10' : 'bg-white border-gray-200'
-                    }`}>
-                      <button
-                        onClick={() => { handleShare(); setShowShareMenu(false); }}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] ${isLineupDark ? 'text-white/70 hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'}`}
-                      >
-                        <Share2 className="w-3.5 h-3.5" /> Dela länk
-                      </button>
-                      <button
-                        onClick={() => { handleShareText(); setShowShareMenu(false); }}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] ${isLineupDark ? 'text-white/70 hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'}`}
-                      >
-                        <FileText className="w-3.5 h-3.5" /> Dela som text
-                      </button>
-                      <button
-                        onClick={() => { setShowNews(true); setShowShareMenu(false); }}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] ${isLineupDark ? 'text-white/70 hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'}`}
-                      >
-                        <Newspaper className="w-3.5 h-3.5" /> Nyhet till laget.se
-                      </button>
-                    </div>
-                  </>
-                )}
-                </div>
-                </LongPressTooltip>
-
-                {/* Divider */}
-                <div className={`w-px h-5 ${isLineupDark ? 'bg-white/10' : 'bg-gray-300'} mx-0.5`} />
-
-                {/* Stats icon button with dropdown */}
-                <LongPressTooltip label="Statistik">
-                <button
-                  onClick={() => setShowStats((v) => !v)}
-                  title="Visa/dölj statistik"
-                  className={`flex items-center gap-0.5 p-1.5 rounded transition-all ${
-                    showStats
-                      ? isLineupDark
-                        ? "text-sky-300 bg-sky-500/20"
-                        : "text-sky-700 bg-sky-100"
-                      : isLineupDark
-                        ? "text-white/40 hover:text-white/70 hover:bg-white/8"
-                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
-                  <BarChart3 className="w-4 h-4" />
-                  {showStats ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                </button>
-                </LongPressTooltip>
-
-                {/* Theme toggle icon */}
-                <LongPressTooltip label={isLineupDark ? "Ljust tema" : "Mörkt tema"}>
-                <button
-                  onClick={toggleLineupTheme}
-                  title={isLineupDark ? "Byt till ljust tema" : "Byt till mörkt tema"}
-                  className={`p-1.5 rounded transition-all ${
-                    isLineupDark
-                      ? 'text-white/40 hover:text-white/70 hover:bg-white/8'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {isLineupDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                </button>
-                </LongPressTooltip>
-
-                {/* Export icon button */}
-                <LongPressTooltip label="Exportera">
-                <button
-                  onClick={() => setShowExport(true)}
-                  title="Exportera laguppställning"
-                  className={`p-1.5 rounded transition-all ${isLineupDark ? 'text-white/40 hover:text-white/70 hover:bg-white/8' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'}`}
-                >
-                  <Download className="w-4 h-4" />
-                </button>
-                </LongPressTooltip>
-              </div>
-
-              {/* Right: Demo + Settings icons */}
-              <div className="flex items-center gap-0.5 shrink-0">
-                {/* Demo indicator (active only) */}
-                {demoActive && (
-                  <button
-                    onClick={handleDemo}
-                    title="Avsluta demo"
-                    className={`p-1.5 rounded transition-all ${
-                      isLineupDark
-                        ? 'text-amber-300 bg-amber-500/20 hover:bg-amber-500/30'
-                        : 'text-amber-600 bg-amber-100 hover:bg-amber-200'
-                    }`}
-                  >
-                    <FlaskConical className="w-4 h-4" />
-                  </button>
-                )}
-                {/* Settings icon */}
-                <LongPressTooltip label="Inställningar">
-                <button
-                  data-settings-btn
-                  onClick={() => setShowSettings(true)}
-                  title="Inställningar"
-                  className={`p-1.5 rounded transition-all ${
-                    isLineupDark
-                      ? 'text-white/30 hover:text-white/60 hover:bg-white/8'
-                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  <Settings className="w-4 h-4" />
-                </button>
-                </LongPressTooltip>
-              </div>
-                </>
-              )}
               </div>
             </div>
           </header>
@@ -1959,15 +1697,24 @@ export default function Home() {
                 <Users className="w-3.5 h-3.5" />
                 Trupp ({totalRegistered}/{totalPlayers})
               </button>
-              <div className="flex items-center gap-1 text-[10px] text-white/30">
+              {renderQuickActions(false)}
+              <div className="flex flex-col items-end leading-tight text-[10px] text-white/30">
                 <span className="text-slate-200">{teamAName} {teamARegistered}/{teamACount}</span>
-                <span>|</span>
                 <span className="text-emerald-400">{teamBName} {teamBRegistered}/{teamBCount}</span>
               </div>
             </div>
           )}
 
-          <main className="px-2 md:px-3 pb-8 overflow-x-hidden max-w-[1400px] mx-auto w-full" ref={exportRef}>
+          {/* Desktop: snabbknapparna ovanför lagen */}
+          {!isMobile && (
+            <div className="shrink-0 px-3 pt-2 pb-1 flex items-center justify-center gap-4 max-w-[1400px] mx-auto w-full">
+              <span className="text-[11px] text-slate-200/80">{teamAName} {teamARegistered}/{teamACount}</span>
+              {renderQuickActions(true)}
+              <span className="text-[11px] text-emerald-400/90">{teamBName} {teamBRegistered}/{teamBCount}</span>
+            </div>
+          )}
+
+          <main className="px-2 md:px-3 pb-8 overflow-x-hidden max-w-[1400px] mx-auto w-full">
             {/* Villkorlig rendering: ANTINGEN desktop ELLER mobil – aldrig båda */}
             {/* Detta eliminerar dubbla droppables som förvirrar dnd-kit */}
             {!isMobile ? (
@@ -2251,23 +1998,6 @@ export default function Home() {
           />
         )}
       </div>
-
-      {/* Export-modal */}
-      {showExport && (
-        <ExportModal
-           onClose={() => setShowExport(false)}
-           teamAName={teamAName}
-           teamBName={teamBName}
-           teamALineup={teamALineup}
-           teamBLineup={teamBLineup}
-           teamASlots={TEAM_A_SLOTS}
-           teamBSlots={TEAM_B_SLOTS}
-           logoGreen={LOGO_GREEN}
-           logoWhite={LOGO_WHITE}
-           bgUrl={BG_URL}
-           allPlayers={availablePlayers}
-         />
-      )}
 
       {/* Nyhet till laget.se */}
       {showNews && (

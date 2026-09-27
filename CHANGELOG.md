@@ -7,6 +7,13 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.19.0 – 2026-09-27
+
+**Lineup – städning**
+- Toppen har bara Hem, anslutningsstatus och ett kugghjul. Kugghjulet öppnar menyn: matchtid, sidoläge (desktop), dela länk, dela som text, statistik, tema, demo och Fler inställningar. Samma på mobil och desktop.
+- Nya snabbknappar där de används mest: Ångra, Auto, Nyhet (till laget.se) och Anmälda (hämta från laget.se). Mobil: mellan Trupp och lagräknarna. Desktop: ovanför lagen, mellan Vitas och Grönas räknare.
+- Borttaget: Exportera (ersatt av dela länk/text och nyheten) och Slumpa.
+
 ## 2.18.0 – 2026-09-27
 
 - Spelarprofilen: PIR som utespelare och/eller målvakt – betyg, formpil, placering bland alla med betyg i samma roll (t.ex. #5 av 48), antal matcher och säkerhet. Manuell justering visas om den finns.
