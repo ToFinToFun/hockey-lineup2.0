@@ -212,13 +212,27 @@ export function DraggablePlayerCard({
       {/* ---- Namn (upp till två rader) till vänster, märken i två rader till höger ----
            Anmälan visas som färgad kant, lagtillhörighet som V/G-ruta. */}
       <div className={`flex items-center w-full min-w-0 ${compact ? "gap-1" : "gap-2"}`}>
-        <span
-          className={`flex-1 min-w-0 text-white leading-tight line-clamp-2 break-words ${compact ? "text-[12px] font-semibold" : "text-[13px] font-medium"}`}
-          title={player.name}
-        >
-          {player.name}
-          {player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
-        </span>
+        {compact ? (() => {
+          // Förnamn på rad 1, efternamn på rad 2. Ord delas aldrig – blir en rad
+          // för lång kortas just den raden med "…".
+          const parts = player.name.trim().split(/\s+/);
+          const last = parts.length > 1 ? parts.pop()! : "";
+          const first = parts.join(" ");
+          return (
+            <span className="flex-1 min-w-0 text-white leading-tight text-[12px] font-semibold" title={`${player.name}${player.number ? ` #${player.number}` : ""}`}>
+              <span className="block truncate">
+                {first}
+                {player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
+              </span>
+              {last && <span className="block truncate">{last}</span>}
+            </span>
+          );
+        })() : (
+          <span className="flex-1 min-w-0 text-white leading-tight text-[13px] font-medium truncate" title={player.name}>
+            {player.name}
+            {player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
+          </span>
+        )}
 
         {!hideExtras && (() => {
           const showPir = pirEnabled && pirSettings.showRating && activePir.rating != null;

@@ -45,7 +45,7 @@ interface MobileRosterDrawerProps {
    * Öppnad via en tom plats: tryck på en spelare placerar den direkt där.
    * Listan sorteras med passande position först (efter närvaro).
    */
-  targetSlot?: { slotId: string; slotType: string; slotLabel: string; teamName: string } | null;
+  targetSlot?: { slotId: string; slotType: string; slotLabel: string; teamName: string; teamId?: string } | null;
 }
 
 type AssignStep = "select-player" | "select-team" | "select-slot";
@@ -148,7 +148,8 @@ export function MobileRosterDrawer({
       const matchesPos = posFilter === "Alla" || p.position === posFilter;
       return matchesSearch && matchesPos;
     }),
-    targetSlot ? positionsForSlot(targetSlot.slotType, targetSlot.slotLabel) : undefined
+    targetSlot ? positionsForSlot(targetSlot.slotType, targetSlot.slotLabel) : undefined,
+    targetSlot ? (targetSlot.teamName.toLowerCase().includes("vit") ? "white" : targetSlot.teamName.toLowerCase().includes("grön") ? "green" : targetSlot.teamId === "team-b" ? "green" : "white") : undefined
   );
 
   const handlePlayerTap = useCallback((player: Player) => {
