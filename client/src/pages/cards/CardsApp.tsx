@@ -24,6 +24,20 @@ const POSITIONS = ["", "G", "D", "C", "LW", "RW", "F"];
 /** Spelarregistrets positioner → kortets */
 const CARD_POSITION: Record<string, string> = { MV: "G", B: "D", C: "C", F: "F" };
 
+/** Innevarande säsong som "2026/27" (säsongen börjar 1 augusti, som spelarhistoriken). */
+export function currentSeasonLabel(now = new Date()): string {
+  const y = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+  return `${y}/${String((y + 1) % 100).padStart(2, "0")}`;
+}
+
+/** Standardrubrik för statistikrutan – sätts automatiskt när läget väljs (exporteras för test). */
+export function defaultStatsTitle(mode: CardSettings["statsMode"], stats?: Stats): string {
+  if (mode === "season") return `Säsong ${stats?.season.label ?? currentSeasonLabel()}`;
+  if (mode === "career") return "Karriär";
+  if (mode === "form") return "Form";
+  return "";
+}
+
 /** Statistikrutans celler för ett läge (exporteras för test). */
 export function cellsFor(mode: CardSettings["statsMode"], stats: Stats | undefined): { title: string; cells: CardCell[] } {
   if (!stats || mode === "none" || mode === "custom" || mode === "form") {
@@ -131,7 +145,9 @@ export default function CardsApp() {
     setSettings((s) => {
       if (s.statsMode === "custom") return { ...s, form: stats.data!.form };
       const { title, cells } = cellsFor(s.statsMode, stats.data);
-      return { ...s, cells, statsTitle: title, form: stats.data!.form };
+      // Egen rubrik står kvar; tom eller standardrubrik byts mot den aktuella
+      const isDefault = !s.statsTitle || /^Säsong \d{4}\/\d{2}$/.test(s.statsTitle) || s.statsTitle === "Karriär" || s.statsTitle === "Form";
+      return { ...s, cells, statsTitle: isDefault ? title : s.statsTitle, form: stats.data!.form };
     });
   }, [stats.data, settings.statsMode]);
 
@@ -406,13 +422,13 @@ export default function CardsApp() {
             <p className="text-[11px] text-white/50">Statistik</p>
             <div className="flex flex-wrap gap-1.5">
               {([["season", "Säsong"], ["career", "Karriär"], ["form", "Form"], ["custom", "Egen"], ["none", "Ingen"]] as const).map(([k, l]) => (
-                <button key={k} onClick={() => update({ statsMode: k })}
+                <button key={k} onClick={() => update({ statsMode: k, statsTitle: k === "custom" ? settings.statsTitle : defaultStatsTitle(k, stats.data) })}
                   className={`px-3 py-1 rounded-full text-xs border ${settings.statsMode === k ? "bg-white/15 border-white/40" : "border-white/10 text-white/55"}`}>{l}</button>
               ))}
             </div>
             {settings.statsMode !== "none" && settings.statsMode !== "form" && (
               <>
-                <input value={settings.statsTitle} onChange={(e) => update({ statsTitle: e.target.value, statsMode: "custom" })} placeholder="Rubrik (t.ex. Säsong 2026/27)" className={input} />
+                <input value={settings.statsTitle} onChange={(e) => update({ statsTitle: e.target.value })} placeholder="Rubrik (t.ex. Säsong 2026/27)" className={input} />
                 <div className="grid grid-cols-5 gap-1.5">
                   {Array.from({ length: 5 }, (_, i) => settings.cells[i] ?? { label: "", value: "" }).map((c, i) => (
                     <div key={i} className="space-y-1">

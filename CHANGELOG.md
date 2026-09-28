@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.33.1 – 2026-09-28
+
+- Hockeykort: C/A står efter namnet, lite upphöjt och mindre (som på riktiga kort). Positionsrutan visar bara positionen.
+- Statistikrutan får automatisk rubrik när läget väljs: "Säsong 2026/27", "Karriär" eller "Form". En egen rubrik står kvar tills man byter läge.
+
 ## 2.33.0 – 2026-09-28
 
 **Hockeykort – retro efter klubbens skisser**

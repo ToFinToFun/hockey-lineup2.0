@@ -129,6 +129,43 @@ function addRoundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: nu
   ctx.closePath();
 }
 
+/**
+ * Namn med C/A efter, lite upphöjt och mindre (som på hockeykort).
+ * Namnet och märket får plats tillsammans och centreras som en grupp.
+ */
+function drawName(
+  ctx: CanvasRenderingContext2D, name: string, captain: string, cx: number, y: number,
+  maxW: number, startPx: number, minPx: number, color: string, capColor: string, spacing: string
+) {
+  let px = startPx;
+  const measure = () => {
+    ctx.font = `700 ${px}px ${HEAD}`;
+    ctx.letterSpacing = spacing;
+    const nw = ctx.measureText(name).width;
+    ctx.letterSpacing = "0px";
+    ctx.font = `700 ${Math.round(px * 0.56)}px ${HEAD}`;
+    const cw = captain ? ctx.measureText(captain).width + px * 0.12 : 0;
+    return { nw, cw };
+  };
+  let m = measure();
+  while (px > minPx && m.nw + m.cw > maxW) { px -= 2; m = measure(); }
+  const left = cx - (m.nw + m.cw) / 2;
+  ctx.textAlign = "left";
+  ctx.font = `700 ${px}px ${HEAD}`;
+  ctx.letterSpacing = spacing;
+  ctx.fillStyle = color;
+  ctx.fillText(name, left, y);
+  ctx.letterSpacing = "0px";
+  if (captain) {
+    ctx.font = `700 ${Math.round(px * 0.56)}px ${HEAD}`;
+    ctx.fillStyle = capColor;
+    // Upphöjt: ungefär i höjd med versalernas överkant
+    const raise = ctx.textBaseline === "middle" ? px * 0.22 : px * 0.42;
+    ctx.fillText(captain, left + m.nw + px * 0.12, y - raise);
+  }
+  ctx.textAlign = "center";
+}
+
 function fit(ctx: CanvasRenderingContext2D, text: string, font: (px: number) => string, maxW: number, start: number, min: number) {
   let px = start;
   ctx.font = font(px);
@@ -284,7 +321,6 @@ async function renderModern({ settings: s, photo, scale = 1 }: RenderInput): Pro
     chipY += 48;
   };
   if (s.position) chip(s.position, skin.accent, skin.id === "svart" ? "#111" : "#0b1a0c");
-  if (s.captain) chip(s.captain, s.captain === "C" ? "#facc15" : "#fb923c", "#111");
 
   // Namnskylt och statistikruta
   const hasStats = s.statsMode !== "none" && (s.statsMode === "form" ? !!s.form : s.cells.length > 0);
@@ -294,15 +330,11 @@ async function renderModern({ settings: s, photo, scale = 1 }: RenderInput): Pro
 
   ctx.textAlign = "center";
   const name = (s.name || "SPELARE").toUpperCase();
-  ctx.fillStyle = "#ffffff";
-  ctx.letterSpacing = "3px";
-  fit(ctx, name, (px) => `700 ${px}px ${HEAD}`, panelW - 20, 78, 40);
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,0.7)";
   ctx.shadowBlur = 16;
-  ctx.fillText(name, CARD_W / 2, panelY + 70);
+  drawName(ctx, name, s.captain, CARD_W / 2, panelY + 70, panelW - 20, 78, 40, "#ffffff", s.captain === "C" ? "#facc15" : "#fdba74", "3px");
   ctx.restore();
-  ctx.letterSpacing = "0px";
 
   // Linje under namnet
   ctx.fillStyle = skin.accent;
@@ -633,13 +665,9 @@ async function renderRetro({ settings: s, photo, scale = 1 }: RenderInput): Prom
   ctx.fill();
 
   const name = (s.name || "SPELARE").toUpperCase();
-  ctx.fillStyle = c.ink;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.letterSpacing = "1px";
-  fit(ctx, name, (px) => `700 ${px}px ${HEAD}`, N.w - 30, 74, 34);
-  ctx.fillText(name, N.x + N.w / 2, N.y + N.nameH / 2 + 3);
-  ctx.letterSpacing = "0px";
+  drawName(ctx, name, s.captain, N.x + N.w / 2, N.y + N.nameH / 2 + 3, N.w - 30, 74, 34, c.ink, c.ink, "1px");
 
   const sub = s.subtitle ?? "";
   if (sub) {
@@ -665,7 +693,7 @@ async function renderRetro({ settings: s, photo, scale = 1 }: RenderInput): Prom
     ctx.restore();
   }
   box(R.x, N.y + 82, R.w, N.nameH + N.subH - 82, c.paper);
-  const pos = [s.position, s.captain].filter(Boolean).join(" · ");
+  const pos = s.position;
   if (pos) {
     ctx.fillStyle = c.ink;
     ctx.save();

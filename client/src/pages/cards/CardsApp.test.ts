@@ -49,3 +49,16 @@ describe("lagmärken", () => {
     expect(resolveLogo("none", skinById("retro-svart"))).toBeNull();
   });
 });
+
+import { defaultStatsTitle, currentSeasonLabel } from "./CardsApp";
+
+describe("automatiska rubriker", () => {
+  it("säsong, karriär och form", () => {
+    expect(currentSeasonLabel(new Date(2026, 8, 28))).toBe("2026/27");
+    expect(currentSeasonLabel(new Date(2027, 2, 1))).toBe("2026/27");
+    expect(defaultStatsTitle("season")).toMatch(/^Säsong \d{4}\/\d{2}$/);
+    expect(defaultStatsTitle("career")).toBe("Karriär");
+    expect(defaultStatsTitle("form")).toBe("Form");
+    expect(defaultStatsTitle("none")).toBe("");
+  });
+});
