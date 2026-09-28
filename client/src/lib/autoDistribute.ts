@@ -51,6 +51,7 @@ function categorize(p: Player): PosType {
     case "C": return "center";
     case "F": return "forward";
     case "IB": return "flex";
+    default: return "flex"; // ingen position angiven
   }
 }
 

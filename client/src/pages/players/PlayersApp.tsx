@@ -10,6 +10,7 @@ import { Link } from "wouter";
 import { toast } from "sonner";
 import { ArrowLeft, Download, Upload, Plus, Search, Loader2, X, AlertTriangle, GitMerge } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { positionName } from "@/lib/players";
 import { PlayerProfileView } from "./PlayerProfile";
 
 type Row = {
@@ -20,6 +21,7 @@ type Row = {
 type Filter = "active" | "inactive" | "nonmember" | "all";
 
 const POSITIONS = ["MV", "B", "C", "F", "IB"] as const;
+type PositionOrNone = (typeof POSITIONS)[number] | "";
 const teamLabel = (t: string | null) => (t === "white" ? "Vit" : t === "green" ? "Grön" : "");
 
 // ─── CSV ─────────────────────────────────────────────────────────────────────
@@ -141,6 +143,9 @@ export default function PlayersApp() {
   const issues = trpc.players.issues.useQuery();
   const [filter, setFilter] = useState<Filter>("active");
   const [q, setQ] = useState("");
+  type SortKey = "name" | "number" | "position" | "team";
+  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "name", dir: 1 });
+  const toggleSort = (key: SortKey) => setSort((s) => (s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: 1 }));
   const [editing, setEditing] = useState<Row | "new" | null>(null);
   const [importState, setImportState] = useState<{ rows: ImportRow[]; errors: string[]; markMissing: boolean } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -157,8 +162,20 @@ export default function PlayersApp() {
     return rows
       .filter((r) => filter === "all" || (filter === "active" ? r.active : filter === "inactive" ? !r.active : !r.isMember))
       .filter((r) => !s || r.name.toLowerCase().includes(s) || r.number === s)
-      .sort((a, b) => a.name.localeCompare(b.name, "sv"));
-  }, [rows, filter, q]);
+      .sort((a, b) => {
+        const byName = a.name.localeCompare(b.name, "sv");
+        const posRank = (p: string) => { const i = ["MV", "B", "C", "F", "IB"].indexOf(p); return i < 0 ? 99 : i; };
+        const teamRank = (t: string | null) => (t === "white" ? 0 : t === "green" ? 1 : 2);
+        const num = (n: string) => (n && /^\d+$/.test(n) ? parseInt(n, 10) : Number.MAX_SAFE_INTEGER);
+        let d = 0;
+        if (sort.key === "number") d = num(a.number) - num(b.number);
+        else if (sort.key === "position") d = posRank(a.position) - posRank(b.position);
+        else if (sort.key === "team") d = teamRank(a.teamColor) - teamRank(b.teamColor);
+        else d = byName;
+        // Tomma värden alltid sist, lika värden i namnordning
+        return (d * sort.dir) || byName;
+      });
+  }, [rows, filter, q, sort]);
 
   const exportCsv = () => {
     const blob = new Blob([toCsv(rows)], { type: "text/csv;charset=utf-8" });
@@ -236,6 +253,16 @@ export default function PlayersApp() {
           <button onClick={() => setEditing("new")} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300"><Plus size={14} /> Ny spelare</button>
         </div>
 
+        <div className="flex items-center gap-1.5 text-[11px]">
+          <span className="text-white/40 mr-1">Sortera:</span>
+          {([["name", "Namn"], ["number", "Nr"], ["position", "Position"], ["team", "Lag"]] as const).map(([k, l]) => (
+            <button key={k} onClick={() => toggleSort(k)}
+              className={`px-2.5 py-1 rounded-full border ${sort.key === k ? "bg-white/10 border-white/25 text-white" : "border-white/10 text-white/50 hover:text-white/80"}`}>
+              {l}{sort.key === k ? (sort.dir === 1 ? " ↑" : " ↓") : ""}
+            </button>
+          ))}
+        </div>
+
         {list.isLoading ? <Loader2 className="animate-spin text-white/40" /> : (
           <div className="divide-y divide-white/5 rounded-2xl border border-white/5 overflow-hidden">
             {visible.map((r) => (
@@ -244,7 +271,7 @@ export default function PlayersApp() {
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm truncate">{r.name}{r.captainRole ? <span className="ml-1 text-amber-300 font-bold">{r.captainRole}</span> : null}</span>
                 </span>
-                <span className="text-[11px] w-8 text-white/60">{r.position}</span>
+                <span className="text-[11px] w-8 text-white/60" title={r.position ? positionName(r.position) : "Ingen position"}>{r.position || "–"}</span>
                 <span className={`text-[11px] w-10 ${r.teamColor === "green" ? "text-emerald-400" : r.teamColor === "white" ? "text-white" : "text-white/20"}`}>{teamLabel(r.teamColor) || "–"}</span>
                 {!r.isMember && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300">ej medlem</span>}
                 {!r.active && <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-white/40">inaktiv</span>}
@@ -265,7 +292,7 @@ export default function PlayersApp() {
 
 function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]; byId: Map<string, Row>; onClose: () => void; onSaved: () => void }) {
   const [f, setF] = useState({
-    name: row?.name ?? "", number: row?.number ?? "", position: row?.position ?? "F", teamColor: row?.teamColor ?? null,
+    name: row?.name ?? "", number: row?.number ?? "", position: row?.position ?? "", teamColor: row?.teamColor ?? null,
     captainRole: row?.captainRole ?? null, isMember: row?.isMember ?? true, active: row?.active ?? true,
     lagetName: row?.lagetName ?? "", notes: row?.notes ?? "",
   });
@@ -276,7 +303,7 @@ function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]
   const merge = trpc.players.merge.useMutation({ onSuccess: () => { toast.success("Ihopslagna"); onSaved(); onClose(); } });
 
   const payload = {
-    name: f.name.trim(), number: f.number.trim(), position: f.position as (typeof POSITIONS)[number],
+    name: f.name.trim(), number: f.number.trim(), position: ((POSITIONS as readonly string[]).includes(f.position) ? f.position : "") as PositionOrNone,
     teamColor: f.teamColor as "white" | "green" | null, captainRole: f.captainRole as "C" | "A" | null,
     isMember: f.isMember, active: f.active, lagetName: f.lagetName.trim() || null, notes: f.notes.trim() || null,
   };
@@ -313,7 +340,7 @@ function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]
           <label className="text-xs text-white/50">Nr<input className={input} inputMode="numeric" value={f.number} onChange={(e) => setF({ ...f, number: e.target.value })} /></label>
         </div>
         <div className="grid grid-cols-3 gap-2 text-xs text-white/50">
-          <label>Position<select className={input} value={f.position} onChange={(e) => setF({ ...f, position: e.target.value })}>{POSITIONS.map((p) => <option key={p}>{p}</option>)}</select></label>
+          <label>Position<select className={input} value={(POSITIONS as readonly string[]).includes(f.position) ? f.position : ""} onChange={(e) => setF({ ...f, position: e.target.value })}><option value="">– Ingen –</option>{POSITIONS.map((p) => <option key={p} value={p}>{p} – {positionName(p)}</option>)}</select></label>
           <label>Lag<select className={input} value={f.teamColor ?? ""} onChange={(e) => setF({ ...f, teamColor: e.target.value || null })}><option value="">–</option><option value="white">Vit</option><option value="green">Grön</option></select></label>
           <label>Roll<select className={input} value={f.captainRole ?? ""} onChange={(e) => setF({ ...f, captainRole: e.target.value || null })}><option value="">–</option><option value="C">C</option><option value="A">A</option></select></label>
         </div>

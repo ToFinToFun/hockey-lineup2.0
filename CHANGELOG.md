@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.27.2 – 2026-09-28
+
+- Spelarsidan: position är valfri ("– Ingen –"). Spelare utan position visade Målvakt i listan och gick inte att spara utan att välja en; nu sparas de som de är. Positionerna visar sitt namn i listan.
+- Spelarsidan: sortera på namn, nummer, position eller lag (tryck igen för omvänd ordning).
+- Lineup: spelare utan position visas med "–" och fördelas som flexibla av Auto.
+
 ## 2.27.1 – 2026-09-28
 
 - Målordningen är enhetlig: Score Tracker visar senaste målet överst under matchen; allt i efterhand (matchdetalj, redigering, matchrapport, statistik) visar första målet överst.

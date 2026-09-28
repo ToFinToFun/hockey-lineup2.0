@@ -264,8 +264,8 @@ export function DraggablePlayerCard({
           ) : null;
           const teamBadge = <TeamColorIndicator teamColor={player.teamColor ?? null} compact mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />;
           const posBadge = (
-            <span className={`pos-badge pos-badge-sm pos-badge-${displayPosition.toLowerCase()} shrink-0`} title={positionName(displayPosition)}>
-              {displayPosition}
+            <span className={`pos-badge pos-badge-sm ${displayPosition ? `pos-badge-${displayPosition.toLowerCase()}` : "bg-white/10 text-white/40"} shrink-0`} title={displayPosition ? positionName(displayPosition) : "Ingen position"}>
+              {displayPosition || "–"}
             </span>
           );
           const badges = compact ? (

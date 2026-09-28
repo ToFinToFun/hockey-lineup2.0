@@ -16,7 +16,8 @@ import {
   type RegistryPlayer,
 } from "../playersDb";
 
-const positionSchema = z.enum(["MV", "B", "F", "C", "IB"]);
+/** Tom sträng = ingen position angiven. */
+const positionSchema = z.enum(["MV", "B", "F", "C", "IB", ""]);
 const fieldsSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   number: z.string().trim().max(10).optional(),
