@@ -11,6 +11,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { readSession } from "../auth";
 import { getPlayerPhoto } from "../playerPhotos";
 import { getCardSource } from "../playerCards";
+import { startLiveProfileSchedule } from "../cardProfile";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -134,6 +135,8 @@ async function startServer() {
   const port = parseInt(process.env.PORT || "3000");
 
   server.listen(port, () => {
+    // Profilkort som följer statistiken: kontroll efter start och sedan var sjätte timme
+    startLiveProfileSchedule();
     console.log(`Stålstadens v${APP_VERSION} kör på port ${port}`);
   });
 }

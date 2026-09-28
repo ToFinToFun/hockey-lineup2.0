@@ -6,8 +6,52 @@
  * ram → glans. Bildbehandlingen görs pixel för pixel så att resultatet blir
  * likadant i alla webbläsare.
  */
-import { loadImage, roundRect } from "@/lib/canvas";
-import { skinById, resolveLogo, type CardSkin, type CardLogo } from "@/lib/cardSkins";
+import { skinById, resolveLogo, type CardSkin, type CardLogo } from "./cardSkins";
+
+/**
+ * Miljön kortet ritas i. Webbläsaren använder DOM-canvas; servern (som ritar om
+ * profilkort automatiskt) sätter en egen med setCardEnv.
+ */
+export interface CardEnv {
+  createCanvas(w: number, h: number): HTMLCanvasElement;
+  loadImage(src: string): Promise<HTMLImageElement>;
+}
+
+let env: CardEnv = {
+  createCanvas(w, h) {
+    const c = env.createCanvas(w, h);
+    return c;
+  },
+  loadImage(src) {
+    return new Promise((res, rej) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => res(img);
+      img.onerror = () => rej(new Error(`Kunde inte ladda ${src}`));
+      img.src = src;
+    });
+  },
+};
+
+export function setCardEnv(e: CardEnv) {
+  env = e;
+}
+
+const loadImage = (src: string) => env.loadImage(src);
+
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
 
 export const CARD_W = 750;
 export const CARD_H = 1050;
@@ -231,9 +275,7 @@ export async function renderCard(input: RenderInput): Promise<HTMLCanvasElement>
 
 async function renderModern({ settings: s, photo, scale = 1 }: RenderInput): Promise<HTMLCanvasElement> {
   const skin = skinById(s.skin);
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(CARD_W * scale);
-  canvas.height = Math.round(CARD_H * scale);
+  const canvas = env.createCanvas(Math.round(CARD_W * scale), Math.round(CARD_H * scale));
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) throw new Error("Canvas stöds inte");
   ctx.scale(scale, scale);
@@ -253,8 +295,7 @@ async function renderModern({ settings: s, photo, scale = 1 }: RenderInput): Pro
   ctx.clip();
   if (photo) {
     const pw = Math.round(inner.w * scale), ph = Math.round(inner.h * scale);
-    const tmp = document.createElement("canvas");
-    tmp.width = pw; tmp.height = ph;
+    const tmp = env.createCanvas(pw, ph);
     const tctx = tmp.getContext("2d", { willReadFrequently: true })!;
     const r = photoSourceRect(photo.width, photo.height, inner.w, inner.h, s.photo);
     tctx.drawImage(photo, r.sx, r.sy, r.sw, r.sh, 0, 0, pw, ph);
@@ -440,37 +481,6 @@ async function renderModern({ settings: s, photo, scale = 1 }: RenderInput): Pro
   return canvas;
 }
 
-/** Laddar ett foto från fil, förminskar till max 1200 px och ger JPEG (base64) + autonivåer. */
-export async function prepareSourcePhoto(file: File): Promise<{ base64: string; auto: CardSettings["auto"] }> {
-  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" }).catch(async () => {
-    const url = URL.createObjectURL(file);
-    try {
-      return await new Promise<HTMLImageElement>((res, rej) => {
-        const i = new Image();
-        i.onload = () => res(i);
-        i.onerror = () => rej(new Error("Bilden kunde inte läsas"));
-        i.src = url;
-      });
-    } finally {
-      setTimeout(() => URL.revokeObjectURL(url), 0);
-    }
-  });
-  const scale = Math.min(1, 1200 / Math.max(bitmap.width, bitmap.height));
-  const c = document.createElement("canvas");
-  c.width = Math.round(bitmap.width * scale);
-  c.height = Math.round(bitmap.height * scale);
-  const ctx = c.getContext("2d", { willReadFrequently: true })!;
-  ctx.drawImage(bitmap, 0, 0, c.width, c.height);
-  const auto = autoLevels(ctx.getImageData(0, 0, c.width, c.height).data);
-  let q = 0.86;
-  let dataUrl = c.toDataURL("image/jpeg", q);
-  while (dataUrl.length > 1_400_000 && q > 0.5) {
-    q -= 0.08;
-    dataUrl = c.toDataURL("image/jpeg", q);
-  }
-  return { base64: dataUrl.split(",")[1] ?? "", auto };
-}
-
 // ─── Retro ───────────────────────────────────────────────────────────────────
 // Matt, gammaldags samlarkort efter klubbens skisser: papperskant, ram med
 // diagonala ränder och stjärnor, fotoruta med fasade hörn, namnskylt med
@@ -550,9 +560,7 @@ function wear(ctx: CanvasRenderingContext2D, seed: string, alpha: number) {
 async function renderRetro({ settings: s, photo, scale = 1 }: RenderInput): Promise<HTMLCanvasElement> {
   const skin = skinById(s.skin);
   const c = skin.retro!;
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(CARD_W * scale);
-  canvas.height = Math.round(CARD_H * scale);
+  const canvas = env.createCanvas(Math.round(CARD_W * scale), Math.round(CARD_H * scale));
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) throw new Error("Canvas stöds inte");
   ctx.scale(scale, scale);
@@ -620,8 +628,7 @@ async function renderRetro({ settings: s, photo, scale = 1 }: RenderInput): Prom
   ctx.clip();
   if (photo) {
     const pw = Math.round(W.w * scale), ph = Math.round(W.h * scale);
-    const tmp = document.createElement("canvas");
-    tmp.width = pw; tmp.height = ph;
+    const tmp = env.createCanvas(pw, ph);
     const tctx = tmp.getContext("2d", { willReadFrequently: true })!;
     const r = photoSourceRect(photo.width, photo.height, W.w, W.h, s.photo);
     tctx.drawImage(photo, r.sx, r.sy, r.sw, r.sh, 0, 0, pw, ph);

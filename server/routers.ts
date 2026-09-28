@@ -7,6 +7,7 @@ import { fetchAttendance, updateAttendance, publishNews, deleteNews, fetchAccoun
 import { seasonHistory, seasonOf, recentForm, recentWinners } from "./playerHistory";
 import { setPlayerPhoto, deletePlayerPhoto, MAX_PHOTO_BASE64 } from "./playerPhotos";
 import { listCards, cardStats, saveCard, deleteCard, MAX_CARD_SOURCE_BASE64 } from "./playerCards";
+import { refreshLiveProfile } from "./cardProfile";
 import { listSponsors, createSponsor, updateSponsor, deleteSponsor, moveSponsor, recordSponsorNews } from "./sponsorsDb";
 import { scoreRouter } from "./routers/score";
 import { scoreStatsRouter } from "./routers/scoreStats";
@@ -301,14 +302,24 @@ export const appRouter = router({
         playerId: z.string().min(1).max(64),
         settings: z.record(z.string(), z.unknown()),
         sourceBase64: z.string().max(MAX_CARD_SOURCE_BASE64, "Fotot är för stort").regex(/^[A-Za-z0-9+/=]+$/).optional(),
+        /** Använd kortet som profilbild och håll det uppdaterat automatiskt */
+        liveProfile: z.boolean().optional(),
       }))
       .mutation(async ({ input }) => {
         if (input.sourceBase64 && !input.sourceBase64.startsWith("/9j/")) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Fotot måste vara JPEG" });
         }
         if (JSON.stringify(input.settings).length > 20_000) throw new TRPCError({ code: "BAD_REQUEST", message: "För många inställningar" });
-        await saveCard(input.playerId, input.settings, input.sourceBase64);
-        return { success: true };
+        await saveCard(input.playerId, input.settings, input.sourceBase64, input.liveProfile);
+        // Profilkortet ritas direkt så att beskedet stämmer (tar under en sekund)
+        let profileUpdated = false;
+        if (input.liveProfile) {
+          profileUpdated = await refreshLiveProfile(input.playerId, true).catch((err) => {
+            console.error("[cards.save] profilkort:", err);
+            return false;
+          });
+        }
+        return { success: true, profileUpdated };
       }),
     delete: adminProcedure
       .input(z.object({ playerId: z.string().min(1).max(64) }))

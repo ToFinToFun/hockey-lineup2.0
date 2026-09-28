@@ -12,61 +12,17 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { ArrowLeft, Upload, Download, Share2, Save, UserSquare2, Wand2, Loader2, Trash2, Search, Check } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { CARD_SKINS, CARD_LOGOS } from "@/lib/cardSkins";
-import { renderCard, prepareSourcePhoto, photoSourceRect, DEFAULT_SETTINGS, CARD_W, type CardSettings, type CardCell } from "@/lib/cardRender";
+import { CARD_SKINS, CARD_LOGOS } from "@shared/cardSkins";
+import { renderCard, photoSourceRect, DEFAULT_SETTINGS, CARD_W, type CardSettings, type CardCell } from "@shared/cardRender";
+import { prepareSourcePhoto } from "@/lib/cardPhoto";
 
-import type { inferRouterOutputs } from "@trpc/server";
-import type { AppRouter } from "../../../../server/routers";
-type Stats = inferRouterOutputs<AppRouter>["cards"]["stats"];
+import { cellsFor, defaultStatsTitle } from "@shared/cardStats";
+export { cellsFor, defaultStatsTitle, currentSeasonLabel } from "@shared/cardStats";
 
 /** Positioner på kortet (engelska, som på klassiska hockeykort) */
 const POSITIONS = ["", "G", "D", "C", "LW", "RW", "F"];
 /** Spelarregistrets positioner → kortets */
 const CARD_POSITION: Record<string, string> = { MV: "G", B: "D", C: "C", F: "F" };
-
-/** Innevarande säsong som "2026/27" (säsongen börjar 1 augusti, som spelarhistoriken). */
-export function currentSeasonLabel(now = new Date()): string {
-  const y = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
-  return `${y}/${String((y + 1) % 100).padStart(2, "0")}`;
-}
-
-/** Standardrubrik för statistikrutan – sätts automatiskt när läget väljs (exporteras för test). */
-export function defaultStatsTitle(mode: CardSettings["statsMode"], stats?: Stats): string {
-  if (mode === "season") return `Säsong ${stats?.season.label ?? currentSeasonLabel()}`;
-  if (mode === "career") return "Karriär";
-  if (mode === "form") return "Form";
-  return "";
-}
-
-/** Statistikrutans celler för ett läge (exporteras för test). */
-export function cellsFor(mode: CardSettings["statsMode"], stats: Stats | undefined): { title: string; cells: CardCell[] } {
-  if (!stats || mode === "none" || mode === "custom" || mode === "form") {
-    return { title: mode === "form" ? "Form" : "", cells: [] };
-  }
-  const line = mode === "career" ? stats.career : stats.season;
-  const title = mode === "career" ? "Karriär" : `Säsong ${line.label}`;
-  if (stats.isGoalie && line.goalie) {
-    return {
-      title,
-      cells: [
-        { label: "GP", value: String(line.goalie.matches) },
-        { label: "GAA", value: line.goalie.gaa.toFixed(1).replace(".", ",") },
-        { label: "SO", value: String(line.goalie.shutouts) },
-        { label: "W%", value: `${line.winPct}%` },
-      ],
-    };
-  }
-  return {
-    title,
-    cells: [
-      { label: "GP", value: String(line.matches) },
-      { label: "G", value: String(line.goals) },
-      { label: "A", value: String(line.assists) },
-      { label: "PTS", value: String(line.points) },
-      { label: "W%", value: `${line.winPct}%` },
-    ],
-  };
-}
 
 async function loadImg(src: string): Promise<HTMLImageElement> {
   return new Promise((res, rej) => {
@@ -84,7 +40,6 @@ export default function CardsApp() {
   const saved = trpc.cards.list.useQuery();
   const saveCard = trpc.cards.save.useMutation({ onSuccess: () => utils.cards.list.invalidate() });
   const deleteCard = trpc.cards.delete.useMutation({ onSuccess: () => utils.cards.list.invalidate() });
-  const setPhoto = trpc.playerPhotos.set.useMutation();
 
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -99,6 +54,7 @@ export default function CardsApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const savedIds = useMemo(() => new Set((saved.data ?? []).map((c) => c.playerId)), [saved.data]);
+  const isLive = !!saved.data?.find((c) => c.playerId === playerId)?.liveProfile;
   const player = players.data?.find((p) => p.id === playerId) ?? null;
   const list = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -235,9 +191,11 @@ export default function CardsApp() {
     if (!photo) return toast.error("Ladda upp ett foto först");
     setBusy("save");
     try {
-      await saveCard.mutateAsync({ playerId, settings: settings as unknown as Record<string, unknown>, sourceBase64: newSource ?? undefined });
+      await saveCard.mutateAsync({ playerId, settings: settings as unknown as Record<string, unknown>, sourceBase64: newSource ?? undefined, liveProfile: isLive || undefined });
       setNewSource(null);
-      toast.success("Kortet är sparat på spelaren", { description: "Öppna spelaren igen för att få kortet med senaste statistiken." });
+      toast.success("Kortet är sparat på spelaren", {
+        description: isLive ? "Profilbilden är uppdaterad." : "Öppna spelaren igen för att få kortet med senaste statistiken.",
+      });
     } catch (e) {
       toast.error("Kunde inte spara", { description: (e as Error).message });
     } finally {
@@ -245,24 +203,29 @@ export default function CardsApp() {
     }
   };
 
-  const saveAsProfile = async () => {
+  /** Kortet som profilbild – servern ritar om det automatiskt när statistiken ändras. */
+  const toggleProfile = async () => {
     if (!playerId) return;
+    if (!photo) return toast.error("Ladda upp ett foto först");
+    const next = !isLive;
     setBusy("profile");
     try {
-      // Mindre version av hela kortet som JPEG (profilbilder är små)
-      // Profilbilder får vara högst ~150 kB – sänk kvaliteten om kortet blir tungt
-      let blob = await exportBlob("image/jpeg", 0.64, 0.84);
-      if (blob.size > 140_000) blob = await exportBlob("image/jpeg", 0.64, 0.7);
-      const base64 = await new Promise<string>((res, rej) => {
-        const r = new FileReader();
-        r.onload = () => res(String(r.result).split(",")[1] ?? "");
-        r.onerror = () => rej(new Error("Kunde inte läsa bilden"));
-        r.readAsDataURL(blob);
+      const res = await saveCard.mutateAsync({
+        playerId,
+        settings: settings as unknown as Record<string, unknown>,
+        sourceBase64: newSource ?? undefined,
+        liveProfile: next,
       });
-      await setPhoto.mutateAsync({ playerId, imageBase64: base64 });
-      toast.success("Kortet är spelarens profilbild");
+      setNewSource(null);
+      if (next) {
+        toast.success(res.profileUpdated ? "Kortet är spelarens profilbild" : "Kortet är sparat som profilbild", {
+          description: "Uppdateras automatiskt efter varje godkänd match.",
+        });
+      } else {
+        toast.success("Profilbilden uppdateras inte längre", { description: "Nuvarande bild står kvar." });
+      }
     } catch (e) {
-      toast.error("Kunde inte spara profilbilden", { description: (e as Error).message });
+      toast.error("Kunde inte spara", { description: (e as Error).message });
     } finally {
       setBusy(null);
     }
@@ -306,12 +269,16 @@ export default function CardsApp() {
                 <button onClick={() => void choosePlayer(p.id)}
                   className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm ${p.id === playerId ? "bg-emerald-500/15 text-white" : "text-white/75 hover:bg-white/[0.04]"}`}>
                   <span className="flex-1 min-w-0 truncate">{p.name}{p.number ? <span className="text-white/35"> #{p.number}</span> : null}</span>
-                  {savedIds.has(p.id) && <span title="Har sparat kort" className="text-[10px] px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300">Kort</span>}
+                  {saved.data?.find((c) => c.playerId === p.id)?.liveProfile ? (
+                    <span title="Profilbild som uppdateras automatiskt" className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-400/20 text-emerald-300">Profil</span>
+                  ) : savedIds.has(p.id) ? (
+                    <span title="Har sparat kort" className="text-[10px] px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300">Kort</span>
+                  ) : null}
                 </button>
               </li>
             ))}
           </ul>
-          <p className="text-[10px] text-white/35">Märkt "Kort" = sparat foto som byggs om med senaste statistiken.</p>
+          <p className="text-[10px] text-white/35">"Kort" = sparat foto som byggs om med senaste statistiken. "Profil" = kortet är profilbild och uppdateras automatiskt efter varje godkänd match.</p>
         </section>
 
         {/* Förhandsvisning */}
@@ -349,8 +316,10 @@ export default function CardsApp() {
               title={playerId ? "Spara foto och val på spelaren (ersätter tidigare kort)" : "Välj en spelare först"}>
               {busy === "save" ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Spara på spelaren
             </button>
-            <button onClick={() => void saveAsProfile()} disabled={!playerId || !photo || !!busy} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 border border-white/15 text-white/80 text-sm disabled:opacity-40">
-              {busy === "profile" ? <Loader2 size={14} className="animate-spin" /> : <UserSquare2 size={14} />} Som profilbild
+            <button onClick={() => void toggleProfile()} disabled={!playerId || !photo || !!busy}
+              title={isLive ? "Sluta uppdatera profilbilden (nuvarande bild står kvar)" : "Spara kortet och använd det som profilbild – uppdateras efter varje godkänd match"}
+              className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm disabled:opacity-40 ${isLive ? "bg-emerald-500/20 border border-emerald-400/50 text-emerald-200" : "bg-white/5 border border-white/15 text-white/80"}`}>
+              {busy === "profile" ? <Loader2 size={14} className="animate-spin" /> : <UserSquare2 size={14} />} {isLive ? "Profilbild ✓" : "Som profilbild"}
             </button>
           </div>
           {playerId && savedIds.has(playerId) && (

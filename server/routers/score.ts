@@ -1,4 +1,5 @@
 import { normalizeGoalType } from "../playerHistory";
+import { scheduleLiveProfileRefresh } from "../cardProfile";
 import { TRPCError } from "@trpc/server";
 /**
  * Score Tracker tRPC router.
@@ -181,6 +182,7 @@ export const scoreRouter = router({
           createdAt: input.createdAt ? new Date(input.createdAt) : undefined,
           lineup: input.lineup ?? null,
         });
+        scheduleLiveProfileRefresh(); // profilkort med statistik ritas om i bakgrunden
         return { success: true, reviewStatus };
       }),
 
@@ -203,6 +205,7 @@ export const scoreRouter = router({
       )
       .mutation(async ({ input }) => {
         await setMatchReviewStatus(input.ids, input.status);
+        scheduleLiveProfileRefresh(); // profilkort med statistik ritas om i bakgrunden
         return { success: true };
       }),
 
@@ -240,6 +243,7 @@ export const scoreRouter = router({
           matchEndTime: matchEndTime ? new Date(matchEndTime) : undefined,
           createdAt: createdAt ? new Date(createdAt) : undefined,
         });
+        scheduleLiveProfileRefresh(); // profilkort med statistik ritas om i bakgrunden
         return { success: true };
       }),
 
@@ -263,6 +267,7 @@ export const scoreRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         await deleteMatchResult(input.id);
+        scheduleLiveProfileRefresh(); // profilkort med statistik ritas om i bakgrunden
         return { success: true };
       }),
 
@@ -270,6 +275,7 @@ export const scoreRouter = router({
       .input(z.object({ ids: z.array(z.number()).min(1) }))
       .mutation(async ({ input }) => {
         await deleteMultipleMatchResults(input.ids);
+        scheduleLiveProfileRefresh(); // profilkort med statistik ritas om i bakgrunden
         return { success: true, deletedCount: input.ids.length };
       }),
   }),

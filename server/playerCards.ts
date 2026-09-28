@@ -8,6 +8,7 @@ import { playerCards } from "../drizzle/schema";
 import { getAllMatchResults } from "./scoreDb";
 import { playerProfile } from "./playerProfile";
 import { seasonOf } from "./playerHistory";
+import type { CardStats, CardStatLine } from "../shared/cardStats";
 
 /** Max storlek på originalfotot (base64-tecken) – ca 1,1 MB JPEG. */
 export const MAX_CARD_SOURCE_BASE64 = 1_500_000;
@@ -19,9 +20,26 @@ async function requireDb() {
 }
 
 /** Vilka spelare som har ett sparat kort (utan bilderna). */
-export async function listCards(): Promise<Array<{ playerId: string; updatedAt: Date; settings: Record<string, unknown> }>> {
+export async function listCards(): Promise<Array<{ playerId: string; updatedAt: Date; settings: Record<string, unknown>; liveProfile: boolean }>> {
   const db = await requireDb();
-  return db.select({ playerId: playerCards.playerId, updatedAt: playerCards.updatedAt, settings: playerCards.settings }).from(playerCards);
+  return db.select({ playerId: playerCards.playerId, updatedAt: playerCards.updatedAt, settings: playerCards.settings, liveProfile: playerCards.liveProfile }).from(playerCards);
+}
+
+/** Hela kortet (foto + val) – för att rita om profilbilden på servern. */
+export async function getCardRow(playerId: string) {
+  const db = await requireDb();
+  const [row] = await db.select().from(playerCards).where(eq(playerCards.playerId, playerId)).limit(1);
+  return row ?? null;
+}
+
+export async function listLiveProfileIds(): Promise<string[]> {
+  const db = await requireDb();
+  return (await db.select({ id: playerCards.playerId }).from(playerCards).where(eq(playerCards.liveProfile, true))).map((r) => r.id);
+}
+
+export async function setRenderedHash(playerId: string, hash: string | null) {
+  const db = await requireDb();
+  await db.update(playerCards).set({ renderedHash: hash }).where(eq(playerCards.playerId, playerId));
 }
 
 export async function getCardSource(playerId: string): Promise<{ image: Buffer; updatedAt: Date } | null> {
@@ -31,14 +49,16 @@ export async function getCardSource(playerId: string): Promise<{ image: Buffer; 
 }
 
 /** Spara kortet. Utan nytt foto behålls det sparade och bara valen uppdateras. */
-export async function saveCard(playerId: string, settings: Record<string, unknown>, sourceBase64?: string) {
+export async function saveCard(playerId: string, settings: Record<string, unknown>, sourceBase64?: string, liveProfile?: boolean) {
   const db = await requireDb();
+  // Ny ritning behövs alltid efter en ändring (renderedHash nollas)
+  const extra = { ...(liveProfile !== undefined ? { liveProfile } : {}), renderedHash: null };
   if (sourceBase64) {
-    await db.insert(playerCards).values({ playerId, source: sourceBase64, settings })
-      .onDuplicateKeyUpdate({ set: { source: sourceBase64, settings, updatedAt: new Date() } });
+    await db.insert(playerCards).values({ playerId, source: sourceBase64, settings, liveProfile: liveProfile ?? false })
+      .onDuplicateKeyUpdate({ set: { source: sourceBase64, settings, updatedAt: new Date(), ...extra } });
     return;
   }
-  const res = await db.update(playerCards).set({ settings, updatedAt: new Date() }).where(eq(playerCards.playerId, playerId));
+  const res = await db.update(playerCards).set({ settings, updatedAt: new Date(), ...extra }).where(eq(playerCards.playerId, playerId));
   const affected = (res as unknown as [{ affectedRows?: number }])[0]?.affectedRows ?? 0;
   if (!affected) throw new Error("Det finns inget sparat foto för spelaren – ladda upp ett foto först.");
 }
@@ -46,25 +66,6 @@ export async function saveCard(playerId: string, settings: Record<string, unknow
 export async function deleteCard(playerId: string) {
   const db = await requireDb();
   await db.delete(playerCards).where(eq(playerCards.playerId, playerId));
-}
-
-export interface CardStatLine {
-  label: string;
-  matches: number;
-  goals: number;
-  assists: number;
-  points: number;
-  wins: number;
-  winPct: number;
-  /** Målvakt: insläppta per match och hållna nollor (bara matcher i mål) */
-  goalie: { matches: number; gaa: number; shutouts: number } | null;
-}
-
-export interface CardStats {
-  season: CardStatLine;
-  career: CardStatLine;
-  form: string;
-  isGoalie: boolean;
 }
 
 /** Statistiken för kortet: innevarande säsong (från 1 augusti), karriär och form. */

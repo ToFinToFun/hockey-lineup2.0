@@ -255,5 +255,9 @@ export const playerCards = mysqlTable("player_cards", {
   source: mediumtext("source").notNull(),
   /** Stil, beskärning, bildjusteringar, texter och statistikval. */
   settings: json("settings").$type<Record<string, unknown>>().notNull(),
+  /** Kortet används som profilbild och ritas om automatiskt när statistiken ändras */
+  liveProfile: boolean("liveProfile").default(false).notNull(),
+  /** Fingeravtryck av det senast ritade profilkortet – oförändrat = inget att göra */
+  renderedHash: varchar("renderedHash", { length: 64 }),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

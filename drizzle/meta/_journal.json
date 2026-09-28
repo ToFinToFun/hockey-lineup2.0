@@ -92,6 +92,13 @@
       "when": 1790580776367,
       "tag": "0012_player_cards",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1790594295626,
+      "tag": "0013_card_live_profile",
+      "breakpoints": true
     }
   ]
 }

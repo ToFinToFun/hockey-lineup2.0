@@ -7,6 +7,14 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.34.0 – 2026-09-28
+
+**Hockeykort som profilbild – uppdateras automatiskt**
+- "Som profilbild" sparar kortet och gör det till spelarens profilbild. Servern ritar om det när statistiken ändrats: ~20 sekunder efter att en match sparats, godkänts, ändrats eller tagits bort (flera ändringar slås ihop), och en kontroll var sjätte timme (t.ex. nytt säsongsnamn).
+- Inget ritas vid sidladdning: profilbilden är en vanlig liten bild som förut. Varje kort har ett fingeravtryck av det som syns – oförändrat = inget arbete. Korten ritas ett i taget i bakgrunden.
+- Knappen visar "Profilbild ✓" när det är på; tryck igen för att sluta uppdatera (bilden står kvar). Spelarlistan märker "Profil" respektive "Kort".
+- Ritkoden för korten är gemensam för webbläsaren och servern (shared/cardRender.ts), så profilbilden ser exakt ut som förhandsvisningen. Nytt beroende: @napi-rs/canvas (förkompilerat, ingen systemkomponent behövs).
+
 ## 2.33.1 – 2026-09-28
 
 - Hockeykort: C/A står efter namnet, lite upphöjt och mindre (som på riktiga kort). Positionsrutan visar bara positionen.

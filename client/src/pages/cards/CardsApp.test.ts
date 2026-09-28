@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { cellsFor } from "./CardsApp";
-import { autoLevels, photoSourceRect, gradePixels, DEFAULT_SETTINGS } from "@/lib/cardRender";
-import { CARD_SKINS } from "@/lib/cardSkins";
+import { autoLevels, photoSourceRect, gradePixels, DEFAULT_SETTINGS } from "@shared/cardRender";
+import { CARD_SKINS } from "@shared/cardSkins";
 
 const line = (o = {}) => ({ label: "2026/27", matches: 10, goals: 5, assists: 7, points: 12, wins: 6, winPct: 60, goalie: null, ...o });
 
@@ -39,7 +39,7 @@ describe("hockeykort", () => {
   });
 });
 
-import { resolveLogo, skinById } from "@/lib/cardSkins";
+import { resolveLogo, skinById } from "@shared/cardSkins";
 
 describe("lagmärken", () => {
   it("stilens standard, eget val eller inget", () => {
