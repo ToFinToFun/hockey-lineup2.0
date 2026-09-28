@@ -94,6 +94,11 @@ export const matchResults = mysqlTable("match_results", {
    */
   reviewStatus: mysqlEnum("reviewStatus", ["pending", "approved", "rejected"]).default("approved").notNull(),
   reviewedAt: timestamp("reviewedAt"),
+  /**
+   * Val i matchrapporten: Stars of the Game (1:a–3:e, spelar-ID eller namn) och
+   * matchens sponsor ("presenteras av"). Null = räknas fram automatiskt.
+   */
+  report: json("report").$type<{ stars?: string[]; sponsor?: string | null }>(),
 }, (t) => [
   index("match_results_review_idx").on(t.reviewStatus),
   index("match_results_end_idx").on(t.matchEndTime),

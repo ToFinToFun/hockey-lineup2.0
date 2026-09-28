@@ -5,7 +5,8 @@ import { POSITION_COLORS } from "@/lib/positionColors";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowLeft, Trash2, Trophy, Clock, Target, Search, Filter, X, Pencil, GripVertical, Plus, ChevronDown, Users, UserCheck, CheckSquare, Square, XCircle, Share2, Star } from "lucide-react";
-import { MatchReportModal } from "@/components/score/MatchReportModal";
+import { MatchReportModal, type ReportMatch } from "@/components/score/MatchReportModal";
+import { starCandidates, autoStars, starLine } from "@/lib/starsOfGame";
 import { toast } from "sonner";
 
 interface MatchHistoryPageProps {
@@ -551,7 +552,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                   const ids = (matches ?? []).filter(m => m.reviewStatus === "pending").map(m => m.id);
                   if (confirm(`Godkänna alla ${ids.length} väntande matcher?`)) reviewMutation.mutate({ ids, status: "approved" });
                 }}
-                className="text-xs px-3 py-1.5 rounded-full bg-[#34d399]/20 border border-[#34d399]/40 text-[#34d399]"
+                className="text-xs px-3 py-1.5 rounded-full bg-[#56c653]/20 border border-[#56c653]/40 text-[#56c653]"
               >
                 Godkänn alla
               </button>
@@ -626,7 +627,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                   ) : isWhiteWin ? (
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white font-medium">VITA VANN</span>
                   ) : (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#34d399]/20 text-[#34d399] font-medium">GRÖNA VANN</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#56c653]/20 text-[#56c653] font-medium">GRÖNA VANN</span>
                   )}
                 </div>
                 <div className="flex items-center justify-center gap-6">
@@ -638,7 +639,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                   </div>
                   <span className="text-[#687076] text-lg">-</span>
                   <div className="flex items-center gap-2">
-                    <span className={`text-2xl font-bold ${isGreenWin ? 'text-[#34d399]' : 'text-[#9BA1A6]'}`}>
+                    <span className={`text-2xl font-bold ${isGreenWin ? 'text-[#56c653]' : 'text-[#9BA1A6]'}`}>
                       {match.teamGreenScore}
                     </span>
                     <img src={IMAGES.teamGreenLogo} alt="Gröna" className="w-8 h-8 object-contain" />
@@ -696,7 +697,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                 <span className="text-[#687076] text-2xl">-</span>
                 <div className="flex flex-col items-center gap-1">
                   <img src={IMAGES.teamGreenLogo} alt="Gröna" className="w-12 h-12 object-contain" />
-                  <span className="text-3xl font-bold text-[#34d399]">{selectedMatchData.teamGreenScore}</span>
+                  <span className="text-3xl font-bold text-[#56c653]">{selectedMatchData.teamGreenScore}</span>
                   <span className="text-[#9BA1A6] text-xs">GRÖNA</span>
                 </div>
               </div>
@@ -746,7 +747,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                           >
                             <span className="text-[#9BA1A6] text-xs w-8 shrink-0">{ws}-{gs}</span>
                             <div className="flex-1 min-w-0">
-                              <span className={isGreen ? "text-[#34d399]" : "text-white"}>
+                              <span className={isGreen ? "text-[#56c653]" : "text-white"}>
                                 {goal.scorer || (isGreen ? "GRÖNA" : "VITA")}
                               </span>
                               {goal.assist && (
@@ -776,88 +777,36 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                 </div>
               )}
 
-              {/* Match MVP */}
+              {/* Stars of the Game (sparade val eller automatiskt) */}
               {(() => {
-                const gh = selectedMatchData.goalHistory as GoalEvent[] | null;
-                if (!gh || !Array.isArray(gh) || gh.length === 0) return null;
-                const reversed = [...gh].reverse();
-                // Calculate points per player
-                const playerPoints: Record<string, { goals: number; assists: number; points: number; team: string }> = {};
-                for (const g of reversed) {
-                  if (g.scorer) {
-                    if (!playerPoints[g.scorer]) playerPoints[g.scorer] = { goals: 0, assists: 0, points: 0, team: g.team };
-                    playerPoints[g.scorer].goals++;
-                    playerPoints[g.scorer].points++;
-                  }
-                  if (g.assist) {
-                    if (!playerPoints[g.assist]) playerPoints[g.assist] = { goals: 0, assists: 0, points: 0, team: g.team };
-                    playerPoints[g.assist].assists++;
-                    playerPoints[g.assist].points++;
-                  }
-                }
-                // Determine GWG scorer
-                const whiteScore = selectedMatchData.teamWhiteScore;
-                const greenScore = selectedMatchData.teamGreenScore;
-                let gwgScorer = '';
-                if (whiteScore !== greenScore) {
-                  const winningTeam = whiteScore > greenScore ? 'white' : 'green';
-                  const loserScore = Math.min(whiteScore, greenScore);
-                  let winnerGoalCount = 0;
-                  for (const g of reversed) {
-                    const gt = g.team?.toLowerCase();
-                    const isWinner = (winningTeam === 'white' && (gt === 'white' || gt === 'vita' || gt === 'vit')) ||
-                                    (winningTeam === 'green' && (gt === 'green' || gt === 'gröna' || gt === 'grön'));
-                    if (isWinner) {
-                      if (winnerGoalCount === loserScore) {
-                        gwgScorer = g.scorer || '';
-                        break;
-                      }
-                      winnerGoalCount++;
-                    }
-                  }
-                }
-                // Sort by points, then goals, then assists, then GWG
-                const sorted = Object.entries(playerPoints).sort((a, b) => {
-                  if (b[1].points !== a[1].points) return b[1].points - a[1].points;
-                  if (b[1].goals !== a[1].goals) return b[1].goals - a[1].goals;
-                  if (b[1].assists !== a[1].assists) return b[1].assists - a[1].assists;
-                  const aGwg = a[0] === gwgScorer ? 1 : 0;
-                  const bGwg = b[0] === gwgScorer ? 1 : 0;
-                  return bGwg - aGwg;
+                const cands = starCandidates({
+                  teamWhiteScore: selectedMatchData.teamWhiteScore,
+                  teamGreenScore: selectedMatchData.teamGreenScore,
+                  goalHistory: (selectedMatchData.goalHistory as GoalEvent[] | null) ?? [],
+                  lineup: selectedMatchData.lineup as ReportMatch["lineup"],
                 });
-                if (sorted.length === 0) return null;
-                const mvp = sorted[0];
-                const mvpName = mvp[0];
-                const mvpStats = mvp[1];
-                const isGreen = mvpStats.team === 'green';
+                if (cands.length === 0) return null;
+                const saved = (selectedMatchData as { report?: ReportMatch["report"] }).report?.stars;
+                const keys = saved && saved.length === 3 && saved.every((k) => cands.some((c) => c.key === k)) ? saved : autoStars(cands, selectedMatchData.id);
+                const marks = ["⭐⭐⭐", "⭐⭐", "⭐"];
                 return (
-                  <div className="bg-gradient-to-r from-[#F59E0B]/10 to-[#F59E0B]/5 rounded-xl p-3 border border-[#F59E0B]/30">
-                    <h3 className="text-[#F59E0B] font-semibold text-sm mb-2 flex items-center gap-1.5">
-                      <Trophy size={14} /> Matchens MVP
+                  <div className="bg-white/[0.04] rounded-xl p-3 border border-white/10">
+                    <h3 className="text-[#ECEDEE] font-semibold text-sm mb-2 flex items-center gap-1.5">
+                      <Star size={14} className="text-amber-300" /> Stars of the Game
+                      {!saved && <span className="text-[10px] text-white/35 font-normal">(automatiskt – ändra i Matchrapport)</span>}
                     </h3>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-[#F59E0B]/20 flex items-center justify-center">
-                        <Trophy size={20} className="text-[#F59E0B]" />
-                      </div>
-                      <div className="flex-1">
-                        <p className={`font-bold text-sm ${isGreen ? 'text-[#34d399]' : 'text-white'}`}>{mvpName}</p>
-                        <div className="flex items-center gap-2 text-xs text-[#9BA1A6]">
-                          <span className="text-[#F59E0B] font-bold">{mvpStats.points} poäng</span>
-                          <span>({mvpStats.goals} mål, {mvpStats.assists} assist)</span>
-                          {mvpName === gwgScorer && <span className="text-[#F59E0B]">⭐ GWG</span>}
-                        </div>
-                      </div>
+                    <div className="space-y-1">
+                      {keys.map((k, i) => {
+                        const c = cands.find((x) => x.key === k);
+                        if (!c) return null;
+                        return (
+                          <div key={k} className="flex items-center gap-2 text-xs">
+                            <span className="w-12 shrink-0">{marks[i]}</span>
+                            <span className={`flex-1 truncate ${c.team === "green" ? "text-[#56c653]" : "text-white"}`}>{starLine(c)}</span>
+                          </div>
+                        );
+                      })}
                     </div>
-                    {/* Runner-ups */}
-                    {sorted.length > 1 && (
-                      <div className="mt-2 pt-2 border-t border-[#F59E0B]/20 flex flex-wrap gap-2">
-                        {sorted.slice(1, 4).map(([name, s], i) => (
-                          <span key={i} className="text-[10px] text-[#9BA1A6] bg-[#111]/50 px-2 py-0.5 rounded">
-                            {i + 2}. {name} <span className="text-[#F59E0B]">{s.points}p</span> ({s.goals}m {s.assists}a)
-                          </span>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 );
               })()}
@@ -978,7 +927,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
                       {renderTeam(whitePlayers, whiteTeamName, '#ECEDEE')}
-                      {renderTeam(greenPlayers, greenTeamName, '#34d399')}
+                      {renderTeam(greenPlayers, greenTeamName, '#56c653')}
                     </div>
                     {/* Team summary */}
                     <div className="mt-3 pt-2 border-t border-white/10 grid grid-cols-2 gap-3">
@@ -986,7 +935,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                         <span className="text-white font-semibold">{whiteGoals}</span> mål, <span className="text-white font-semibold">{whiteAssists}</span> assist
                       </div>
                       <div className="text-[10px] text-[#9BA1A6]">
-                        <span className="text-[#34d399] font-semibold">{greenGoals}</span> mål, <span className="text-[#34d399] font-semibold">{greenAssists}</span> assist
+                        <span className="text-[#56c653] font-semibold">{greenGoals}</span> mål, <span className="text-[#56c653] font-semibold">{greenAssists}</span> assist
                       </div>
                     </div>
                   </div>
@@ -1002,7 +951,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                   // Radix Dialog needs ~300ms to fully unmount and release event handlers
                   setTimeout(() => setExportMatchData(matchData), 350);
                 }}
-                className="w-full flex items-center justify-center gap-2 bg-white/[0.04] border border-[#34d399]/30 text-[#34d399] py-2.5 rounded-xl text-sm font-medium hover:bg-[#34d399]/10 transition-colors"
+                className="w-full flex items-center justify-center gap-2 bg-white/[0.04] border border-[#56c653]/30 text-[#56c653] py-2.5 rounded-xl text-sm font-medium hover:bg-[#56c653]/10 transition-colors"
               >
                 <Share2 size={14} /> Matchrapport för Instagram
               </button>
@@ -1019,7 +968,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                     <button
                       onClick={() => reviewMutation.mutate({ ids: [selectedMatchData.id], status: "approved" })}
                       disabled={reviewMutation.isPending}
-                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#34d399]/20 border border-[#34d399]/40 text-[#34d399] disabled:opacity-50"
+                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#56c653]/20 border border-[#56c653]/40 text-[#56c653] disabled:opacity-50"
                     >
                       Godkänn
                     </button>
@@ -1157,7 +1106,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
               <div className="flex-1">
                 <label className="text-[#9BA1A6] text-xs font-medium block mb-1 text-center">Gröna</label>
                 <div className="flex items-center justify-center">
-                  <span className="text-2xl font-bold text-[#34d399]">{editGoals.filter(g => g.team === 'green').length}</span>
+                  <span className="text-2xl font-bold text-[#56c653]">{editGoals.filter(g => g.team === 'green').length}</span>
                 </div>
               </div>
             </div>
@@ -1187,7 +1136,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                         draggingIdx === idx
                           ? "opacity-50 border-[#0a7ea4] bg-[#0a7ea4]/10"
                           : isGreen
-                            ? "border-[#34d399]/30 bg-[#34d399]/5"
+                            ? "border-[#56c653]/30 bg-[#56c653]/5"
                             : "border-white/10 bg-white/5"
                       }`}
                     >
@@ -1195,7 +1144,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                       <div className="flex items-center gap-2 mb-2">
                         <GripVertical size={14} className="text-[#687076] cursor-grab shrink-0" />
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          isGreen ? "bg-[#34d399]/20 text-[#34d399]" : "bg-white/10 text-white"
+                          isGreen ? "bg-[#56c653]/20 text-[#56c653]" : "bg-white/10 text-white"
                         }`}>
                           {isGreen ? "GRÖNA" : "VITA"}
                         </span>
@@ -1270,7 +1219,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                 </button>
                 <button
                   onClick={() => addGoal("green")}
-                  className="flex-1 flex items-center justify-center gap-1 bg-[#34d399]/5 border border-[#34d399]/20 text-[#34d399]/70 py-2 rounded-xl text-xs font-medium hover:bg-[#34d399]/10 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1 bg-[#56c653]/5 border border-[#56c653]/20 text-[#56c653]/70 py-2 rounded-xl text-xs font-medium hover:bg-[#56c653]/10 transition-colors"
                 >
                   <Plus size={12} /> Gröna mål
                 </button>
@@ -1397,6 +1346,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
       {exportMatchData && (
         <MatchReportModal
           match={{
+            id: exportMatchData.id,
             name: exportMatchData.name,
             teamWhiteScore: exportMatchData.teamWhiteScore,
             teamGreenScore: exportMatchData.teamGreenScore,
@@ -1404,7 +1354,8 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
             matchEndTime: exportMatchData.matchEndTime ? String(exportMatchData.matchEndTime) : null,
             matchStartTime: exportMatchData.matchStartTime ? String(exportMatchData.matchStartTime) : null,
             createdAt: String(exportMatchData.createdAt),
-            lineup: exportMatchData.lineup as { teamAName?: string; teamBName?: string } | null,
+            lineup: exportMatchData.lineup as ReportMatch["lineup"],
+            report: (exportMatchData as { report?: ReportMatch["report"] }).report ?? null,
           }}
           onClose={() => {
             setSelectedMatch(exportMatchData.id);

@@ -16,6 +16,7 @@ import {
   setMatchReviewStatus,
   getMatchResultById,
   updateMatch,
+  setMatchReport,
   deleteMatchResult,
   deleteMultipleMatchResults,
   getConfigValue,
@@ -76,6 +77,9 @@ function saveRateLimited(ip: string): boolean {
   return entry.count > 20;
 }
 
+const REPORT_TAGS_KEY = "report_hashtags";
+const DEFAULT_REPORT_TAGS = ["#StålstadensSF", "#Gubbhockey"];
+
 export const scoreRouter = router({
   /** App configuration (season/playoff dates) */
   config: router({
@@ -113,6 +117,24 @@ export const scoreRouter = router({
   }),
 
   /** Match CRUD */
+  /** Hashtags som alltid läggs till i matchrapportens bildtext. */
+  reportTags: router({
+    get: adminProcedure.query(async () => {
+      const raw = await getConfigValue(REPORT_TAGS_KEY);
+      try {
+        const tags = raw ? (JSON.parse(raw) as string[]) : null;
+        if (Array.isArray(tags)) return tags;
+      } catch { /* standard */ }
+      return DEFAULT_REPORT_TAGS;
+    }),
+    set: adminProcedure
+      .input(z.array(z.string().trim().min(2).max(60).regex(/^#[^\s#]+$/, "En hashtag börjar med # och har inga mellanslag")).max(20))
+      .mutation(async ({ input }) => {
+        await setConfigValue(REPORT_TAGS_KEY, JSON.stringify(input));
+        return { success: true };
+      }),
+  }),
+
   match: router({
     save: publicProcedure
       .input(
@@ -218,6 +240,20 @@ export const scoreRouter = router({
           matchEndTime: matchEndTime ? new Date(matchEndTime) : undefined,
           createdAt: createdAt ? new Date(createdAt) : undefined,
         });
+        return { success: true };
+      }),
+
+    /** Matchrapportens val: Stars of the Game och "presenteras av". */
+    setReport: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        report: z.object({
+          stars: z.array(z.string().max(120)).max(3).optional(),
+          sponsor: z.string().max(120).nullable().optional(),
+        }).nullable(),
+      }))
+      .mutation(async ({ input }) => {
+        await setMatchReport(input.id, input.report);
         return { success: true };
       }),
 

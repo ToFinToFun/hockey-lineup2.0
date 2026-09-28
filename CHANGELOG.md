@@ -7,6 +7,17 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.26.0 – 2026-09-28
+
+**Matchrapport**
+- Stars of the Game (1:a–3:e stjärna) i stället för poängbäst – på resultatbilden, i bildtexten och i matchens detaljvy. Väljs automatiskt (mål 3, assist 2, matchvinnande mål +1, vinst +1; målvakt: vinst och få insläppta, hållen nolla ger alltid en stjärna; saknas poäng fylls det på slumpvis, samma för samma match). Kan ändras för hand; valet sparas på matchen.
+- "Presenteras av": välj matchens sponsor (standard den som presenterade flest mål). Valet sparas på matchen.
+- Bildtext enligt klubbens mall: Kvällens Stars of the Game (⭐⭐⭐/⭐⭐/⭐ med position och M/A/P eller insläppta), "Dagens mål presenterades av …" och hashtags. Går att skriva fritt; Återställ ger mallen igen.
+- Hashtags sparas i databasen och läggs alltid till; lägg till och ta bort direkt i rutan (standard #StålstadensSF #Gubbhockey).
+- Straff visas som "(straff)" efter målskytten i stället för en röd etikett.
+- Meta Business Suite-knapp: på telefon öppnas delningsmenyn (välj Business Suite); på dator sparas bilderna, texten kopieras och Business Suite öppnas.
+- Grönas färg i bilderna och matchhistoriken är nu klubbgrön i samma nyans som Grönas logga.
+
 ## 2.25.0 – 2026-09-28
 
 **Matchhistorik**

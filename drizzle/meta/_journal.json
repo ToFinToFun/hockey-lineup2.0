@@ -78,6 +78,13 @@
       "when": 1790520424943,
       "tag": "0010_player_photos",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1790558160660,
+      "tag": "0011_match_report",
+      "breakpoints": true
     }
   ]
 }

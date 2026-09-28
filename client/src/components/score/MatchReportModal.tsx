@@ -4,7 +4,9 @@
  * Dela öppnar telefonens delningsmeny (Instagram m.fl.), annars laddas bilderna ned.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { X, Download, Copy, Share2, Loader2, Check } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { starCandidates, autoStars, starLine, starPositionLabel, type StarCandidate } from "@/lib/starsOfGame";
+import { X, Download, Copy, Share2, Loader2, Check, Star, RotateCcw, Plus, Briefcase } from "lucide-react";
 import { toast } from "sonner";
 import { useSponsors, logoForName } from "@/lib/sponsors";
 import { renderResultImage, renderGoalsImage, type ReportData, type ReportGoal } from "@/lib/matchReportImages";
@@ -19,6 +21,7 @@ interface RawGoal {
 }
 
 export interface ReportMatch {
+  id: number;
   name: string;
   teamWhiteScore: number;
   teamGreenScore: number;
@@ -26,7 +29,9 @@ export interface ReportMatch {
   matchEndTime?: string | null;
   matchStartTime?: string | null;
   createdAt: string;
-  lineup?: { teamAName?: string; teamBName?: string } | null;
+  lineup?: { teamAName?: string; teamBName?: string; lineup?: Record<string, { id?: string; name?: string; number?: string }> } | null;
+  /** Sparade val: stjärnor (nycklar) och sponsor */
+  report?: { stars?: string[]; sponsor?: string | null } | null;
 }
 
 const LOGO_WHITE = "/images/logo-white.png";
@@ -40,7 +45,11 @@ function dateLine(iso: string | null | undefined) {
 }
 
 /** Bygger bildernas data ur en sparad match (exporteras för test). */
-export function buildReportData(match: ReportMatch, sponsorLogo: (name: string) => string | null): ReportData {
+export function buildReportData(
+  match: ReportMatch,
+  stars: StarCandidate[],
+  sponsor: { name: string; logo: string | null } | null
+): ReportData {
   const wrap = match.lineup ?? {};
   const aWhite = (wrap.teamAName ?? "VITA").toLowerCase().includes("vit");
   const cap = (s: string | undefined, fallback: string) => {
@@ -59,76 +68,131 @@ export function buildReportData(match: ReportMatch, sponsorLogo: (name: string) 
     penalty: g.other === "Straff",
   }));
 
-  // Poängbäst: flest poäng, sedan flest mål
-  const pts = new Map<string, { goals: number; assists: number }>();
-  for (const g of chrono) {
-    if (g.other === "Självmål") continue;
-    if (g.scorer) pts.set(g.scorer, { goals: (pts.get(g.scorer)?.goals ?? 0) + 1, assists: pts.get(g.scorer)?.assists ?? 0 });
-    if (g.assist) pts.set(g.assist, { goals: pts.get(g.assist)?.goals ?? 0, assists: (pts.get(g.assist)?.assists ?? 0) + 1 });
-  }
-  const best = [...pts.entries()].sort((a, b) => b[1].goals + b[1].assists - (a[1].goals + a[1].assists) || b[1].goals - a[1].goals)[0];
-
-  // Sponsorer som presenterade målen, flest först
-  const spCount = new Map<string, number>();
-  for (const g of chrono) if (g.sponsor) spCount.set(g.sponsor, (spCount.get(g.sponsor) ?? 0) + 1);
-  const sponsors = [...spCount.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => ({ name, logo: sponsorLogo(name) }));
-
   return {
     whiteName, greenName,
     whiteScore: match.teamWhiteScore, greenScore: match.teamGreenScore,
     dateLine: dateLine(match.matchEndTime ?? match.matchStartTime ?? match.createdAt),
     goals,
-    topScorer: best ? { name: best[0], ...best[1] } : null,
-    sponsors,
+    stars: stars.map((c) => {
+      const line = starLine(c);
+      const head = c.position ? `${c.name} (${starPositionLabel(c.position)})` : c.name;
+      return { name: c.name, pos: starPositionLabel(c.position), stat: line.slice(head.length).trim() };
+    }),
+    sponsor,
     logoWhite: LOGO_WHITE, logoGreen: LOGO_GREEN, background: BACKGROUND,
   };
 }
 
-/** Förslag på bildtext (exporteras för test). */
-export function buildCaption(d: ReportData): string {
-  const result = `${d.whiteName} ${d.whiteScore}–${d.greenScore} ${d.greenName}`;
-  const scorers = new Map<string, number>();
-  for (const g of d.goals) if (g.scorer && !g.scorer.includes("självmål") && g.scorer !== "Självmål") scorers.set(g.scorer, (scorers.get(g.scorer) ?? 0) + 1);
-  const list = [...scorers.entries()].sort((a, b) => b[1] - a[1]).map(([n, c]) => (c > 1 ? `${n} ${c}` : n)).join(", ");
-  const sponsorLine = d.sponsors.length ? `\n\nMålen presenterades av ${d.sponsors.map((s) => s.name).join(", ")}.` : "";
-  return `🏒 ${d.dateLine}: ${result}${list ? `\n\nMål: ${list}` : ""}${sponsorLine}\n\n#stålstadenssf #hockey #luleå`;
+/** Bildtexten enligt klubbens mall (exporteras för test). */
+export function buildCaption(stars: StarCandidate[], sponsorName: string | null, tags: string[]): string {
+  const marks = ["⭐⭐⭐", "⭐⭐", "⭐"];
+  const parts: string[] = [];
+  if (stars.length) parts.push(["Kvällens Stars of the Game", ...stars.map((c, i) => `${marks[i]} ${starLine(c)}`)].join("\n"));
+  if (sponsorName) parts.push(`Dagens mål presenterades av ${sponsorName}`);
+  if (tags.length) parts.push(tags.join(" "));
+  return parts.join("\n\n");
 }
+
+/** Den sponsor som presenterade flest mål i matchen. */
+function mostFrequentSponsor(goals: RawGoal[]): string | null {
+  const count = new Map<string, number>();
+  for (const g of goals) if (g.sponsor) count.set(g.sponsor, (count.get(g.sponsor) ?? 0) + 1);
+  return [...count.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+}
+
+const META_BUSINESS_URL = "https://business.facebook.com/";
 
 export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClose: () => void }) {
   const { sponsors } = useSponsors();
-  const data = useMemo(() => buildReportData(match, (n) => logoForName(sponsors, n)), [match, sponsors]);
+  const utils = trpc.useUtils();
+  const saveReport = trpc.score.match.setReport.useMutation({ onSuccess: () => utils.score.match.list.invalidate() });
+  const tagsQuery = trpc.score.reportTags.get.useQuery(undefined, { staleTime: 60_000 });
+  const saveTags = trpc.score.reportTags.set.useMutation({ onSuccess: () => utils.score.reportTags.get.invalidate() });
+
+  // ─── Stars of the Game ───
+  const candidates = useMemo(() => starCandidates({
+    teamWhiteScore: match.teamWhiteScore, teamGreenScore: match.teamGreenScore,
+    goalHistory: match.goalHistory, lineup: match.lineup,
+  }), [match]);
+  const auto = useMemo(() => autoStars(candidates, match.id), [candidates, match.id]);
+  const [starKeys, setStarKeys] = useState<string[]>(() => {
+    const saved = match.report?.stars?.filter((k) => candidates.some((c) => c.key === k));
+    return saved && saved.length === 3 ? saved : auto;
+  });
+  const stars = useMemo(() => starKeys.map((k) => candidates.find((c) => c.key === k)).filter(Boolean) as StarCandidate[], [starKeys, candidates]);
+
+  // ─── Presenteras av ───
+  const activeSponsors = sponsors.filter((sp) => sp.active);
+  const [sponsorName, setSponsorName] = useState<string | null>(() =>
+    match.report?.sponsor !== undefined ? match.report.sponsor ?? null : mostFrequentSponsor(match.goalHistory)
+  );
+  const sponsor = sponsorName ? { name: sponsorName, logo: logoForName(sponsors, sponsorName) } : null;
+
+  // Spara valen på matchen
+  const persist = (next: { stars?: string[]; sponsor?: string | null }) => {
+    saveReport.mutate({ id: match.id, report: { stars: next.stars ?? starKeys, sponsor: next.sponsor !== undefined ? next.sponsor : sponsorName } });
+  };
+  const setStar = (i: number, key: string) => {
+    const next = [...starKeys];
+    const other = next.indexOf(key);
+    if (other >= 0 && other !== i) next[other] = next[i]; // byt plats om spelaren redan hade en stjärna
+    next[i] = key;
+    setStarKeys(next);
+    persist({ stars: next });
+  };
+  const resetStars = () => {
+    setStarKeys(auto);
+    persist({ stars: auto });
+  };
+  const chooseSponsor = (name: string | null) => {
+    setSponsorName(name);
+    persist({ sponsor: name });
+  };
+
+  // ─── Hashtags (sparas för alla rapporter) ───
+  const tags = tagsQuery.data ?? [];
+  const [newTag, setNewTag] = useState("");
+  const addTag = () => {
+    const t = newTag.trim().replace(/\s+/g, "");
+    if (!t) return;
+    const tag = t.startsWith("#") ? t : `#${t}`;
+    if (!tags.includes(tag)) saveTags.mutate([...tags, tag], { onError: (e) => toast.error(e.message) });
+    setNewTag("");
+  };
+  const removeTag = (tag: string) => saveTags.mutate(tags.filter((t) => t !== tag));
+
+  const data = useMemo(() => buildReportData(match, stars, sponsor), [match, stars, sponsor?.name, sponsor?.logo]); // eslint-disable-line react-hooks/exhaustive-deps
+  const autoCaption = useMemo(() => buildCaption(stars, sponsorName, tags), [stars, sponsorName, tags]);
+  const [caption, setCaption] = useState(autoCaption);
+  const [captionEdited, setCaptionEdited] = useState(false);
+  useEffect(() => {
+    if (!captionEdited) setCaption(autoCaption);
+  }, [autoCaption, captionEdited]);
+
   const [images, setImages] = useState<{ result: Blob; goals: Blob; resultUrl: string; goalsUrl: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [include, setInclude] = useState({ result: true, goals: true });
-  const [caption, setCaption] = useState(() => buildCaption(data));
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
-  const captionEdited = useRef(false);
+  const renderId = useRef(0);
 
   useEffect(() => {
-    if (!captionEdited.current) setCaption(buildCaption(data));
-  }, [data]);
-
-  useEffect(() => {
-    let cancelled = false;
+    const id = ++renderId.current;
     const toBlob = (c: HTMLCanvasElement) => new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("Bilden kunde inte skapas"))), "image/jpeg", 0.92));
     (async () => {
       try {
         const [r, g] = await Promise.all([renderResultImage(data), renderGoalsImage(data)]);
         const [rb, gb] = await Promise.all([toBlob(r), toBlob(g)]);
-        if (cancelled) return;
+        if (id !== renderId.current) return;
         setImages((prev) => {
           if (prev) { URL.revokeObjectURL(prev.resultUrl); URL.revokeObjectURL(prev.goalsUrl); }
           return { result: rb, goals: gb, resultUrl: URL.createObjectURL(rb), goalsUrl: URL.createObjectURL(gb) };
         });
       } catch (e) {
-        if (!cancelled) setError((e as Error).message);
+        if (id === renderId.current) setError((e as Error).message);
       }
     })();
-    return () => { cancelled = true; };
   }, [data]);
-
-  useEffect(() => () => { if (images) { URL.revokeObjectURL(images.resultUrl); URL.revokeObjectURL(images.goalsUrl); } }, [images]);
 
   const slug = match.name.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "").toLowerCase() || "match";
   const files = (): File[] => {
@@ -140,7 +204,7 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
   };
   const canShare = typeof navigator !== "undefined" && !!navigator.canShare && images ? navigator.canShare({ files: files() }) : false;
 
-  const download = () => {
+  const download = (quiet = false) => {
     for (const f of files()) {
       const a = document.createElement("a");
       a.href = URL.createObjectURL(f);
@@ -148,7 +212,7 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     }
-    toast.success(files().length === 1 ? "Bilden sparad" : "Bilderna sparade");
+    if (!quiet) toast.success(files().length === 1 ? "Bilden sparad" : "Bilderna sparade");
   };
 
   const copy = async () => {
@@ -164,7 +228,7 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
   const share = async () => {
     setBusy(true);
     try {
-      // Instagram tar inte med texten från delningen – kopiera den så den kan klistras in
+      // Instagram/Business Suite tar inte med texten från delningen – kopiera den så den kan klistras in
       await navigator.clipboard.writeText(caption).catch(() => undefined);
       await navigator.share({ files: files(), text: caption });
     } catch (e) {
@@ -174,54 +238,113 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
     }
   };
 
+  /** Meta Business Suite: telefon – delningsmenyn (välj Business Suite); dator – spara bilderna, kopiera texten och öppna Business Suite. */
+  const openBusinessSuite = async () => {
+    if (canShare) return share();
+    download(true);
+    await navigator.clipboard.writeText(caption).catch(() => undefined);
+    window.open(META_BUSINESS_URL, "_blank", "noopener");
+    toast.success("Bilderna sparade och texten kopierad", { description: "Välj Skapa inlägg i Business Suite och lägg till bilderna." });
+  };
+
   const nothing = !include.result && !include.goals;
+  const select = "w-full rounded-lg bg-white/5 border border-white/10 text-white text-sm px-2.5 py-1.5";
+  const starMarks = ["⭐⭐⭐", "⭐⭐", "⭐"];
 
   return (
     <div className="fixed inset-0 z-[99999] flex items-stretch sm:items-center justify-center sm:p-4 bg-black/85 backdrop-blur" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="glass-panel-strong panel-solid sm:rounded-2xl shadow-2xl flex flex-col w-full sm:max-w-2xl sm:max-h-[92vh] overflow-hidden">
+      <div className="glass-panel-strong panel-solid sm:rounded-2xl shadow-2xl flex flex-col w-full sm:max-w-3xl sm:max-h-[94vh] overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
           <h2 className="text-white font-black text-base uppercase tracking-widest" style={{ fontFamily: "'Oswald', sans-serif" }}>Matchrapport</h2>
           <button onClick={onClose} aria-label="Stäng" className="text-white/50 hover:text-white p-1"><X className="w-5 h-5" /></button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {error && <p className="text-red-300 text-sm">Bilderna kunde inte skapas: {error}</p>}
-          <div className="grid grid-cols-2 gap-3">
-            {([["result", "Resultat", images?.resultUrl], ["goals", "Målen", images?.goalsUrl]] as const).map(([key, label, url]) => (
-              <button
-                key={key}
-                onClick={() => setInclude((p) => ({ ...p, [key]: !p[key] }))}
-                className={`relative rounded-xl overflow-hidden border-2 transition-all text-left ${include[key] ? "border-emerald-400" : "border-white/10 opacity-45"}`}
-                aria-pressed={include[key]}
-                title={include[key] ? `Ta bort ${label.toLowerCase()} ur inlägget` : `Ta med ${label.toLowerCase()} i inlägget`}
-              >
-                <div className="aspect-[4/5] bg-black flex items-center justify-center">
-                  {url ? <img src={url} alt={label} className="w-full h-full object-cover" /> : <Loader2 className="w-6 h-6 text-white/40 animate-spin" />}
-                </div>
-                <span className={`absolute top-2 left-2 flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${include[key] ? "bg-emerald-500 text-emerald-950" : "bg-black/70 text-white/60"}`}>
-                  {include[key] && <Check className="w-3 h-3" />}{label}
-                </span>
-              </button>
-            ))}
+        <div className="flex-1 overflow-y-auto p-4 grid gap-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          {/* Förhandsgranskning */}
+          <div className="space-y-2">
+            {error && <p className="text-red-300 text-sm">Bilderna kunde inte skapas: {error}</p>}
+            <div className="grid grid-cols-2 gap-2">
+              {([["result", "Resultat", images?.resultUrl], ["goals", "Målen", images?.goalsUrl]] as const).map(([key, label, url]) => (
+                <button key={key} onClick={() => setInclude((p) => ({ ...p, [key]: !p[key] }))} aria-pressed={include[key]}
+                  className={`relative rounded-xl overflow-hidden border-2 transition-all ${include[key] ? "border-emerald-400" : "border-white/10 opacity-45"}`}
+                  title={include[key] ? `Ta bort ${label.toLowerCase()} ur inlägget` : `Ta med ${label.toLowerCase()} i inlägget`}>
+                  <div className="aspect-[4/5] bg-black flex items-center justify-center">
+                    {url ? <img src={url} alt={label} className="w-full h-full object-cover" /> : <Loader2 className="w-6 h-6 text-white/40 animate-spin" />}
+                  </div>
+                  <span className={`absolute top-1.5 left-1.5 flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${include[key] ? "bg-emerald-500 text-emerald-950" : "bg-black/70 text-white/60"}`}>
+                    {include[key] && <Check className="w-3 h-3" />}{label}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <p className="text-white/35 text-[10px]">4:5 (1080×1350). Tryck på en bild för att ta med eller utesluta den.</p>
           </div>
-          <p className="text-white/35 text-[10px] -mt-2">4:5 för Instagram (1080×1350). Tryck på en bild för att ta med eller utesluta den – båda blir ett karusellinlägg.</p>
 
-          <div>
-            <label htmlFor="report-caption" className="block text-white/50 text-[11px] mb-1.5">Bildtext</label>
-            <textarea
-              id="report-caption"
-              value={caption}
-              onChange={(e) => { captionEdited.current = true; setCaption(e.target.value); }}
-              rows={6}
-              className="w-full rounded-lg bg-white/5 border border-white/10 text-white text-xs px-3 py-2"
-            />
-            <p className="text-white/35 text-[10px] mt-1">Texten kopieras automatiskt när du delar – klistra in den i Instagram.</p>
+          {/* Val */}
+          <div className="space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-white/50 text-[11px] flex items-center gap-1"><Star className="w-3 h-3" /> Stars of the Game</p>
+                <button onClick={resetStars} className="text-[10px] text-sky-300/80 hover:text-sky-200 flex items-center gap-1"><RotateCcw className="w-3 h-3" /> Automatiskt</button>
+              </div>
+              <div className="space-y-1.5">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="w-12 shrink-0 text-xs">{starMarks[i]}</span>
+                    <select value={starKeys[i] ?? ""} onChange={(e) => setStar(i, e.target.value)} className={select} aria-label={`Stjärna ${i + 1}`}>
+                      {candidates.map((c) => (
+                        <option key={c.key} value={c.key} className="text-black">{starLine(c)}{c.team === "white" ? " – Vita" : " – Gröna"}</option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="report-sponsor" className="block text-white/50 text-[11px] mb-1.5">Presenteras av</label>
+              <select id="report-sponsor" value={sponsorName ?? ""} onChange={(e) => chooseSponsor(e.target.value || null)} className={select}>
+                <option value="" className="text-black">Ingen sponsor</option>
+                {[...new Set([...(sponsorName ? [sponsorName] : []), ...activeSponsors.map((sp) => sp.name)])].map((n) => (
+                  <option key={n} value={n} className="text-black">{n}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <p className="text-white/50 text-[11px] mb-1.5">Hashtags (sparas och används alltid)</p>
+              <div className="flex flex-wrap gap-1.5">
+                {tags.map((t) => (
+                  <span key={t} className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-sky-500/15 border border-sky-400/30 text-sky-200">
+                    {t}
+                    <button onClick={() => removeTag(t)} aria-label={`Ta bort ${t}`} className="text-sky-200/60 hover:text-white"><X className="w-3 h-3" /></button>
+                  </span>
+                ))}
+                <span className="flex items-center gap-1">
+                  <input value={newTag} onChange={(e) => setNewTag(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addTag(); }}
+                    placeholder="#ny" className="w-24 rounded-full bg-white/5 border border-white/10 text-white text-[11px] px-2 py-0.5" />
+                  <button onClick={addTag} aria-label="Lägg till hashtag" className="text-white/50 hover:text-white"><Plus className="w-3.5 h-3.5" /></button>
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label htmlFor="report-caption" className="text-white/50 text-[11px]">Bildtext</label>
+                {captionEdited && (
+                  <button onClick={() => setCaptionEdited(false)} className="text-[10px] text-sky-300/80 hover:text-sky-200 flex items-center gap-1"><RotateCcw className="w-3 h-3" /> Återställ</button>
+                )}
+              </div>
+              <textarea id="report-caption" value={caption} onChange={(e) => { setCaptionEdited(true); setCaption(e.target.value); }} rows={8}
+                className="w-full rounded-lg bg-white/5 border border-white/10 text-white text-xs px-3 py-2" />
+              <p className="text-white/35 text-[10px] mt-1">Texten kopieras automatiskt när du delar – klistra in den i inlägget.</p>
+            </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2 px-4 py-3 border-t border-white/10">
           <button onClick={onClose} className="px-4 py-2 rounded-lg border border-white/15 text-white/70 text-xs font-bold uppercase tracking-wider hover:bg-white/5">Avbryt</button>
-          <button onClick={download} disabled={!images || nothing} title="Spara bilderna" aria-label="Spara bilderna"
+          <button onClick={() => download()} disabled={!images || nothing} title="Spara bilderna" aria-label="Spara bilderna"
             className="flex items-center justify-center px-3 py-2 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-50">
             <Download className="w-4 h-4" />
           </button>
@@ -230,14 +353,17 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
             {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
           </button>
           <div className="flex-1" />
-          {canShare && (
+          <button onClick={openBusinessSuite} disabled={!images || nothing || busy} title="Meta Business Suite (Instagram och Facebook)"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#0866ff] text-white text-xs font-bold uppercase tracking-wider disabled:opacity-50">
+            <Briefcase className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Business Suite</span><span className="sm:hidden">Meta</span>
+          </button>
+          {canShare ? (
             <button onClick={share} disabled={!images || nothing || busy}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-fuchsia-500 to-orange-400 text-white text-xs font-black uppercase tracking-wider disabled:opacity-50">
               {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Share2 className="w-3.5 h-3.5" />} Dela
             </button>
-          )}
-          {!canShare && (
-            <button onClick={download} disabled={!images || nothing}
+          ) : (
+            <button onClick={() => download()} disabled={!images || nothing}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500 text-emerald-950 text-xs font-black uppercase tracking-wider disabled:opacity-50">
               <Download className="w-3.5 h-3.5" /> Ladda ned
             </button>

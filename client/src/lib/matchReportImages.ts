@@ -24,8 +24,10 @@ export interface ReportData {
   greenScore: number;
   dateLine: string; // "Tisdag 29/9"
   goals: ReportGoal[]; // i tidsordning, äldst först
-  topScorer?: { name: string; goals: number; assists: number } | null;
-  sponsors: Array<{ name: string; logo: string | null }>;
+  /** Stars of the Game, 1:a först: namn, position och statistikrad */
+  stars: Array<{ name: string; pos: string; stat: string }>;
+  /** Matchens sponsor ("presenteras av") */
+  sponsor: { name: string; logo: string | null } | null;
   logoWhite: string;
   logoGreen: string;
   background: string;
@@ -34,7 +36,8 @@ export interface ReportData {
 const HEAD = "'Oswald', sans-serif";
 const BODY = "'Inter', sans-serif";
 const WHITE = "#e2e8f0";
-const GREEN = "#34d399";
+/** Klubbgrön: samma nyans som Grönas logga (#337931), ljusare för mörk bakgrund */
+const GREEN = "#56c653";
 
 async function tryLoad(src: string | null | undefined) {
   if (!src) return null;
@@ -123,39 +126,47 @@ function logo(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null, cx: n
   ctx.stroke();
 }
 
-function sponsorsRow(ctx: CanvasRenderingContext2D, sponsors: Array<{ name: string; img: HTMLImageElement | null }>, y: number) {
-  if (!sponsors.length) return;
+function presentedBy(ctx: CanvasRenderingContext2D, sponsor: { name: string; img: HTMLImageElement | null } | null, y: number) {
+  if (!sponsor) return;
   ctx.textAlign = "center";
   ctx.font = `600 22px ${BODY}`;
   ctx.letterSpacing = "4px";
   ctx.fillStyle = "rgba(255,255,255,0.45)";
-  ctx.fillText("MATCHENS SPONSORER", IG_W / 2, y);
+  ctx.fillText("PRESENTERAS AV", IG_W / 2, y);
   ctx.letterSpacing = "0px";
+  const cy = y + 58;
+  if (sponsor.img) {
+    const scale = Math.min(70 / sponsor.img.height, 380 / sponsor.img.width);
+    const w = sponsor.img.width * scale;
+    const h = sponsor.img.height * scale;
+    ctx.drawImage(sponsor.img, IG_W / 2 - w / 2, cy - h / 2, w, h);
+  } else {
+    ctx.font = `700 48px ${HEAD}`;
+    ctx.fillStyle = "#ffffff";
+    ctx.textBaseline = "middle";
+    ctx.fillText(fit(ctx, sponsor.name, IG_W - 200), IG_W / 2, cy);
+    ctx.textBaseline = "alphabetic";
+  }
+}
 
-  const items = sponsors.slice(0, 4);
-  const slotW = Math.min(240, (IG_W - 160) / items.length);
-  const startX = IG_W / 2 - (slotW * items.length) / 2;
-  items.forEach((s, i) => {
-    const cx = startX + slotW * i + slotW / 2;
-    const cy = y + 62;
-    if (s.img) {
-      const scale = Math.min(56 / s.img.height, (slotW - 30) / s.img.width);
-      ctx.drawImage(s.img, cx - (s.img.width * scale) / 2, cy - (s.img.height * scale) / 2, s.img.width * scale, s.img.height * scale);
-    } else {
-      ctx.font = `700 34px ${HEAD}`;
-      ctx.fillStyle = "#ffffff";
-      ctx.textBaseline = "middle";
-      ctx.fillText(fit(ctx, s.name, slotW - 20), cx, cy);
-      ctx.textBaseline = "alphabetic";
-    }
-  });
+/** Stjärna ritad som figur (inga emoji-typsnitt behövs) */
+function star(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const rad = i % 2 === 0 ? r : r * 0.45;
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    ctx.lineTo(cx + Math.cos(a) * rad, cy + Math.sin(a) * rad);
+  }
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
 }
 
 /** Bild 1: resultatet */
 export async function renderResultImage(d: ReportData): Promise<HTMLCanvasElement> {
   await ensureFonts();
   const [bg, lw, lg, ...sp] = await Promise.all([
-    tryLoad(d.background), tryLoad(d.logoWhite), tryLoad(d.logoGreen), ...d.sponsors.map((s) => tryLoad(s.logo)),
+    tryLoad(d.background), tryLoad(d.logoWhite), tryLoad(d.logoGreen), tryLoad(d.sponsor?.logo),
   ]);
   const [c, ctx] = canvas();
   backdrop(ctx, bg);
@@ -210,26 +221,40 @@ export async function renderResultImage(d: ReportData): Promise<HTMLCanvasElemen
   ctx.textBaseline = "alphabetic";
   ctx.letterSpacing = "0px";
 
-  // Matchens poängbäst
-  if (d.topScorer) {
+  // Stars of the Game
+  if (d.stars.length) {
+    ctx.textAlign = "center";
     ctx.font = `600 24px ${BODY}`;
-    ctx.letterSpacing = "4px";
-    ctx.fillStyle = "rgba(255,255,255,0.45)";
-    ctx.fillText("MATCHENS POÄNGBÄST", IG_W / 2, 1000);
+    ctx.letterSpacing = "5px";
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.fillText("STARS OF THE GAME", IG_W / 2, 985);
     ctx.letterSpacing = "0px";
-    ctx.font = `700 50px ${HEAD}`;
-    ctx.fillStyle = "#ffffff";
-    ctx.fillText(fit(ctx, d.topScorer.name, IG_W - 200), IG_W / 2, 1062);
-    ctx.font = `500 28px ${BODY}`;
-    ctx.fillStyle = "rgba(255,255,255,0.7)";
-    const parts = [
-      d.topScorer.goals ? `${d.topScorer.goals} ${d.topScorer.goals === 1 ? "mål" : "mål"}` : "",
-      d.topScorer.assists ? `${d.topScorer.assists} assist` : "",
-    ].filter(Boolean).join(" · ");
-    ctx.fillText(parts, IG_W / 2, 1104);
+    const gold = "#fbbf24";
+    d.stars.slice(0, 3).forEach((st, i) => {
+      const y = 1040 + i * 56;
+      const count = 3 - i;
+      // Stjärnor till vänster, namn i mitten, statistik till höger
+      for (let k = 0; k < count; k++) star(ctx, 150 + k * 30, y - 10, 13, gold);
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      ctx.font = `600 ${i === 0 ? 38 : 34}px ${BODY}`;
+      ctx.fillStyle = "#ffffff";
+      const nameText = st.pos ? `${st.name} (${st.pos})` : st.name;
+      ctx.font = `400 26px ${BODY}`;
+      const statW = st.stat ? ctx.measureText(st.stat).width : 0;
+      ctx.font = `600 ${i === 0 ? 38 : 34}px ${BODY}`;
+      ctx.fillText(fit(ctx, nameText, IG_W - 250 - 110 - statW - 20), 250, y - 8);
+      if (st.stat) {
+        ctx.textAlign = "right";
+        ctx.font = `400 26px ${BODY}`;
+        ctx.fillStyle = "rgba(255,255,255,0.65)";
+        ctx.fillText(st.stat, IG_W - 110, y - 8);
+      }
+      ctx.textBaseline = "alphabetic";
+    });
   }
 
-  sponsorsRow(ctx, d.sponsors.map((s, i) => ({ name: s.name, img: sp[i] })), 1190);
+  presentedBy(ctx, d.sponsor ? { name: d.sponsor.name, img: sp[0] ?? null } : null, 1232);
   return c;
 }
 
@@ -312,16 +337,13 @@ export async function renderGoalsImage(d: ReportData): Promise<HTMLCanvasElement
     const timeText = goal.time && L.columns === 1 ? goal.time.slice(0, 5) : "";
     ctx.font = `400 ${Math.round(24 * s)}px ${BODY}`;
     const timeW = timeText ? ctx.measureText(timeText).width + 16 : 0;
-    const tagText = goal.penalty ? "STRAFF" : "";
-    ctx.font = `700 ${Math.round(18 * s)}px ${BODY}`;
-    const tagW = tagText ? ctx.measureText(tagText).width + 22 * s + 12 : 0;
-    const maxText = right - textX - timeW - tagW;
+    const maxText = right - textX - timeW;
 
     const hasAssist = !!goal.assist && h > 60;
     ctx.textAlign = "left";
     ctx.fillStyle = "#ffffff";
     ctx.font = `600 ${Math.round(34 * s)}px ${BODY}`;
-    ctx.fillText(fit(ctx, goal.scorer || "Okänd målskytt", maxText), textX, hasAssist ? mid - 16 * s : mid);
+    ctx.fillText(fit(ctx, `${goal.scorer || "Okänd målskytt"}${goal.penalty ? " (straff)" : ""}`, maxText), textX, hasAssist ? mid - 16 * s : mid);
     if (hasAssist) {
       ctx.font = `400 ${Math.round(24 * s)}px ${BODY}`;
       ctx.fillStyle = "rgba(255,255,255,0.55)";
@@ -336,17 +358,6 @@ export async function renderGoalsImage(d: ReportData): Promise<HTMLCanvasElement
       ctx.fillStyle = "rgba(255,255,255,0.45)";
       ctx.fillText(timeText, rx, mid);
       rx -= timeW;
-    }
-    if (tagText) {
-      ctx.font = `700 ${Math.round(18 * s)}px ${BODY}`;
-      const tw = ctx.measureText(tagText).width + 22 * s;
-      const th = 30 * s;
-      ctx.fillStyle = "#ef4444";
-      roundRect(ctx, rx - tw, mid - th / 2, tw, th, 6);
-      ctx.fill();
-      ctx.fillStyle = "#ffffff";
-      ctx.textAlign = "center";
-      ctx.fillText(tagText, rx - tw / 2, mid + 1);
     }
     ctx.textBaseline = "alphabetic";
   });

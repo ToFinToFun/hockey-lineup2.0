@@ -237,6 +237,14 @@ export async function saveMatch(input: MatchInput): Promise<number> {
   return id;
 }
 
+/** Spara val i matchrapporten (stjärnor och sponsor) – påverkar inte statistiken. */
+export async function setMatchReport(id: number, report: { stars?: string[]; sponsor?: string | null } | null) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(matchResults).set({ report }).where(eq(matchResults.id, id));
+  invalidateMatches();
+}
+
 export async function updateMatch(
   id: number,
   data: Partial<Pick<MatchInput, "name" | "teamWhiteScore" | "teamGreenScore" | "goalHistory" | "matchEndTime" | "createdAt">>
