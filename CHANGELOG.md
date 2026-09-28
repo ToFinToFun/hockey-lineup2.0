@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.36.2 – 2026-09-28
+
+- Rättning: Hockeykort visade ingen bild eller ram sedan v2.34.0 – webbläsarens ritmiljö anropade sig själv i all oändlighet efter att ritkoden gjorts gemensam med servern. Nu verifierat i en riktig webbläsare (kort, foto och friläggning), plus ett test som fångar felet.
+- Hockeykort: rubriken "Säsong …" står direkt även utan vald spelare.
+
 ## 2.36.1 – 2026-09-28
 
 - Lineup: knappen "Ta ur laget" heter nu "Ta ur uppställningen".

@@ -17,9 +17,13 @@ export interface CardEnv {
   loadImage(src: string): Promise<HTMLImageElement>;
 }
 
-let env: CardEnv = {
+/** Webbläsarens standardmiljö (exporteras för test). */
+export const browserCardEnv: CardEnv = {
   createCanvas(w, h) {
-    const c = env.createCanvas(w, h);
+    // OBS: måste vara DOM-canvas här – inte env.createCanvas (då anropar den sig själv)
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
     return c;
   },
   loadImage(src) {
@@ -32,6 +36,8 @@ let env: CardEnv = {
     });
   },
 };
+
+let env: CardEnv = browserCardEnv;
 
 export function setCardEnv(e: CardEnv) {
   env = e;

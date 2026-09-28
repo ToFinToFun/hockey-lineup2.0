@@ -46,7 +46,7 @@ export default function CardsApp() {
   const [search, setSearch] = useState("");
   const stats = trpc.cards.stats.useQuery({ playerId: playerId ?? "" }, { enabled: !!playerId });
 
-  const [settings, setSettings] = useState<CardSettings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<CardSettings>({ ...DEFAULT_SETTINGS, statsTitle: defaultStatsTitle("season") });
   const [photo, setPhotoImg] = useState<HTMLImageElement | null>(null);
   const [newSource, setNewSource] = useState<string | null>(null); // uppladdat men inte sparat
   const [mask, setMask] = useState<HTMLImageElement | null>(null);
