@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.28.1 – 2026-09-28
+
+- Startsidan: "Visa databasinfo" borttagen ur brickan längst ned (flyttas till kommande Inställningar).
+
 ## 2.28.0 – 2026-09-28
 
 **Statistik – anpassad till hur appen ser ut nu (bara för styrelsen)**
