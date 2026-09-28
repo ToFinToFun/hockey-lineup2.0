@@ -6,13 +6,12 @@ import { useState, useMemo, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { IMAGES } from "@/lib/scoreConstants";
-import { ArrowLeft, BarChart3, Trophy, Shield, Settings, Loader2, Gauge, X } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, Shield, Loader2, X } from "lucide-react";
 import OverviewTab from "./OverviewTab";
 import LeadersTab from "./LeadersTab";
 import AwardsTab from "./AwardsTab";
 import TeamsTab from "./TeamsTab";
-import PirTab from "./PirTab";
-import StatsSettings from "./StatsSettings";
+import PirRanking from "./PirRanking";
 import { PlayerProfileView } from "../players/PlayerProfile";
 
 // ─── Period helpers ─────────────────────────────────────────────────────────
@@ -51,13 +50,12 @@ const PERIOD_OPTIONS: { key: PeriodPreset; label: string }[] = [
   { key: "all", label: "Alla" },
 ];
 
-// Fyra flikar som får plats på en rad. Spelarprofilen öppnas från alla listor
-// (samma profil som på spelarsidan).
+// Tre flikar: Översikt, Spelare och Lag. PIR-modellen och perioderna finns under
+// Inställningar på startsidan. Spelarprofilen öppnas från alla listor.
 const TABS = [
   { id: "overview", label: "Översikt", icon: BarChart3 },
-  { id: "leagues", label: "Ligor", icon: Trophy },
+  { id: "players", label: "Spelare", icon: Users },
   { id: "teams", label: "Lag", icon: Shield },
-  { id: "pir", label: "PIR", icon: Gauge },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -66,7 +64,6 @@ export default function StatsApp() {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("season");
-  const [showAdmin, setShowAdmin] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
   // Spelarregistret för att hitta rätt profil från namnet i listorna ("Namn #12" eller "Namn")
   const { data: registry } = trpc.players.list.useQuery();
@@ -160,13 +157,7 @@ export default function StatsApp() {
               <img src={IMAGES.teamGreenLogo} alt="" className="w-6 h-6 object-contain opacity-60" />
             </div>
 
-            <button
-              onClick={() => setShowAdmin(true)}
-              className="text-[#687076] hover:text-[#0a7ea4] transition-colors p-2"
-              title="Perioder"
-            >
-              <Settings size={18} />
-            </button>
+            <span className="w-[18px]" aria-hidden />
           </div>
 
           {/* Tabs */}
@@ -229,7 +220,7 @@ export default function StatsApp() {
                 onPlayerClick={handlePlayerClick}
               />
             )}
-            {activeTab === "leagues" && (
+            {activeTab === "players" && (
               <div className="space-y-8">
                 <LeadersTab
                   stats={seasonStats}
@@ -237,6 +228,7 @@ export default function StatsApp() {
                   periodLabel={PERIOD_OPTIONS.find((p) => p.key === periodPreset)?.label ?? "Säsong"}
                   dateFilter={queryInput}
                 />
+                <PirRanking ratings={pirData} onPlayerClick={handlePlayerClick} />
                 <AwardsTab
                   awards={awardsData}
                   onPlayerClick={handlePlayerClick}
@@ -245,7 +237,6 @@ export default function StatsApp() {
                 />
               </div>
             )}
-            {activeTab === "pir" && <PirTab />}
             {activeTab === "teams" && (
               <TeamsTab
                 teamData={teamData}
@@ -257,8 +248,6 @@ export default function StatsApp() {
         )}
       </main>
 
-      {/* Perioder */}
-      {showAdmin && <StatsSettings onClose={() => setShowAdmin(false)} />}
 
       {/* Spelarprofil (samma som på spelarsidan) */}
       {selectedPlayer && (

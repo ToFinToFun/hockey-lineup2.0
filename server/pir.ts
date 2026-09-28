@@ -94,7 +94,7 @@ export const TEAM_ONLY_PIR_WEIGHTS: PirWeights = { goal: 0, assist: 0, goalkeepe
 
 export interface PirOptions {
   weights?: PirWeights;
-  /** Manuella justeringar per spelare (namn → poäng), läggs ovanpå beräkningen. */
+  /** Manuella justeringar per spelare (spelar-ID → poäng; namn för gammal data utan ID), läggs ovanpå beräkningen. */
   adjustments?: Record<string, number>;
   /** Beräkna som om det vore detta datum (används vid analys bakåt i tiden). */
   now?: Date;

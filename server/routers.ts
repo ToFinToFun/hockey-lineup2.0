@@ -58,6 +58,69 @@ async function loadPirConfig(): Promise<{ weights: PirWeights; adjustments: Reco
   return { weights, adjustments };
 }
 
+// Förklaring och historik per spelare – dyrt att räkna, så cachat per spelare och dataläge.
+const pirExplainCache = new Map<string, PirExplanation>();
+
+export interface PirExplanation {
+  playerKey: string;
+  rating: number;
+  /** Betyget om bara lagresultaten räknats (utan mål/assist/målvaktsbonus) */
+  teamOnlyRating: number;
+  /** Mål-, assist- och målvaktsbonusarnas bidrag */
+  individual: number;
+  adjustment: number;
+  /** Betyget efter var och en av spelarens senaste matcher (äldst först) */
+  history: Array<{ matchId: number; date: string; rating: number; result: "V" | "O" | "F" }>;
+}
+
+async function explainPir(playerKey: string): Promise<PirExplanation | null> {
+  const key = `${await refreshMatchCacheVersion()}:${pirConfigVersion}:${playerKey}`;
+  const hit = pirExplainCache.get(key);
+  if (hit) return hit;
+  const all = await getPirRatings();
+  const me = all.find((r) => r.playerKey === playerKey);
+  if (!me) return null;
+
+  const { weights, adjustments } = await loadPirConfig();
+  const matches = await getAllMatchResults();
+  const teamOnly = calculatePIR(matches, { weights: { goal: 0, assist: 0, goalkeeper: 0, halfLifeDays: weights.halfLifeDays }, skipTrend: true })
+    .find((r) => r.playerKey === playerKey);
+
+  // Spelarens matcher (äldst först) och betyget direkt efter var och en – högst de 20 senaste
+  const dateOf = (m: (typeof matches)[number]) => new Date((m.matchEndTime ?? m.matchStartTime ?? m.createdAt) as unknown as string);
+  const sorted = [...matches].sort((a, b) => dateOf(a).getTime() - dateOf(b).getTime());
+  const aWhite = (m: (typeof matches)[number]) => (((m.lineup as { teamAName?: string } | null)?.teamAName) ?? "VITA").toLowerCase().includes("vit");
+  const played = sorted.filter((m) => {
+    const lu = (m.lineup as { lineup?: Record<string, { id?: string; name?: string }> } | null)?.lineup ?? {};
+    return Object.values(lu).some((p) => (p?.id ?? p?.name) === playerKey);
+  }).slice(-20);
+  const history: PirExplanation["history"] = [];
+  for (const m of played) {
+    const until = dateOf(m);
+    const upTo = sorted.filter((x) => dateOf(x).getTime() <= until.getTime());
+    const r = calculatePIR(upTo, { weights, adjustments, now: until, skipTrend: true, iterations: 8 }).find((x) => x.playerKey === playerKey);
+    const lu = (m.lineup as { lineup?: Record<string, { id?: string; name?: string }> } | null)?.lineup ?? {};
+    const slot = Object.entries(lu).find(([, p]) => (p?.id ?? p?.name) === playerKey)?.[0] ?? "";
+    const white = slot.startsWith("team-a") === aWhite(m);
+    const own = white ? m.teamWhiteScore : m.teamGreenScore;
+    const opp = white ? m.teamGreenScore : m.teamWhiteScore;
+    if (r) history.push({ matchId: m.id, date: until.toISOString(), rating: r.rating, result: own > opp ? "V" : own < opp ? "F" : "O" });
+  }
+
+  const teamOnlyRating = teamOnly?.rating ?? 1000;
+  const result: PirExplanation = {
+    playerKey,
+    rating: me.rating,
+    teamOnlyRating,
+    individual: me.rating - me.adjustment - teamOnlyRating,
+    adjustment: me.adjustment,
+    history,
+  };
+  if (pirExplainCache.size > 200) pirExplainCache.clear();
+  pirExplainCache.set(key, result);
+  return result;
+}
+
 async function getPirRatings() {
   const key = `${await refreshMatchCacheVersion()}:${pirConfigVersion}:${getRegistryVersion()}`;
   if (!pirCache || pirCache.key !== key) {
@@ -578,6 +641,11 @@ export const appRouter = router({
       }),
 
     /** Vikter och manuella justeringar (styrelsen). */
+    /** Varför spelaren har sitt betyg: lagresultat, individuella bonusar, justering och utveckling. */
+    explain: adminProcedure
+      .input(z.object({ id: z.string().min(1).max(64) }))
+      .query(({ input }) => explainPir(input.id)),
+
     getConfig: adminProcedure.query(async () => {
       const cfg = await loadPirConfig();
       return { ...cfg, defaults: DEFAULT_PIR_WEIGHTS };

@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { AccessPanel } from "@/components/auth/AccessPanel";
 import { AppVersion } from "@/components/AppVersion";
-import { BarChart3, Users, ChevronRight, Trophy, ClipboardList, Timer, TrendingUp, Sparkles, History, Handshake } from "lucide-react";
+import { BarChart3, Users, ChevronRight, Trophy, ClipboardList, Timer, TrendingUp, Sparkles, History, Settings as SettingsIcon } from "lucide-react";
 
 // Keep the hub artwork on the same origin as the application. The old external
 // CDN links can expire or reject requests in production, while Vite serves
@@ -189,22 +189,6 @@ export default function Hub() {
           </Link>
           )}
 
-          {isAdmin && (
-          <Link href="/sponsorer">
-            <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] hover:border-emerald-500/60 transition-all duration-300 cursor-pointer">
-              <div className="p-5 sm:p-6 flex items-center gap-4">
-                <div className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                  <Handshake size={24} className="text-emerald-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-lg sm:text-xl font-bold tracking-tight">Sponsorer</h2>
-                  <p className="text-white/40 text-xs sm:text-sm mt-0.5">Namn, loggor och hur ofta de visats</p>
-                </div>
-                <ChevronRight size={20} className="text-white/20 group-hover:text-emerald-400 transition-colors flex-shrink-0" />
-              </div>
-            </div>
-          </Link>
-          )}
 
           {/* Stats Card */}
           {isAdmin && (
@@ -269,6 +253,24 @@ export default function Hub() {
                   size={20}
                   className="text-white/20 group-hover:text-purple-500 transition-colors flex-shrink-0"
                 />
+              </div>
+            </div>
+          </Link>
+          )}
+
+          {/* Inställningar */}
+          {isAdmin && (
+          <Link href="/installningar">
+            <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] hover:border-slate-400/60 transition-all duration-300 cursor-pointer">
+              <div className="p-5 sm:p-6 flex items-center gap-4">
+                <div className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-slate-400/10 border border-slate-400/20 flex items-center justify-center">
+                  <SettingsIcon size={24} className="text-slate-300" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold tracking-tight">Inställningar</h2>
+                  <p className="text-white/40 text-xs sm:text-sm mt-0.5">PIR, sponsorer, perioder, laget.se och om appen</p>
+                </div>
+                <ChevronRight size={20} className="text-white/20 group-hover:text-slate-300 transition-colors flex-shrink-0" />
               </div>
             </div>
           </Link>

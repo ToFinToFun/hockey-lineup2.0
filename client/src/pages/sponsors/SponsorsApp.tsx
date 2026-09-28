@@ -6,14 +6,20 @@
  * Räknarna visar hur ofta sponsorn visats denna och förra säsongen (1 juni–31 maj).
  */
 import { useRef, useState } from "react";
-import { Link } from "wouter";
+import { Redirect } from "wouter";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, X, Loader2, ChevronUp, ChevronDown, Trash2, ImageOff, Upload } from "lucide-react";
+import { Plus, X, Loader2, ChevronUp, ChevronDown, Trash2, ImageOff, Upload } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useSponsors, type Sponsor } from "@/lib/sponsors";
 import { processLogo, type LogoOptions } from "@/lib/logoProcess";
 
+/** Gamla adressen /sponsorer leder till Inställningar → Sponsorer. */
 export default function SponsorsApp() {
+  return <Redirect to="/installningar?flik=sponsorer" />;
+}
+
+/** Sponsorregistret – visas under Inställningar. */
+export function SponsorsPanel() {
   const { sponsors, season, query } = useSponsors();
   const utils = trpc.useUtils();
   const refresh = () => utils.sponsors.list.invalidate();
@@ -25,24 +31,21 @@ export default function SponsorsApp() {
   const loaded = !!query.data;
 
   return (
-    <div className="min-h-[100dvh] bg-[#0a0a0a] text-white">
-      <header className="sticky top-0 z-20 bg-[#0a0a0a]/95 backdrop-blur border-b border-white/5 px-4 py-3 flex items-center gap-3">
-        <Link href="/" className="text-white/60 hover:text-white" aria-label="Tillbaka"><ArrowLeft size={20} /></Link>
-        <h1 className="text-lg font-bold flex-1" style={{ fontFamily: "'Oswald', sans-serif" }}>Sponsorer</h1>
-        <button
-          onClick={() => setEditing("new")}
-          disabled={!loaded}
-          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 disabled:opacity-50"
-        >
-          <Plus size={14} /> Ny sponsor
-        </button>
-      </header>
-
-      <main className="max-w-3xl mx-auto p-4 space-y-4">
-        <p className="text-white/40 text-xs">
-          Sponsorerna visas i Score Tracker (en per mål), i matchrapporten och som matchsponsor i nyheten till laget.se.
-          Den som visats minst väljs automatiskt. Räknarna nollas 1 juni.
-        </p>
+    <div className="text-white">
+      <div className="space-y-4">
+        <div className="flex items-start gap-3">
+          <p className="text-white/40 text-xs flex-1">
+            Sponsorerna visas i Score Tracker (en per mål), i matchrapporten och som matchsponsor i nyheten till laget.se.
+            Den som visats minst väljs automatiskt. Räknarna nollas 1 juni.
+          </p>
+          <button
+            onClick={() => setEditing("new")}
+            disabled={!loaded}
+            className="shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 disabled:opacity-50"
+          >
+            <Plus size={14} /> Ny sponsor
+          </button>
+        </div>
 
         {query.isLoading && <div className="flex justify-center py-10"><Loader2 className="animate-spin text-white/40" /></div>}
         {query.error && !loaded && <p className="text-red-300 text-sm">Sponsorerna kunde inte hämtas: {query.error.message}</p>}
@@ -93,7 +96,7 @@ export default function SponsorsApp() {
             ))}
           </div>
         )}
-      </main>
+      </div>
 
       {editing && <SponsorEditor sponsor={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={refresh} />}
     </div>

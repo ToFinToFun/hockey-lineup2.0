@@ -7,6 +7,18 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.29.0 – 2026-09-28
+
+**Inställningar (ny bricka på startsidan, bara styrelsen)**
+- PIR: "Så fungerar PIR", träffsäkerhet, alla spelares betyg med manuell justering, vikter med förslag. Nytt: tryck på en spelare för att se varför betyget är som det är (lagresultat, egna insatser, justering) och en kurva över betyget efter de senaste 20 matcherna.
+- Sponsorer: flyttade hit (gamla /sponsorer leder hit).
+- Perioder: försäsong, säsong och slutspel för statistiken (flyttade från statistiken).
+- laget.se: vilket konto som används, anslutningstest och länk till nyhetsadmin.
+- Om appen: version och databasinfo.
+
+**Statistik**
+- Tre flikar: Översikt, Spelare och Lag. Spelare samlar topplistorna, en PIR-ranking (utespelare/målvakter) och utmärkelserna. Inga inställningar kvar i statistiken.
+
 ## 2.28.1 – 2026-09-28
 
 - Startsidan: "Visa databasinfo" borttagen ur brickan längst ned (flyttas till kommande Inställningar).
