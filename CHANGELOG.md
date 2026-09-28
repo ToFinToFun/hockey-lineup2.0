@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.38.1 – 2026-09-28
+
+- Score Tracker, välj målskytt/assist: positionen visas som färgad bricka (M, B, C, F – samma färger som överallt) mellan bocken och namnet. Målvakter sist, i övrigt namnordning.
+
 ## 2.38.0 – 2026-09-28
 
 - Lineup: "Ändrad idag 18:43" / "Ändrad torsdag 18:43" mitt i toppraden – senast en spelare placerades, flyttades, togs ur laget eller lades till i truppen (inte vid t.ex. hämtade anmälningar). 24-timmarsklocka. Uppdateras när ändringar synkas och varje minut.

@@ -39,6 +39,14 @@ function getGoalText(team: "white" | "green"): string {
   return team === "white" ? "#1a1a1a" : "#ffffff";
 }
 
+/** Positionsbricka i spelarväljaren – samma färger som i resten av appen. */
+function PickPos({ pos }: { pos: string }) {
+  if (!pos) return <span className="w-6 shrink-0" />;
+  const cls = pos === "M" ? "mv" : pos.toLowerCase();
+  const name = { M: "Målvakt", B: "Back", C: "Center", F: "Forward" }[pos] ?? pos;
+  return <span className={`pos-badge pos-badge-sm pos-badge-${cls} shrink-0`} title={name}>{pos}</span>;
+}
+
 export default function MatchPage({ lineupState }: MatchPageProps) {
   // ─── State ─────────────────────────────────────────────────────
   const { sponsors } = useSponsors();
@@ -376,24 +384,34 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
     const scoringSlots = goalTeam === "white" ? (isTeamAWhite ? teamASlots : teamBSlots) : (isTeamAWhite ? teamBSlots : teamASlots);
     const otherSlots = goalTeam === "white" ? (isTeamAWhite ? teamBSlots : teamASlots) : (isTeamAWhite ? teamASlots : teamBSlots);
 
-    const scoring: Player[] = [];
-    const other: Player[] = [];
+    // Position som enkel bokstav (M, B, C, F) – målvakter sist, annars namnordning
+    type PickerPlayer = Player & { pickPos: "M" | "B" | "C" | "F" | "" };
+    const fromSlot = (slot: { type: string; shortLabel: string }): PickerPlayer["pickPos"] =>
+      slot.type === "goalkeeper" ? "M" : slot.type === "defense" ? "B" : slot.shortLabel === "C" ? "C" : "F";
+    const fromRegistry = (pos: string | undefined): PickerPlayer["pickPos"] =>
+      pos === "MV" ? "M" : pos === "B" ? "B" : pos === "C" ? "C" : pos === "F" || pos === "IB" ? "F" : "";
+    const byPos = (a: PickerPlayer, b: PickerPlayer) =>
+      (a.pickPos === "M" ? 1 : 0) - (b.pickPos === "M" ? 1 : 0) || a.name.localeCompare(b.name, "sv");
+
+    const scoring: PickerPlayer[] = [];
+    const other: PickerPlayer[] = [];
     const placedIds = new Set<string>();
 
     for (const slot of scoringSlots) {
       const p = lineupState.lineup[slot.id];
-      if (p) { scoring.push(p); placedIds.add(p.id); }
+      if (p) { scoring.push({ ...p, pickPos: fromSlot(slot) }); placedIds.add(p.id); }
     }
     for (const slot of otherSlots) {
       const p = lineupState.lineup[slot.id];
-      if (p) { other.push(p); placedIds.add(p.id); }
+      if (p) { other.push({ ...p, pickPos: fromSlot(slot) }); placedIds.add(p.id); }
     }
 
     const unplaced = (lineupState.players || [])
       .filter(p => !placedIds.has(p.id))
-      .sort((a, b) => a.name.localeCompare(b.name, "sv"));
+      .map((p) => ({ ...p, pickPos: fromRegistry(p.position) }))
+      .sort(byPos);
 
-    return { scoring, other, unplaced };
+    return { scoring: scoring.sort(byPos), other: other.sort(byPos), unplaced };
   }, [lineupState]);
 
   const pickerData = useMemo(() => {
@@ -408,7 +426,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
     const otherTeamName = goal.team === "white" ? (isTeamAWhite ? teamBName : teamAName) : (isTeamAWhite ? teamAName : teamBName);
 
     const search = playerPickerSearch.toLowerCase();
-    const filter = (p: Player) => !search || p.name.toLowerCase().includes(search) || p.number.includes(search);
+    const filter = (p: Player) => !search || p.name.toLowerCase().includes(search) || (p.number ?? "").includes(search);
 
     return {
       scoringTeamName,
@@ -835,7 +853,8 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
                       <button key={p.id} onClick={() => selectPlayer(`${p.name} #${p.number}`)}
                         className="w-full text-left px-4 py-3 border-b border-[#3a3a3a] text-[#ECEDEE] hover:bg-[#2a2a2a] transition-colors flex items-center gap-2">
                         <span className="text-green-400 text-sm">✓</span>
-                        <span>{p.name} #{p.number}</span>
+                        <PickPos pos={p.pickPos} />
+                        <span>{p.name}{p.number ? ` #${p.number}` : ""}</span>
                       </button>
                     ))}
                   </>
@@ -852,7 +871,8 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
                       <button key={p.id} onClick={() => selectPlayer(`${p.name} #${p.number}`)}
                         className="w-full text-left px-4 py-3 border-b border-[#3a3a3a] text-[#ECEDEE] hover:bg-[#2a2a2a] transition-colors flex items-center gap-2">
                         <span className="text-green-400 text-sm">✓</span>
-                        <span>{p.name} #{p.number}</span>
+                        <PickPos pos={p.pickPos} />
+                        <span>{p.name}{p.number ? ` #${p.number}` : ""}</span>
                       </button>
                     ))}
                   </>
@@ -865,7 +885,8 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
                     {pickerData.filteredUnplaced.map(p => (
                       <button key={p.id} onClick={() => selectPlayer(`${p.name} #${p.number}`)}
                         className="w-full text-left px-4 py-3 border-b border-[#3a3a3a] text-[#9BA1A6] hover:bg-[#2a2a2a] transition-colors flex items-center gap-2">
-                        <span>{p.name} #{p.number}</span>
+                        <PickPos pos={p.pickPos} />
+                        <span>{p.name}{p.number ? ` #${p.number}` : ""}</span>
                       </button>
                     ))}
                   </>
