@@ -6,6 +6,7 @@ import { playersRouter } from "./routers/players";
 import { fetchAttendance, updateAttendance, publishNews, deleteNews, fetchAccountName, NEWS_ADMIN_URL, type AttendingStatus } from "./lagetSe";
 import { seasonHistory, seasonOf, recentForm, recentWinners } from "./playerHistory";
 import { setPlayerPhoto, deletePlayerPhoto, MAX_PHOTO_BASE64 } from "./playerPhotos";
+import { listCards, cardStats, saveCard, deleteCard, MAX_CARD_SOURCE_BASE64 } from "./playerCards";
 import { listSponsors, createSponsor, updateSponsor, deleteSponsor, moveSponsor, recordSponsorNews } from "./sponsorsDb";
 import { scoreRouter } from "./routers/score";
 import { scoreStatsRouter } from "./routers/scoreStats";
@@ -283,6 +284,36 @@ export const appRouter = router({
       .input(z.object({ playerId: z.string().min(1).max(64) }))
       .mutation(async ({ input }) => {
         await deletePlayerPhoto(input.playerId);
+        return { success: true };
+      }),
+  }),
+
+  // ─── Hockeykort ────────────────────────────────────────────────────────────
+  // Originalfotot visas via GET /api/players/:id/card-source (se server/_core/index.ts).
+
+  cards: router({
+    list: adminProcedure.query(() => listCards()),
+    stats: adminProcedure
+      .input(z.object({ playerId: z.string().min(1).max(64) }))
+      .query(({ input }) => cardStats(input.playerId)),
+    save: adminProcedure
+      .input(z.object({
+        playerId: z.string().min(1).max(64),
+        settings: z.record(z.string(), z.unknown()),
+        sourceBase64: z.string().max(MAX_CARD_SOURCE_BASE64, "Fotot är för stort").regex(/^[A-Za-z0-9+/=]+$/).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        if (input.sourceBase64 && !input.sourceBase64.startsWith("/9j/")) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Fotot måste vara JPEG" });
+        }
+        if (JSON.stringify(input.settings).length > 20_000) throw new TRPCError({ code: "BAD_REQUEST", message: "För många inställningar" });
+        await saveCard(input.playerId, input.settings, input.sourceBase64);
+        return { success: true };
+      }),
+    delete: adminProcedure
+      .input(z.object({ playerId: z.string().min(1).max(64) }))
+      .mutation(async ({ input }) => {
+        await deleteCard(input.playerId);
         return { success: true };
       }),
   }),

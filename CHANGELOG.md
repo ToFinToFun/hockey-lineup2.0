@@ -7,6 +7,18 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.32.0 – 2026-09-28
+
+**Hockeykort (ombyggd)**
+- Klassiskt kortformat 5:7 (750×1050), ritat direkt som bild – skarpt och likadant på alla enheter.
+- Välj spelare → ladda upp foto → kortet är klart: autonivåer (ljus/kontrast), beskärning mot överkroppen, stil efter spelarens lag, namn, nummer, position, C/A och säsongens statistik.
+- Enhetligt utseende oavsett foto: fotot färgtonas mot stilen, vinjett, toning nertill, metallram och glans.
+- Stilar: Gröna, Vita och Svart (extratröja). Nya stilar läggs till som en definition i cardSkins.ts.
+- Justera: dra i kortet för att flytta fotot, zoom, ljus, kontrast, färg, Auto för att återställa. Namn, nummer, position, C/A, lagmärke.
+- Statistikruta: Säsong (standard), Karriär, Form (senaste 10) eller Egen/Ingen. Målvakter får M, GAA, nollor och V%. Säsong/Karriär uppdateras automatiskt; ändrade värden blir "Egen" och står kvar.
+- Spara på spelaren: originalfotot (utan ram) och valen sparas, max ett per spelare – kortet byggs om med senaste statistiken och kan få ny stil. Kort kan också bara laddas ned eller delas utan att sparas.
+- Som profilbild: hela kortet sparas som spelarens profilbild.
+
 ## 2.31.1 – 2026-09-28
 
 - Startsidan: raden om var tillfälliga länkar skapas borttagen.

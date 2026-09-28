@@ -238,7 +238,7 @@ export default function Hub() {
                 <div className="flex-1 min-w-0">
                   <h2 className="text-lg sm:text-xl font-bold tracking-tight">Hockeykort</h2>
                   <p className="text-white/40 text-xs sm:text-sm mt-0.5">
-                    Skapa och exportera spelarkort
+                    Foto + statistik som samlarkort i klubbens stilar
                   </p>
                   <div className="flex items-center gap-3 mt-2">
                     <span className="inline-flex items-center gap-1 text-[10px] text-white/30 bg-white/5 px-2 py-0.5 rounded-full">

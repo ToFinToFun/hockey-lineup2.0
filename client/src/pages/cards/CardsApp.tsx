@@ -1,368 +1,425 @@
 /**
- * CardsApp – Hockey Trading Cards gallery and creator
- * Route: /cards
+ * Hockeykort (styrelsen) – route /cards.
+ *
+ * Välj spelare → ladda upp ett foto → kortet blir klart direkt (autonivåer,
+ * beskärning, stil efter spelarens lag, säsongens statistik). Allt går att
+ * justera. "Spara på spelaren" sparar originalfotot och valen (max ett per
+ * spelare) så att kortet kan byggas om med ny statistik eller stil senare.
+ * Fler kort kan skapas och laddas ned utan att sparas.
  */
-import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Download, Upload, Trash2, ChevronDown, Image as ImageIcon, User, Sparkles } from "lucide-react";
+import { toast } from "sonner";
+import { ArrowLeft, Upload, Download, Share2, Save, UserSquare2, Wand2, Loader2, Trash2, Search, Check } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { HockeyCard, exportCardAsImage, type CardStats } from "./HockeyCard";
+import { CARD_SKINS, skinById } from "@/lib/cardSkins";
+import { renderCard, prepareSourcePhoto, photoSourceRect, DEFAULT_SETTINGS, CARD_W, type CardSettings, type CardCell } from "@/lib/cardRender";
 
-type TeamTheme = "white" | "green";
+import type { inferRouterOutputs } from "@trpc/server";
+import type { AppRouter } from "../../../../server/routers";
+type Stats = inferRouterOutputs<AppRouter>["cards"]["stats"];
+
+const POSITIONS = ["", "MV", "B", "C", "F", "VF", "HF", "IB"];
+const logoFor = (skinId: string) => (skinById(skinId).logo === "green" ? "/images/logo-green.png" : "/images/logo-white.png");
+
+/** Statistikrutans celler för ett läge (exporteras för test). */
+export function cellsFor(mode: CardSettings["statsMode"], stats: Stats | undefined): { title: string; cells: CardCell[] } {
+  if (!stats || mode === "none" || mode === "custom" || mode === "form") {
+    return { title: mode === "form" ? "Form" : "", cells: [] };
+  }
+  const line = mode === "career" ? stats.career : stats.season;
+  const title = mode === "career" ? "Karriär" : `Säsong ${line.label}`;
+  if (stats.isGoalie && line.goalie) {
+    return {
+      title,
+      cells: [
+        { label: "M", value: String(line.goalie.matches) },
+        { label: "GAA", value: line.goalie.gaa.toFixed(1).replace(".", ",") },
+        { label: "Nollor", value: String(line.goalie.shutouts) },
+        { label: "V%", value: `${line.winPct}%` },
+      ],
+    };
+  }
+  return {
+    title,
+    cells: [
+      { label: "M", value: String(line.matches) },
+      { label: "G", value: String(line.goals) },
+      { label: "A", value: String(line.assists) },
+      { label: "TP", value: String(line.points) },
+      { label: "V%", value: `${line.winPct}%` },
+    ],
+  };
+}
+
+async function loadImg(src: string): Promise<HTMLImageElement> {
+  return new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i);
+    i.onerror = () => rej(new Error("Fotot kunde inte laddas"));
+    i.src = src;
+  });
+}
 
 export default function CardsApp() {
   const [, setLocation] = useLocation();
+  const utils = trpc.useUtils();
+  const players = trpc.players.list.useQuery();
+  const saved = trpc.cards.list.useQuery();
+  const saveCard = trpc.cards.save.useMutation({ onSuccess: () => utils.cards.list.invalidate() });
+  const deleteCard = trpc.cards.delete.useMutation({ onSuccess: () => utils.cards.list.invalidate() });
+  const setPhoto = trpc.playerPhotos.set.useMutation();
 
-  // Fetch player stats (returns per-player data with matches, goals, assists, wins, goalTypes)
-  const { data: playerStatsData } = trpc.score.playerStats.useQuery(
-    {},
-    { staleTime: 60_000 }
-  );
+  const [playerId, setPlayerId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const stats = trpc.cards.stats.useQuery({ playerId: playerId ?? "" }, { enabled: !!playerId });
 
-  // Fetch PIR data
-  const { data: pirData } = trpc.pir.getRatings.useQuery(undefined, { staleTime: 60_000 });
+  const [settings, setSettings] = useState<CardSettings>(DEFAULT_SETTINGS);
+  const [photo, setPhotoImg] = useState<HTMLImageElement | null>(null);
+  const [newSource, setNewSource] = useState<string | null>(null); // uppladdat men inte sparat
+  const [loadingPhoto, setLoadingPhoto] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Fetch goalkeeper stats
-  const { data: gkData } = trpc.score.goalkeeperStats.useQuery(
-    {},
-    { staleTime: 60_000 }
-  );
+  const savedIds = useMemo(() => new Set((saved.data ?? []).map((c) => c.playerId)), [saved.data]);
+  const player = players.data?.find((p) => p.id === playerId) ?? null;
+  const list = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (players.data ?? [])
+      .filter((p) => p.active !== false && (!q || p.name.toLowerCase().includes(q) || (p.number ?? "").includes(q)))
+      .sort((a, b) => a.name.localeCompare(b.name, "sv"));
+  }, [players.data, search]);
 
-  // State
-  const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
-  const [teamTheme, setTeamTheme] = useState<TeamTheme>("white");
-  const [photos, setPhotos] = useState<Record<string, string>>(() => {
-    try {
-      const saved = localStorage.getItem("stalstaden_card_photos");
-      return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
-  });
-  const [showGallery, setShowGallery] = useState(true);
+  const update = (patch: Partial<CardSettings>) => setSettings((s) => ({ ...s, ...patch }));
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
-
-  // Save photos to localStorage
-  useEffect(() => {
-    localStorage.setItem("stalstaden_card_photos", JSON.stringify(photos));
-  }, [photos]);
-
-  // Build player list from playerStats data
-  const playerList = useMemo(() => {
-    if (!playerStatsData) return [];
-    const pirMap = new Map<string, any>();
-    if (pirData) {
-      pirData.forEach((p: any) => pirMap.set(p.name, p));
-    }
-    const gkMap = new Map<string, any>();
-    if (gkData && Array.isArray(gkData)) {
-      gkData.forEach((g: any) => gkMap.set(g.name, g));
-    }
-
-    return playerStatsData.map((p: any) => {
-      const pir = pirMap.get(p.name);
-      const gk = gkMap.get(p.name);
-      const isGk = gk && gk.matchesPlayed > (p.matchesPlayed / 2);
-
-      // Extract number from name if present (format "Name #Number")
-      const numberMatch = p.name.match(/#(\d+)$/);
-      const playerNumber = numberMatch ? numberMatch[1] : undefined;
-      const cleanName = p.name.replace(/\s*#\d+$/, "");
-
-      // Determine position from most played
-      let position = "F";
-      if (isGk) {
-        position = "MV";
-      } else if (p.matchesWhite > 0 || p.matchesGreen > 0) {
-        // Use generic position - we don't have slot data here
-        position = "UT";
-      }
-
-      // Calculate longest win streak from recentForm
-      let longestStreak = 0;
-      let currentStreak = 0;
-      if (p.recentForm) {
-        for (const r of p.recentForm) {
-          if (r === "V") { currentStreak++; longestStreak = Math.max(longestStreak, currentStreak); }
-          else { currentStreak = 0; }
-        }
-      }
-
-      const stats: CardStats = {
-        season: "2025/26",
-        matches: p.matchesPlayed ?? 0,
-        wins: p.wins ?? 0,
-        topStreak: longestStreak,
-        goals: p.goals ?? 0,
-        assists: p.assists ?? 0,
-        points: p.points ?? p.goals + p.assists,
-        gwg: p.gwg ?? 0,
-        winRate: p.winRate ?? 0,
-        isGoalkeeper: !!isGk,
-        goalsAgainstPerMatch: isGk && gk ? gk.goalsAgainstPerMatch : undefined,
-        cleanSheets: isGk && gk ? gk.cleanSheets : undefined,
-      };
-
-      return {
-        id: p.name,
-        name: cleanName,
-        number: playerNumber,
-        position,
-        stats,
-        pirRating: pir?.rating,
-        captainRole: undefined as string | undefined,
-      };
-    }).sort((a: any, b: any) => a.name.localeCompare(b.name, "sv"));
-  }, [playerStatsData, pirData, gkData]);
-
-  const selectedPlayerData = useMemo(() => {
-    return playerList.find((p: any) => p.id === selectedPlayer);
-  }, [playerList, selectedPlayer]);
-
-  // Photo upload handler
-  const handlePhotoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedPlayer) return;
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const url = ev.target?.result as string;
-      setPhotos(prev => ({ ...prev, [selectedPlayer]: url }));
+  // Välj spelare: sparat kort (foto + val) laddas, annars ett nytt kort med spelarens uppgifter
+  const choosePlayer = useCallback(async (id: string) => {
+    setPlayerId(id);
+    setNewSource(null);
+    setPhotoImg(null);
+    const p = players.data?.find((x) => x.id === id);
+    const savedCard = saved.data?.find((c) => c.playerId === id);
+    const base: CardSettings = {
+      ...DEFAULT_SETTINGS,
+      skin: p?.teamColor === "white" ? "vit" : "gron",
+      name: p?.name ?? "",
+      number: p?.number ?? "",
+      position: p?.position && p.position !== "IB" ? p.position : "",
+      captain: (p?.captainRole as "C" | "A" | null) ?? "",
     };
-    reader.readAsDataURL(file);
-    e.target.value = "";
-  }, [selectedPlayer]);
+    if (savedCard) {
+      setSettings({ ...base, ...(savedCard.settings as Partial<CardSettings>) });
+      setLoadingPhoto(true);
+      try {
+        setPhotoImg(await loadImg(`/api/players/${encodeURIComponent(id)}/card-source?v=${new Date(savedCard.updatedAt).getTime()}`));
+      } catch {
+        toast.error("Det sparade fotot kunde inte laddas");
+      } finally {
+        setLoadingPhoto(false);
+      }
+    } else {
+      setSettings(base);
+    }
+  }, [players.data, saved.data]);
 
-  // Remove photo
-  const handleRemovePhoto = useCallback(() => {
-    if (!selectedPlayer) return;
-    setPhotos(prev => {
-      const next = { ...prev };
-      delete next[selectedPlayer];
-      return next;
+  // Statistiken uppdateras alltid från senaste matcherna (utom egna värden)
+  useEffect(() => {
+    if (!stats.data) return;
+    setSettings((s) => {
+      if (s.statsMode === "custom") return { ...s, form: stats.data!.form };
+      const { title, cells } = cellsFor(s.statsMode, stats.data);
+      return { ...s, cells, statsTitle: title, form: stats.data!.form };
     });
-  }, [selectedPlayer]);
+  }, [stats.data, settings.statsMode]);
 
-  // Export single card
-  const handleExport = useCallback(async () => {
-    if (!cardRef.current || !selectedPlayerData) return;
-    await exportCardAsImage(cardRef.current.querySelector(".hockey-card-inner") as HTMLElement, selectedPlayerData.name);
-  }, [selectedPlayerData]);
+  const onFile = async (file: File) => {
+    setLoadingPhoto(true);
+    try {
+      const { base64, auto } = await prepareSourcePhoto(file);
+      setNewSource(base64);
+      setPhotoImg(await loadImg(`data:image/jpeg;base64,${base64}`));
+      update({ auto, photo: { zoom: 1, x: 0.5, y: 0.4 }, adjust: { brightness: 1, contrast: 1, saturation: 1 } });
+    } catch (e) {
+      toast.error("Fotot kunde inte läsas", { description: (e as Error).message });
+    } finally {
+      setLoadingPhoto(false);
+    }
+  };
+
+  // Rita förhandsvisningen (lite fördröjt så att reglagen känns lätta)
+  useEffect(() => {
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const c = await renderCard({ settings, photo, logoUrl: logoFor(settings.skin) });
+      if (cancelled || !canvasRef.current) return;
+      const out = canvasRef.current;
+      out.width = c.width;
+      out.height = c.height;
+      out.getContext("2d")!.drawImage(c, 0, 0);
+    }, 60);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [settings, photo]);
+
+  // Dra i kortet för att flytta fotot
+  const drag = useRef<{ x: number; y: number } | null>(null);
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!photo) return;
+    drag.current = { x: e.clientX, y: e.clientY };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!drag.current || !photo || !canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const r = photoSourceRect(photo.width, photo.height, CARD_W - 40, 1050 - 40, settings.photo);
+    const dx = ((e.clientX - drag.current.x) / rect.width) * (r.sw / photo.width) * (CARD_W / (CARD_W - 40));
+    const dy = ((e.clientY - drag.current.y) / rect.height) * (r.sh / photo.height) * (1050 / 1010);
+    drag.current = { x: e.clientX, y: e.clientY };
+    setSettings((s) => ({ ...s, photo: { ...s.photo, x: Math.min(1, Math.max(0, s.photo.x - dx)), y: Math.min(1, Math.max(0, s.photo.y - dy)) } }));
+  };
+  const onPointerUp = () => { drag.current = null; };
+
+  const fileBase = () => `hockeykort-${(settings.name || "spelare").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-")}`;
+  const exportBlob = async (type: "image/png" | "image/jpeg", scale = 1, quality = 0.9) => {
+    const c = await renderCard({ settings, photo, logoUrl: logoFor(settings.skin), scale });
+    return new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("Kunde inte skapa bilden"))), type, quality));
+  };
+
+  const download = async () => {
+    setBusy("download");
+    try {
+      const blob = await exportBlob("image/png");
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${fileBase()}.png`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const share = async () => {
+    setBusy("share");
+    try {
+      const file = new File([await exportBlob("image/png")], `${fileBase()}.png`, { type: "image/png" });
+      if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file] });
+      else await download();
+    } catch (e) {
+      if ((e as DOMException)?.name !== "AbortError") toast.error("Kunde inte dela");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const saveToPlayer = async () => {
+    if (!playerId) return;
+    if (!photo) return toast.error("Ladda upp ett foto först");
+    setBusy("save");
+    try {
+      await saveCard.mutateAsync({ playerId, settings: settings as unknown as Record<string, unknown>, sourceBase64: newSource ?? undefined });
+      setNewSource(null);
+      toast.success("Kortet är sparat på spelaren", { description: "Öppna spelaren igen för att få kortet med senaste statistiken." });
+    } catch (e) {
+      toast.error("Kunde inte spara", { description: (e as Error).message });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const saveAsProfile = async () => {
+    if (!playerId) return;
+    setBusy("profile");
+    try {
+      // Mindre version av hela kortet som JPEG (profilbilder är små)
+      // Profilbilder får vara högst ~150 kB – sänk kvaliteten om kortet blir tungt
+      let blob = await exportBlob("image/jpeg", 0.64, 0.84);
+      if (blob.size > 140_000) blob = await exportBlob("image/jpeg", 0.64, 0.7);
+      const base64 = await new Promise<string>((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(String(r.result).split(",")[1] ?? "");
+        r.onerror = () => rej(new Error("Kunde inte läsa bilden"));
+        r.readAsDataURL(blob);
+      });
+      await setPhoto.mutateAsync({ playerId, imageBase64: base64 });
+      toast.success("Kortet är spelarens profilbild");
+    } catch (e) {
+      toast.error("Kunde inte spara profilbilden", { description: (e as Error).message });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const removeSaved = async () => {
+    if (!playerId || !confirm("Ta bort det sparade kortet (fotot och valen) för spelaren?")) return;
+    await deleteCard.mutateAsync({ playerId });
+    toast.success("Det sparade kortet är borttaget");
+  };
+
+  const resetAuto = () => update({ photo: { zoom: 1, x: 0.5, y: 0.4 }, adjust: { brightness: 1, contrast: 1, saturation: 1 } });
+
+  const input = "w-full rounded-lg bg-white/5 border border-white/10 text-white text-sm px-2.5 py-1.5";
+  const slider = (label: string, value: number, min: number, max: number, step: number, onChange: (v: number) => void) => (
+    <label className="block">
+      <span className="flex justify-between text-[11px] text-white/50"><span>{label}</span><span className="tabular-nums">{Math.round(value * 100)}%</span></span>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-full accent-emerald-400" />
+    </label>
+  );
 
   return (
-    <div className="min-h-screen bg-[#0d1117] text-[#ECEDEE]">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#0d1117]/90 backdrop-blur-md border-b border-[#2a2a2a]">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setLocation("/")}
-              className="p-2 rounded-lg bg-[#1a1a1a] hover:bg-[#2a2a2a] transition-colors"
-            >
-              <ArrowLeft size={18} />
-            </button>
-            <div>
-              <h1 className="text-lg font-bold flex items-center gap-2">
-                <Sparkles size={18} className="text-amber-400" />
-                Hockeykort
-              </h1>
-              <p className="text-[10px] text-[#687076]">Skapa och exportera spelarkort</p>
-            </div>
-          </div>
-
-          {/* Theme toggle */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setTeamTheme("white")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                teamTheme === "white"
-                  ? "bg-slate-200/20 text-slate-200 border border-slate-200/30"
-                  : "bg-[#1a1a1a] text-[#687076] border border-transparent hover:bg-[#2a2a2a]"
-              }`}
-            >
-              Vita
-            </button>
-            <button
-              onClick={() => setTeamTheme("green")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                teamTheme === "green"
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                  : "bg-[#1a1a1a] text-[#687076] border border-transparent hover:bg-[#2a2a2a]"
-              }`}
-            >
-              Gröna
-            </button>
-          </div>
+    <div className="min-h-[100dvh] bg-[#0a0a0a] text-white">
+      <header className="sticky top-0 z-20 bg-[#0a0a0a]/95 backdrop-blur border-b border-white/5">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
+          <button onClick={() => setLocation("/")} aria-label="Tillbaka" className="text-white/60 hover:text-white"><ArrowLeft size={20} /></button>
+          <h1 className="text-lg font-bold flex-1" style={{ fontFamily: "'Oswald', sans-serif" }}>Hockeykort</h1>
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
-          {/* Left: Player list / Gallery */}
+      <main className="max-w-5xl mx-auto p-4 grid gap-5 lg:grid-cols-[260px_minmax(0,380px)_minmax(0,1fr)]">
+        {/* Spelare */}
+        <section className="space-y-2">
+          <div className="relative">
+            <Search size={14} className="absolute left-2.5 top-2.5 text-white/35" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Sök spelare" className={`${input} pl-8`} />
+          </div>
+          <ul className="max-h-48 lg:max-h-[70vh] overflow-y-auto rounded-xl border border-white/10 divide-y divide-white/5">
+            {list.map((p) => (
+              <li key={p.id}>
+                <button onClick={() => void choosePlayer(p.id)}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm ${p.id === playerId ? "bg-emerald-500/15 text-white" : "text-white/75 hover:bg-white/[0.04]"}`}>
+                  <span className="flex-1 min-w-0 truncate">{p.name}{p.number ? <span className="text-white/35"> #{p.number}</span> : null}</span>
+                  {savedIds.has(p.id) && <span title="Har sparat kort" className="text-[10px] px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300">Kort</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="text-[10px] text-white/35">Märkt "Kort" = sparat foto som byggs om med senaste statistiken.</p>
+        </section>
+
+        {/* Förhandsvisning */}
+        <section className="space-y-2">
+          <div className="relative">
+            <canvas
+              ref={canvasRef}
+              className={`w-full h-auto rounded-[18px] shadow-2xl ${photo ? "cursor-grab active:cursor-grabbing touch-none" : ""}`}
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointerCancel={onPointerUp}
+              aria-label="Förhandsvisning av hockeykortet"
+            />
+            {loadingPhoto && <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-[18px]"><Loader2 className="animate-spin" /></div>}
+          </div>
+          <p className="text-[10px] text-white/35 text-center">{photo ? "Dra i kortet för att flytta fotot." : "Ladda upp ett foto för att börja."}</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={() => fileRef.current?.click()} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 border border-white/10 text-sm">
+              <Upload size={14} /> {photo ? "Byt foto" : "Ladda upp foto"}
+            </button>
+            <button onClick={resetAuto} disabled={!photo} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 border border-white/10 text-sm disabled:opacity-40">
+              <Wand2 size={14} /> Auto
+            </button>
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); e.target.value = ""; }} />
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <button onClick={() => void download()} disabled={!!busy} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-sm disabled:opacity-40">
+              {busy === "download" ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} Ladda ned
+            </button>
+            <button onClick={() => void share()} disabled={!!busy} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-300 text-sm disabled:opacity-40">
+              {busy === "share" ? <Loader2 size={14} className="animate-spin" /> : <Share2 size={14} />} Dela
+            </button>
+            <button onClick={() => void saveToPlayer()} disabled={!playerId || !photo || !!busy} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-200 text-sm disabled:opacity-40"
+              title={playerId ? "Spara foto och val på spelaren (ersätter tidigare kort)" : "Välj en spelare först"}>
+              {busy === "save" ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Spara på spelaren
+            </button>
+            <button onClick={() => void saveAsProfile()} disabled={!playerId || !photo || !!busy} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 border border-white/15 text-white/80 text-sm disabled:opacity-40">
+              {busy === "profile" ? <Loader2 size={14} className="animate-spin" /> : <UserSquare2 size={14} />} Som profilbild
+            </button>
+          </div>
+          {playerId && savedIds.has(playerId) && (
+            <button onClick={() => void removeSaved()} className="w-full flex items-center justify-center gap-1.5 text-[11px] text-red-300/70 hover:text-red-300 pt-1">
+              <Trash2 size={12} /> Ta bort sparat kort
+            </button>
+          )}
+        </section>
+
+        {/* Inställningar */}
+        <section className="space-y-4">
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold text-[#687076] uppercase tracking-wider">
-                Välj spelare ({playerList.length})
-              </h2>
-              <button
-                onClick={() => setShowGallery(!showGallery)}
-                className="text-xs text-[#0a7ea4] hover:underline flex items-center gap-1"
-              >
-                {showGallery ? "Lista" : "Galleri"}
-                <ChevronDown size={12} className={showGallery ? "rotate-180" : ""} />
-              </button>
+            <p className="text-[11px] text-white/50 mb-1.5">Stil</p>
+            <div className="flex gap-2">
+              {CARD_SKINS.map((sk) => (
+                <button key={sk.id} onClick={() => update({ skin: sk.id })}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border text-sm ${settings.skin === sk.id ? "border-white/60 bg-white/10" : "border-white/10 text-white/60"}`}>
+                  <span className="w-3.5 h-3.5 rounded-full border border-white/30" style={{ background: `linear-gradient(135deg, ${sk.frame.join(",")})` }} />
+                  {sk.name}{settings.skin === sk.id && <Check size={12} />}
+                </button>
+              ))}
             </div>
-
-            {playerList.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <User size={40} className="text-[#2a2a2a] mb-4" />
-                <p className="text-sm text-[#687076]">Inga spelare hittades</p>
-                <p className="text-[10px] text-[#3a3a3a] mt-1">Spela några matcher i Score Tracker först</p>
-              </div>
-            ) : showGallery ? (
-              /* Gallery view: mini cards */
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {playerList.map((p: any) => (
-                  <button
-                    key={p.id}
-                    onClick={() => setSelectedPlayer(p.id)}
-                    className={`relative rounded-xl overflow-hidden transition-all hover:scale-[1.02] ${
-                      selectedPlayer === p.id
-                        ? "ring-2 ring-[#0a7ea4] ring-offset-2 ring-offset-[#0d1117]"
-                        : ""
-                    }`}
-                  >
-                    <div className="aspect-[3/4]">
-                      <HockeyCard
-                        playerName={p.name}
-                        playerNumber={p.number}
-                        position={p.position}
-                        team={teamTheme}
-                        stats={p.stats}
-                        photoUrl={photos[p.id] ?? null}
-                        captainRole={p.captainRole}
-                        pirRating={p.pirRating}
-                        interactive={false}
-                        scale={0.45}
-                      />
-                    </div>
-                    {/* Photo indicator */}
-                    {photos[p.id] && (
-                      <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-emerald-500/80 flex items-center justify-center">
-                        <ImageIcon size={8} className="text-white" />
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              /* List view */
-              <div className="space-y-1">
-                {playerList.map((p: any) => (
-                  <button
-                    key={p.id}
-                    onClick={() => setSelectedPlayer(p.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-left ${
-                      selectedPlayer === p.id
-                        ? "bg-[#0a7ea4]/15 border border-[#0a7ea4]/30"
-                        : "bg-[#1a1a1a]/50 hover:bg-[#2a2a2a] border border-transparent"
-                    }`}
-                  >
-                    {/* Avatar */}
-                    <div className="w-8 h-8 rounded-full bg-[#2a2a2a] flex items-center justify-center flex-shrink-0 overflow-hidden">
-                      {photos[p.id] ? (
-                        <img src={photos[p.id]} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <User size={14} className="text-[#687076]" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-xs text-[#ECEDEE] font-medium truncate block">
-                        {p.name}
-                        {p.number && <span className="text-[#687076] ml-1">#{p.number}</span>}
-                      </span>
-                      <span className="text-[10px] text-[#687076]">
-                        {p.position} • {p.stats.matches} matcher • {p.stats.goals} mål
-                      </span>
-                    </div>
-                    {p.pirRating && (
-                      <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded">
-                        {p.pirRating}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
-          {/* Right: Card preview + controls */}
-          <div className="lg:sticky lg:top-20 lg:self-start">
-            {selectedPlayerData ? (
-              <div className="flex flex-col items-center gap-4">
-                {/* Card preview */}
-                <div ref={cardRef}>
-                  <HockeyCard
-                    playerName={selectedPlayerData.name}
-                    playerNumber={selectedPlayerData.number}
-                    position={selectedPlayerData.position}
-                    team={teamTheme}
-                    stats={selectedPlayerData.stats}
-                    photoUrl={photos[selectedPlayer!] ?? null}
-                    captainRole={selectedPlayerData.captainRole}
-                    pirRating={selectedPlayerData.pirRating}
-                    interactive
-                  />
-                </div>
+          {photo && (
+            <div className="space-y-2">
+              <p className="text-[11px] text-white/50">Foto</p>
+              {slider("Zoom", settings.photo.zoom, 1, 3, 0.02, (v) => update({ photo: { ...settings.photo, zoom: v } }))}
+              {slider("Ljus", settings.adjust.brightness, 0.6, 1.5, 0.01, (v) => update({ adjust: { ...settings.adjust, brightness: v } }))}
+              {slider("Kontrast", settings.adjust.contrast, 0.6, 1.6, 0.01, (v) => update({ adjust: { ...settings.adjust, contrast: v } }))}
+              {slider("Färg", settings.adjust.saturation, 0, 1.6, 0.01, (v) => update({ adjust: { ...settings.adjust, saturation: v } }))}
+            </div>
+          )}
 
-                {/* Controls */}
-                <div className="w-full max-w-[320px] space-y-2">
-                  {/* Photo upload */}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoUpload}
-                    className="hidden"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-xs font-medium hover:bg-[#2a2a2a] transition-colors"
-                    >
-                      <Upload size={14} />
-                      {photos[selectedPlayer!] ? "Byt foto" : "Ladda upp foto"}
-                    </button>
-                    {photos[selectedPlayer!] && (
-                      <button
-                        onClick={handleRemovePhoto}
-                        className="px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium hover:bg-red-500/20 transition-colors"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                  </div>
+          <div className="grid grid-cols-[1fr_5rem] gap-2">
+            <label className="text-[11px] text-white/50">Namn<input value={settings.name} onChange={(e) => update({ name: e.target.value })} maxLength={40} className={input} /></label>
+            <label className="text-[11px] text-white/50">Nummer<input value={settings.number} onChange={(e) => update({ number: e.target.value.replace(/[^0-9]/g, "").slice(0, 3) })} inputMode="numeric" className={input} /></label>
+            <label className="text-[11px] text-white/50">Position
+              <select value={settings.position} onChange={(e) => update({ position: e.target.value })} className={input}>
+                {POSITIONS.map((p) => <option key={p} value={p} className="text-black">{p || "– ingen –"}</option>)}
+              </select>
+            </label>
+            <label className="text-[11px] text-white/50">C/A
+              <select value={settings.captain} onChange={(e) => update({ captain: e.target.value as CardSettings["captain"] })} className={input}>
+                <option value="" className="text-black">–</option><option value="C" className="text-black">C</option><option value="A" className="text-black">A</option>
+              </select>
+            </label>
+          </div>
+          <label className="flex items-center gap-2 text-xs text-white/70">
+            <input type="checkbox" checked={settings.showLogo} onChange={(e) => update({ showLogo: e.target.checked })} /> Lagmärke
+          </label>
 
-                  {/* Export */}
-                  <button
-                    onClick={handleExport}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-[#0a7ea4]/20 border border-[#0a7ea4]/30 text-[#0a7ea4] text-xs font-medium hover:bg-[#0a7ea4]/30 transition-colors"
-                  >
-                    <Download size={14} />
-                    Exportera som PNG
-                  </button>
+          <div className="space-y-2">
+            <p className="text-[11px] text-white/50">Statistik</p>
+            <div className="flex flex-wrap gap-1.5">
+              {([["season", "Säsong"], ["career", "Karriär"], ["form", "Form"], ["custom", "Egen"], ["none", "Ingen"]] as const).map(([k, l]) => (
+                <button key={k} onClick={() => update({ statsMode: k })}
+                  className={`px-3 py-1 rounded-full text-xs border ${settings.statsMode === k ? "bg-white/15 border-white/40" : "border-white/10 text-white/55"}`}>{l}</button>
+              ))}
+            </div>
+            {settings.statsMode !== "none" && settings.statsMode !== "form" && (
+              <>
+                <input value={settings.statsTitle} onChange={(e) => update({ statsTitle: e.target.value, statsMode: "custom" })} placeholder="Rubrik (t.ex. Säsong 2026/27)" className={input} />
+                <div className="grid grid-cols-5 gap-1.5">
+                  {Array.from({ length: 5 }, (_, i) => settings.cells[i] ?? { label: "", value: "" }).map((c, i) => (
+                    <div key={i} className="space-y-1">
+                      <input value={c.value} placeholder="–" onChange={(e) => {
+                        const cells = Array.from({ length: 5 }, (_, k) => settings.cells[k] ?? { label: "", value: "" });
+                        cells[i] = { ...cells[i], value: e.target.value.slice(0, 6) };
+                        update({ cells: cells.filter((x) => x.label || x.value), statsMode: "custom" });
+                      }} className={`${input} text-center px-1`} aria-label={`Värde ${i + 1}`} />
+                      <input value={c.label} placeholder="Etikett" onChange={(e) => {
+                        const cells = Array.from({ length: 5 }, (_, k) => settings.cells[k] ?? { label: "", value: "" });
+                        cells[i] = { ...cells[i], label: e.target.value.slice(0, 7) };
+                        update({ cells: cells.filter((x) => x.label || x.value), statsMode: "custom" });
+                      }} className={`${input} text-center px-1 text-[11px]`} aria-label={`Etikett ${i + 1}`} />
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <Sparkles size={40} className="text-[#2a2a2a] mb-4" />
-                <p className="text-sm text-[#687076]">Välj en spelare för att se kortet</p>
-                <p className="text-[10px] text-[#3a3a3a] mt-1">Klicka på en spelare i listan till vänster</p>
-              </div>
+                <p className="text-[10px] text-white/35">Säsong och Karriär räknas fram och uppdateras automatiskt. Ändrar du ett värde blir rutan "Egen" och står kvar som du skrev.</p>
+              </>
             )}
           </div>
-        </div>
-      </div>
+          {!playerId && <p className="text-[11px] text-white/40">Utan vald spelare kan du göra ett eget kort och ladda ned det, men inte spara det.</p>}
+          {player && stats.isLoading && <p className="text-[11px] text-white/40 flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> Hämtar statistik …</p>}
+        </section>
+      </main>
     </div>
   );
 }

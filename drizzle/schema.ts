@@ -244,3 +244,16 @@ export const playerPhotos = mysqlTable("player_photos", {
   image: mediumtext("image").notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
+
+// ─── Hockeykort ──────────────────────────────────────────────────────────────
+// Max ett sparat kort per spelare: originalfotot (utan ram) och valen, så att
+// kortet kan byggas om med ny statistik eller annan stil.
+
+export const playerCards = mysqlTable("player_cards", {
+  playerId: varchar("playerId", { length: 64 }).primaryKey(),
+  /** Originalfotot som JPEG (base64, utan data:-prefix), förminskat till max ~1200 px. */
+  source: mediumtext("source").notNull(),
+  /** Stil, beskärning, bildjusteringar, texter och statistikval. */
+  settings: json("settings").$type<Record<string, unknown>>().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});

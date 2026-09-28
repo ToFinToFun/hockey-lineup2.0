@@ -10,6 +10,7 @@ import { createServer } from "http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { readSession } from "../auth";
 import { getPlayerPhoto } from "../playerPhotos";
+import { getCardSource } from "../playerCards";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -87,6 +88,23 @@ async function startServer() {
       res.setHeader("ETag", etag);
       if (req.headers["if-none-match"] === etag) return res.status(304).end();
       res.type("image/jpeg").send(photo.image);
+    } catch {
+      res.status(500).end();
+    }
+  });
+
+  // Hockeykortets originalfoto – bara styrelsen (hockeykorten är en styrelsemodul)
+  app.get("/api/players/:id/card-source", async (req, res) => {
+    try {
+      const session = await readSession(req);
+      if (session?.role !== "admin") return res.status(401).end();
+      const src = await getCardSource(String(req.params.id).slice(0, 64));
+      if (!src) return res.status(404).end();
+      const etag = `"${src.updatedAt.getTime()}"`;
+      res.setHeader("Cache-Control", "private, no-cache");
+      res.setHeader("ETag", etag);
+      if (req.headers["if-none-match"] === etag) return res.status(304).end();
+      res.type("image/jpeg").send(src.image);
     } catch {
       res.status(500).end();
     }
