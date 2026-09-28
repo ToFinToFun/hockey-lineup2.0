@@ -7,6 +7,17 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.36.0 – 2026-09-28
+
+**Hockeykort – friläggning**
+- Knappen Frilägg tar bort bakgrunden i fotot direkt i webbläsaren, så att spelaren står på en bakgrund i kortets färger (strålkastarljus med svaga diagonala linjer). Reglaget "Ersätt bakgrund" dämpar effekten (0–100 %) om kanterna blir fel; "Ta bort friläggningen" återställer.
+- Modellen (MediaPipe Selfie Segmentation, Apache-2.0, ca 6 MB) ligger på vår egen server och laddas först när någon trycker Frilägg. Den är gjord för porträtt/överkropp.
+- Masken sparas med kortet och används även när servern ritar om profilkort. Ett nytt foto tar bort den gamla masken.
+- Säkerhetspolicyn tillåter WebAssembly ('wasm-unsafe-eval') för friläggningen.
+
+**Hockeykort – sparade kort**
+- När en spelare med sparat kort väljs laddas fotot, valen och friläggningen, med ett besked "Sparat kort laddat – senast sparat …". Om listan över sparade kort kommer efter att spelaren valts laddas kortet ändå.
+
 ## 2.35.0 – 2026-09-28
 
 - Spelarkortet i Lineup: tryck på bilden för att se den stor, med Spara, Ladda upp ny, Ta bort och Stäng. Utan bild öppnas uppladdningen direkt.

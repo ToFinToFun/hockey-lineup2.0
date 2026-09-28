@@ -10,7 +10,7 @@ import { createServer } from "http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { readSession } from "../auth";
 import { getPlayerPhoto } from "../playerPhotos";
-import { getCardSource } from "../playerCards";
+import { getCardSource, getCardMask } from "../playerCards";
 import { startLiveProfileSchedule } from "../cardProfile";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -43,7 +43,8 @@ async function startServer() {
         contentSecurityPolicy: {
           directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'"],
+            // wasm-unsafe-eval: friläggningsmodellen (WebAssembly) i Hockeykort
+            scriptSrc: ["'self'", "'wasm-unsafe-eval'"],
             styleSrc: ["'self'", "'unsafe-inline'"],
             imgSrc: ["'self'", "data:", "blob:"],
             fontSrc: ["'self'", "data:"],
@@ -106,6 +107,23 @@ async function startServer() {
       res.setHeader("ETag", etag);
       if (req.headers["if-none-match"] === etag) return res.status(304).end();
       res.type("image/jpeg").send(src.image);
+    } catch {
+      res.status(500).end();
+    }
+  });
+
+  // Hockeykortets friläggningsmask (gråskala-PNG) – bara styrelsen
+  app.get("/api/players/:id/card-mask", async (req, res) => {
+    try {
+      const session = await readSession(req);
+      if (session?.role !== "admin") return res.status(401).end();
+      const m = await getCardMask(String(req.params.id).slice(0, 64));
+      if (!m) return res.status(404).end();
+      const etag = `"m${m.updatedAt.getTime()}"`;
+      res.setHeader("Cache-Control", "private, no-cache");
+      res.setHeader("ETag", etag);
+      if (req.headers["if-none-match"] === etag) return res.status(304).end();
+      res.type("image/png").send(m.image);
     } catch {
       res.status(500).end();
     }

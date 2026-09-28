@@ -111,3 +111,4 @@ temp/
 
 # AI-agent artifacts
 .manus/
+client/public/mediapipe/

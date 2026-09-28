@@ -42,6 +42,12 @@ export async function setRenderedHash(playerId: string, hash: string | null) {
   await db.update(playerCards).set({ renderedHash: hash }).where(eq(playerCards.playerId, playerId));
 }
 
+export async function getCardMask(playerId: string): Promise<{ image: Buffer; updatedAt: Date } | null> {
+  const db = await requireDb();
+  const [row] = await db.select({ mask: playerCards.mask, updatedAt: playerCards.updatedAt }).from(playerCards).where(eq(playerCards.playerId, playerId)).limit(1);
+  return row?.mask ? { image: Buffer.from(row.mask, "base64"), updatedAt: row.updatedAt } : null;
+}
+
 export async function getCardSource(playerId: string): Promise<{ image: Buffer; updatedAt: Date } | null> {
   const db = await requireDb();
   const [row] = await db.select({ source: playerCards.source, updatedAt: playerCards.updatedAt }).from(playerCards).where(eq(playerCards.playerId, playerId)).limit(1);
@@ -49,12 +55,17 @@ export async function getCardSource(playerId: string): Promise<{ image: Buffer; 
 }
 
 /** Spara kortet. Utan nytt foto behålls det sparade och bara valen uppdateras. */
-export async function saveCard(playerId: string, settings: Record<string, unknown>, sourceBase64?: string, liveProfile?: boolean) {
+/**
+ * maskBase64: undefined = oförändrad, null = ta bort friläggningen, sträng = ny mask.
+ * Nytt foto utan ny mask tar bort den gamla masken (den hör till det gamla fotot).
+ */
+export async function saveCard(playerId: string, settings: Record<string, unknown>, sourceBase64?: string, liveProfile?: boolean, maskBase64?: string | null) {
   const db = await requireDb();
   // Ny ritning behövs alltid efter en ändring (renderedHash nollas)
-  const extra = { ...(liveProfile !== undefined ? { liveProfile } : {}), renderedHash: null };
+  const mask = maskBase64 !== undefined ? { mask: maskBase64 } : sourceBase64 ? { mask: null } : {};
+  const extra = { ...(liveProfile !== undefined ? { liveProfile } : {}), ...mask, renderedHash: null };
   if (sourceBase64) {
-    await db.insert(playerCards).values({ playerId, source: sourceBase64, settings, liveProfile: liveProfile ?? false })
+    await db.insert(playerCards).values({ playerId, source: sourceBase64, settings, liveProfile: liveProfile ?? false, mask: maskBase64 ?? null })
       .onDuplicateKeyUpdate({ set: { source: sourceBase64, settings, updatedAt: new Date(), ...extra } });
     return;
   }

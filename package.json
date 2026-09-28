@@ -1,11 +1,11 @@
 {
   "name": "hockey-lineup",
-  "version": "2.35.0",
+  "version": "2.36.0",
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
-    "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist --external:../../vite.config",
+    "dev": "node scripts/copy-mediapipe.mjs && NODE_ENV=development tsx watch server/_core/index.ts",
+    "build": "node scripts/copy-mediapipe.mjs && vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist --external:../../vite.config",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
@@ -20,6 +20,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@fontsource/inter": "^5.3.0",
     "@fontsource/oswald": "^5.3.0",
+    "@mediapipe/selfie_segmentation": "0.1.1675465747",
     "@napi-rs/canvas": "^0.1",
     "@radix-ui/react-dialog": "^1.1.23",
     "@radix-ui/react-slider": "^1.4.7",

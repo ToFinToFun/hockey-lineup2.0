@@ -78,6 +78,8 @@ export interface CardSettings {
   /** Raden under namnet (retro), t.ex. "Stålstadens SF" */
   subtitle: string;
   statsMode: "season" | "career" | "form" | "custom" | "none";
+  /** Friläggning: ersätt fotots bakgrund med kortets (amount 0–1 = hur mycket) */
+  cutout?: { enabled: boolean; amount: number };
   statsTitle: string;
   cells: CardCell[];
   form?: string;
@@ -230,6 +232,8 @@ async function ensureFonts() {
 export interface RenderInput {
   settings: CardSettings;
   photo: HTMLImageElement | ImageBitmap | null;
+  /** Friläggningsmask i fotots proportioner: ljust = spelaren */
+  mask?: HTMLImageElement | ImageBitmap | null;
   scale?: number; // 1 = 750×1050
 }
 
@@ -270,12 +274,80 @@ async function drawLogo(ctx: CanvasRenderingContext2D, logo: CardLogo, cx: numbe
   ctx.restore();
 }
 
+/** Bakgrunden bakom en frilagd spelare: strålkastarljus i kortets färger med svaga diagonala linjer. */
+function paintBackdrop(ctx: CanvasRenderingContext2D, w: number, h: number, skin: CardSkin) {
+  const center = skin.retro ? skin.retro.stripeB : skin.frame[1] ?? "#3a3a3a";
+  const edge = skin.retro ? skin.retro.panel : skin.background;
+  const g = ctx.createRadialGradient(w / 2, h * 0.38, w * 0.05, w / 2, h * 0.45, Math.max(w, h) * 0.75);
+  g.addColorStop(0, center);
+  g.addColorStop(1, edge);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+  ctx.save();
+  ctx.globalAlpha = 0.07;
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = Math.max(1, w / 180);
+  for (let x = -h; x < w; x += w / 14) {
+    ctx.beginPath(); ctx.moveTo(x, h); ctx.lineTo(x + h, 0); ctx.stroke();
+  }
+  ctx.restore();
+  // Mörkare nertill så att spelaren "står" i bilden
+  const f = ctx.createLinearGradient(0, h * 0.6, 0, h);
+  f.addColorStop(0, "rgba(0,0,0,0)");
+  f.addColorStop(1, "rgba(0,0,0,0.45)");
+  ctx.fillStyle = f;
+  ctx.fillRect(0, 0, w, h);
+}
+
+/**
+ * Fotolagret: beskuret, justerat och färgtonat – och om det finns en mask och
+ * friläggning är på: spelaren på kortets bakgrund (amount styr hur mycket av
+ * originalbakgrunden som ersätts).
+ */
+function photoLayer(
+  photo: HTMLImageElement | ImageBitmap, mask: HTMLImageElement | ImageBitmap | null | undefined,
+  s: CardSettings, gradeSettings: CardSettings, skin: CardSkin, boxW: number, boxH: number, scale: number
+): HTMLCanvasElement {
+  const pw = Math.round(boxW * scale), ph = Math.round(boxH * scale);
+  const r = photoSourceRect(photo.width, photo.height, boxW, boxH, s.photo);
+  const tmp = env.createCanvas(pw, ph);
+  const tctx = tmp.getContext("2d", { willReadFrequently: true })!;
+  tctx.drawImage(photo, r.sx, r.sy, r.sw, r.sh, 0, 0, pw, ph);
+  const img = tctx.getImageData(0, 0, pw, ph);
+  gradePixels(img.data, gradeSettings, skin);
+  tctx.putImageData(img, 0, 0);
+
+  const amount = s.cutout?.enabled && mask ? Math.min(1, Math.max(0, s.cutout.amount)) : 0;
+  if (!amount || !mask) return tmp;
+
+  // Masken i samma beskärning, omgjord till genomskinlighet
+  const mx = mask.width / photo.width, my = mask.height / photo.height;
+  const mc = env.createCanvas(pw, ph);
+  const mctx = mc.getContext("2d", { willReadFrequently: true })!;
+  mctx.drawImage(mask, r.sx * mx, r.sy * my, r.sw * mx, r.sh * my, 0, 0, pw, ph);
+  const md = mctx.getImageData(0, 0, pw, ph);
+  const pd = tctx.getImageData(0, 0, pw, ph);
+  for (let i = 0; i < pd.data.length; i += 4) pd.data[i + 3] = md.data[i]; // rött = gråskala
+  const person = env.createCanvas(pw, ph);
+  person.getContext("2d")!.putImageData(pd, 0, 0);
+
+  const out = env.createCanvas(pw, ph);
+  const octx = out.getContext("2d")!;
+  paintBackdrop(octx, pw, ph, skin);
+  // Originalbakgrunden syns i den mån friläggningen inte är fullt på
+  octx.globalAlpha = 1 - amount;
+  octx.drawImage(tmp, 0, 0);
+  octx.globalAlpha = 1;
+  octx.drawImage(person, 0, 0);
+  return out;
+}
+
 export async function renderCard(input: RenderInput): Promise<HTMLCanvasElement> {
   await ensureFonts();
   return skinById(input.settings.skin).layout === "retro" ? renderRetro(input) : renderModern(input);
 }
 
-async function renderModern({ settings: s, photo, scale = 1 }: RenderInput): Promise<HTMLCanvasElement> {
+async function renderModern({ settings: s, photo, mask, scale = 1 }: RenderInput): Promise<HTMLCanvasElement> {
   const skin = skinById(s.skin);
   const canvas = env.createCanvas(Math.round(CARD_W * scale), Math.round(CARD_H * scale));
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -296,15 +368,7 @@ async function renderModern({ settings: s, photo, scale = 1 }: RenderInput): Pro
   roundRect(ctx, inner.x, inner.y, inner.w, inner.h, R - 10);
   ctx.clip();
   if (photo) {
-    const pw = Math.round(inner.w * scale), ph = Math.round(inner.h * scale);
-    const tmp = env.createCanvas(pw, ph);
-    const tctx = tmp.getContext("2d", { willReadFrequently: true })!;
-    const r = photoSourceRect(photo.width, photo.height, inner.w, inner.h, s.photo);
-    tctx.drawImage(photo, r.sx, r.sy, r.sw, r.sh, 0, 0, pw, ph);
-    const img = tctx.getImageData(0, 0, pw, ph);
-    gradePixels(img.data, s, skin);
-    tctx.putImageData(img, 0, 0);
-    ctx.drawImage(tmp, inner.x, inner.y, inner.w, inner.h);
+    ctx.drawImage(photoLayer(photo, mask, s, s, skin, inner.w, inner.h, scale), inner.x, inner.y, inner.w, inner.h);
   } else {
     const g = ctx.createLinearGradient(0, 0, 0, CARD_H);
     g.addColorStop(0, skin.frame[1]);
@@ -559,7 +623,7 @@ function wear(ctx: CanvasRenderingContext2D, seed: string, alpha: number) {
   ctx.restore();
 }
 
-async function renderRetro({ settings: s, photo, scale = 1 }: RenderInput): Promise<HTMLCanvasElement> {
+async function renderRetro({ settings: s, photo, mask, scale = 1 }: RenderInput): Promise<HTMLCanvasElement> {
   const skin = skinById(s.skin);
   const c = skin.retro!;
   const canvas = env.createCanvas(Math.round(CARD_W * scale), Math.round(CARD_H * scale));
@@ -629,15 +693,8 @@ async function renderRetro({ settings: s, photo, scale = 1 }: RenderInput): Prom
   windowPath(ctx, W.x, W.y, W.w, W.h, W.r, W.ch);
   ctx.clip();
   if (photo) {
-    const pw = Math.round(W.w * scale), ph = Math.round(W.h * scale);
-    const tmp = env.createCanvas(pw, ph);
-    const tctx = tmp.getContext("2d", { willReadFrequently: true })!;
-    const r = photoSourceRect(photo.width, photo.height, W.w, W.h, s.photo);
-    tctx.drawImage(photo, r.sx, r.sy, r.sw, r.sh, 0, 0, pw, ph);
-    const img = tctx.getImageData(0, 0, pw, ph);
-    gradePixels(img.data, { ...s, adjust: { ...s.adjust, saturation: s.adjust.saturation * 0.85 } }, skin);
-    tctx.putImageData(img, 0, 0);
-    ctx.drawImage(tmp, W.x, W.y, W.w, W.h);
+    const matte = { ...s, adjust: { ...s.adjust, saturation: s.adjust.saturation * 0.85 } };
+    ctx.drawImage(photoLayer(photo, mask, s, matte, skin, W.w, W.h, scale), W.x, W.y, W.w, W.h);
     const vig = ctx.createRadialGradient(CARD_W / 2, W.y + W.h * 0.42, W.w * 0.3, CARD_W / 2, W.y + W.h * 0.5, W.w * 0.85);
     vig.addColorStop(0, "rgba(0,0,0,0)");
     vig.addColorStop(1, "rgba(0,0,0,0.35)");

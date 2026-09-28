@@ -255,6 +255,8 @@ export const playerCards = mysqlTable("player_cards", {
   source: mediumtext("source").notNull(),
   /** Stil, beskärning, bildjusteringar, texter och statistikval. */
   settings: json("settings").$type<Record<string, unknown>>().notNull(),
+  /** Friläggningsmask (gråskala-PNG, base64): vitt = spelaren, svart = bakgrund. Null = ingen friläggning. */
+  mask: mediumtext("mask"),
   /** Kortet används som profilbild och ritas om automatiskt när statistiken ändras */
   liveProfile: boolean("liveProfile").default(false).notNull(),
   /** Fingeravtryck av det senast ritade profilkortet – oförändrat = inget att göra */

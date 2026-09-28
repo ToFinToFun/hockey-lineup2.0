@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { appRouter } from "./routers";
 import { saveMatch } from "./scoreDb";
 import { createPlayer, listPlayers } from "./playersDb";
-import { getCardSource } from "./playerCards";
+import { getCardSource, getCardMask } from "./playerCards";
 
 const hasDb = !!process.env.DATABASE_URL;
 const admin = { req: {} as never, res: {} as never, session: { role: "admin" as const, expiresAt: null } };
@@ -42,6 +42,15 @@ describe.skipIf(!hasDb)("hockeykort", () => {
     expect((await getCardSource("ka"))?.image.length).toBeGreaterThan(10);
     await expect(caller.cards.save({ playerId: "kb", settings: {} })).rejects.toThrow(/foto/);
     await expect(appRouter.createCaller(lineupUser as never).cards.list()).rejects.toThrow();
+    // Friläggningsmask: sparas, följer med när bara valen ändras, rensas av nytt foto
+    const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABc3UBGAAAAABJRU5ErkJggg==";
+    await caller.cards.save({ playerId: "ka", settings: { skin: "gron" }, maskBase64: PNG });
+    expect(await getCardMask("ka")).not.toBeNull();
+    await caller.cards.save({ playerId: "ka", settings: { skin: "vit" } });
+    expect(await getCardMask("ka")).not.toBeNull();
+    await caller.cards.save({ playerId: "ka", settings: { skin: "vit" }, sourceBase64: JPEG });
+    expect(await getCardMask("ka")).toBeNull();
+    await expect(caller.cards.save({ playerId: "ka", settings: {}, maskBase64: JPEG })).rejects.toThrow(/PNG/);
     await caller.cards.delete({ playerId: "ka" });
     expect(await getCardSource("ka")).toBeNull();
   });

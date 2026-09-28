@@ -84,7 +84,8 @@ export async function refreshLiveProfile(playerId: string, force = false): Promi
   if (!force && row.renderedHash === hash) return false;
 
   const photo = (await napi.loadImage(Buffer.from(row.source, "base64"))) as unknown as HTMLImageElement;
-  const canvas = (await renderCard({ settings, photo, scale: 0.64 })) as unknown as import("@napi-rs/canvas").Canvas;
+  const mask = row.mask ? ((await napi.loadImage(Buffer.from(row.mask, "base64"))) as unknown as HTMLImageElement) : null;
+  const canvas = (await renderCard({ settings, photo, mask, scale: 0.64 })) as unknown as import("@napi-rs/canvas").Canvas;
   let jpeg = await canvas.encode("jpeg", 84);
   if (jpeg.length > 140_000) jpeg = await canvas.encode("jpeg", 70);
   await setPlayerPhoto(playerId, jpeg.toString("base64"));

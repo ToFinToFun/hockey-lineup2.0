@@ -99,6 +99,13 @@
       "when": 1790594295626,
       "tag": "0013_card_live_profile",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1790597002749,
+      "tag": "0014_card_mask",
+      "breakpoints": true
     }
   ]
 }

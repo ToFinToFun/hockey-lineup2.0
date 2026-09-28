@@ -10,11 +10,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { ArrowLeft, Upload, Download, Share2, Save, UserSquare2, Wand2, Loader2, Trash2, Search, Check } from "lucide-react";
+import { ArrowLeft, Upload, Download, Share2, Save, UserSquare2, Wand2, Loader2, Trash2, Search, Check, Scissors } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { CARD_SKINS, CARD_LOGOS } from "@shared/cardSkins";
 import { renderCard, photoSourceRect, DEFAULT_SETTINGS, CARD_W, type CardSettings, type CardCell } from "@shared/cardRender";
 import { prepareSourcePhoto } from "@/lib/cardPhoto";
+import { computeMask } from "@/lib/cutout";
 
 import { cellsFor, defaultStatsTitle } from "@shared/cardStats";
 export { cellsFor, defaultStatsTitle, currentSeasonLabel } from "@shared/cardStats";
@@ -48,6 +49,11 @@ export default function CardsApp() {
   const [settings, setSettings] = useState<CardSettings>(DEFAULT_SETTINGS);
   const [photo, setPhotoImg] = useState<HTMLImageElement | null>(null);
   const [newSource, setNewSource] = useState<string | null>(null); // uppladdat men inte sparat
+  const [mask, setMask] = useState<HTMLImageElement | null>(null);
+  // undefined = oförändrad sedan senast sparat, null = borttagen, sträng = ny mask
+  const [newMask, setNewMask] = useState<string | null | undefined>(undefined);
+  const [cutting, setCutting] = useState(false);
+  const [loadedInfo, setLoadedInfo] = useState<string | null>(null);
   const [loadingPhoto, setLoadingPhoto] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -70,6 +76,9 @@ export default function CardsApp() {
     setPlayerId(id);
     setNewSource(null);
     setPhotoImg(null);
+    setMask(null);
+    setNewMask(undefined);
+    setLoadedInfo(null);
     const p = players.data?.find((x) => x.id === id);
     const savedCard = saved.data?.find((c) => c.playerId === id);
     const base: CardSettings = {
@@ -83,8 +92,12 @@ export default function CardsApp() {
     if (savedCard) {
       setSettings({ ...base, ...(savedCard.settings as Partial<CardSettings>) });
       setLoadingPhoto(true);
+      const v = new Date(savedCard.updatedAt).getTime();
       try {
-        setPhotoImg(await loadImg(`/api/players/${encodeURIComponent(id)}/card-source?v=${new Date(savedCard.updatedAt).getTime()}`));
+        setPhotoImg(await loadImg(`/api/players/${encodeURIComponent(id)}/card-source?v=${v}`));
+        setLoadedInfo(`Sparat kort laddat – senast sparat ${new Date(savedCard.updatedAt).toLocaleString("sv-SE", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })}`);
+        // Friläggningen (om den finns)
+        try { setMask(await loadImg(`/api/players/${encodeURIComponent(id)}/card-mask?v=${v}`)); } catch { /* ingen mask */ }
       } catch {
         toast.error("Det sparade fotot kunde inte laddas");
       } finally {
@@ -94,6 +107,17 @@ export default function CardsApp() {
       setSettings(base);
     }
   }, [players.data, saved.data]);
+
+  // Listan över sparade kort kan komma efter att spelaren valts – ladda då kortet
+  const autoLoaded = useRef<string | null>(null);
+  useEffect(() => {
+    if (!playerId || photo || newSource || loadingPhoto) return;
+    if (autoLoaded.current === playerId) return;
+    if (saved.data?.some((c) => c.playerId === playerId)) {
+      autoLoaded.current = playerId;
+      void choosePlayer(playerId);
+    }
+  }, [saved.data, playerId, photo, newSource, loadingPhoto, choosePlayer]);
 
   // Statistiken uppdateras alltid från senaste matcherna (utom egna värden)
   useEffect(() => {
@@ -113,6 +137,10 @@ export default function CardsApp() {
       const { base64, auto } = await prepareSourcePhoto(file);
       setNewSource(base64);
       setPhotoImg(await loadImg(`data:image/jpeg;base64,${base64}`));
+      // Ny bild – den gamla friläggningen gäller inte längre
+      setMask(null);
+      setNewMask(null);
+      setLoadedInfo(null);
       update({ auto, photo: { zoom: 1, x: 0.5, y: 0.4 }, adjust: { brightness: 1, contrast: 1, saturation: 1, tint: 1 } });
     } catch (e) {
       toast.error("Fotot kunde inte läsas", { description: (e as Error).message });
@@ -125,7 +153,7 @@ export default function CardsApp() {
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(async () => {
-      const c = await renderCard({ settings, photo });
+      const c = await renderCard({ settings, photo, mask });
       if (cancelled || !canvasRef.current) return;
       const out = canvasRef.current;
       out.width = c.width;
@@ -133,7 +161,7 @@ export default function CardsApp() {
       out.getContext("2d")!.drawImage(c, 0, 0);
     }, 60);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [settings, photo]);
+  }, [settings, photo, mask]);
 
   // Dra i kortet för att flytta fotot, nyp med två fingrar (eller scrolla) för att zooma
   const drag = useRef<{ x: number; y: number } | null>(null);
@@ -188,7 +216,7 @@ export default function CardsApp() {
 
   const fileBase = () => `hockeykort-${(settings.name || "spelare").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-")}`;
   const exportBlob = async (type: "image/png" | "image/jpeg", scale = 1, quality = 0.9) => {
-    const c = await renderCard({ settings, photo, scale });
+    const c = await renderCard({ settings, photo, mask, scale });
     return new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("Kunde inte skapa bilden"))), type, quality));
   };
 
@@ -224,8 +252,9 @@ export default function CardsApp() {
     if (!photo) return toast.error("Ladda upp ett foto först");
     setBusy("save");
     try {
-      await saveCard.mutateAsync({ playerId, settings: settings as unknown as Record<string, unknown>, sourceBase64: newSource ?? undefined, liveProfile: isLive || undefined });
+      await saveCard.mutateAsync({ playerId, settings: settings as unknown as Record<string, unknown>, sourceBase64: newSource ?? undefined, liveProfile: isLive || undefined, maskBase64: newMask });
       setNewSource(null);
+      setNewMask(undefined);
       toast.success("Kortet är sparat på spelaren", {
         description: isLive ? "Profilbilden är uppdaterad." : "Öppna spelaren igen för att få kortet med senaste statistiken.",
       });
@@ -248,8 +277,10 @@ export default function CardsApp() {
         settings: settings as unknown as Record<string, unknown>,
         sourceBase64: newSource ?? undefined,
         liveProfile: next,
+        maskBase64: newMask,
       });
       setNewSource(null);
+      setNewMask(undefined);
       if (next) {
         toast.success(res.profileUpdated ? "Kortet är spelarens profilbild" : "Kortet är sparat som profilbild", {
           description: "Uppdateras automatiskt efter varje godkänd match.",
@@ -268,6 +299,27 @@ export default function CardsApp() {
     if (!playerId || !confirm("Ta bort det sparade kortet (fotot och valen) för spelaren?")) return;
     await deleteCard.mutateAsync({ playerId });
     toast.success("Det sparade kortet är borttaget");
+  };
+
+  const runCutout = async () => {
+    if (!photo) return;
+    setCutting(true);
+    try {
+      const m = await computeMask(photo as HTMLImageElement);
+      setMask(m.image);
+      setNewMask(m.base64);
+      update({ cutout: { enabled: true, amount: 1 } });
+      toast.success("Spelaren är frilagd", { description: "Dämpa med reglaget om kanterna blir fel." });
+    } catch (e) {
+      toast.error("Friläggningen misslyckades", { description: (e as Error).message });
+    } finally {
+      setCutting(false);
+    }
+  };
+  const removeCutout = () => {
+    setMask(null);
+    setNewMask(null);
+    update({ cutout: undefined });
   };
 
   const resetAuto = () => update({ photo: { zoom: 1, x: 0.5, y: 0.4 }, adjust: { brightness: 1, contrast: 1, saturation: 1, tint: 1 } });
@@ -330,12 +382,17 @@ export default function CardsApp() {
             {loadingPhoto && <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-[18px]"><Loader2 className="animate-spin" /></div>}
           </div>
           <p className="text-[10px] text-white/35 text-center">{photo ? "Dra för att flytta fotot, nyp med två fingrar (eller scrolla) för att zooma." : "Ladda upp ett foto för att börja."}</p>
-          <div className="grid grid-cols-2 gap-2">
+          {loadedInfo && <p className="text-[10px] text-amber-200/80 text-center">{loadedInfo}</p>}
+          <div className="grid grid-cols-3 gap-2">
             <button onClick={() => fileRef.current?.click()} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 border border-white/10 text-sm">
-              <Upload size={14} /> {photo ? "Byt foto" : "Ladda upp foto"}
+              <Upload size={14} /> {photo ? "Byt" : "Foto"}
             </button>
             <button onClick={resetAuto} disabled={!photo} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 border border-white/10 text-sm disabled:opacity-40">
               <Wand2 size={14} /> Auto
+            </button>
+            <button onClick={() => void runCutout()} disabled={!photo || cutting} title="Ta bort bakgrunden i fotot"
+              className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 border border-white/10 text-sm disabled:opacity-40">
+              {cutting ? <Loader2 size={14} className="animate-spin" /> : <Scissors size={14} />} Frilägg
             </button>
           </div>
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); e.target.value = ""; }} />
@@ -400,6 +457,13 @@ export default function CardsApp() {
               {slider("Ljus", settings.adjust.brightness, 0.6, 1.5, 0.01, (v) => update({ adjust: { ...settings.adjust, brightness: v } }))}
               {slider("Kontrast", settings.adjust.contrast, 0.6, 1.6, 0.01, (v) => update({ adjust: { ...settings.adjust, contrast: v } }))}
               {slider("Färgmättnad", settings.adjust.saturation, 0, 1.6, 0.01, (v) => update({ adjust: { ...settings.adjust, saturation: v } }))}
+              {mask && (
+                <div className="rounded-lg border border-white/10 p-2 space-y-1">
+                  {slider("Ersätt bakgrund", settings.cutout?.enabled ? settings.cutout.amount : 0, 0, 1, 0.01, (v) => update({ cutout: { enabled: v > 0, amount: v } }))}
+                  <button onClick={removeCutout} className="text-[10px] text-red-300/70 hover:text-red-300">Ta bort friläggningen</button>
+                </div>
+              )}
+              {cutting && <p className="text-[10px] text-white/40">Första gången laddas friläggningen (ca 6 MB), sedan går det fort.</p>}
               {slider("Färgtoning mot kortet", settings.adjust.tint ?? 1, 0, 2.5, 0.01, (v) => update({ adjust: { ...settings.adjust, tint: v } }))}
               <p className="text-[10px] text-white/35">Färgtoningen får fotot att smälta in i kortets färger. Höj om fotot sticker ut, sänk för mer naturliga färger.</p>
             </div>

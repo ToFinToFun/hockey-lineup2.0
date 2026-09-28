@@ -304,13 +304,16 @@ export const appRouter = router({
         sourceBase64: z.string().max(MAX_CARD_SOURCE_BASE64, "Fotot är för stort").regex(/^[A-Za-z0-9+/=]+$/).optional(),
         /** Använd kortet som profilbild och håll det uppdaterat automatiskt */
         liveProfile: z.boolean().optional(),
+        /** Friläggningsmask som PNG (base64); null tar bort den */
+        maskBase64: z.string().max(600_000, "Masken är för stor").regex(/^[A-Za-z0-9+/=]+$/).nullable().optional(),
       }))
       .mutation(async ({ input }) => {
         if (input.sourceBase64 && !input.sourceBase64.startsWith("/9j/")) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Fotot måste vara JPEG" });
         }
         if (JSON.stringify(input.settings).length > 20_000) throw new TRPCError({ code: "BAD_REQUEST", message: "För många inställningar" });
-        await saveCard(input.playerId, input.settings, input.sourceBase64, input.liveProfile);
+        if (input.maskBase64 && !input.maskBase64.startsWith("iVBOR")) throw new TRPCError({ code: "BAD_REQUEST", message: "Masken måste vara PNG" });
+        await saveCard(input.playerId, input.settings, input.sourceBase64, input.liveProfile, input.maskBase64);
         // Profilkortet ritas direkt så att beskedet stämmer (tar under en sekund)
         let profileUpdated = false;
         if (input.liveProfile) {
