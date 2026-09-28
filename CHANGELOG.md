@@ -7,6 +7,14 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.31.0 – 2026-09-28
+
+**Dela verktyg (styrelsen)**
+- Tillfälliga länkar skapas nu i Lineup → kugghjulet → Dela verktyg (flyttat från startsidan). Rutan beskriver vad länken ger, listar aktiva länkar med namn, giltighet och antal öppningar, och varje länk kan delas/kopieras eller återkallas för sig. "Återkalla alla" finns kvar.
+- Länken ger Lineup och Score Tracker i 24 timmar – inte statistik, PIR, spelarregistret, matchhistorik, inställningar eller publicering på laget.se.
+- Länkanvändare ser ingen PIR i Lineup (betyg, formpil, lagstyrka, prediktion eller PIR-inställningar), men Auto balanserar ändå efter PIR i bakgrunden.
+- Nyhet till laget.se och PIR per spelare kräver styrelsen även på servern.
+
 ## 2.30.1 – 2026-09-28
 
 - Inställningar → PIR → Spelare: tydlig lista med sökfält (varje rad en knapp med betyg och pil) direkt under förklaringen. Tryck på en spelare för förklaring, utveckling och manuell justering (−/+ och Spara) – justeringen flyttad från tabellen in i spelarens vy.

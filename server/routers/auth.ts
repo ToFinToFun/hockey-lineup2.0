@@ -8,6 +8,8 @@ import {
   loginRateLimited,
   redeemInvite,
   revokeAllInvites,
+  listActiveInvites,
+  revokeInvite,
   startAdminSession,
 } from "../auth";
 
@@ -46,9 +48,22 @@ export const authRouter = router({
     }),
 
   /** Skapa en tillfällig länk för att bygga uppställningar. */
-  createInvite: adminProcedure.mutation(async () => {
-    return createInviteToken();
-  }),
+  createInvite: adminProcedure
+    .input(z.object({ label: z.string().max(60).optional() }).optional())
+    .mutation(async ({ input }) => createInviteToken(input?.label ?? "")),
+
+  /** Aktiva länkar (inte utgångna eller återkallade), nyast först. */
+  listInvites: adminProcedure.query(async () =>
+    (await listActiveInvites()).map(({ id, label, token, createdAt, expiresAt, uses }) => ({ id, label, token, createdAt, expiresAt, uses }))
+  ),
+
+  /** Återkalla en enskild länk (och sessionerna den gett). */
+  revokeInvite: adminProcedure
+    .input(z.object({ id: z.string().max(20) }))
+    .mutation(async ({ input }) => {
+      await revokeInvite(input.id);
+      return { success: true };
+    }),
 
   /** Gör alla utskickade länkar (och sessioner från dem) ogiltiga. */
   revokeInvites: adminProcedure.mutation(async () => {

@@ -8,10 +8,14 @@
  * Sessionen är en signerad JWT i en httpOnly-cookie. Länkar är signerade
  * tokens med samma nyckel. "Återkalla alla länkar" höjer ett versionsnummer i
  * app_config, vilket ogiltigförklarar alla länkar och lineup-sessioner.
+ *
+ * Varje länk sparas också i en lista (app_config "invites") med id, etikett,
+ * utgångstid och antal öppningar. Länken och sessionerna den gett bär id:t, så
+ * en enskild länk kan återkallas utan att de andra påverkas.
  */
 import { SignJWT, jwtVerify } from "jose";
 import { parseCookie, stringifySetCookie } from "cookie";
-import { timingSafeEqual, createHash } from "crypto";
+import { timingSafeEqual, createHash, randomUUID } from "crypto";
 import type { Request, Response } from "express";
 import { ENV } from "./_core/env";
 import { getConfigValue, setConfigValue } from "./scoreDb";
@@ -59,10 +63,79 @@ async function sign(payload: Record<string, unknown>, expiresInSeconds: number):
     .sign(secretKey());
 }
 
-export async function createInviteToken(): Promise<{ token: string; expiresAt: number }> {
+// ─── Listan över länkar ──────────────────────────────────────────────────────
+
+const INVITES_KEY = "invites";
+
+export interface InviteRecord {
+  id: string;
+  label: string;
+  token: string;
+  createdAt: number;
+  expiresAt: number;
+  uses: number;
+  revoked?: boolean;
+}
+
+let invitesCache: { list: InviteRecord[]; at: number } | null = null;
+
+async function loadInvites(): Promise<InviteRecord[]> {
+  if (invitesCache && Date.now() - invitesCache.at < 10_000) return invitesCache.list;
+  let list: InviteRecord[] = [];
+  try {
+    const raw = await getConfigValue(INVITES_KEY);
+    if (raw) list = JSON.parse(raw) as InviteRecord[];
+  } catch { /* tom lista */ }
+  invitesCache = { list, at: Date.now() };
+  return list;
+}
+
+async function saveInvites(list: InviteRecord[]) {
+  // Utgångna länkar sparas en vecka för överblickens skull, sedan rensas de
+  const keep = list.filter((i) => i.expiresAt > Date.now() - 7 * 24 * 60 * 60 * 1000);
+  await setConfigValue(INVITES_KEY, JSON.stringify(keep));
+  invitesCache = { list: keep, at: Date.now() };
+}
+
+/** Länkar som fortfarande går att använda (inte utgångna eller återkallade), nyast först. */
+export async function listActiveInvites(): Promise<InviteRecord[]> {
   const v = await getInviteVersion();
-  const token = await sign({ typ: "invite", role: "lineup", v }, INVITE_SECONDS);
-  return { token, expiresAt: Date.now() + INVITE_SECONDS * 1000 };
+  const list = await loadInvites();
+  return list
+    .filter((i) => !i.revoked && i.expiresAt > Date.now() && inviteVersionOf(i.token) === v)
+    .sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/** Versionen som länken skapades med (läses utan verifiering – bara för listan). */
+function inviteVersionOf(token: string): number | null {
+  try {
+    const part = token.split(".")[1];
+    const json = JSON.parse(Buffer.from(part.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"));
+    return typeof json.v === "number" ? json.v : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function revokeInvite(id: string): Promise<void> {
+  const list = await loadInvites();
+  await saveInvites(list.map((i) => (i.id === id ? { ...i, revoked: true } : i)));
+}
+
+async function isInviteActive(id: unknown): Promise<boolean> {
+  if (typeof id !== "string") return true; // äldre länkar utan id styrs bara av versionen
+  const rec = (await loadInvites()).find((i) => i.id === id);
+  return !!rec && !rec.revoked;
+}
+
+export async function createInviteToken(label = ""): Promise<{ id: string; token: string; expiresAt: number }> {
+  const v = await getInviteVersion();
+  const id = randomUUID().slice(0, 8);
+  const token = await sign({ typ: "invite", role: "lineup", v, inv: id }, INVITE_SECONDS);
+  const expiresAt = Date.now() + INVITE_SECONDS * 1000;
+  const list = await loadInvites();
+  await saveInvites([...list, { id, label: label.trim().slice(0, 60), token, createdAt: Date.now(), expiresAt, uses: 0 }]);
+  return { id, token, expiresAt };
 }
 
 function setSessionCookie(res: Response, token: string, maxAgeSeconds: number) {
@@ -95,9 +168,14 @@ export async function redeemInvite(res: Response, token: string): Promise<{ expi
     const { payload } = await jwtVerify(token, secretKey());
     if (payload.typ !== "invite" || payload.role !== "lineup" || !payload.exp) return null;
     if (payload.v !== (await getInviteVersion())) return null;
+    if (!(await isInviteActive(payload.inv))) return null;
     const remaining = payload.exp - Math.floor(Date.now() / 1000);
     if (remaining <= 0) return null;
-    const session = await sign({ typ: "session", role: "lineup", v: payload.v }, remaining);
+    const session = await sign({ typ: "session", role: "lineup", v: payload.v, inv: payload.inv }, remaining);
+    if (typeof payload.inv === "string") {
+      const list = await loadInvites();
+      await saveInvites(list.map((i) => (i.id === payload.inv ? { ...i, uses: i.uses + 1 } : i)));
+    }
     setSessionCookie(res, session, remaining);
     return { expiresAt: payload.exp * 1000 };
   } catch {
@@ -114,7 +192,7 @@ export async function readSession(req: Request): Promise<Session> {
     const { payload } = await jwtVerify(raw, secretKey());
     if (payload.typ !== "session" || !payload.exp) return null;
     if (payload.role === "admin") return { role: "admin", expiresAt: payload.exp * 1000 };
-    if (payload.role === "lineup" && payload.v === (await getInviteVersion())) {
+    if (payload.role === "lineup" && payload.v === (await getInviteVersion()) && (await isInviteActive(payload.inv))) {
       return { role: "lineup", expiresAt: payload.exp * 1000 };
     }
     return null;

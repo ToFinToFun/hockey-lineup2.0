@@ -29,6 +29,7 @@ import { PlayerList } from "@/components/PlayerList";
 import { TeamPanel } from "@/components/TeamPanel";
 import { PlayerCardOverlay } from "@/components/PlayerCard";
 import { LagetNewsModal } from "@/components/LagetNewsModal";
+import { ShareToolsModal } from "@/components/auth/ShareToolsModal";
 import { MatchResultsBar } from "@/components/MatchResultsBar";
 import { SlotHighlightContext } from "@/components/PlayerSlot";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -41,7 +42,7 @@ import { useLineupDocSync } from "@/hooks/useLineupDocSync";
 import { useAuth } from "@/hooks/useAuth";
 import { MatchPredictionBar } from "@/components/MatchPredictionBar";
 import type { Player as PlayerType } from "@/lib/players";
-import { Newspaper, RefreshCw, TrendingUp, X as XIconSmall, Wifi, WifiOff, Share2, FileText, Check, CalendarDays, Shuffle, PanelLeft, Columns3, Undo2, BarChart3, Settings, Sun, Moon, Home as HomeIcon, Users, FlaskConical } from "lucide-react";
+import { Newspaper, RefreshCw, TrendingUp, Link2, X as XIconSmall, Wifi, WifiOff, Share2, FileText, Check, CalendarDays, Shuffle, PanelLeft, Columns3, Undo2, BarChart3, Settings, Sun, Moon, Home as HomeIcon, Users, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 import { useLineupTheme } from "@/hooks/useLineupTheme";
 import { useForwardColor } from "@/hooks/useForwardColor";
@@ -191,6 +192,7 @@ export default function Home() {
   const [activePlayer, setActivePlayer] = useState<Player | null>(null);
   const [isDragOutside, setIsDragOutside] = useState(false);
   const [showNews, setShowNews] = useState(false);
+  const [showShareTools, setShowShareTools] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [demoActive, setDemoActive] = useState(false);
@@ -281,6 +283,11 @@ export default function Home() {
   }, []);
 
   const { isAdmin } = useAuth();
+  // Tillfälliga länkar ser inte PIR – men Auto balanserar ändå efter det i bakgrunden
+  const displayPirSettings = useMemo<PirSettings>(
+    () => (isAdmin ? pirSettings : { ...pirSettings, enabled: false, showRating: false, showTrend: false, showTeamStrength: false, showPrediction: false, useForBalance: true }),
+    [pirSettings, isAdmin]
+  );
 
   // Toast när någon annan ändrat uppställningen
   const [remoteChangeToast, setRemoteChangeToast] = useState<string | null>(null);
@@ -660,7 +667,7 @@ export default function Home() {
     const allPlayers = [...availablePlayersRef.current, ...removedPlayers];
 
     // Kör auto-fördela (med eller utan shuffle)
-    const result = autoDistribute(allPlayers, {}, { shuffle, useForBalance: pirSettings.useForBalance });
+    const result = autoDistribute(allPlayers, {}, { shuffle, useForBalance: displayPirSettings.useForBalance });
 
     // Uppdatera configs
     setTeamAConfig(result.teamAConfig);
@@ -673,7 +680,7 @@ export default function Home() {
     const placedIds = new Set(Object.values(result.lineup).map(p => p.id));
     const remaining = allPlayers.filter(p => !placedIds.has(p.id));
     setAvailablePlayers(remaining);
-  }, [teamAName, teamBName, pushUndo]);
+  }, [teamAName, teamBName, pushUndo, displayPirSettings]);
 
   // Demo: simulera X anmälda spelare och kör auto-fördela
   const handleDemo = useCallback(() => {
@@ -1330,14 +1337,16 @@ export default function Home() {
         >
           <Shuffle className={icon} />{label("Auto")}
         </button>
+        {isAdmin && (
         <button
-          onClick={() => setShowNews(true)}
-          title="Nyhet till laget.se"
-          aria-label="Nyhet till laget.se"
-          className={`${btn} ${size} bg-sky-500 text-white hover:bg-sky-400`}
-        >
-          <Newspaper className={icon} />{label("Nyhet")}
-        </button>
+            onClick={() => setShowNews(true)}
+            title="Nyhet till laget.se"
+            aria-label="Nyhet till laget.se"
+            className={`${btn} ${size} bg-sky-500 text-white hover:bg-sky-400`}
+          >
+            <Newspaper className={icon} />{label("Nyhet")}
+          </button>
+        )}
         <button
           onClick={handleSyncAttendance}
           disabled={syncingAttendance}
@@ -1372,7 +1381,7 @@ export default function Home() {
   };
 
   return (
-    <PirSettingsProvider settings={pirSettings}>
+    <PirSettingsProvider settings={displayPirSettings}>
     <div className={`overflow-x-hidden max-w-[100vw] ${isLineupDark ? '' : 'lineup-light'}`}>
     <DndContext
       sensors={sensors}
@@ -1603,6 +1612,8 @@ export default function Home() {
                             </span>
                           </button>
 
+                          {isAdmin && (
+                            <>
                           {/* PIR-inställningar */}
                           <button
                             onClick={() => { setShowSettings(true); setShowHeaderMenu(false); }}
@@ -1613,6 +1624,18 @@ export default function Home() {
                             <TrendingUp className="w-4 h-4" />
                             <span>Player Impact Rating</span>
                           </button>
+                              {/* Dela verktyg: tillfälliga länkar till Lineup och Score Tracker */}
+                              <button
+                                onClick={() => { setShowShareTools(true); setShowHeaderMenu(false); }}
+                                className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
+                                  isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
+                                }`}
+                              >
+                                <Link2 className="w-4 h-4" />
+                                <span>Dela verktyg</span>
+                              </button>
+                            </>
+                          )}
                         </div>
                       </>
                     )}
@@ -2026,6 +2049,8 @@ export default function Home() {
           />
         )}
       </div>
+
+      {showShareTools && <ShareToolsModal onClose={() => setShowShareTools(false)} />}
 
       {/* Nyhet till laget.se */}
       {showNews && (

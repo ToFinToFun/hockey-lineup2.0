@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { ENV } from "./_core/env";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
-import { checkAdminPassword, createInviteToken, redeemInvite, readSession, startAdminSession } from "./auth";
+import { checkAdminPassword, createInviteToken, redeemInvite, readSession, startAdminSession, listActiveInvites, revokeInvite } from "./auth";
 
 beforeAll(() => {
   ENV.cookieSecret = "test-secret-".padEnd(40, "x");
@@ -47,6 +47,10 @@ describe("behörighet", () => {
     await expectCode(caller.score.match.delete({ id: 1 }), "FORBIDDEN");
     await expectCode(caller.settings.setPirSettings({ enabled: true }), "FORBIDDEN");
     await expectCode(caller.auth.createInvite(), "FORBIDDEN");
+    await expectCode(caller.auth.listInvites(), "FORBIDDEN");
+    await expectCode(caller.pir.player({ id: "x" }), "FORBIDDEN");
+    await expectCode(caller.pir.explain({ id: "x" }), "FORBIDDEN");
+    await expectCode(caller.laget.deleteNews({ id: 1 }), "FORBIDDEN");
   });
 
   it("fel lösenord ger ingen session", async () => {
@@ -72,6 +76,23 @@ describe("sessioner och länkar", () => {
     expect(result!.expiresAt).toBeLessThanOrEqual(Date.now() + 24 * 3600 * 1000);
     const session = await readSession({ headers: { cookie: cookieFrom(res) } } as any);
     expect(session?.role).toBe("lineup");
+  });
+
+  it("länkar listas med etikett och antal öppningar, och kan återkallas en och en", async () => {
+    const a = await createInviteToken("Tränare A");
+    const b = await createInviteToken("Tränare B");
+    const resA = { setHeader: vi.fn() };
+    expect(await redeemInvite(resA as any, a.token)).not.toBeNull();
+    const listed = await listActiveInvites();
+    expect(listed.find((i) => i.id === a.id)).toMatchObject({ label: "Tränare A", uses: 1 });
+    expect(listed.find((i) => i.id === b.id)).toMatchObject({ label: "Tränare B", uses: 0 });
+
+    await revokeInvite(a.id);
+    // Sessionen från A slutar gälla, länken går inte att öppna igen – B påverkas inte
+    expect(await readSession({ headers: { cookie: cookieFrom(resA) } } as any)).toBeNull();
+    expect(await redeemInvite({ setHeader: vi.fn() } as any, a.token)).toBeNull();
+    expect(await redeemInvite({ setHeader: vi.fn() } as any, b.token)).not.toBeNull();
+    expect((await listActiveInvites()).some((i) => i.id === a.id)).toBe(false);
   });
 
   it("manipulerad länk avvisas", async () => {

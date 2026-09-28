@@ -202,7 +202,7 @@ export const appRouter = router({
      * Publicera "Dagens lag" på laget.se via adminformuläret – direkt eller
      * tidsinställt. Med updateId uppdateras den nyheten i stället (samma plats i flödet).
      */
-    publishNews: lineupProcedure
+    publishNews: adminProcedure
       .input(
         z.object({
           title: z.string().trim().min(2).max(60),
@@ -245,7 +245,7 @@ export const appRouter = router({
       }),
 
     /** Ta bort en nyhet som appen publicerat (samma som "Ta bort" i laget.se-admin). */
-    deleteNews: lineupProcedure
+    deleteNews: adminProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ input }) => {
         const result = await deleteNews(input.id);
@@ -625,7 +625,7 @@ export const appRouter = router({
     }),
 
     /** En spelares PIR med placering bland alla med betyg i samma roll (spelarprofilen). */
-    player: lineupProcedure
+    player: adminProcedure
       .input(z.object({ id: z.string().min(1).max(64) }))
       .query(async ({ input }) => {
         const all = await getPirRatings();
