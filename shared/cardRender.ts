@@ -62,8 +62,9 @@ export interface CardSettings {
   skin: string;
   /** Beskärning: zoom (1 = hela bredden), fotots mittpunkt som andel (0–1) */
   photo: { zoom: number; x: number; y: number };
-  /** Egna justeringar ovanpå autonivåerna (1 = oförändrat) */
-  adjust: { brightness: number; contrast: number; saturation: number };
+  /** Egna justeringar ovanpå autonivåerna (1 = oförändrat). tint = hur mycket
+   *  fotot tonas mot stilens färger (1 = stilens standard, 0 = ingen toning, 2 = dubbelt) */
+  adjust: { brightness: number; contrast: number; saturation: number; tint?: number };
   /** Autonivåer räknade ur fotot när det laddades upp */
   auto: { brightness: number; contrast: number };
   name: string;
@@ -83,9 +84,9 @@ export interface CardSettings {
 }
 
 export const DEFAULT_SETTINGS: CardSettings = {
-  skin: "gron",
+  skin: "retro-svart",
   photo: { zoom: 1, x: 0.5, y: 0.4 },
-  adjust: { brightness: 1, contrast: 1, saturation: 1 },
+  adjust: { brightness: 1, contrast: 1, saturation: 1, tint: 1 },
   auto: { brightness: 1, contrast: 1 },
   name: "",
   number: "",
@@ -133,7 +134,8 @@ export function gradePixels(data: Uint8ClampedArray, s: CardSettings, skin: Card
   const sat = s.adjust.saturation;
   const [sr, sg, sb] = hex(skin.tint.shadow);
   const [hr, hg, hb] = hex(skin.tint.highlight);
-  const k = skin.tint.strength;
+  // Färgtoningen: stilens styrka gånger kortets reglage, max helt tonat
+  const k = Math.min(1, Math.max(0, skin.tint.strength * (s.adjust.tint ?? 1)));
   for (let i = 0; i < data.length; i += 4) {
     let r = data[i] / 255, g = data[i + 1] / 255, bl = data[i + 2] / 255;
     // ljushet och kontrast kring mitten

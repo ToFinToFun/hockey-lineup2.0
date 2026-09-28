@@ -113,7 +113,7 @@ export default function CardsApp() {
       const { base64, auto } = await prepareSourcePhoto(file);
       setNewSource(base64);
       setPhotoImg(await loadImg(`data:image/jpeg;base64,${base64}`));
-      update({ auto, photo: { zoom: 1, x: 0.5, y: 0.4 }, adjust: { brightness: 1, contrast: 1, saturation: 1 } });
+      update({ auto, photo: { zoom: 1, x: 0.5, y: 0.4 }, adjust: { brightness: 1, contrast: 1, saturation: 1, tint: 1 } });
     } catch (e) {
       toast.error("Fotot kunde inte läsas", { description: (e as Error).message });
     } finally {
@@ -237,7 +237,7 @@ export default function CardsApp() {
     toast.success("Det sparade kortet är borttaget");
   };
 
-  const resetAuto = () => update({ photo: { zoom: 1, x: 0.5, y: 0.4 }, adjust: { brightness: 1, contrast: 1, saturation: 1 } });
+  const resetAuto = () => update({ photo: { zoom: 1, x: 0.5, y: 0.4 }, adjust: { brightness: 1, contrast: 1, saturation: 1, tint: 1 } });
 
   const input = "w-full rounded-lg bg-white/5 border border-white/10 text-white text-sm px-2.5 py-1.5";
   const slider = (label: string, value: number, min: number, max: number, step: number, onChange: (v: number) => void) => (
@@ -365,7 +365,9 @@ export default function CardsApp() {
               {slider("Zoom", settings.photo.zoom, 1, 3, 0.02, (v) => update({ photo: { ...settings.photo, zoom: v } }))}
               {slider("Ljus", settings.adjust.brightness, 0.6, 1.5, 0.01, (v) => update({ adjust: { ...settings.adjust, brightness: v } }))}
               {slider("Kontrast", settings.adjust.contrast, 0.6, 1.6, 0.01, (v) => update({ adjust: { ...settings.adjust, contrast: v } }))}
-              {slider("Färg", settings.adjust.saturation, 0, 1.6, 0.01, (v) => update({ adjust: { ...settings.adjust, saturation: v } }))}
+              {slider("Färgmättnad", settings.adjust.saturation, 0, 1.6, 0.01, (v) => update({ adjust: { ...settings.adjust, saturation: v } }))}
+              {slider("Färgtoning mot kortet", settings.adjust.tint ?? 1, 0, 2.5, 0.01, (v) => update({ adjust: { ...settings.adjust, tint: v } }))}
+              <p className="text-[10px] text-white/35">Färgtoningen får fotot att smälta in i kortets färger. Höj om fotot sticker ut, sänk för mer naturliga färger.</p>
             </div>
           )}
 

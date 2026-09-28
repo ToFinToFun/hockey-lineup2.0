@@ -62,3 +62,21 @@ describe("automatiska rubriker", () => {
     expect(defaultStatsTitle("none")).toBe("");
   });
 });
+
+describe("färgtoning", () => {
+  it("0 = ingen toning, högre = mer mot stilens färger", () => {
+    const base = () => new Uint8ClampedArray([200, 40, 40, 255]);
+    const none = base();
+    gradePixels(none, { ...DEFAULT_SETTINGS, adjust: { ...DEFAULT_SETTINGS.adjust, tint: 0 } }, CARD_SKINS[0]);
+    expect(Array.from(none)).toEqual([200, 40, 40, 255]);
+    const normal = base();
+    gradePixels(normal, DEFAULT_SETTINGS, CARD_SKINS[0]);
+    const strong = base();
+    gradePixels(strong, { ...DEFAULT_SETTINGS, adjust: { ...DEFAULT_SETTINGS.adjust, tint: 2 } }, CARD_SKINS[0]);
+    expect(strong[0]).toBeLessThan(normal[0]); // mindre rött ju starkare toning
+  });
+
+  it("nytt kort utan spelare är retro svart", () => {
+    expect(DEFAULT_SETTINGS.skin).toBe("retro-svart");
+  });
+});

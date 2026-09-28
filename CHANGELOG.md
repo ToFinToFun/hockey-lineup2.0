@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.34.1 – 2026-09-28
+
+- Hockeykort: nytt kort utan spelare är retro Svart; med spelare retro i spelarens lag (Grön/Vit), annars Svart.
+- Nytt reglage "Färgtoning mot kortet" (0–250 %): hur mycket fotot tonas mot stilens färger så att det smälter in. 100 % = stilens standard.
+
 ## 2.34.0 – 2026-09-28
 
 **Hockeykort som profilbild – uppdateras automatiskt**
