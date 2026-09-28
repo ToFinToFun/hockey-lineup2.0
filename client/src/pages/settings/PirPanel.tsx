@@ -10,7 +10,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Loader2, Target, SlidersHorizontal, Users, Sparkles, Info, X } from "lucide-react";
+import { Loader2, Target, SlidersHorizontal, Users, Sparkles, Info, X, ChevronRight, Minus, Plus } from "lucide-react";
 
 const pct = (v: number | null | undefined) => (v == null ? "–" : `${Math.round(v * 100)} %`);
 const num = (v: number | null | undefined, d = 3) => (v == null ? "–" : v.toFixed(d).replace(".", ","));
@@ -80,10 +80,15 @@ export function PirPanel() {
   const dirty = weights && config.data && JSON.stringify(weights) !== JSON.stringify(config.data.weights);
 
   const [explainId, setExplainId] = useState<{ key: string; name: string } | null>(null);
+  const [search, setSearch] = useState("");
   const players = useMemo(
     () => [...(ratings.data ?? [])].sort((a, b) => b.rating - a.rating),
     [ratings.data]
   );
+  const shownPlayers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return q ? players.filter((p) => p.name.toLowerCase().includes(q)) : players;
+  }, [players, search]);
 
   return (
     <div className="space-y-4 pb-8">
@@ -95,7 +100,50 @@ export function PirPanel() {
           <li>Formpilen jämför de senaste matcherna med betyget över tid.</li>
           <li>Har en spelare bytt lag i sista stund räknas hen till det lag målen gjordes för.</li>
         </ul>
-        <p className="text-[11px] text-white/40">Tryck på en spelare nedan för att se varför betyget är som det är och hur det utvecklats.</p>
+      </Card>
+
+      <Card icon={Users} title="Spelare">
+        <p className="text-white/50 text-xs">
+          Tryck på en spelare för att se <b className="text-white/70">varför</b> betyget är som det är, hur det
+          <b className="text-white/70"> utvecklats</b> och för att <b className="text-white/70">justera</b> det (t.ex. +50 för en ny spelare ni vet är stark).
+        </p>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Sök spelare"
+          className="w-full rounded-lg bg-[#111] border border-white/10 px-3 py-2 text-sm text-white"
+        />
+        {ratings.isLoading ? (
+          <Loader2 className="animate-spin text-white/40" />
+        ) : shownPlayers.length === 0 ? (
+          <p className="text-xs text-white/40">{players.length === 0 ? "Inga spelare med matcher ännu." : "Ingen träff."}</p>
+        ) : (
+          <ul className="divide-y divide-white/5 rounded-xl border border-white/10 overflow-hidden">
+            {shownPlayers.map((p) => (
+              <li key={p.playerKey}>
+                <button
+                  onClick={() => setExplainId({ key: p.playerKey, name: p.name })}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-white/[0.04] active:bg-white/[0.07]"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-white/90 truncate">{p.name}</p>
+                    <p className="text-[10px] text-white/40">
+                      {p.matchesPlayed} matcher
+                      {p.outfieldRating != null && ` · ute ${p.outfieldRating}`}
+                      {p.goalkeeperRating != null && ` · MV ${p.goalkeeperRating}`}
+                      {p.adjustment ? ` · justering ${p.adjustment > 0 ? "+" : ""}${p.adjustment}` : ""}
+                    </p>
+                  </div>
+                  <span className={`text-base font-bold tabular-nums ${p.matchesPlayed < 3 ? "text-white/30" : p.rating >= 1050 ? "text-amber-300" : p.rating >= 1000 ? "text-white" : "text-sky-300/80"}`}>
+                    {p.rating}
+                  </span>
+                  <ChevronRight size={16} className="text-white/30 shrink-0" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="text-[10px] text-white/30">Grått = färre än 3 matcher (räknas som 1000 i prediktion och Auto).</p>
       </Card>
 
       <Card icon={Target} title="Träffsäkerhet">
@@ -202,68 +250,28 @@ export function PirPanel() {
         )}
       </Card>
 
-      <Card icon={Users} title="Spelare">
-        <p className="text-white/50 text-xs">
-          Justering läggs ovanpå det beräknade värdet, t.ex. +50 för en ny spelare som ni vet är stark. 0 tar bort
-          justeringen.
-        </p>
-        {ratings.isLoading ? (
-          <Loader2 className="animate-spin text-white/40" />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead className="text-white/40 text-[10px] uppercase">
-                <tr>
-                  <th className="text-left py-1">Spelare</th>
-                  <th className="text-right">PIR</th>
-                  <th className="text-right">Ute</th>
-                  <th className="text-right">MV</th>
-                  <th className="text-right">M</th>
-                  <th className="text-right w-20">Justering</th>
-                </tr>
-              </thead>
-              <tbody>
-                {players.map((p) => (
-                  <tr key={p.playerKey} className="border-t border-white/5 text-white/80">
-                    <td className="py-1.5 pr-2">
-                      <button onClick={() => setExplainId({ key: p.playerKey, name: p.name })} className="text-left hover:text-sky-300 underline-offset-2 hover:underline">
-                        {p.name}
-                      </button>
-                    </td>
-                    <td className={`text-right font-semibold ${p.matchesPlayed < 3 ? "text-white/30" : ""}`}>{p.rating}</td>
-                    <td className="text-right">{p.outfieldRating ?? "–"}</td>
-                    <td className="text-right">{p.goalkeeperRating ?? "–"}</td>
-                    <td className="text-right">{p.matchesPlayed}</td>
-                    <td className="text-right">
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        defaultValue={p.adjustment || ""}
-                        placeholder="0"
-                        onBlur={(e) => {
-                          const value = Math.round(Number(e.target.value) || 0);
-                          if (value !== (p.adjustment || 0)) setAdjustment.mutate({ playerKey: p.playerKey, value });
-                        }}
-                        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                        className="w-16 bg-[#111] border border-white/10 rounded px-1.5 py-1 text-right text-white"
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="text-[10px] text-white/30 mt-2">Grått PIR = färre än 3 matcher (räknas som 1000 i prediktion och fördelning).</p>
-          </div>
-        )}
-      </Card>
-      {explainId && <PirExplain playerKey={explainId.key} name={explainId.name} onClose={() => setExplainId(null)} />}
+      {explainId && (
+        <PirExplain
+          playerKey={explainId.key}
+          name={explainId.name}
+          adjustment={players.find((p) => p.playerKey === explainId.key)?.adjustment ?? 0}
+          saving={setAdjustment.isPending}
+          onSaveAdjustment={(value) => setAdjustment.mutate({ playerKey: explainId.key, value }, { onSuccess: () => { toast.success("Justeringen sparad – PIR räknas om"); utils.pir.explain.invalidate(); } })}
+          onClose={() => setExplainId(null)}
+        />
+      )}
     </div>
   );
 }
 
 /** Förklaring och utveckling för en spelare. */
-function PirExplain({ playerKey, name, onClose }: { playerKey: string; name: string; onClose: () => void }) {
+function PirExplain({ playerKey, name, adjustment, saving, onSaveAdjustment, onClose }: {
+  playerKey: string; name: string; adjustment: number; saving: boolean;
+  onSaveAdjustment: (value: number) => void; onClose: () => void;
+}) {
   const q = trpc.pir.explain.useQuery({ id: playerKey });
+  const [adj, setAdj] = useState(adjustment);
+  useEffect(() => setAdj(adjustment), [adjustment]);
   const e = q.data;
   const signed = (v: number) => `${v > 0 ? "+" : ""}${v}`;
   const parts = e
@@ -315,6 +323,21 @@ function PirExplain({ playerKey, name, onClose }: { playerKey: string; name: str
             <div>
               <p className="text-[11px] text-white/40 mb-1">Utveckling – betyget efter var och en av de senaste {e.history.length} matcherna</p>
               <PirHistoryChart history={e.history} />
+            </div>
+            <div className="rounded-xl bg-white/[0.03] border border-white/10 p-3 space-y-2">
+              <p className="text-xs font-semibold text-white/80">Manuell justering</p>
+              <p className="text-[10px] text-white/40">Läggs ovanpå det beräknade betyget. Använd sparsamt, t.ex. för en ny spelare vars nivå ni känner till. 0 tar bort justeringen.</p>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setAdj((v) => v - 10)} aria-label="Minska 10" className="p-2 rounded-lg bg-white/5 border border-white/10"><Minus size={14} /></button>
+                <input type="number" inputMode="numeric" value={adj} onChange={(ev) => setAdj(Math.round(Number(ev.target.value) || 0))}
+                  className="w-20 text-center bg-[#111] border border-white/10 rounded-lg px-2 py-1.5 text-white tabular-nums" aria-label="Justering" />
+                <button onClick={() => setAdj((v) => v + 10)} aria-label="Öka 10" className="p-2 rounded-lg bg-white/5 border border-white/10"><Plus size={14} /></button>
+                <div className="flex-1" />
+                <button onClick={() => onSaveAdjustment(adj)} disabled={adj === adjustment || saving}
+                  className="px-3 py-1.5 rounded-lg bg-[#0a7ea4] text-white text-xs font-semibold disabled:opacity-40">
+                  {saving ? "Sparar…" : "Spara"}
+                </button>
+              </div>
             </div>
           </>
         )}

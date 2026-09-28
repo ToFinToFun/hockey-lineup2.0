@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.30.1 – 2026-09-28
+
+- Inställningar → PIR → Spelare: tydlig lista med sökfält (varje rad en knapp med betyg och pil) direkt under förklaringen. Tryck på en spelare för förklaring, utveckling och manuell justering (−/+ och Spara) – justeringen flyttad från tabellen in i spelarens vy.
+
 ## 2.30.0 – 2026-09-28
 
 **Score Tracker**
