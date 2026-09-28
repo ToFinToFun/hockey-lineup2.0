@@ -7,7 +7,7 @@
  * likadant i alla webbläsare.
  */
 import { loadImage, roundRect } from "@/lib/canvas";
-import { skinById, type CardSkin } from "@/lib/cardSkins";
+import { skinById, resolveLogo, type CardSkin, type CardLogo } from "@/lib/cardSkins";
 
 export const CARD_W = 750;
 export const CARD_H = 1050;
@@ -26,7 +26,12 @@ export interface CardSettings {
   number: string;
   position: string;
   captain: "" | "C" | "A";
-  showLogo: boolean;
+  /** Lagmärke: "auto" = stilens standard, "none" = inget, annars märkets id */
+  logo: string;
+  /** Äldre sparade kort: false = inget märke */
+  showLogo?: boolean;
+  /** Raden under namnet (retro), t.ex. "Stålstadens SF" */
+  subtitle: string;
   statsMode: "season" | "career" | "form" | "custom" | "none";
   statsTitle: string;
   cells: CardCell[];
@@ -42,7 +47,8 @@ export const DEFAULT_SETTINGS: CardSettings = {
   number: "",
   position: "",
   captain: "",
-  showLogo: true,
+  logo: "auto",
+  subtitle: "Stålstadens SF",
   statsMode: "season",
   statsTitle: "",
   cells: [],
@@ -141,12 +147,52 @@ async function ensureFonts() {
 export interface RenderInput {
   settings: CardSettings;
   photo: HTMLImageElement | ImageBitmap | null;
-  logoUrl?: string;
   scale?: number; // 1 = 750×1050
 }
 
-export async function renderCard({ settings: s, photo, logoUrl, scale = 1 }: RenderInput): Promise<HTMLCanvasElement> {
+/** Märket som ska ritas för kortet (hänsyn till äldre kort med showLogo=false). */
+function cardLogo(s: CardSettings, skin: CardSkin): CardLogo | null {
+  if (s.showLogo === false && (!s.logo || s.logo === "auto")) return null;
+  return resolveLogo(s.logo, skin);
+}
+
+/** Ritar ett märke: runt som det är, eller städet i en ljus romb. */
+async function drawLogo(ctx: CanvasRenderingContext2D, logo: CardLogo, cx: number, cy: number, size: number, paper: string, ink: string) {
+  let img: HTMLImageElement | null = null;
+  try { img = await loadImage(logo.url); } catch { return; }
+  if (logo.shape === "diamond") {
+    const h = size / 2;
+    const diamond = (r: number) => {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - r); ctx.lineTo(cx + r, cy); ctx.lineTo(cx, cy + r); ctx.lineTo(cx - r, cy); ctx.closePath();
+    };
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.45)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 3;
+    diamond(h); ctx.fillStyle = paper; ctx.fill();
+    ctx.restore();
+    diamond(h); ctx.strokeStyle = ink; ctx.lineWidth = 4; ctx.stroke();
+    // Loggan har redan en tunn romb – rita den lite innanför
+    const inset = h * 0.9;
+    ctx.drawImage(img, cx - inset, cy - inset, inset * 2, inset * 2);
+    return;
+  }
+  const r = size / 2;
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = 14;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
+  ctx.drawImage(img, cx - r, cy - r, r * 2, r * 2);
+  ctx.restore();
+}
+
+export async function renderCard(input: RenderInput): Promise<HTMLCanvasElement> {
   await ensureFonts();
+  return skinById(input.settings.skin).layout === "retro" ? renderRetro(input) : renderModern(input);
+}
+
+async function renderModern({ settings: s, photo, scale = 1 }: RenderInput): Promise<HTMLCanvasElement> {
   const skin = skinById(s.skin);
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(CARD_W * scale);
@@ -205,24 +251,8 @@ export async function renderCard({ settings: s, photo, logoUrl, scale = 1 }: Ren
   ctx.restore();
 
   // Lagmärke uppe till vänster
-  if (s.showLogo && logoUrl) {
-    try {
-      const logo = await loadImage(logoUrl);
-      const lr = 52, lx = inner.x + 28 + lr, ly = inner.y + 28 + lr;
-      ctx.save();
-      ctx.shadowColor = "rgba(0,0,0,0.6)";
-      ctx.shadowBlur = 14;
-      ctx.beginPath(); ctx.arc(lx, ly, lr, 0, Math.PI * 2); ctx.closePath();
-      ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fill();
-      ctx.restore();
-      ctx.save();
-      ctx.beginPath(); ctx.arc(lx, ly, lr, 0, Math.PI * 2); ctx.clip();
-      ctx.drawImage(logo, lx - lr, ly - lr, lr * 2, lr * 2);
-      ctx.restore();
-      ctx.beginPath(); ctx.arc(lx, ly, lr + 2, 0, Math.PI * 2);
-      ctx.strokeStyle = skin.accent; ctx.lineWidth = 3; ctx.stroke();
-    } catch { /* utan logga */ }
-  }
+  const logo = cardLogo(s, skin);
+  if (logo) await drawLogo(ctx, logo, inner.x + 28 + 56, inner.y + 28 + 56, 112, "#ece3cf", "#141414");
 
   // Nummer uppe till höger, position och C/A under
   const rightX = inner.x + inner.w - 34;
@@ -407,4 +437,317 @@ export async function prepareSourcePhoto(file: File): Promise<{ base64: string; 
     dataUrl = c.toDataURL("image/jpeg", q);
   }
   return { base64: dataUrl.split(",")[1] ?? "", auto };
+}
+
+// ─── Retro ───────────────────────────────────────────────────────────────────
+// Matt, gammaldags samlarkort efter klubbens skisser: papperskant, ram med
+// diagonala ränder och stjärnor, fotoruta med fasade hörn, namnskylt med
+// nummer och position, och en statistiktabell.
+
+/** Liten deterministisk slump så att samma kort får samma "slitage". */
+function rng(seedText: string) {
+  let h = 2166136261;
+  for (const ch of seedText) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  return () => {
+    h = Math.imul(h ^ (h >>> 15), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    return ((h ^= h >>> 16) >>> 0) / 4294967296;
+  };
+}
+
+/** Fotorutans form: rundade övre hörn, fasade nedre hörn. */
+function windowPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, cham: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - cham);
+  ctx.lineTo(x + w - cham, y + h);
+  ctx.lineTo(x + cham, y + h);
+  ctx.lineTo(x, y + h - cham);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function starPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const rad = i % 2 === 0 ? r : r * 0.42;
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    ctx.lineTo(cx + Math.cos(a) * rad, cy + Math.sin(a) * rad);
+  }
+  ctx.closePath();
+}
+
+/** Diagonalt band (parallellogram) mellan två linjer y = x + c (lutning 1). */
+function band(ctx: CanvasRenderingContext2D, c1: number, c2: number, dir: 1 | -1) {
+  const W = CARD_W, Hh = CARD_H;
+  ctx.beginPath();
+  if (dir === 1) {
+    // går från nere till vänster upp till höger: y = -x + c
+    ctx.moveTo(0, c1); ctx.lineTo(c1, 0); ctx.lineTo(c2, 0); ctx.lineTo(0, c2);
+  } else {
+    // spegelvänd: y = x - (W - c)
+    ctx.moveTo(W, c1); ctx.lineTo(W - c1, 0); ctx.lineTo(W - c2, 0); ctx.lineTo(W, c2);
+  }
+  ctx.closePath();
+  void Hh;
+}
+
+/** Papperskorn och repor, bara på det som redan är ritat. */
+function wear(ctx: CanvasRenderingContext2D, seed: string, alpha: number) {
+  const r = rng(seed);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  for (let i = 0; i < 2600; i++) {
+    const x = r() * CARD_W, y = r() * CARD_H;
+    ctx.fillStyle = r() > 0.5 ? "#ffffff" : "#000000";
+    ctx.fillRect(x, y, 1 + r() * 1.5, 1 + r() * 1.5);
+  }
+  ctx.globalAlpha = alpha * 1.4;
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 0.8;
+  for (let i = 0; i < 28; i++) {
+    const x = r() * CARD_W, y = r() * CARD_H, len = 8 + r() * 40, a = r() * Math.PI;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+async function renderRetro({ settings: s, photo, scale = 1 }: RenderInput): Promise<HTMLCanvasElement> {
+  const skin = skinById(s.skin);
+  const c = skin.retro!;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(CARD_W * scale);
+  canvas.height = Math.round(CARD_H * scale);
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) throw new Error("Canvas stöds inte");
+  ctx.scale(scale, scale);
+  const seed = `${s.name}|${s.number}|${s.skin}`;
+
+  // 1. Papper med tunn kontur
+  ctx.fillStyle = c.paper;
+  roundRect(ctx, 2, 2, CARD_W - 4, CARD_H - 4, 34);
+  ctx.fill();
+  ctx.strokeStyle = c.ink; ctx.lineWidth = 3;
+  roundRect(ctx, 2, 2, CARD_W - 4, CARD_H - 4, 34);
+  ctx.stroke();
+
+  // 2. Ramen (mörkt fält) med ränder och stjärnor
+  const P = { x: 24, y: 24, w: CARD_W - 48, h: CARD_H - 48 };
+  ctx.save();
+  roundRect(ctx, P.x, P.y, P.w, P.h, 26);
+  ctx.clip();
+  ctx.fillStyle = c.panel;
+  ctx.fillRect(0, 0, CARD_W, CARD_H);
+  // Hörnet uppe till vänster: brett ljust, smalt färgat, smalt ljust
+  ctx.fillStyle = c.stripeA; band(ctx, 150, 190, 1); ctx.fill();
+  ctx.fillStyle = c.stripeB; band(ctx, 200, 222, 1); ctx.fill();
+  ctx.fillStyle = c.stripeA; band(ctx, 232, 244, 1); ctx.fill();
+  ctx.restore();
+  // Chevroner på sidorna (övre och nedre par), bara i sidfälten – spegelvända på höger sida
+  for (const dir of [1, -1] as const) {
+    ctx.save();
+    ctx.beginPath();
+    if (dir === 1) ctx.rect(P.x, 250, 60, 500);
+    else ctx.rect(CARD_W - P.x - 60, 250, 60, 500);
+    ctx.clip();
+    for (const top of [350, 700]) {
+      ctx.fillStyle = c.stripeA; band(ctx, top, top + 14, dir); ctx.fill();
+      ctx.fillStyle = c.stripeB; band(ctx, top + 26, top + 62, dir); ctx.fill();
+      ctx.fillStyle = c.stripeA; band(ctx, top + 74, top + 88, dir); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Fotoruta
+  const W = { x: 96, y: 96, w: CARD_W - 192, h: 646, r: 22, ch: 34 };
+  // Ränderna ska bara synas i sidfälten – täck mitten med ramfärg under fotot
+  ctx.fillStyle = c.panel;
+  windowPath(ctx, W.x - 16, W.y - 16, W.w + 32, W.h + 32, W.r + 10, W.ch + 12);
+  ctx.fill();
+  // Dubbel kant runt fotot
+  ctx.strokeStyle = c.onPanel; ctx.lineWidth = 3;
+  windowPath(ctx, W.x - 10, W.y - 10, W.w + 20, W.h + 20, W.r + 8, W.ch + 8);
+  ctx.stroke();
+  ctx.strokeStyle = c.stripeB; ctx.lineWidth = 2;
+  windowPath(ctx, W.x - 4, W.y - 4, W.w + 8, W.h + 8, W.r + 3, W.ch + 3);
+  ctx.stroke();
+
+  // Stjärnor på sidorna
+  ctx.fillStyle = c.onPanel;
+  for (const y of [462, 522, 582]) {
+    starPath(ctx, 60, y, 17); ctx.fill();
+    starPath(ctx, CARD_W - 60, y, 17); ctx.fill();
+  }
+
+  // Fotot: färgtonat, lite avmättat och med filmkorn för det matta uttrycket
+  ctx.save();
+  windowPath(ctx, W.x, W.y, W.w, W.h, W.r, W.ch);
+  ctx.clip();
+  if (photo) {
+    const pw = Math.round(W.w * scale), ph = Math.round(W.h * scale);
+    const tmp = document.createElement("canvas");
+    tmp.width = pw; tmp.height = ph;
+    const tctx = tmp.getContext("2d", { willReadFrequently: true })!;
+    const r = photoSourceRect(photo.width, photo.height, W.w, W.h, s.photo);
+    tctx.drawImage(photo, r.sx, r.sy, r.sw, r.sh, 0, 0, pw, ph);
+    const img = tctx.getImageData(0, 0, pw, ph);
+    gradePixels(img.data, { ...s, adjust: { ...s.adjust, saturation: s.adjust.saturation * 0.85 } }, skin);
+    tctx.putImageData(img, 0, 0);
+    ctx.drawImage(tmp, W.x, W.y, W.w, W.h);
+    const vig = ctx.createRadialGradient(CARD_W / 2, W.y + W.h * 0.42, W.w * 0.3, CARD_W / 2, W.y + W.h * 0.5, W.w * 0.85);
+    vig.addColorStop(0, "rgba(0,0,0,0)");
+    vig.addColorStop(1, "rgba(0,0,0,0.35)");
+    ctx.fillStyle = vig;
+    ctx.fillRect(W.x, W.y, W.w, W.h);
+  } else {
+    ctx.fillStyle = "#f7f4ee";
+    ctx.fillRect(W.x, W.y, W.w, W.h);
+    ctx.fillStyle = "rgba(20,20,20,0.35)";
+    ctx.font = `600 28px ${BODY}`;
+    ctx.textAlign = "center";
+    ctx.fillText("Ladda upp ett foto", CARD_W / 2, W.y + W.h / 2);
+  }
+  ctx.restore();
+
+  // Märket uppe till höger, över fotorutans hörn
+  const logo = cardLogo(s, skin);
+  if (logo) await drawLogo(ctx, logo, W.x + W.w - 18, W.y + 30, logo.shape === "diamond" ? 176 : 150, c.paper, c.ink);
+
+  // 3. Namnskylt, klubbrad, nummer och position
+  const N = { x: 48, y: 762, w: 528, nameH: 80, subH: 46 };
+  const box = (x: number, y: number, w: number, h: number, fill: string, r = 10) => {
+    ctx.fillStyle = fill;
+    roundRect(ctx, x, y, w, h, r);
+    ctx.fill();
+    ctx.strokeStyle = c.ink; ctx.lineWidth = 3;
+    roundRect(ctx, x, y, w, h, r);
+    ctx.stroke();
+  };
+  box(N.x, N.y, N.w, N.nameH + N.subH, c.paper);
+  // Klubbraden i ramens färg längst ner i skylten
+  ctx.fillStyle = c.panel;
+  roundRect(ctx, N.x + 6, N.y + N.nameH, N.w - 12, N.subH - 6, 6);
+  ctx.fill();
+
+  const name = (s.name || "SPELARE").toUpperCase();
+  ctx.fillStyle = c.ink;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.letterSpacing = "1px";
+  fit(ctx, name, (px) => `700 ${px}px ${HEAD}`, N.w - 30, 74, 34);
+  ctx.fillText(name, N.x + N.w / 2, N.y + N.nameH / 2 + 3);
+  ctx.letterSpacing = "0px";
+
+  const sub = s.subtitle ?? "";
+  if (sub) {
+    const midY = N.y + N.nameH + (N.subH - 6) / 2;
+    ctx.fillStyle = c.onPanel;
+    fit(ctx, sub, (px) => `600 ${px}px ${BODY}`, N.w - 170, 30, 18);
+    const tw = ctx.measureText(sub).width;
+    ctx.fillText(sub, N.x + N.w / 2, midY + 1);
+    ctx.fillRect(N.x + 30, midY, Math.max(0, N.w / 2 - tw / 2 - 48), 2.5);
+    ctx.fillRect(N.x + N.w / 2 + tw / 2 + 18, midY, Math.max(0, N.w / 2 - tw / 2 - 48), 2.5);
+  }
+
+  // Nummer och position till höger
+  const R = { x: N.x + N.w + 12, w: CARD_W - 48 - (N.x + N.w + 12) };
+  box(R.x, N.y, R.w, 74, c.panel);
+  if (s.number) {
+    ctx.fillStyle = c.onPanel;
+    ctx.save();
+    ctx.translate(R.x + R.w / 2, N.y + 40);
+    ctx.transform(1, 0, -0.15, 1, 0, 0); // kursivt
+    fit(ctx, `#${s.number}`, (px) => `700 ${px}px ${HEAD}`, R.w - 16, 60, 30);
+    ctx.fillText(`#${s.number}`, 0, 0);
+    ctx.restore();
+  }
+  box(R.x, N.y + 82, R.w, N.nameH + N.subH - 82, c.paper);
+  const pos = [s.position, s.captain].filter(Boolean).join(" · ");
+  if (pos) {
+    ctx.fillStyle = c.ink;
+    ctx.save();
+    ctx.translate(R.x + R.w / 2, N.y + 82 + (N.nameH + N.subH - 82) / 2 + 2);
+    ctx.transform(1, 0, -0.15, 1, 0, 0);
+    fit(ctx, pos, (px) => `700 ${px}px ${HEAD}`, R.w - 16, 34, 18);
+    ctx.fillText(pos, 0, 0);
+    ctx.restore();
+  }
+
+  // 4. Statistiktabell
+  const T = { x: 48, y: 900, w: CARD_W - 96, headH: 40, valH: 60 };
+  const hasTable = s.statsMode !== "none" && (s.statsMode === "form" ? !!s.form : s.cells.length > 0);
+  if (hasTable) {
+    box(T.x, T.y, T.w, T.headH + T.valH, c.paper, 10);
+    ctx.fillStyle = c.panel;
+    ctx.save();
+    roundRect(ctx, T.x, T.y, T.w, T.headH + T.valH, 10);
+    ctx.clip();
+    ctx.fillRect(T.x, T.y, T.w, T.headH);
+    ctx.restore();
+    ctx.strokeStyle = c.ink; ctx.lineWidth = 3;
+    roundRect(ctx, T.x, T.y, T.w, T.headH + T.valH, 10);
+    ctx.stroke();
+
+    if (s.statsMode === "form" && s.form) {
+      ctx.fillStyle = c.onPanel;
+      ctx.font = `700 22px ${HEAD}`;
+      ctx.letterSpacing = "3px";
+      ctx.fillText("FORM – SENASTE MATCHERNA", CARD_W / 2, T.y + T.headH / 2 + 1);
+      ctx.letterSpacing = "0px";
+      const n = s.form.length, size = 36, gap = 10;
+      const startX = CARD_W / 2 - (n * size + (n - 1) * gap) / 2;
+      const col: Record<string, string> = { V: "#2e7d32", O: "#8a8a8a", F: "#b3261e" };
+      s.form.split("").forEach((ch, i) => {
+        const x = startX + i * (size + gap), y = T.y + T.headH + (T.valH - size) / 2;
+        ctx.fillStyle = col[ch] ?? "#555";
+        roundRect(ctx, x, y, size, size, 5); ctx.fill();
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `700 22px ${HEAD}`;
+        ctx.fillText(ch, x + size / 2, y + size / 2 + 1);
+      });
+    } else {
+      const cells = s.cells.slice(0, 5);
+      const cw = T.w / cells.length;
+      cells.forEach((cell, i) => {
+        const cx = T.x + cw * i + cw / 2;
+        if (i > 0) {
+          ctx.fillStyle = c.onPanel;
+          ctx.fillRect(T.x + cw * i - 1, T.y + 8, 2, T.headH - 16);
+          ctx.fillStyle = c.ink;
+          ctx.fillRect(T.x + cw * i - 1, T.y + T.headH + 6, 2, T.valH - 12);
+        }
+        ctx.fillStyle = c.onPanel;
+        ctx.font = `700 22px ${HEAD}`;
+        ctx.letterSpacing = "1px";
+        ctx.fillText(cell.label.toUpperCase(), cx, T.y + T.headH / 2 + 1);
+        ctx.letterSpacing = "0px";
+        ctx.fillStyle = c.ink;
+        fit(ctx, cell.value || "–", (px) => `700 ${px}px ${HEAD}`, cw - 14, 38, 20);
+        ctx.fillText(cell.value || "–", cx, T.y + T.headH + T.valH / 2 + 2);
+      });
+    }
+    // Säsong/karriär som liten text under tabellen
+    if (s.statsTitle && s.statsMode !== "form") {
+      ctx.fillStyle = c.onPanel;
+      ctx.globalAlpha = 0.7;
+      ctx.font = `600 15px ${BODY}`;
+      ctx.letterSpacing = "3px";
+      ctx.fillText(s.statsTitle.toUpperCase(), CARD_W / 2, T.y + T.headH + T.valH + 13);
+      ctx.letterSpacing = "0px";
+      ctx.globalAlpha = 1;
+    }
+  }
+  ctx.textBaseline = "alphabetic";
+
+  // 5. Slitage över allt för det matta, gamla uttrycket
+  ctx.save();
+  roundRect(ctx, 2, 2, CARD_W - 4, CARD_H - 4, 34);
+  ctx.clip();
+  wear(ctx, seed, 0.08);
+  ctx.restore();
+
+  return canvas;
 }

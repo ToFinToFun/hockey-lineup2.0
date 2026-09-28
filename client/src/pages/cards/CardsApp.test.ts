@@ -9,11 +9,11 @@ describe("hockeykort", () => {
   it("statistikrutan för utespelare och målvakt", () => {
     const skater = cellsFor("season", { season: line(), career: line({ label: "Karriär", matches: 30 }), form: "VVF", isGoalie: false });
     expect(skater.title).toBe("Säsong 2026/27");
-    expect(skater.cells.map((c) => c.label)).toEqual(["M", "G", "A", "TP", "V%"]);
+    expect(skater.cells.map((c) => c.label)).toEqual(["GP", "G", "A", "PTS", "W%"]);
     expect(skater.cells[3].value).toBe("12");
     const gk = cellsFor("career", { season: line(), career: line({ label: "Karriär", goalie: { matches: 8, gaa: 2.25, shutouts: 2 } }), form: "", isGoalie: true });
     expect(gk.title).toBe("Karriär");
-    expect(gk.cells.map((c) => `${c.label}=${c.value}`)).toEqual(["M=8", "GAA=2,3", "Nollor=2", "V%=60%"]);
+    expect(gk.cells.map((c) => `${c.label}=${c.value}`)).toEqual(["GP=8", "GAA=2,3", "SO=2", "W%=60%"]);
     expect(cellsFor("none", undefined).cells).toEqual([]);
   });
 
@@ -36,5 +36,16 @@ describe("hockeykort", () => {
     gradePixels(px, DEFAULT_SETTINGS, CARD_SKINS[0]); // gröna stilen
     expect(px[1]).toBeGreaterThan(40); // mer grönt
     expect(px[0]).toBeLessThan(200); // mindre rött
+  });
+});
+
+import { resolveLogo, skinById } from "@/lib/cardSkins";
+
+describe("lagmärken", () => {
+  it("stilens standard, eget val eller inget", () => {
+    expect(resolveLogo("auto", skinById("retro-svart"))?.id).toBe("anvil");
+    expect(resolveLogo(undefined, skinById("retro-gron"))?.id).toBe("green");
+    expect(resolveLogo("white", skinById("retro-svart"))?.id).toBe("white");
+    expect(resolveLogo("none", skinById("retro-svart"))).toBeNull();
   });
 });

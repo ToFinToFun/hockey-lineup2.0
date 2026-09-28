@@ -7,6 +7,15 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.33.0 – 2026-09-28
+
+**Hockeykort – retro efter klubbens skisser**
+- Ny retrolayout (standard): matt pappersram, mörk ram med diagonala ränder och stjärnor, fotoruta med fasade hörn, namnskylt med klubbrad, nummer och position i egna rutor, statistiktabell (GP, G, A, PTS, W% – målvakt GP, GAA, SO, W%) och lätt slitage. Fotot tonas matt och lite avmättat.
+- Retrostilar: Svart (städet som märke), Svart/grön, Grön och Vit. Standard efter spelarens lag.
+- Lagmärket väljs separat på alla kort: Städet (est. 2012), Stålstadens grön, Stålstadens vit eller inget.
+- Moderna Svart är nu svart med lite vitt (inte guld) och har städet som standardmärke.
+- Raden under namnet ("Stålstadens SF") går att ändra. Positioner på engelska (G, D, C, LW, RW, F).
+
 ## 2.32.0 – 2026-09-28
 
 **Hockeykort (ombyggd)**

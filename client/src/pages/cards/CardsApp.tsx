@@ -12,15 +12,17 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { ArrowLeft, Upload, Download, Share2, Save, UserSquare2, Wand2, Loader2, Trash2, Search, Check } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { CARD_SKINS, skinById } from "@/lib/cardSkins";
+import { CARD_SKINS, CARD_LOGOS } from "@/lib/cardSkins";
 import { renderCard, prepareSourcePhoto, photoSourceRect, DEFAULT_SETTINGS, CARD_W, type CardSettings, type CardCell } from "@/lib/cardRender";
 
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "../../../../server/routers";
 type Stats = inferRouterOutputs<AppRouter>["cards"]["stats"];
 
-const POSITIONS = ["", "MV", "B", "C", "F", "VF", "HF", "IB"];
-const logoFor = (skinId: string) => (skinById(skinId).logo === "green" ? "/images/logo-green.png" : "/images/logo-white.png");
+/** Positioner på kortet (engelska, som på klassiska hockeykort) */
+const POSITIONS = ["", "G", "D", "C", "LW", "RW", "F"];
+/** Spelarregistrets positioner → kortets */
+const CARD_POSITION: Record<string, string> = { MV: "G", B: "D", C: "C", F: "F" };
 
 /** Statistikrutans celler för ett läge (exporteras för test). */
 export function cellsFor(mode: CardSettings["statsMode"], stats: Stats | undefined): { title: string; cells: CardCell[] } {
@@ -33,21 +35,21 @@ export function cellsFor(mode: CardSettings["statsMode"], stats: Stats | undefin
     return {
       title,
       cells: [
-        { label: "M", value: String(line.goalie.matches) },
+        { label: "GP", value: String(line.goalie.matches) },
         { label: "GAA", value: line.goalie.gaa.toFixed(1).replace(".", ",") },
-        { label: "Nollor", value: String(line.goalie.shutouts) },
-        { label: "V%", value: `${line.winPct}%` },
+        { label: "SO", value: String(line.goalie.shutouts) },
+        { label: "W%", value: `${line.winPct}%` },
       ],
     };
   }
   return {
     title,
     cells: [
-      { label: "M", value: String(line.matches) },
+      { label: "GP", value: String(line.matches) },
       { label: "G", value: String(line.goals) },
       { label: "A", value: String(line.assists) },
-      { label: "TP", value: String(line.points) },
-      { label: "V%", value: `${line.winPct}%` },
+      { label: "PTS", value: String(line.points) },
+      { label: "W%", value: `${line.winPct}%` },
     ],
   };
 }
@@ -102,10 +104,10 @@ export default function CardsApp() {
     const savedCard = saved.data?.find((c) => c.playerId === id);
     const base: CardSettings = {
       ...DEFAULT_SETTINGS,
-      skin: p?.teamColor === "white" ? "vit" : "gron",
+      skin: p?.teamColor === "white" ? "retro-vit" : p?.teamColor === "green" ? "retro-gron" : "retro-svart",
       name: p?.name ?? "",
       number: p?.number ?? "",
-      position: p?.position && p.position !== "IB" ? p.position : "",
+      position: CARD_POSITION[p?.position ?? ""] ?? "",
       captain: (p?.captainRole as "C" | "A" | null) ?? "",
     };
     if (savedCard) {
@@ -151,7 +153,7 @@ export default function CardsApp() {
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(async () => {
-      const c = await renderCard({ settings, photo, logoUrl: logoFor(settings.skin) });
+      const c = await renderCard({ settings, photo });
       if (cancelled || !canvasRef.current) return;
       const out = canvasRef.current;
       out.width = c.width;
@@ -181,7 +183,7 @@ export default function CardsApp() {
 
   const fileBase = () => `hockeykort-${(settings.name || "spelare").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-")}`;
   const exportBlob = async (type: "image/png" | "image/jpeg", scale = 1, quality = 0.9) => {
-    const c = await renderCard({ settings, photo, logoUrl: logoFor(settings.skin), scale });
+    const c = await renderCard({ settings, photo, scale });
     return new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("Kunde inte skapa bilden"))), type, quality));
   };
 
@@ -344,18 +346,33 @@ export default function CardsApp() {
 
         {/* Inställningar */}
         <section className="space-y-4">
-          <div>
-            <p className="text-[11px] text-white/50 mb-1.5">Stil</p>
-            <div className="flex gap-2">
-              {CARD_SKINS.map((sk) => (
-                <button key={sk.id} onClick={() => update({ skin: sk.id })}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border text-sm ${settings.skin === sk.id ? "border-white/60 bg-white/10" : "border-white/10 text-white/60"}`}>
-                  <span className="w-3.5 h-3.5 rounded-full border border-white/30" style={{ background: `linear-gradient(135deg, ${sk.frame.join(",")})` }} />
-                  {sk.name}{settings.skin === sk.id && <Check size={12} />}
-                </button>
-              ))}
-            </div>
+          <div className="space-y-2">
+            {(["retro", "modern"] as const).map((layout) => (
+              <div key={layout}>
+                <p className="text-[11px] text-white/50 mb-1.5">{layout === "retro" ? "Retro (matt, klassiskt)" : "Modern (foto över hela kortet)"}</p>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {CARD_SKINS.filter((sk) => sk.layout === layout).map((sk) => {
+                    const sw = sk.retro ? [sk.retro.panel, sk.retro.stripeB, sk.retro.paper] : sk.frame.slice(0, 3);
+                    return (
+                      <button key={sk.id} onClick={() => update({ skin: sk.id })}
+                        className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg border text-xs ${settings.skin === sk.id ? "border-white/60 bg-white/10" : "border-white/10 text-white/60"}`}>
+                        <span className="w-3.5 h-3.5 rounded-full border border-white/30 shrink-0" style={{ background: `linear-gradient(135deg, ${sw.join(",")})` }} />
+                        <span className="truncate">{sk.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
+
+          <label className="block text-[11px] text-white/50">Lagmärke
+            <select value={settings.logo ?? "auto"} onChange={(e) => update({ logo: e.target.value, showLogo: undefined })} className={input}>
+              <option value="auto" className="text-black">Stilens standard</option>
+              {CARD_LOGOS.map((l) => <option key={l.id} value={l.id} className="text-black">{l.name}</option>)}
+              <option value="none" className="text-black">Inget</option>
+            </select>
+          </label>
 
           {photo && (
             <div className="space-y-2">
@@ -381,8 +398,8 @@ export default function CardsApp() {
               </select>
             </label>
           </div>
-          <label className="flex items-center gap-2 text-xs text-white/70">
-            <input type="checkbox" checked={settings.showLogo} onChange={(e) => update({ showLogo: e.target.checked })} /> Lagmärke
+          <label className="block text-[11px] text-white/50">Rad under namnet (retro)
+            <input value={settings.subtitle ?? ""} onChange={(e) => update({ subtitle: e.target.value })} maxLength={30} placeholder="Stålstadens SF" className={input} />
           </label>
 
           <div className="space-y-2">
