@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.26.1 – 2026-09-28
+
+- Matchrapport: Stars of the Game centrerade rad för rad, statistiken direkt efter namnet. Ingen position på bilden (finns kvar i listan och bildtexten).
+- Välj per stjärna om statistiken ska visas (bock, standard på) – gäller bild och bildtext och sparas på matchen.
+- Statistik på engelska: G, A, TP för utespelare; målvakter "Shutout" eller "2 GA".
+
 ## 2.26.0 – 2026-09-28
 
 **Matchrapport**

@@ -250,6 +250,7 @@ export const scoreRouter = router({
         report: z.object({
           stars: z.array(z.string().max(120)).max(3).optional(),
           sponsor: z.string().max(120).nullable().optional(),
+          showStats: z.array(z.boolean()).max(3).optional(),
         }).nullable(),
       }))
       .mutation(async ({ input }) => {

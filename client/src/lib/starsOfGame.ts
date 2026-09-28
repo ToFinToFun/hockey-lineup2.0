@@ -142,11 +142,17 @@ export function autoStars(candidates: StarCandidate[], seed: number): string[] {
   return picked.slice(0, 3).map((c) => c.key);
 }
 
-/** "Jerry Paasovaara (VF) 2M 3A 5P" eller "Linus Carbin (M) 0 insläppta" */
-export function starLine(c: StarCandidate): string {
-  const pos = starPositionLabel(c.position);
-  const head = pos ? `${c.name} (${pos})` : c.name;
-  if (c.position === "MV" && c.goalsAgainst !== null) return `${head} ${c.goalsAgainst} insläppta`;
+/** Statistik på engelska som "Stars of the Game": "2G 3A 5TP", målvakt "Shutout" eller "2 GA". */
+export function starStat(c: StarCandidate): string {
+  if (c.position === "MV" && c.goalsAgainst !== null) return c.goalsAgainst === 0 ? "Shutout" : `${c.goalsAgainst} GA`;
   const pts = c.goals + c.assists;
-  return pts ? `${head} ${c.goals}M ${c.assists}A ${pts}P` : head;
+  return pts ? `${c.goals}G ${c.assists}A ${pts}TP` : "";
+}
+
+/** "Jerry Paasovaara (VF) 2G 3A 5TP" – position och statistik kan väljas bort. */
+export function starLine(c: StarCandidate, opts: { position?: boolean; stats?: boolean } = {}): string {
+  const pos = opts.position === false ? "" : starPositionLabel(c.position);
+  const head = pos ? `${c.name} (${pos})` : c.name;
+  const stat = opts.stats === false ? "" : starStat(c);
+  return stat ? `${head} ${stat}` : head;
 }

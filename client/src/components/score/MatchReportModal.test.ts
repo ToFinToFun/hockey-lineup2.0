@@ -30,13 +30,15 @@ describe("matchrapport", () => {
     expect(d.goals[1].scorer).toBe("Pelle (självmål)");
     expect(d.goals[3].penalty).toBe(true);
     expect(d.whiteName).toBe("Vita");
-    expect(d.stars[0]).toMatchObject({ name: "Kalle", pos: "C" });
+    expect(d.stars[0]).toEqual({ name: "Kalle", stat: "2G 1A 3TP" });
+    expect(buildReportData(match, stars, null, [false, true, true]).stars[0]).toEqual({ name: "Kalle", stat: "" });
   });
 
   it("bildtext enligt mallen", () => {
     const text = buildCaption(stars, "Polar", ["#StålstadensSF", "#Gubbhockey"]);
     expect(text.split("\n")[0]).toBe("Kvällens Stars of the Game");
-    expect(text).toContain("⭐⭐⭐ Kalle (C) 2M 1A 3P");
+    expect(text).toContain("⭐⭐⭐ Kalle (C) 2G 1A 3TP");
+    expect(buildCaption(stars, null, [], [false, true, true])).toContain("⭐⭐⭐ Kalle (C)\n");
     expect(text).toContain("Dagens mål presenterades av Polar");
     expect(text.endsWith("#StålstadensSF #Gubbhockey")).toBe(true);
   });

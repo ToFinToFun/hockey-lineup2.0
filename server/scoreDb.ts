@@ -238,7 +238,7 @@ export async function saveMatch(input: MatchInput): Promise<number> {
 }
 
 /** Spara val i matchrapporten (stjärnor och sponsor) – påverkar inte statistiken. */
-export async function setMatchReport(id: number, report: { stars?: string[]; sponsor?: string | null } | null) {
+export async function setMatchReport(id: number, report: { stars?: string[]; sponsor?: string | null; showStats?: boolean[] } | null) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(matchResults).set({ report }).where(eq(matchResults.id, id));

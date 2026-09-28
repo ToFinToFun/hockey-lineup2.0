@@ -5,7 +5,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { starCandidates, autoStars, starLine, starPositionLabel, type StarCandidate } from "@/lib/starsOfGame";
+import { starCandidates, autoStars, starLine, starStat, type StarCandidate } from "@/lib/starsOfGame";
 import { X, Download, Copy, Share2, Loader2, Check, Star, RotateCcw, Plus, Briefcase } from "lucide-react";
 import { toast } from "sonner";
 import { useSponsors, logoForName } from "@/lib/sponsors";
@@ -31,7 +31,7 @@ export interface ReportMatch {
   createdAt: string;
   lineup?: { teamAName?: string; teamBName?: string; lineup?: Record<string, { id?: string; name?: string; number?: string }> } | null;
   /** Sparade val: stjärnor (nycklar) och sponsor */
-  report?: { stars?: string[]; sponsor?: string | null } | null;
+  report?: { stars?: string[]; sponsor?: string | null; showStats?: boolean[] } | null;
 }
 
 const LOGO_WHITE = "/images/logo-white.png";
@@ -48,7 +48,8 @@ function dateLine(iso: string | null | undefined) {
 export function buildReportData(
   match: ReportMatch,
   stars: StarCandidate[],
-  sponsor: { name: string; logo: string | null } | null
+  sponsor: { name: string; logo: string | null } | null,
+  showStats: boolean[] = [true, true, true]
 ): ReportData {
   const wrap = match.lineup ?? {};
   const aWhite = (wrap.teamAName ?? "VITA").toLowerCase().includes("vit");
@@ -73,21 +74,18 @@ export function buildReportData(
     whiteScore: match.teamWhiteScore, greenScore: match.teamGreenScore,
     dateLine: dateLine(match.matchEndTime ?? match.matchStartTime ?? match.createdAt),
     goals,
-    stars: stars.map((c) => {
-      const line = starLine(c);
-      const head = c.position ? `${c.name} (${starPositionLabel(c.position)})` : c.name;
-      return { name: c.name, pos: starPositionLabel(c.position), stat: line.slice(head.length).trim() };
-    }),
+    // Bilden: bara namn och (valfritt) statistik – ingen position
+    stars: stars.map((c, i) => ({ name: c.name, stat: showStats[i] === false ? "" : starStat(c) })),
     sponsor,
     logoWhite: LOGO_WHITE, logoGreen: LOGO_GREEN, background: BACKGROUND,
   };
 }
 
 /** Bildtexten enligt klubbens mall (exporteras för test). */
-export function buildCaption(stars: StarCandidate[], sponsorName: string | null, tags: string[]): string {
+export function buildCaption(stars: StarCandidate[], sponsorName: string | null, tags: string[], showStats: boolean[] = [true, true, true]): string {
   const marks = ["⭐⭐⭐", "⭐⭐", "⭐"];
   const parts: string[] = [];
-  if (stars.length) parts.push(["Kvällens Stars of the Game", ...stars.map((c, i) => `${marks[i]} ${starLine(c)}`)].join("\n"));
+  if (stars.length) parts.push(["Kvällens Stars of the Game", ...stars.map((c, i) => `${marks[i]} ${starLine(c, { stats: showStats[i] !== false })}`)].join("\n"));
   if (sponsorName) parts.push(`Dagens mål presenterades av ${sponsorName}`);
   if (tags.length) parts.push(tags.join(" "));
   return parts.join("\n\n");
@@ -119,6 +117,10 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
     const saved = match.report?.stars?.filter((k) => candidates.some((c) => c.key === k));
     return saved && saved.length === 3 ? saved : auto;
   });
+  const [showStats, setShowStats] = useState<boolean[]>(() => {
+    const saved = match.report?.showStats;
+    return [0, 1, 2].map((i) => saved?.[i] !== false);
+  });
   const stars = useMemo(() => starKeys.map((k) => candidates.find((c) => c.key === k)).filter(Boolean) as StarCandidate[], [starKeys, candidates]);
 
   // ─── Presenteras av ───
@@ -129,8 +131,17 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
   const sponsor = sponsorName ? { name: sponsorName, logo: logoForName(sponsors, sponsorName) } : null;
 
   // Spara valen på matchen
-  const persist = (next: { stars?: string[]; sponsor?: string | null }) => {
-    saveReport.mutate({ id: match.id, report: { stars: next.stars ?? starKeys, sponsor: next.sponsor !== undefined ? next.sponsor : sponsorName } });
+  const persist = (next: { stars?: string[]; sponsor?: string | null; showStats?: boolean[] }) => {
+    saveReport.mutate({ id: match.id, report: {
+      stars: next.stars ?? starKeys,
+      sponsor: next.sponsor !== undefined ? next.sponsor : sponsorName,
+      showStats: next.showStats ?? showStats,
+    } });
+  };
+  const toggleStats = (i: number) => {
+    const next = showStats.map((v, k) => (k === i ? !v : v));
+    setShowStats(next);
+    persist({ showStats: next });
   };
   const setStar = (i: number, key: string) => {
     const next = [...starKeys];
@@ -161,8 +172,8 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
   };
   const removeTag = (tag: string) => saveTags.mutate(tags.filter((t) => t !== tag));
 
-  const data = useMemo(() => buildReportData(match, stars, sponsor), [match, stars, sponsor?.name, sponsor?.logo]); // eslint-disable-line react-hooks/exhaustive-deps
-  const autoCaption = useMemo(() => buildCaption(stars, sponsorName, tags), [stars, sponsorName, tags]);
+  const data = useMemo(() => buildReportData(match, stars, sponsor, showStats), [match, stars, sponsor?.name, sponsor?.logo, showStats]); // eslint-disable-line react-hooks/exhaustive-deps
+  const autoCaption = useMemo(() => buildCaption(stars, sponsorName, tags, showStats), [stars, sponsorName, tags, showStats]);
   const [caption, setCaption] = useState(autoCaption);
   const [captionEdited, setCaptionEdited] = useState(false);
   useEffect(() => {
@@ -291,11 +302,15 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
                 {[0, 1, 2].map((i) => (
                   <div key={i} className="flex items-center gap-2">
                     <span className="w-12 shrink-0 text-xs">{starMarks[i]}</span>
-                    <select value={starKeys[i] ?? ""} onChange={(e) => setStar(i, e.target.value)} className={select} aria-label={`Stjärna ${i + 1}`}>
+                    <select value={starKeys[i] ?? ""} onChange={(e) => setStar(i, e.target.value)} className={`${select} flex-1 min-w-0`} aria-label={`Stjärna ${i + 1}`}>
                       {candidates.map((c) => (
                         <option key={c.key} value={c.key} className="text-black">{starLine(c)}{c.team === "white" ? " – Vita" : " – Gröna"}</option>
                       ))}
                     </select>
+                    <label className="flex items-center gap-1 text-[10px] text-white/55 shrink-0" title="Visa statistik (G/A/TP eller GA) på bilden och i texten">
+                      <input type="checkbox" checked={showStats[i]} onChange={() => toggleStats(i)} />
+                      Stats
+                    </label>
                   </div>
                 ))}
               </div>

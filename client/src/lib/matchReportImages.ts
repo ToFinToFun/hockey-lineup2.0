@@ -24,8 +24,8 @@ export interface ReportData {
   greenScore: number;
   dateLine: string; // "Tisdag 29/9"
   goals: ReportGoal[]; // i tidsordning, äldst först
-  /** Stars of the Game, 1:a först: namn, position och statistikrad */
-  stars: Array<{ name: string; pos: string; stat: string }>;
+  /** Stars of the Game, 1:a först: namn och statistik (tom = visas inte) */
+  stars: Array<{ name: string; stat: string }>;
   /** Matchens sponsor ("presenteras av") */
   sponsor: { name: string; logo: string | null } | null;
   logoWhite: string;
@@ -221,7 +221,7 @@ export async function renderResultImage(d: ReportData): Promise<HTMLCanvasElemen
   ctx.textBaseline = "alphabetic";
   ctx.letterSpacing = "0px";
 
-  // Stars of the Game
+  // Stars of the Game – varje rad centrerad: stjärnor, namn och (valfritt) statistik
   if (d.stars.length) {
     ctx.textAlign = "center";
     ctx.font = `600 24px ${BODY}`;
@@ -231,24 +231,30 @@ export async function renderResultImage(d: ReportData): Promise<HTMLCanvasElemen
     ctx.letterSpacing = "0px";
     const gold = "#fbbf24";
     d.stars.slice(0, 3).forEach((st, i) => {
-      const y = 1040 + i * 56;
+      const y = 1032 + i * 56;
       const count = 3 - i;
-      // Stjärnor till vänster, namn i mitten, statistik till höger
-      for (let k = 0; k < count; k++) star(ctx, 150 + k * 30, y - 10, 13, gold);
+      const starW = 30;
+      const starsW = count * starW;
+      const nameFont = `600 ${i === 0 ? 38 : 34}px ${BODY}`;
+      const statFont = `400 26px ${BODY}`;
+      ctx.font = statFont;
+      const statW = st.stat ? ctx.measureText(st.stat).width : 0;
+      ctx.font = nameFont;
+      const maxName = IG_W - 160 - starsW - 20 - (statW ? statW + 22 : 0);
+      const name = fit(ctx, st.name, maxName);
+      const nameW = ctx.measureText(name).width;
+      const total = starsW + 18 + nameW + (statW ? 22 + statW : 0);
+      let x = IG_W / 2 - total / 2;
+      for (let k = 0; k < count; k++) star(ctx, x + k * starW + starW / 2, y - 2, 13, gold);
+      x += starsW + 18;
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
-      ctx.font = `600 ${i === 0 ? 38 : 34}px ${BODY}`;
       ctx.fillStyle = "#ffffff";
-      const nameText = st.pos ? `${st.name} (${st.pos})` : st.name;
-      ctx.font = `400 26px ${BODY}`;
-      const statW = st.stat ? ctx.measureText(st.stat).width : 0;
-      ctx.font = `600 ${i === 0 ? 38 : 34}px ${BODY}`;
-      ctx.fillText(fit(ctx, nameText, IG_W - 250 - 110 - statW - 20), 250, y - 8);
+      ctx.fillText(name, x, y);
       if (st.stat) {
-        ctx.textAlign = "right";
-        ctx.font = `400 26px ${BODY}`;
+        ctx.font = statFont;
         ctx.fillStyle = "rgba(255,255,255,0.65)";
-        ctx.fillText(st.stat, IG_W - 110, y - 8);
+        ctx.fillText(st.stat, x + nameW + 22, y + 1);
       }
       ctx.textBaseline = "alphabetic";
     });
