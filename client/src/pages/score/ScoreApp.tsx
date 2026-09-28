@@ -81,7 +81,7 @@ export default function ScoreApp() {
         });
         if (sent > 0) {
           toast.success(`☁️ ${sent === 1 ? "Lokalt sparad match uppladdad" : `${sent} lokalt sparade matcher uppladdade`}`, {
-            description: pendingReview > 0 ? "Väntar på godkännande av styrelsen (Matchhistorik)." : "Godkänd och med i statistiken.",
+            description: pendingReview > 0 ? "Väntar på godkännande" : "Godkänd",
             duration: 6000,
           });
         } else if (manual && getPendingMatches().length) {

@@ -2,6 +2,7 @@
  * Databaslager för matcher (Score Tracker) och appinställningar.
  */
 
+import { correctLineupFromGoals } from "./lineupCorrection";
 import { eq, inArray, desc } from "drizzle-orm";
 import { getDb, tableChecksum } from "./db";
 import { getRegistryMap, onRegistryChange, labelOf, normalizeName } from "./playersDb";
@@ -257,8 +258,24 @@ export async function updateMatch(
 }
 
 /** Godkända matcher – det enda som räknas i statistik och PIR. */
+// Rättade uppställningar återanvänds så länge matchobjektet är detsamma (cachen byts vid ändringar).
+const correctedCache = new WeakMap<object, unknown>();
+
+/**
+ * Godkända matcher för statistik och PIR. Uppställningen rättas utifrån målen
+ * (spelare som bytt lag i sista stund), se lineupCorrection.ts.
+ */
 export async function getAllMatchResults() {
-  return (await loadAllMatches()).filter((m) => m.reviewStatus === "approved");
+  return (await loadAllMatches())
+    .filter((m) => m.reviewStatus === "approved")
+    .map((m) => {
+      let c = correctedCache.get(m) as typeof m | undefined;
+      if (!c) {
+        c = correctLineupFromGoals(m);
+        correctedCache.set(m, c);
+      }
+      return c;
+    });
 }
 
 /** Alla matcher inklusive ej granskade och avvisade (för styrelsens historik). */

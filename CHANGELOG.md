@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.24.0 – 2026-09-28
+
+- Statistik och PIR rättar uppställningen utifrån målen när en spelare bytt lag i sista stund: mål/assist bara för det andra laget → spelaren räknas till det laget (vinst/förlust, PIR, kemi, form). Mål/assist för båda lagen → målen räknas men matchen ger ingen vinst/förlust eller PIR för spelaren. Registrerad målskytt som saknas i uppställningen läggs till i målets lag. Den sparade matchen ändras inte.
+- Score Tracker: besked efter uppladdning är kortare – "godkänd" eller "väntar på godkännande".
+
 ## 2.23.0 – 2026-09-27
 
 - Statistik: bara måltyperna Straff och Övrigt. Ligorna för Skott, Styrning, Friläge, Solo och Självmål är borttagna; äldre mål med de typerna räknas som Övrigt (självmål räknas inte).

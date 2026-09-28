@@ -338,8 +338,8 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
       resetAfterSave();
       toast.success("☁️ Matchen är uppladdad", {
         description: res?.reviewStatus === "approved"
-          ? `${name} – godkänd och med i statistiken`
-          : `${name} – väntar på godkännande av styrelsen (Matchhistorik)`,
+          ? `${name} – godkänd`
+          : `${name} – väntar på godkännande`,
         duration: 6000,
       });
     } catch (e) {
