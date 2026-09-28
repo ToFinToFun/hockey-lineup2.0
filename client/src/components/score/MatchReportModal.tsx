@@ -10,6 +10,8 @@ import { X, Download, Copy, Share2, Loader2, Check, Star, RotateCcw, Plus } from
 import { toast } from "sonner";
 import { useSponsors, logoForName } from "@/lib/sponsors";
 import { renderResultImage, renderGoalsImage, type ReportData, type ReportGoal } from "@/lib/matchReportImages";
+import { starCardSettings, renderStarPost } from "@/lib/starCards";
+import type { CardSettings } from "@shared/cardRender";
 
 interface RawGoal {
   team: "white" | "green";
@@ -198,6 +200,45 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
   const [images, setImages] = useState<{ result: Blob; goals: Blob; resultUrl: string; goalsUrl: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [include, setInclude] = useState({ result: true, goals: true });
+
+  // ─── Stars of the Game-kort (guldkort från spelarnas sparade hockeykort) ───
+  const savedCards = trpc.cards.list.useQuery(undefined, { staleTime: 60_000 });
+  const [starPosts, setStarPosts] = useState<Array<{ key: string; name: string; hasCard: boolean; blob: Blob; url: string } | null>>([null, null, null]);
+  const [includeStars, setIncludeStars] = useState<boolean[]>([true, true, true]);
+  const [starsLoading, setStarsLoading] = useState(false);
+  const starsKey = stars.map((c) => c.key).join("|");
+  useEffect(() => {
+    if (!savedCards.data) return;
+    let cancelled = false;
+    const load = (src: string) => new Promise<HTMLImageElement | null>((res) => {
+      const i = new Image();
+      i.onload = () => res(i);
+      i.onerror = () => res(null);
+      i.src = src;
+    });
+    const whiteWon = match.teamWhiteScore > match.teamGreenScore ? true : match.teamWhiteScore < match.teamGreenScore ? false : null;
+    const matchLine = `${data.whiteName} ${match.teamWhiteScore}–${match.teamGreenScore} ${data.greenName} · ${data.dateLine}`;
+    setStarsLoading(true);
+    (async () => {
+      const bg = await load("/images/background.jpg");
+      const out = await Promise.all(stars.slice(0, 3).map(async (c, i) => {
+        const card = savedCards.data!.find((x) => x.playerId === c.key);
+        const v = card ? new Date(card.updatedAt).getTime() : 0;
+        const photo = card ? await load(`/api/players/${encodeURIComponent(c.key)}/card-source?v=${v}`) : null;
+        const mask = card && photo ? await load(`/api/players/${encodeURIComponent(c.key)}/card-mask?v=${v}`) : null;
+        const won = whiteWon === null ? null : (c.team === "white") === whiteWon;
+        const settings = starCardSettings(card && photo ? (card.settings as Partial<CardSettings>) : null, c, (i + 1) as 1 | 2 | 3, matchLine, won);
+        const canvas = await renderStarPost(settings, photo, mask, bg);
+        const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.9));
+        return blob ? { key: c.key, name: c.name, hasCard: !!(card && photo), blob, url: URL.createObjectURL(blob) } : null;
+      }));
+      if (cancelled) { out.forEach((p) => p && URL.revokeObjectURL(p.url)); return; }
+      setStarPosts((prev) => { prev.forEach((p) => p && URL.revokeObjectURL(p.url)); return [out[0] ?? null, out[1] ?? null, out[2] ?? null]; });
+      // Kort med riktigt foto är med som standard; märkeskort (utan sparat kort) får väljas till
+      setIncludeStars(out.map((p) => !!p?.hasCard));
+    })().catch((e) => console.error("[stjärnkort]", e)).finally(() => { if (!cancelled) setStarsLoading(false); });
+    return () => { cancelled = true; };
+  }, [savedCards.data, starsKey, data.whiteName, data.greenName, data.dateLine, match.teamWhiteScore, match.teamGreenScore]); // eslint-disable-line react-hooks/exhaustive-deps
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const renderId = useRef(0);
@@ -226,6 +267,9 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
     const out: File[] = [];
     if (include.result) out.push(new File([images.result], `${slug}-resultat.jpg`, { type: "image/jpeg" }));
     if (include.goals) out.push(new File([images.goals], `${slug}-malen.jpg`, { type: "image/jpeg" }));
+    starPosts.forEach((p, i) => {
+      if (p && includeStars[i]) out.push(new File([p.blob], `${slug}-star-${i + 1}-${p.name.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-")}.jpg`, { type: "image/jpeg" }));
+    });
     return out;
   };
   const canShare = typeof navigator !== "undefined" && !!navigator.canShare && images ? navigator.canShare({ files: files() }) : false;
@@ -265,7 +309,7 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
   };
 
 
-  const nothing = !include.result && !include.goals;
+  const nothing = !include.result && !include.goals && !starPosts.some((p, i) => p && includeStars[i]);
   const select = "w-full rounded-lg bg-white/5 border border-white/10 text-white text-sm px-2.5 py-1.5";
   const starMarks = ["⭐⭐⭐", "⭐⭐", "⭐"];
 
@@ -295,6 +339,28 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
                 </button>
               ))}
             </div>
+            {starsLoading && !starPosts.some(Boolean) && (
+              <p className="text-[11px] text-white/45 flex items-center gap-1.5 pt-1"><Loader2 className="w-3 h-3 animate-spin" /> Skapar Stars of the Game-kort …</p>
+            )}
+            {starPosts.some(Boolean) && (
+              <>
+                <p className="text-white/50 text-[11px] pt-1">Stars of the Game-kort</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {starPosts.map((p, i) => p && (
+                    <button key={p.key} onClick={() => setIncludeStars((v) => v.map((x, k) => (k === i ? !x : x)))} aria-pressed={includeStars[i]}
+                      className={`relative rounded-lg overflow-hidden border-2 transition-all ${includeStars[i] ? "border-amber-300" : "border-white/10 opacity-45"}`}
+                      title={p.hasCard ? `${p.name} – guldkort från sparat hockeykort` : `${p.name} har inget sparat hockeykort – kortet visar klubbens märke`}>
+                      <div className="aspect-[4/5] bg-black"><img src={p.url} alt={`${["Första", "Andra", "Tredje"][i]} stjärnan`} className="w-full h-full object-cover" /></div>
+                      <span className={`absolute top-1 left-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${includeStars[i] ? "bg-amber-300 text-amber-950" : "bg-black/70 text-white/60"}`}>
+                        {"★".repeat(3 - i)}
+                      </span>
+                      {!p.hasCard && <span className="absolute bottom-1 inset-x-1 text-[8px] text-center bg-black/70 text-white/70 rounded px-1 py-0.5">Inget sparat kort</span>}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-white/35 text-[10px]">Guldkort med matchens siffror, bara för matchens stjärnor. Spelare utan sparat hockeykort får klubbens märke i stället för foto – skapa ett kort i Hockeykort så blir det spelarens bild.</p>
+              </>
+            )}
             <p className="text-white/35 text-[10px]">4:5 (1080×1350). Tryck på en bild för att ta med eller utesluta den.</p>
           </div>
 

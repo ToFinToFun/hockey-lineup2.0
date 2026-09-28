@@ -7,6 +7,13 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.37.0 – 2026-09-28
+
+**Matchrapport – Stars of the Game-kort**
+- Matchens tre stjärnor får var sitt guldkort (4:5 för Instagram) att ta med i inlägget eller ladda ned, precis som Resultat och Målen.
+- Kortet bygger på spelarens sparade hockeykort (foto, beskärning, friläggning) men i guldstil med folieglans, 3/2/1 guldstjärnor och "FIRST/SECOND/THIRD STAR" i toppen, och matchens siffror i stället för säsongens: G, A, PTS och GWG – målvakter GA, SO och resultat. Matchen står under tabellen.
+- Saknar spelaren sparat kort får kortet klubbens märke i fotorutan (valbart, avmarkerat som standard) – inget behöver skapas från grunden.
+
 ## 2.36.2 – 2026-09-28
 
 - Rättning: Hockeykort visade ingen bild eller ram sedan v2.34.0 – webbläsarens ritmiljö anropade sig själv i all oändlighet efter att ritkoden gjorts gemensam med servern. Nu verifierat i en riktig webbläsare (kort, foto och friläggning), plus ett test som fångar felet.

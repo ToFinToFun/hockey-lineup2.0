@@ -6,7 +6,7 @@
  * ram → glans. Bildbehandlingen görs pixel för pixel så att resultatet blir
  * likadant i alla webbläsare.
  */
-import { skinById, resolveLogo, type CardSkin, type CardLogo } from "./cardSkins";
+import { skinById, resolveLogo, type CardSkin, type CardLogo, type RetroColors } from "./cardSkins";
 
 /**
  * Miljön kortet ritas i. Webbläsaren använder DOM-canvas; servern (som ritar om
@@ -84,6 +84,10 @@ export interface CardSettings {
   /** Raden under namnet (retro), t.ex. "Stålstadens SF" */
   subtitle: string;
   statsMode: "season" | "career" | "form" | "custom" | "none";
+  /** Stars of the Game-kort: 1 = första stjärnan (tre stjärnor i toppen), 2, 3 */
+  starRank?: 1 | 2 | 3;
+  /** Utan foto: visa klubbens märke stort i fotorutan i stället för "Ladda upp ett foto" */
+  placeholderLogo?: boolean;
   /** Friläggning: ersätt fotots bakgrund med kortets (amount 0–1 = hur mycket) */
   cutout?: { enabled: boolean; amount: number };
   statsTitle: string;
@@ -629,6 +633,53 @@ function wear(ctx: CanvasRenderingContext2D, seed: string, alpha: number) {
   ctx.restore();
 }
 
+/** En guldstjärna med gradient och mörk kontur. */
+function goldStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+  starPath(ctx, cx, cy, r);
+  const g = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+  g.addColorStop(0, "#fff3c4");
+  g.addColorStop(0.45, "#f2c94c");
+  g.addColorStop(1, "#b8860b");
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = "#3a2a06";
+  ctx.stroke();
+}
+
+/** Skylt med 3/2/1 guldstjärnor och "FIRST/SECOND/THIRD STAR" (Stars of the Game-kort). */
+function drawStarRibbon(ctx: CanvasRenderingContext2D, rank: 1 | 2 | 3, cx: number, top: number, c: RetroColors) {
+  const count = 4 - rank;
+  const r = 26, gap = 10;
+  const starsW = count * r * 2 + (count - 1) * gap;
+  const label = ["FIRST STAR", "SECOND STAR", "THIRD STAR"][rank - 1];
+  ctx.font = `700 20px ${HEAD}`;
+  ctx.letterSpacing = "5px";
+  const labelW = ctx.measureText(label).width;
+  ctx.letterSpacing = "0px";
+  const w = Math.max(starsW, labelW) + 56, h = r * 2 + 44;
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 16; ctx.shadowOffsetY = 4;
+  ctx.fillStyle = c.panel;
+  roundRect(ctx, cx - w / 2, top, w, h, 14);
+  ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle = "#e9cf86"; ctx.lineWidth = 3;
+  roundRect(ctx, cx - w / 2, top, w, h, 14);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(233,207,134,0.45)"; ctx.lineWidth = 1.5;
+  roundRect(ctx, cx - w / 2 + 6, top + 6, w - 12, h - 12, 10);
+  ctx.stroke();
+  for (let i = 0; i < count; i++) goldStar(ctx, cx - starsW / 2 + r + i * (2 * r + gap), top + 14 + r, r);
+  ctx.fillStyle = "#ecd592";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.letterSpacing = "5px";
+  ctx.fillText(label, cx + 2, top + h - 17);
+  ctx.letterSpacing = "0px";
+  ctx.textBaseline = "alphabetic";
+}
+
 async function renderRetro({ settings: s, photo, mask, scale = 1 }: RenderInput): Promise<HTMLCanvasElement> {
   const skin = skinById(s.skin);
   const c = skin.retro!;
@@ -706,6 +757,19 @@ async function renderRetro({ settings: s, photo, mask, scale = 1 }: RenderInput)
     vig.addColorStop(1, "rgba(0,0,0,0.35)");
     ctx.fillStyle = vig;
     ctx.fillRect(W.x, W.y, W.w, W.h);
+  } else if (s.placeholderLogo) {
+    // Inget foto: klubbens märke stort på kortets bakgrund
+    const bg = env.createCanvas(Math.round(W.w), Math.round(W.h));
+    paintBackdrop(bg.getContext("2d")!, W.w, W.h, skin);
+    ctx.drawImage(bg, W.x, W.y, W.w, W.h);
+    // Runda klubbmärket i mitten (städet sitter redan i hörnet)
+    const big = resolveLogo("green", skin);
+    if (big) {
+      ctx.save();
+      ctx.globalAlpha = 0.9;
+      await drawLogo(ctx, big, CARD_W / 2, W.y + W.h * 0.56, W.w * 0.62, c.paper, c.ink);
+      ctx.restore();
+    }
   } else {
     ctx.fillStyle = "#f7f4ee";
     ctx.fillRect(W.x, W.y, W.w, W.h);
@@ -719,6 +783,9 @@ async function renderRetro({ settings: s, photo, mask, scale = 1 }: RenderInput)
   // Märket uppe till höger, över fotorutans hörn
   const logo = cardLogo(s, skin);
   if (logo) await drawLogo(ctx, logo, W.x + W.w - 18, W.y + 30, logo.shape === "diamond" ? 176 : 150, c.paper, c.ink);
+
+  // Stars of the Game: 1–3 guldstjärnor på en skylt i toppen av fotot
+  if (s.starRank) drawStarRibbon(ctx, s.starRank, CARD_W / 2, W.y + 20, c);
 
   // 3. Namnskylt, klubbrad, nummer och position
   const N = { x: 48, y: 762, w: 528, nameH: 80, subH: 46 };
