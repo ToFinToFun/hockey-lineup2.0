@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.36.1 – 2026-09-28
+
+- Lineup: knappen "Ta ur laget" heter nu "Ta ur uppställningen".
+
 ## 2.36.0 – 2026-09-28
 
 **Hockeykort – friläggning**

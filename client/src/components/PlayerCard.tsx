@@ -530,7 +530,7 @@ export function DraggablePlayerCard({
                         className="flex-1 py-1.5 rounded text-[11px] font-semibold text-amber-200 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/40 transition-all"
                         title="Tillbaka till truppen"
                       >
-                        Ta ur laget
+                        Ta ur uppställningen
                       </button>
                     )}
                     <button
