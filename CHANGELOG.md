@@ -7,6 +7,18 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.30.0 – 2026-09-28
+
+**Score Tracker**
+- Skärm på: valet sparas på enheten och är på som standard. Låset tas tillbaka automatiskt när appen visas igen (förut försvann det tyst efter att man lämnat appen), och på iPhone vid nästa tryck på skärmen. Knappen visar Skärm på / Tryck (väntar) / Skärm av / Stöds ej. Kräver iOS 18.4 som hemskärmsapp, Chrome eller Firefox 126+.
+- Ljud: hörs även i ljudlöst läge på iPhone (ljudsessionen sätts till uppspelning), väcks igen efter samtal/larm. Ljud av/på sparas på enheten.
+- Mål utan målskytt visar "👆 Tryck för att ange målskytt / assist" tills något angetts.
+- Måltyp: bara Straff (reglage). "Övrigt" visas eller väljs aldrig – gäller även redigering i matchhistoriken, spelarprofilen och statistiken.
+- Sponsorer som bara är text syns i svart på Vitas vita målkort.
+- Statistik, Återställ och Avsluta på en rad.
+- Lineup: Uppdatera ger besked och uppdaterar "Senast synkad" (förut såg det ut som att inget hände). Texten "Stålstadens Score Tracker · A-lag Herrar" borttagen.
+- Lägre bottenrad med ny flik Hjälp: korta instruktioner och versionsnumret (flyttat hit).
+
 ## 2.29.0 – 2026-09-28
 
 **Inställningar (ny bricka på startsidan, bara styrelsen)**

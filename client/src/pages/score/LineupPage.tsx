@@ -224,10 +224,6 @@ export default function LineupPage({ lineupState, loading, lastSyncTime, refresh
           </div>
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-[9px] text-[#9BA1A6] mt-3 mb-1">
-          Stålstadens Score Tracker · A-lag Herrar
-        </p>
       </div>
     </PullToRefresh>
   );

@@ -153,11 +153,9 @@ export function recentWinners(matches: MatchResult[], n = 30): MatchWinner[] {
 }
 
 /**
- * Måltyp i statistiken: bara Straff och Övrigt finns kvar. Äldre typer (Skott,
- * Solo, Friläge …) räknas som Övrigt. Självmål returnerar null (räknas inte).
+ * Måltyp i statistiken: bara Straff räknas som egen typ. Alla andra mål (även
+ * äldre typer som Skott, Solo …) är vanliga mål och visas inte som en typ.
  */
-export function normalizeGoalType(other: string | null | undefined): "Straff" | "Övrigt" | null {
-  const t = (other ?? "").trim();
-  if (t === "Självmål") return null;
-  return t === "Straff" ? "Straff" : "Övrigt";
+export function normalizeGoalType(other: string | null | undefined): "Straff" | null {
+  return (other ?? "").trim() === "Straff" ? "Straff" : null;
 }

@@ -204,8 +204,8 @@ export default function PlayerProfileModal({ playerName, onClose }: PlayerProfil
 
             {/* Goal Type Statistics */}
             {profile.goalTypes && Object.keys(profile.goalTypes).length > 0 && (() => {
-              const goalTypeLabels: Record<string, string> = { 'Straff': 'Straff', 'Övrigt': 'Övrigt' };
-              const goalTypeColors: Record<string, string> = { 'Straff': '#EF4444', 'Övrigt': '#0a7ea4' };
+              const goalTypeLabels: Record<string, string> = { 'Straff': 'Straff' };
+              const goalTypeColors: Record<string, string> = { 'Straff': '#EF4444' };
               const sortedTypes = Object.entries(profile.goalTypes)
                 .sort((a, b) => b[1] - a[1]);
               const maxCount = Math.max(...sortedTypes.map(([, c]) => c), 1);

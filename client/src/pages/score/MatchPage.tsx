@@ -7,6 +7,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { IMAGES, COLORS, STORAGE_KEY, type GoalEvent, type MatchState } from "@/lib/scoreConstants";
 import { useSponsors, pickLeastShown, logoForName } from "@/lib/sponsors";
+import { useWakeLock } from "@/hooks/useWakeLock";
 import { playGoalSound as playGoalSoundFx, playEndSignal, unlockAudio } from "@/lib/matchSounds";
 import { type AppState, createTeamSlots, MAX_TEAM_CONFIG } from "@/lib/lineup";
 import { type Player } from "@/lib/players";
@@ -38,9 +39,6 @@ function getGoalText(team: "white" | "green"): string {
   return team === "white" ? "#1a1a1a" : "#ffffff";
 }
 
-/** Måltyper vid registrering. Inget val = Övrigt. */
-const GOAL_TYPE_OPTIONS = ["Övrigt", "Straff"];
-
 export default function MatchPage({ lineupState }: MatchPageProps) {
   // ─── State ─────────────────────────────────────────────────────
   const { sponsors } = useSponsors();
@@ -68,7 +66,15 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
   const [endTimeModalVisible, setEndTimeModalVisible] = useState(false);
   const [endTimeInput, setEndTimeInput] = useState("");
   const [endTimeTriggered, setEndTimeTriggered] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMutedRaw] = useState(() => {
+    try { return localStorage.getItem("score_muted") === "1"; } catch { return false; }
+  });
+  const setIsMuted = (fn: (prev: boolean) => boolean) => setIsMutedRaw((prev) => {
+    const next = fn(prev);
+    try { localStorage.setItem("score_muted", next ? "1" : "0"); } catch { /* bara den här sessionen */ }
+    if (!next) unlockAudio(); // tryckningen låser upp ljudet på iPhone
+    return next;
+  });
 
   // Ljud: pling (Vita), tut-tut (Gröna) och utdraget horn som slutsignal – se lib/matchSounds
   const playGoalSound = useCallback((team: "white" | "green") => {
@@ -79,9 +85,14 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
   }, [isMuted]);
   // Lås upp ljudet vid första tryck så att slutsignalen (från en timer) hörs även på mobil
   useEffect(() => {
+    // Vid varje tryck: väck ljudet om systemet pausat det (iPhone gör det efter samtal m.m.)
     const unlock = () => unlockAudio();
-    window.addEventListener("pointerdown", unlock, { once: true });
-    return () => window.removeEventListener("pointerdown", unlock);
+    window.addEventListener("pointerdown", unlock);
+    window.addEventListener("touchend", unlock);
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("touchend", unlock);
+    };
   }, []);
 
   // Check end time every second inside the clock timer
@@ -140,68 +151,8 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
   };
 
   // ─── Wake Lock (prevent screen from turning off) ────────────────
-  const [wakeLockActive, setWakeLockActive] = useState(false);
-  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
-
-  const toggleWakeLock = useCallback(async () => {
-    if (wakeLockActive && wakeLockRef.current) {
-      try {
-        await wakeLockRef.current.release();
-        wakeLockRef.current = null;
-        setWakeLockActive(false);
-      } catch (e) {
-        console.error("Failed to release wake lock:", e);
-      }
-    } else {
-      try {
-        if ("wakeLock" in navigator) {
-          const lock = await navigator.wakeLock.request("screen");
-          wakeLockRef.current = lock;
-          setWakeLockActive(true);
-          lock.addEventListener("release", () => {
-            setWakeLockActive(false);
-            wakeLockRef.current = null;
-          });
-        } else {
-          // Fallback: try NoSleep.js-style video trick for older browsers
-          alert("Din webbläsare stöder inte Wake Lock API. Prova Chrome.");
-        }
-      } catch (e) {
-        console.error("Failed to acquire wake lock:", e);
-      }
-    }
-  }, [wakeLockActive]);
-
-  // Re-acquire wake lock when page becomes visible again (e.g. switching tabs)
-  useEffect(() => {
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === "visible" && wakeLockActive && !wakeLockRef.current) {
-        try {
-          if ("wakeLock" in navigator) {
-            const lock = await navigator.wakeLock.request("screen");
-            wakeLockRef.current = lock;
-            lock.addEventListener("release", () => {
-              setWakeLockActive(false);
-              wakeLockRef.current = null;
-            });
-          }
-        } catch (e) {
-          console.error("Failed to re-acquire wake lock:", e);
-        }
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [wakeLockActive]);
-
-  // Clean up wake lock on unmount
-  useEffect(() => {
-    return () => {
-      if (wakeLockRef.current) {
-        wakeLockRef.current.release().catch(() => {});
-      }
-    };
-  }, []);
+  // Håll skärmen tänd – se hooks/useWakeLock (tas tillbaka automatiskt när appen visas igen)
+  const wakeLock = useWakeLock();
 
   // ─── Clock ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -247,7 +198,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
     const inThisMatch = (name: string) =>
       goalHistory.filter((g) => g.sponsor?.trim().toLowerCase() === name.trim().toLowerCase()).length;
     const sponsor = pickLeastShown(sponsors, (s) => s.counts.matches + inThisMatch(s.name))?.name;
-    const newGoal: GoalEvent = { team, timestamp, sponsor, other: "Övrigt" };
+    const newGoal: GoalEvent = { team, timestamp, sponsor };
     const newHistory = [newGoal, ...goalHistory];
     const newMst = matchStartTime || now.toISOString();
 
@@ -371,7 +322,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
     const goal = goalHistory[index];
     setScorerName(goal.scorer || "");
     setAssistName(goal.assist || "");
-    setOtherInfo(goal.other || "Övrigt");
+    setOtherInfo(goal.other === "Straff" ? "Straff" : "");
     setModalVisible(true);
   };
 
@@ -391,7 +342,8 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
       scorerId: idForLabel(scorerName),
       assist: assistName || undefined,
       assistId: idForLabel(assistName),
-      other: otherInfo || "Övrigt",
+      // Bara straff markeras – allt annat är ett vanligt mål
+      other: otherInfo === "Straff" ? "Straff" : undefined,
     };
     setGoalHistory(updated);
     saveState(teamWhiteScore, teamGreenScore, updated, matchStartTime);
@@ -408,8 +360,9 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
     const lines: string[] = [];
     if (goal.scorer) lines.push(`Målskytt: ${normalizePlayerName(goal.scorer)}`);
     if (goal.assist) lines.push(`Assist: ${normalizePlayerName(goal.assist)}`);
-    const otherTag = goal.other || null;
-    if (lines.length === 0 && !otherTag) return { lines: ["Tryck för att lägga till detaljer"], otherTag: null, hasDetails: false };
+    // Bara straff visas som märke – "Övrigt" och äldre typer visas inte
+    const otherTag = goal.other === "Straff" ? "Straff" : null;
+    if (lines.length === 0) return { lines: ["Tryck för att ange målskytt / assist"], otherTag, hasDetails: false };
     return { lines, otherTag, hasDetails: true };
   };
 
@@ -570,14 +523,21 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
         <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-1.5">
             <button
-              onClick={toggleWakeLock}
-              className={`px-2.5 py-1.5 rounded-full border text-xs transition-colors ${
-                wakeLockActive
-                  ? "bg-[#22C55E]/20 border-[#22C55E] text-[#22C55E]"
-                  : "bg-[#2a2a2a] border-[#3a3a3a] text-[#9BA1A6]"
+              onClick={wakeLock.toggle}
+              disabled={wakeLock.status === "unsupported"}
+              title={
+                wakeLock.status === "unsupported" ? "Webbläsaren kan inte hålla skärmen tänd (kräver t.ex. iOS 18.4 eller Chrome)"
+                : wakeLock.status === "on" ? "Skärmen hålls tänd – tryck för att stänga av"
+                : wakeLock.status === "waiting" ? "Väntar – tryck var som helst på skärmen så aktiveras det"
+                : "Skärmen kan släckas – tryck för att hålla den tänd"
+              }
+              className={`px-2.5 py-1.5 rounded-full border text-xs transition-colors disabled:opacity-40 ${
+                wakeLock.status === "on" ? "bg-[#22C55E]/20 border-[#22C55E] text-[#22C55E]"
+                : wakeLock.status === "waiting" ? "bg-amber-500/20 border-amber-400 text-amber-300"
+                : "bg-[#2a2a2a] border-[#3a3a3a] text-[#9BA1A6]"
               }`}
             >
-              {wakeLockActive ? "☀️ Aktiv" : "🔅 Inaktiv"}
+              {wakeLock.status === "on" ? "☀️ Skärm på" : wakeLock.status === "waiting" ? "☀️ Tryck" : wakeLock.status === "unsupported" ? "🔅 Stöds ej" : "🔅 Skärm av"}
             </button>
             <button
               onClick={() => setIsMuted(prev => !prev)}
@@ -700,7 +660,12 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
                     <div className="text-sm" style={{ color: getGoalText(goal.team) }}>
                       {(() => {
                         const { lines, otherTag, hasDetails } = formatGoalDetails(goal);
-                        if (!hasDetails) return <span className="opacity-60 italic">{lines[0]}</span>;
+                        if (!hasDetails) return (
+                          <>
+                            <span className="opacity-70 italic">👆 {lines[0]}</span>
+                            {otherTag && <span className="ml-2 inline-block px-2 py-0.5 rounded text-[10px] font-bold" style={{ backgroundColor: '#1a1a1a', color: '#fff', border: '1px solid #555' }}>{otherTag}</span>}
+                          </>
+                        );
                         return (
                           <>
                             {lines.map((line, li) => (
@@ -742,7 +707,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
                           className="max-h-6 max-w-[70px] object-contain"
                         />
                       ) : (
-                        <span className="text-[10px] font-semibold text-center leading-tight">
+                        <span className="text-[10px] font-semibold text-center leading-tight" style={{ color: getGoalText(goal.team) }}>
                           {goal.sponsor}
                         </span>
                       )}
@@ -755,23 +720,19 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
           </div>
         )}
 
-        {/* Statistics Button */}
-        {goalHistory.length > 0 && (
-          <button onClick={() => setStatsModalVisible(true)}
-            className="bg-[#2a2a2a]/80 border border-[#0a7ea4] px-4 py-2 rounded-full text-[#0a7ea4] font-semibold text-sm text-center backdrop-blur-sm active:opacity-80 transition-opacity">
-            Visa statistik
-          </button>
-        )}
-
-        {/* Action Buttons */}
+        {/* Knappar på en rad: Statistik, Återställ, Avsluta */}
         <div className="flex gap-2 mb-1">
-          <button onClick={() => setEndMatchModalVisible(true)}
-            className="flex-1 bg-[#0a7ea4] text-[#1a1a1a] font-semibold text-sm py-2 rounded-full active:opacity-80 transition-opacity">
-            Avsluta match
+          <button onClick={() => setStatsModalVisible(true)} disabled={goalHistory.length === 0}
+            className="flex-1 bg-[#2a2a2a]/80 border border-[#0a7ea4] text-[#0a7ea4] font-semibold text-sm py-2 rounded-full backdrop-blur-sm active:opacity-80 transition-opacity disabled:opacity-35">
+            Statistik
           </button>
           <button onClick={resetMatch}
             className="flex-1 bg-[#9BA1A6] text-[#1a1a1a] font-semibold text-sm py-2 rounded-full active:opacity-80 transition-opacity">
-            Återställ match
+            Återställ
+          </button>
+          <button onClick={() => setEndMatchModalVisible(true)}
+            className="flex-1 bg-[#0a7ea4] text-[#1a1a1a] font-semibold text-sm py-2 rounded-full active:opacity-80 transition-opacity">
+            Avsluta
           </button>
         </div>
       </div>
@@ -811,28 +772,19 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
                 )}
               </button>
             </div>
-            {/* Måltyp: Övrigt (standard) eller Straff */}
-            <div>
-              <label className="text-sm font-semibold text-[#9BA1A6] mb-1 block">Måltyp</label>
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {GOAL_TYPE_OPTIONS.map((option) => {
-                  const isSelected = (otherInfo || 'Övrigt') === option;
-                  return (
-                    <button key={option}
-                      onClick={() => setOtherInfo(option)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                        isSelected
-                          ? 'bg-[#0a7ea4] border-[#0a7ea4] text-white'
-                          : 'bg-[#2a2a2a] border-[#3a3a3a] text-[#9BA1A6] hover:border-[#0a7ea4]'
-                      }`}
-                    >
-                      {option}
-                    </button>
-                  );
-                })}
-              </div>
-
-            </div>
+            {/* Straff – det enda som markeras; allt annat är ett vanligt mål */}
+            <button
+              onClick={() => setOtherInfo(otherInfo === "Straff" ? "" : "Straff")}
+              aria-pressed={otherInfo === "Straff"}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border text-sm transition-colors ${
+                otherInfo === "Straff" ? "bg-[#0a7ea4]/20 border-[#0a7ea4] text-white" : "bg-[#2a2a2a] border-[#3a3a3a] text-[#9BA1A6]"
+              }`}
+            >
+              <span>Straff</span>
+              <span className={`w-9 h-5 rounded-full relative ${otherInfo === "Straff" ? "bg-[#0a7ea4]" : "bg-white/15"}`}>
+                <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white" style={{ left: otherInfo === "Straff" ? 18 : 2 }} />
+              </span>
+            </button>
             <div className="flex gap-2 pt-2">
               <button onClick={() => setModalVisible(false)}
                 className="flex-1 bg-[#2a2a2a] border border-[#3a3a3a] text-[#ECEDEE] py-3 rounded-2xl font-semibold">

@@ -24,8 +24,6 @@ interface GoalEvent {
 
 type ResultFilter = "all" | "white" | "green" | "draw";
 
-/** Måltyper vid redigering. Äldre mål med andra typer visar sin typ tills den ändras. */
-const GOAL_TYPES = ["Övrigt", "Straff"];
 
 export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
   const { sponsors } = useSponsors();
@@ -224,7 +222,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
 
   // Nytt mål läggs sist = senaste målet (samma klockslag som föregående mål)
   const addGoal = useCallback((team: "white" | "green") => {
-    setEditGoals(prev => [...prev, { team, timestamp: prev[prev.length - 1]?.timestamp ?? "", scorer: "", assist: "", other: "Övrigt" }]);
+    setEditGoals(prev => [...prev, { team, timestamp: prev[prev.length - 1]?.timestamp ?? "", scorer: "", assist: "" }]);
   }, []);
 
   // Drag and drop handlers
@@ -761,8 +759,8 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                               {goal.assist && (
                                 <span className="text-[#687076] text-xs ml-1">({goal.assist})</span>
                               )}
-                              {goal.other && (
-                                <span className="text-[10px] ml-1 px-1.5 py-0.5 rounded font-bold tracking-wide" style={{ backgroundColor: '#1a1a1a', color: '#ffffff', border: '1px solid #555', boxShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>{goal.other}</span>
+                              {goal.other === "Straff" && (
+                                <span className="text-[10px] ml-1 px-1.5 py-0.5 rounded font-bold tracking-wide" style={{ backgroundColor: '#1a1a1a', color: '#ffffff', border: '1px solid #555', boxShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>Straff</span>
                               )}
                               {isGwg && (
                                 <span className="text-[10px] ml-1 px-1.5 py-0.5 rounded font-bold tracking-wide" style={{ backgroundColor: '#92400e', color: '#fbbf24', border: '1px solid #b45309' }}>GWG ⭐</span>
@@ -1199,22 +1197,16 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                             <UserCheck size={12} className="text-[#687076] shrink-0" />
                           )}
                         </button>
-                        {/* Goal type chips */}
-                        <div className="flex flex-wrap gap-1">
-                          {[...GOAL_TYPES, ...(goal.other && !GOAL_TYPES.includes(goal.other) ? [goal.other] : [])].map(type => (
-                            <button
-                              key={type}
-                              onClick={() => updateGoal(idx, "other", type)}
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors ${
-                                goal.other === type
-                                  ? "bg-[#0a7ea4] text-white"
-                                  : "bg-[#111] text-[#9BA1A6] border border-white/10"
-                              }`}
-                            >
-                              {type}
-                            </button>
-                          ))}
-                        </div>
+                        {/* Straff – det enda som markeras */}
+                        <button
+                          onClick={() => updateGoal(idx, "other", goal.other === "Straff" ? "" : "Straff")}
+                          aria-pressed={goal.other === "Straff"}
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors ${
+                            goal.other === "Straff" ? "bg-[#0a7ea4] text-white" : "bg-[#111] text-[#9BA1A6] border border-white/10"
+                          }`}
+                        >
+                          Straff
+                        </button>
                       </div>
                     </div>
                   );

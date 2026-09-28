@@ -13,7 +13,7 @@ import { trpc } from "@/lib/trpc";
 import { saveLineupSnapshot, loadLineupSnapshot, getPendingMatches, flushPendingMatches } from "@/lib/offlineScore";
 import { toast } from "sonner";
 import { AppVersion } from "@/components/AppVersion";
-import { Home, Users, ArrowLeft, CloudOff, UploadCloud } from "lucide-react";
+import { Home, Users, ArrowLeft, CloudOff, UploadCloud, HelpCircle, X } from "lucide-react";
 import type { AppState } from "@/lib/lineup";
 import { Link } from "wouter";
 
@@ -133,10 +133,20 @@ export default function ScoreApp() {
     }
   }, [lineupData]);
 
+  // Samma data ger inget nytt objekt från servern, så tiden och beskedet sätts här
+  // – annars ser det ut som att inget hände.
   const refresh = useCallback(() => {
     setRefreshing(true);
-    refetch().finally(() => setRefreshing(false));
+    refetch()
+      .then((res) => {
+        if (res.error) throw res.error;
+        setLastSyncTime(new Date());
+        toast.success("Laguppställningen är uppdaterad", { duration: 2000 });
+      })
+      .catch(() => toast.error("Kunde inte uppdatera – ingen anslutning?", { duration: 3000 }))
+      .finally(() => setRefreshing(false));
   }, [refetch]);
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 500);
@@ -196,6 +206,8 @@ export default function ScoreApp() {
           />
         )}
 
+        {showHelp && <ScoreHelp onClose={() => setShowHelp(false)} />}
+
         {/* Tab Bar */}
         <div
           className="flex-shrink-0 border-t border-[#3a3a3a] bg-[#1a1a1a]"
@@ -204,32 +216,71 @@ export default function ScoreApp() {
           <div className="flex">
             <Link
               href="/"
-              className="flex-1 flex flex-col items-center py-2 gap-0.5 text-[#9BA1A6] hover:text-[#0a7ea4] transition-colors"
+              className="flex-1 flex flex-col items-center py-1.5 gap-0.5 text-[#9BA1A6] hover:text-[#0a7ea4] transition-colors"
             >
-              <ArrowLeft size={20} />
+              <ArrowLeft size={18} />
               <span className="text-[10px] font-medium">Hub</span>
             </Link>
             <button
               onClick={() => setActiveTab("match")}
-              className={`flex-1 flex flex-col items-center py-2 gap-0.5 transition-colors ${
+              className={`flex-1 flex flex-col items-center py-1.5 gap-0.5 transition-colors ${
                 activeTab === "match" ? "text-[#0a7ea4]" : "text-[#9BA1A6]"
               }`}
             >
-              <Home size={20} />
+              <Home size={18} />
               <span className="text-[10px] font-medium">Match</span>
             </button>
             <button
               onClick={() => setActiveTab("lineup")}
-              className={`flex-1 flex flex-col items-center py-2 gap-0.5 transition-colors ${
+              className={`flex-1 flex flex-col items-center py-1.5 gap-0.5 transition-colors ${
                 activeTab === "lineup" ? "text-[#0a7ea4]" : "text-[#9BA1A6]"
               }`}
             >
-              <Users size={20} />
+              <Users size={18} />
               <span className="text-[10px] font-medium">Lineup</span>
             </button>
+            <button
+              onClick={() => setShowHelp(true)}
+              className="flex-1 flex flex-col items-center py-1.5 gap-0.5 text-[#9BA1A6] hover:text-[#0a7ea4] transition-colors"
+            >
+              <HelpCircle size={18} />
+              <span className="text-[10px] font-medium">Hjälp</span>
+            </button>
           </div>
-          <AppVersion className="text-center pb-1 -mt-1" />
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** Kort hjälp för Score Tracker, med versionsnumret. */
+function ScoreHelp({ onClose }: { onClose: () => void }) {
+  const items: Array<[string, string]> = [
+    ["Mål", "Tryck + under Vita eller Gröna när det blir mål. Senaste målet hamnar överst med klockslag och sponsor."],
+    ["Målskytt och assist", "Tryck på målet i listan och välj spelare. Slå på Straff om det var en straff. Det går även att fylla i efteråt."],
+    ["Ångra ett mål", "Tryck på minus under lagets siffra – då tas lagets senaste mål bort. Återställ börjar om hela matchen."],
+    ["Sluttid", "Ställ in klockslaget – då hörs en slutsignal när tiden är slut."],
+    ["Skärm på", "Håller skärmen tänd under matchen. Blir knappen gul: tryck var som helst på skärmen så aktiveras den igen."],
+    ["Ljud", "Pling för Vita, tut för Gröna och ett horn vid slutsignal. Hörs även i ljudlöst läge på iPhone."],
+    ["Avsluta", "Sparar matchen. Utan nät sparas den på telefonen och laddas upp automatiskt när nätet är tillbaka."],
+    ["Lineup", "Visar dagens lag. Dra ned eller tryck Uppdatera för att hämta senaste versionen."],
+  ];
+  return (
+    <div className="absolute inset-0 z-50 bg-black/70 flex items-end" onClick={onClose}>
+      <div className="w-full bg-[#1a1a1a] border-t border-white/10 rounded-t-2xl p-4 max-h-[85%] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-[#ECEDEE] font-bold">Så funkar Score Tracker</h2>
+          <button onClick={onClose} aria-label="Stäng" className="text-white/50 hover:text-white"><X size={18} /></button>
+        </div>
+        <dl className="space-y-2.5">
+          {items.map(([t, d]) => (
+            <div key={t}>
+              <dt className="text-sm font-semibold text-[#ECEDEE]">{t}</dt>
+              <dd className="text-xs text-[#9BA1A6] leading-relaxed">{d}</dd>
+            </div>
+          ))}
+        </dl>
+        <AppVersion className="text-center mt-4 !text-white/35" />
       </div>
     </div>
   );

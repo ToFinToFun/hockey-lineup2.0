@@ -129,10 +129,11 @@ describe("resultatraden", () => {
 import { normalizeGoalType } from "./playerHistory";
 
 describe("måltyper i statistiken", () => {
-  it("Straff behålls, äldre typer blir Övrigt, självmål räknas inte", () => {
+  it("bara Straff är en egen typ", () => {
     expect(normalizeGoalType("Straff")).toBe("Straff");
-    expect(normalizeGoalType("Solo")).toBe("Övrigt");
-    expect(normalizeGoalType(undefined)).toBe("Övrigt");
+    expect(normalizeGoalType("Solo")).toBeNull();
+    expect(normalizeGoalType("Övrigt")).toBeNull();
+    expect(normalizeGoalType(undefined)).toBeNull();
     expect(normalizeGoalType("Självmål")).toBeNull();
   });
 });

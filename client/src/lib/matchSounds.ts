@@ -13,8 +13,17 @@ function audio(): AudioContext | null {
   if (typeof window === "undefined") return null;
   const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!Ctor) return null;
-  if (!ctx) ctx = new Ctor();
-  if (ctx.state === "suspended") void ctx.resume();
+  if (!ctx) {
+    // iPhone: utan detta tystar ljudlös-knappen allt Web Audio. "playback" gör att
+    // mål- och sluttoner hörs även i ljudlöst läge (Safari 16.4+; ignoreras av andra).
+    const nav = navigator as Navigator & { audioSession?: { type: string } };
+    if (nav.audioSession) {
+      try { nav.audioSession.type = "playback"; } catch { /* stöds inte */ }
+    }
+    ctx = new Ctor();
+  }
+  // "suspended" eller Safaris "interrupted" (efter samtal, larm …) – väck igen
+  if (ctx.state !== "running") void ctx.resume().catch(() => undefined);
   return ctx;
 }
 
