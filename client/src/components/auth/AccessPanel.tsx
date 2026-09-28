@@ -54,7 +54,6 @@ export function AccessPanel() {
         </button>
       </div>
 
-      <p className="text-white/35 text-[11px]">Tillfälliga länkar till Lineup skapas under kugghjulet i Lineup → Dela verktyg.</p>
     </div>
   );
 }
