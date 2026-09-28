@@ -26,7 +26,7 @@ describe("Stars of the Game", () => {
     const p1 = c.find((x) => x.key === "p1")!;
     expect(starLine(p1)).toBe("Jerry Paasovaara (VF) 1G 1A 2TP");
     expect(starLine(p1, { position: false, stats: false })).toBe("Jerry Paasovaara");
-    expect(starLine(c.find((x) => x.key === "gkW")!)).toBe("Linus Carbin (M) Shutout");
+    expect(starLine(c.find((x) => x.key === "gkW")!)).toBe("Linus Carbin (M) 0 GA");
     expect(starLine(c.find((x) => x.key === "gkG")!)).toBe("Robert Romanowski (M) 2 GA");
   });
 

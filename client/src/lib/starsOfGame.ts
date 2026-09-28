@@ -142,9 +142,9 @@ export function autoStars(candidates: StarCandidate[], seed: number): string[] {
   return picked.slice(0, 3).map((c) => c.key);
 }
 
-/** Statistik på engelska som "Stars of the Game": "2G 3A 5TP", målvakt "Shutout" eller "2 GA". */
+/** Statistik på engelska som "Stars of the Game": "2G 3A 5TP", målvakt "0 GA". */
 export function starStat(c: StarCandidate): string {
-  if (c.position === "MV" && c.goalsAgainst !== null) return c.goalsAgainst === 0 ? "Shutout" : `${c.goalsAgainst} GA`;
+  if (c.position === "MV" && c.goalsAgainst !== null) return `${c.goalsAgainst} GA`;
   const pts = c.goals + c.assists;
   return pts ? `${c.goals}G ${c.assists}A ${pts}TP` : "";
 }

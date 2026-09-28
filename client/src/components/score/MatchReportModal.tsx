@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { starCandidates, autoStars, starLine, starStat, type StarCandidate } from "@/lib/starsOfGame";
-import { X, Download, Copy, Share2, Loader2, Check, Star, RotateCcw, Plus, Briefcase } from "lucide-react";
+import { X, Download, Copy, Share2, Loader2, Check, Star, RotateCcw, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useSponsors, logoForName } from "@/lib/sponsors";
 import { renderResultImage, renderGoalsImage, type ReportData, type ReportGoal } from "@/lib/matchReportImages";
@@ -31,7 +31,7 @@ export interface ReportMatch {
   createdAt: string;
   lineup?: { teamAName?: string; teamBName?: string; lineup?: Record<string, { id?: string; name?: string; number?: string }> } | null;
   /** Sparade val: stjärnor (nycklar) och sponsor */
-  report?: { stars?: string[]; sponsor?: string | null; showStats?: boolean[] } | null;
+  report?: { stars?: string[]; sponsor?: string | null; showStats?: boolean[]; title?: string | null } | null;
 }
 
 const LOGO_WHITE = "/images/logo-white.png";
@@ -49,7 +49,8 @@ export function buildReportData(
   match: ReportMatch,
   stars: StarCandidate[],
   sponsor: { name: string; logo: string | null } | null,
-  showStats: boolean[] = [true, true, true]
+  showStats: boolean[] = [true, true, true],
+  title?: string
 ): ReportData {
   const wrap = match.lineup ?? {};
   const aWhite = (wrap.teamAName ?? "VITA").toLowerCase().includes("vit");
@@ -70,6 +71,7 @@ export function buildReportData(
   }));
 
   return {
+    title,
     whiteName, greenName,
     whiteScore: match.teamWhiteScore, greenScore: match.teamGreenScore,
     dateLine: dateLine(match.matchEndTime ?? match.matchStartTime ?? match.createdAt),
@@ -85,7 +87,7 @@ export function buildReportData(
 export function buildCaption(stars: StarCandidate[], sponsorName: string | null, tags: string[], showStats: boolean[] = [true, true, true]): string {
   const marks = ["⭐⭐⭐", "⭐⭐", "⭐"];
   const parts: string[] = [];
-  if (stars.length) parts.push(["Kvällens Stars of the Game", ...stars.map((c, i) => `${marks[i]} ${starLine(c, { stats: showStats[i] !== false })}`)].join("\n"));
+  if (stars.length) parts.push(["Kvällens Stars of the Game", ...stars.map((c, i) => `${marks[i]} ${starLine(c, { position: false, stats: showStats[i] !== false })}`)].join("\n"));
   if (sponsorName) parts.push(`Dagens mål presenterades av ${sponsorName}`);
   if (tags.length) parts.push(tags.join(" "));
   return parts.join("\n\n");
@@ -97,8 +99,6 @@ function mostFrequentSponsor(goals: RawGoal[]): string | null {
   for (const g of goals) if (g.sponsor) count.set(g.sponsor, (count.get(g.sponsor) ?? 0) + 1);
   return [...count.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 }
-
-const META_BUSINESS_URL = "https://business.facebook.com/";
 
 export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClose: () => void }) {
   const { sponsors } = useSponsors();
@@ -117,6 +117,14 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
     const saved = match.report?.stars?.filter((k) => candidates.some((c) => c.key === k));
     return saved && saved.length === 3 ? saved : auto;
   });
+  // Rubrik på resultatbilden (tom = "Slutresultat"); sparas när fältet lämnas
+  const [title, setTitle] = useState(match.report?.title ?? "");
+  const [titleDebounced, setTitleDebounced] = useState(title);
+  useEffect(() => {
+    const t = setTimeout(() => setTitleDebounced(title), 400);
+    return () => clearTimeout(t);
+  }, [title]);
+
   const [showStats, setShowStats] = useState<boolean[]>(() => {
     const saved = match.report?.showStats;
     return [0, 1, 2].map((i) => saved?.[i] !== false);
@@ -131,11 +139,12 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
   const sponsor = sponsorName ? { name: sponsorName, logo: logoForName(sponsors, sponsorName) } : null;
 
   // Spara valen på matchen
-  const persist = (next: { stars?: string[]; sponsor?: string | null; showStats?: boolean[] }) => {
+  const persist = (next: { stars?: string[]; sponsor?: string | null; showStats?: boolean[]; title?: string | null }) => {
     saveReport.mutate({ id: match.id, report: {
       stars: next.stars ?? starKeys,
       sponsor: next.sponsor !== undefined ? next.sponsor : sponsorName,
       showStats: next.showStats ?? showStats,
+      title: next.title !== undefined ? next.title : title || null,
     } });
   };
   const toggleStats = (i: number) => {
@@ -172,7 +181,7 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
   };
   const removeTag = (tag: string) => saveTags.mutate(tags.filter((t) => t !== tag));
 
-  const data = useMemo(() => buildReportData(match, stars, sponsor, showStats), [match, stars, sponsor?.name, sponsor?.logo, showStats]); // eslint-disable-line react-hooks/exhaustive-deps
+  const data = useMemo(() => buildReportData(match, stars, sponsor, showStats, titleDebounced), [match, stars, sponsor?.name, sponsor?.logo, showStats, titleDebounced]); // eslint-disable-line react-hooks/exhaustive-deps
   const autoCaption = useMemo(() => buildCaption(stars, sponsorName, tags, showStats), [stars, sponsorName, tags, showStats]);
   const [caption, setCaption] = useState(autoCaption);
   const [captionEdited, setCaptionEdited] = useState(false);
@@ -249,14 +258,6 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
     }
   };
 
-  /** Meta Business Suite: telefon – delningsmenyn (välj Business Suite); dator – spara bilderna, kopiera texten och öppna Business Suite. */
-  const openBusinessSuite = async () => {
-    if (canShare) return share();
-    download(true);
-    await navigator.clipboard.writeText(caption).catch(() => undefined);
-    window.open(META_BUSINESS_URL, "_blank", "noopener");
-    toast.success("Bilderna sparade och texten kopierad", { description: "Välj Skapa inlägg i Business Suite och lägg till bilderna." });
-  };
 
   const nothing = !include.result && !include.goals;
   const select = "w-full rounded-lg bg-white/5 border border-white/10 text-white text-sm px-2.5 py-1.5";
@@ -293,6 +294,20 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
 
           {/* Val */}
           <div className="space-y-4">
+            <div>
+              <label htmlFor="report-title" className="block text-white/50 text-[11px] mb-1.5">Rubrik på resultatbilden</label>
+              <input
+                id="report-title"
+                value={title}
+                maxLength={30}
+                placeholder="Slutresultat"
+                onChange={(e) => setTitle(e.target.value)}
+                onBlur={() => persist({ title: title.trim() || null })}
+                className={select}
+              />
+              <p className="text-white/35 text-[10px] mt-1">T.ex. Match 1/5 eller Julmatchen. Tomt = Slutresultat.</p>
+            </div>
+
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <p className="text-white/50 text-[11px] flex items-center gap-1"><Star className="w-3 h-3" /> Stars of the Game</p>
@@ -368,10 +383,6 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
             {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
           </button>
           <div className="flex-1" />
-          <button onClick={openBusinessSuite} disabled={!images || nothing || busy} title="Meta Business Suite (Instagram och Facebook)"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#0866ff] text-white text-xs font-bold uppercase tracking-wider disabled:opacity-50">
-            <Briefcase className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Business Suite</span><span className="sm:hidden">Meta</span>
-          </button>
           {canShare ? (
             <button onClick={share} disabled={!images || nothing || busy}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-fuchsia-500 to-orange-400 text-white text-xs font-black uppercase tracking-wider disabled:opacity-50">

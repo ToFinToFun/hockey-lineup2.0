@@ -37,8 +37,9 @@ describe("matchrapport", () => {
   it("bildtext enligt mallen", () => {
     const text = buildCaption(stars, "Polar", ["#StålstadensSF", "#Gubbhockey"]);
     expect(text.split("\n")[0]).toBe("Kvällens Stars of the Game");
-    expect(text).toContain("⭐⭐⭐ Kalle (C) 2G 1A 3TP");
-    expect(buildCaption(stars, null, [], [false, true, true])).toContain("⭐⭐⭐ Kalle (C)\n");
+    expect(text).toContain("⭐⭐⭐ Kalle 2G 1A 3TP");
+    expect(buildCaption(stars, null, [], [false, true, true])).toContain("⭐⭐⭐ Kalle\n");
+    expect(buildReportData(match, stars, null, undefined, "Julmatchen").title).toBe("Julmatchen");
     expect(text).toContain("Dagens mål presenterades av Polar");
     expect(text.endsWith("#StålstadensSF #Gubbhockey")).toBe(true);
   });

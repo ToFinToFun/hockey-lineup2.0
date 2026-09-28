@@ -7,6 +7,13 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.26.2 – 2026-09-28
+
+- Matchrapport: egen rubrik på resultatbilden (t.ex. Match 1/5, Julmatchen; tomt = Slutresultat), sparas på matchen.
+- Stars of the Game: namnen står centrerade oavsett om statistiken visas; stjärnorna till vänster, statistiken till höger.
+- Bildtexten utan position. Målvakter visas som "0 GA" (inte Shutout).
+- Meta Business Suite-knappen borttagen (Dela gör samma sak).
+
 ## 2.26.1 – 2026-09-28
 
 - Matchrapport: Stars of the Game centrerade rad för rad, statistiken direkt efter namnet. Ingen position på bilden (finns kvar i listan och bildtexten).

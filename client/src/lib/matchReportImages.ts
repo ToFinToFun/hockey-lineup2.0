@@ -18,6 +18,8 @@ export interface ReportGoal {
 }
 
 export interface ReportData {
+  /** Rubrik på resultatbilden, t.ex. "SLUTRESULTAT", "MATCH 1/5" eller "JULMATCHEN" */
+  title?: string;
   whiteName: string;
   greenName: string;
   whiteScore: number;
@@ -170,7 +172,7 @@ export async function renderResultImage(d: ReportData): Promise<HTMLCanvasElemen
   ]);
   const [c, ctx] = canvas();
   backdrop(ctx, bg);
-  header(ctx, "SLUTRESULTAT", d.dateLine);
+  header(ctx, fit(ctx, (d.title?.trim() || "Slutresultat").toUpperCase(), IG_W - 120), d.dateLine);
 
   const whiteWon = d.whiteScore > d.greenScore;
   const greenWon = d.greenScore > d.whiteScore;
@@ -221,7 +223,8 @@ export async function renderResultImage(d: ReportData): Promise<HTMLCanvasElemen
   ctx.textBaseline = "alphabetic";
   ctx.letterSpacing = "0px";
 
-  // Stars of the Game – varje rad centrerad: stjärnor, namn och (valfritt) statistik
+  // Stars of the Game – namnet centrerat; stjärnor till vänster och statistik till höger,
+  // så att raderna står i linje oavsett om statistiken visas
   if (d.stars.length) {
     ctx.textAlign = "center";
     ctx.font = `600 24px ${BODY}`;
@@ -230,31 +233,25 @@ export async function renderResultImage(d: ReportData): Promise<HTMLCanvasElemen
     ctx.fillText("STARS OF THE GAME", IG_W / 2, 985);
     ctx.letterSpacing = "0px";
     const gold = "#fbbf24";
+    const starW = 30;
     d.stars.slice(0, 3).forEach((st, i) => {
       const y = 1032 + i * 56;
       const count = 3 - i;
-      const starW = 30;
-      const starsW = count * starW;
       const nameFont = `600 ${i === 0 ? 38 : 34}px ${BODY}`;
-      const statFont = `400 26px ${BODY}`;
-      ctx.font = statFont;
-      const statW = st.stat ? ctx.measureText(st.stat).width : 0;
       ctx.font = nameFont;
-      const maxName = IG_W - 160 - starsW - 20 - (statW ? statW + 22 : 0);
-      const name = fit(ctx, st.name, maxName);
+      const name = fit(ctx, st.name, IG_W - 2 * (3 * starW + 170));
       const nameW = ctx.measureText(name).width;
-      const total = starsW + 18 + nameW + (statW ? 22 + statW : 0);
-      let x = IG_W / 2 - total / 2;
-      for (let k = 0; k < count; k++) star(ctx, x + k * starW + starW / 2, y - 2, 13, gold);
-      x += starsW + 18;
+      const left = IG_W / 2 - nameW / 2;
+      for (let k = 0; k < count; k++) star(ctx, left - 18 - (k + 0.5) * starW, y - 2, 13, gold);
       ctx.textBaseline = "middle";
-      ctx.textAlign = "left";
+      ctx.textAlign = "center";
       ctx.fillStyle = "#ffffff";
-      ctx.fillText(name, x, y);
+      ctx.fillText(name, IG_W / 2, y);
       if (st.stat) {
-        ctx.font = statFont;
+        ctx.textAlign = "left";
+        ctx.font = `400 26px ${BODY}`;
         ctx.fillStyle = "rgba(255,255,255,0.65)";
-        ctx.fillText(st.stat, x + nameW + 22, y + 1);
+        ctx.fillText(st.stat, IG_W / 2 + nameW / 2 + 20, y + 1);
       }
       ctx.textBaseline = "alphabetic";
     });
