@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.37.1 – 2026-09-28
+
+- Stars of the Game-kort: stjärnskylten ligger i ramen ovanför fotot (fotorutan börjar lägre) så att den aldrig hamnar över ansiktet.
+- Stars of the Game-kort: märket i hörnet är laget spelaren spelade för i matchen (Vita/Gröna). Utan sparat kort visas städet stort på guldbakgrunden.
+
 ## 2.37.0 – 2026-09-28
 
 **Matchrapport – Stars of the Game-kort**

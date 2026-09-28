@@ -18,6 +18,8 @@ describe("Stars of the Game-kort", () => {
     expect(s.photo.zoom).toBe(1.4);
     expect(s.statsTitle).toBe("Vita 3–2 Gröna");
     expect(s.placeholderLogo).toBe(false);
+    expect(s.logo).toBe("white"); // Vita i matchen
+    expect(starCardSettings(null, c({ team: "green" }), 2, "x", false).logo).toBe("green");
     expect(starCardSettings(null, c(), 3, "x", false).placeholderLogo).toBe(true);
   });
 });

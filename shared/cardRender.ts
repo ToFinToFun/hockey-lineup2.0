@@ -650,7 +650,7 @@ function goldStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: numb
 /** Skylt med 3/2/1 guldstjärnor och "FIRST/SECOND/THIRD STAR" (Stars of the Game-kort). */
 function drawStarRibbon(ctx: CanvasRenderingContext2D, rank: 1 | 2 | 3, cx: number, top: number, c: RetroColors) {
   const count = 4 - rank;
-  const r = 26, gap = 10;
+  const r = 21, gap = 9;
   const starsW = count * r * 2 + (count - 1) * gap;
   const label = ["FIRST STAR", "SECOND STAR", "THIRD STAR"][rank - 1];
   ctx.font = `700 20px ${HEAD}`;
@@ -725,7 +725,10 @@ async function renderRetro({ settings: s, photo, mask, scale = 1 }: RenderInput)
   }
 
   // Fotoruta
-  const W = { x: 96, y: 96, w: CARD_W - 192, h: 646, r: 22, ch: 34 };
+  // Stjärnkort: fotorutan börjar längre ner så att stjärnskylten ligger i ramen
+  // ovanför fotot och aldrig över ansiktet. Nederkanten ligger kvar.
+  const photoTop = s.starRank ? 146 : 96;
+  const W = { x: 96, y: photoTop, w: CARD_W - 192, h: 742 - photoTop, r: 22, ch: 34 };
   // Ränderna ska bara synas i sidfälten – täck mitten med ramfärg under fotot
   ctx.fillStyle = c.panel;
   windowPath(ctx, W.x - 16, W.y - 16, W.w + 32, W.h + 32, W.r + 10, W.ch + 12);
@@ -762,8 +765,8 @@ async function renderRetro({ settings: s, photo, mask, scale = 1 }: RenderInput)
     const bg = env.createCanvas(Math.round(W.w), Math.round(W.h));
     paintBackdrop(bg.getContext("2d")!, W.w, W.h, skin);
     ctx.drawImage(bg, W.x, W.y, W.w, W.h);
-    // Runda klubbmärket i mitten (städet sitter redan i hörnet)
-    const big = resolveLogo("green", skin);
+    // Städet stort i mitten på guld (lagets märke sitter i hörnet)
+    const big = resolveLogo("anvil", skin);
     if (big) {
       ctx.save();
       ctx.globalAlpha = 0.9;
@@ -785,7 +788,7 @@ async function renderRetro({ settings: s, photo, mask, scale = 1 }: RenderInput)
   if (logo) await drawLogo(ctx, logo, W.x + W.w - 18, W.y + 30, logo.shape === "diamond" ? 176 : 150, c.paper, c.ink);
 
   // Stars of the Game: 1–3 guldstjärnor på en skylt i toppen av fotot
-  if (s.starRank) drawStarRibbon(ctx, s.starRank, CARD_W / 2, W.y + 20, c);
+  if (s.starRank) drawStarRibbon(ctx, s.starRank, CARD_W / 2, 34, c);
 
   // 3. Namnskylt, klubbrad, nummer och position
   const N = { x: 48, y: 762, w: 528, nameH: 80, subH: 46 };

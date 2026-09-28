@@ -44,7 +44,8 @@ export function starCardSettings(
   return {
     ...base,
     skin: "retro-guld",
-    logo: base.logo && base.logo !== "auto" ? base.logo : "anvil",
+    // Märket för laget spelaren spelade för i matchen
+    logo: c.team === "green" ? "green" : "white",
     starRank: rank,
     placeholderLogo: !saved,
     statsMode: "custom",
