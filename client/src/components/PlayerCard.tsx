@@ -510,54 +510,61 @@ export function DraggablePlayerCard({
                 )}
               </div>
               <PlayerStatsSection player={player} />
-              {/* Delete player */}
-              {onDelete && (
-                <div className="pt-1.5 border-t border-white/10">
-                  {!confirmDelete ? (
+              {/* Åtgärder: ta bort (med bekräftelse), ta ur uppställningen (direkt), stäng */}
+              <div className="pt-1.5 border-t border-white/10">
+                {!confirmDelete ? (
+                  <div className="flex gap-1">
+                    {onDelete && (
+                      <button
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
+                        className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded text-[11px] font-semibold text-white bg-red-600/70 hover:bg-red-600 border border-red-400/50 transition-all"
+                      >
+                        <Trash2 className="w-3 h-3" /> Ta bort
+                      </button>
+                    )}
+                    {onRemove && (
+                      <button
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => { e.stopPropagation(); onRemove(); setShowEditPanel(false); }}
+                        className="flex-1 py-1.5 rounded text-[11px] font-semibold text-amber-200 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/40 transition-all"
+                        title="Tillbaka till truppen"
+                      >
+                        Ta ur laget
+                      </button>
+                    )}
                     <button
                       onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setConfirmDelete(true);
-                      }}
-                      className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-medium text-red-400/70 hover:text-red-400 bg-red-500/5 hover:bg-red-500/15 border border-red-400/20 hover:border-red-400/40 transition-all"
+                      onClick={(e) => { e.stopPropagation(); setShowEditPanel(false); }}
+                      className="flex-1 py-1.5 rounded text-[11px] font-semibold text-white/70 bg-white/5 hover:bg-white/10 border border-white/15 transition-all"
                     >
-                      <Trash2 className="w-3 h-3" />
-                      Ta bort spelare
+                      Stäng
                     </button>
-                  ) : (
-                    <div className="flex flex-col gap-1.5">
-                      <p className="text-[10px] text-red-300 text-center font-medium">
-                        Är du säker på att ta bort {player.name}?
-                      </p>
-                      <div className="flex gap-1">
-                        <button
-                          onPointerDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDelete();
-                            setShowEditPanel(false);
-                            setConfirmDelete(false);
-                          }}
-                          className="flex-1 py-1.5 rounded text-xs font-bold text-white bg-red-500/30 border border-red-400/50 hover:bg-red-500/50 transition-all"
-                        >
-                          Ja, ta bort
-                        </button>
-                        <button
-                          onPointerDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setConfirmDelete(false);
-                          }}
-                          className="flex-1 py-1.5 rounded text-xs font-medium text-white/50 bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
-                        >
-                          Avbryt
-                        </button>
-                      </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    <p className="text-[10px] text-red-300 text-center font-medium">
+                      Ta bort {player.name} ur truppen? Det går inte att ångra.
+                    </p>
+                    <div className="flex gap-1">
+                      <button
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => { e.stopPropagation(); onDelete?.(); setShowEditPanel(false); setConfirmDelete(false); }}
+                        className="flex-1 py-1.5 rounded text-xs font-bold text-white bg-red-600 border border-red-400/60 hover:bg-red-500 transition-all"
+                      >
+                        Ja, ta bort
+                      </button>
+                      <button
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); }}
+                        className="flex-1 py-1.5 rounded text-xs font-medium text-white/60 bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
+                      >
+                        Avbryt
+                      </button>
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
             </div>
           </PortalDropdown>
       )}

@@ -80,3 +80,12 @@ describe("färgtoning", () => {
     expect(DEFAULT_SETTINGS.skin).toBe("retro-svart");
   });
 });
+
+describe("specialkort", () => {
+  it("guldstilen finns och har folieglans", () => {
+    const gold = skinById("retro-guld");
+    expect(gold.id).toBe("retro-guld");
+    expect(gold.foil).toBe(true);
+    expect(resolveLogo("auto", gold)?.id).toBe("anvil");
+  });
+});

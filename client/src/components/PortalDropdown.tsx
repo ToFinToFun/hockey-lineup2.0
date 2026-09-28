@@ -61,6 +61,8 @@ export function PortalDropdown({ anchorRef, open, onClose, children, solid = fal
       if (
         dropdownRef.current &&
         !dropdownRef.current.contains(e.target as Node) &&
+        // Lager som öppnas från panelen (t.ex. förstorad spelarbild) räknas som en del av den
+        !(e.target as Element | null)?.closest?.("[data-keep-open]") &&
         anchorRef.current &&
         !anchorRef.current.contains(e.target as Node)
       ) {

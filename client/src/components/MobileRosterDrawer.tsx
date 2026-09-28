@@ -951,43 +951,47 @@ export function MobileRosterDrawer({
 
               <PlayerStatsSection player={editingPlayer} />
 
-              {/* Delete player */}
-              {onDeletePlayer && (
-                <div className="pt-2 border-t border-white/10">
-                  {!confirmDelete ? (
+              {/* Åtgärder: ta bort (med bekräftelse) och stäng */}
+              <div className="pt-2 border-t border-white/10">
+                {!confirmDelete ? (
+                  <div className="flex gap-1.5">
+                    {onDeletePlayer && (
+                      <button
+                        onClick={() => setConfirmDelete(true)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold text-white bg-red-600/70 hover:bg-red-600 border border-red-400/50 transition-all"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Ta bort spelare
+                      </button>
+                    )}
                     <button
-                      onClick={() => setConfirmDelete(true)}
-                      className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-red-400/70 hover:text-red-400 bg-red-500/5 hover:bg-red-500/15 border border-red-400/20 hover:border-red-400/40 transition-all"
+                      onClick={handleCloseEdit}
+                      className="flex-1 py-2 rounded-lg text-xs font-semibold text-white/70 bg-white/5 hover:bg-white/10 border border-white/15 transition-all"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      Ta bort spelare
+                      Stäng
                     </button>
-                  ) : (
-                    <div className="flex flex-col gap-2">
-                      <p className="text-[10px] text-red-300 text-center font-medium">
-                        Är du säker på att ta bort {editingPlayer.name}?
-                      </p>
-                      <div className="flex gap-1.5">
-                        <button
-                          onClick={() => {
-                            onDeletePlayer(editingPlayer.id);
-                            handleCloseEdit();
-                          }}
-                          className="flex-1 py-2 rounded-lg text-xs font-bold bg-red-500/25 text-red-300 border border-red-400/50 hover:bg-red-500/40 transition-all"
-                        >
-                          Ja, ta bort
-                        </button>
-                        <button
-                          onClick={() => setConfirmDelete(false)}
-                          className="flex-1 py-2 rounded-lg text-xs font-bold bg-white/5 text-white/50 border border-white/10 hover:bg-white/10 transition-all"
-                        >
-                          Avbryt
-                        </button>
-                      </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-[10px] text-red-300 text-center font-medium">
+                      Ta bort {editingPlayer.name} ur truppen? Det går inte att ångra.
+                    </p>
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => { onDeletePlayer?.(editingPlayer.id); handleCloseEdit(); }}
+                        className="flex-1 py-2 rounded-lg text-xs font-bold bg-red-600 text-white border border-red-400/60 hover:bg-red-500 transition-all"
+                      >
+                        Ja, ta bort
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(false)}
+                        className="flex-1 py-2 rounded-lg text-xs font-bold bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition-all"
+                      >
+                        Avbryt
+                      </button>
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </>

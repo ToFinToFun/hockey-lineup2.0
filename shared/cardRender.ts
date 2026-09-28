@@ -786,5 +786,23 @@ async function renderRetro({ settings: s, photo, scale = 1 }: RenderInput): Prom
   wear(ctx, seed, 0.08);
   ctx.restore();
 
+  // 6. Specialkort: folieglans i två diagonala stråk över hela kortet
+  if (skin.foil) {
+    ctx.save();
+    roundRect(ctx, 2, 2, CARD_W - 4, CARD_H - 4, 34);
+    ctx.clip();
+    ctx.globalCompositeOperation = "screen";
+    const g = ctx.createLinearGradient(0, 0, CARD_W, CARD_H);
+    g.addColorStop(0.0, "rgba(255,230,160,0)");
+    g.addColorStop(0.28, "rgba(255,230,160,0.22)");
+    g.addColorStop(0.34, "rgba(255,255,255,0.05)");
+    g.addColorStop(0.62, "rgba(255,220,140,0)");
+    g.addColorStop(0.72, "rgba(255,236,180,0.18)");
+    g.addColorStop(1.0, "rgba(255,220,140,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, CARD_W, CARD_H);
+    ctx.restore();
+  }
+
   return canvas;
 }

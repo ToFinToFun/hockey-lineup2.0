@@ -44,6 +44,8 @@ export interface CardSkin {
   tint: { shadow: string; highlight: string; strength: number };
   /** Retro */
   retro?: RetroColors;
+  /** Specialkort: glansig foliekänsla över ramen */
+  foil?: boolean;
   /** Modern: ramens metallkänsla, detaljer och statistikruta */
   frame: string[];
   accent: string;
@@ -79,6 +81,13 @@ export const CARD_SKINS: CardSkin[] = [
     tint: { shadow: "#0d1a10", highlight: "#f1e9d6", strength: 0.28 },
     retro: { panel: "#161616", stripeA: PAPER, stripeB: "#3f8a4a", paper: PAPER, ink: INK, onPanel: PAPER },
     frame: [], accent: PAPER, panel: "", panelText: PAPER, background: "#161616",
+  },
+  {
+    // Specialkort för utmärkelser (t.ex. Säsongens spelare): svart och guld med folieglans
+    id: "retro-guld", name: "Guld ★", layout: "retro", logo: "anvil", foil: true,
+    tint: { shadow: "#140f05", highlight: "#f6e7bf", strength: 0.34 },
+    retro: { panel: "#141109", stripeA: "#e9cf86", stripeB: "#a8832f", paper: "#f1e4bf", ink: "#1a1408", onPanel: "#ecd592" },
+    frame: [], accent: "#e9cf86", panel: "", panelText: "#ecd592", background: "#141109",
   },
   {
     id: "gron", name: "Grön", layout: "modern", logo: "green",

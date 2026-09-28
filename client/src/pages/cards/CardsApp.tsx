@@ -135,15 +135,34 @@ export default function CardsApp() {
     return () => { cancelled = true; clearTimeout(t); };
   }, [settings, photo]);
 
-  // Dra i kortet för att flytta fotot
+  // Dra i kortet för att flytta fotot, nyp med två fingrar (eller scrolla) för att zooma
   const drag = useRef<{ x: number; y: number } | null>(null);
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ dist: number; zoom: number } | null>(null);
+  const dist = () => {
+    const [a, b] = [...pointers.current.values()];
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  };
   const onPointerDown = (e: React.PointerEvent) => {
     if (!photo) return;
-    drag.current = { x: e.clientX, y: e.clientY };
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.current.size === 2) {
+      pinch.current = { dist: dist(), zoom: settings.photo.zoom };
+      drag.current = null;
+    } else {
+      drag.current = { x: e.clientX, y: e.clientY };
+    }
   };
   const onPointerMove = (e: React.PointerEvent) => {
-    if (!drag.current || !photo || !canvasRef.current) return;
+    if (!photo || !canvasRef.current || !pointers.current.has(e.pointerId)) return;
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch.current && pointers.current.size >= 2) {
+      const zoom = Math.min(3, Math.max(1, pinch.current.zoom * (dist() / Math.max(1, pinch.current.dist))));
+      setSettings((s) => ({ ...s, photo: { ...s.photo, zoom } }));
+      return;
+    }
+    if (!drag.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
     const r = photoSourceRect(photo.width, photo.height, CARD_W - 40, 1050 - 40, settings.photo);
     const dx = ((e.clientX - drag.current.x) / rect.width) * (r.sw / photo.width) * (CARD_W / (CARD_W - 40));
@@ -151,7 +170,21 @@ export default function CardsApp() {
     drag.current = { x: e.clientX, y: e.clientY };
     setSettings((s) => ({ ...s, photo: { ...s.photo, x: Math.min(1, Math.max(0, s.photo.x - dx)), y: Math.min(1, Math.max(0, s.photo.y - dy)) } }));
   };
-  const onPointerUp = () => { drag.current = null; };
+  const onPointerUp = (e: React.PointerEvent) => {
+    pointers.current.delete(e.pointerId);
+    if (pointers.current.size < 2) pinch.current = null;
+    if (pointers.current.size === 1) {
+      const [p] = [...pointers.current.values()];
+      drag.current = { x: p.x, y: p.y };
+    } else if (pointers.current.size === 0) {
+      drag.current = null;
+    }
+  };
+  const onWheel = (e: React.WheelEvent) => {
+    if (!photo) return;
+    const zoom = Math.min(3, Math.max(1, settings.photo.zoom * (e.deltaY < 0 ? 1.06 : 1 / 1.06)));
+    update({ photo: { ...settings.photo, zoom } });
+  };
 
   const fileBase = () => `hockeykort-${(settings.name || "spelare").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-")}`;
   const exportBlob = async (type: "image/png" | "image/jpeg", scale = 1, quality = 0.9) => {
@@ -291,11 +324,12 @@ export default function CardsApp() {
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
               onPointerCancel={onPointerUp}
+              onWheel={onWheel}
               aria-label="Förhandsvisning av hockeykortet"
             />
             {loadingPhoto && <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-[18px]"><Loader2 className="animate-spin" /></div>}
           </div>
-          <p className="text-[10px] text-white/35 text-center">{photo ? "Dra i kortet för att flytta fotot." : "Ladda upp ett foto för att börja."}</p>
+          <p className="text-[10px] text-white/35 text-center">{photo ? "Dra för att flytta fotot, nyp med två fingrar (eller scrolla) för att zooma." : "Ladda upp ett foto för att börja."}</p>
           <div className="grid grid-cols-2 gap-2">
             <button onClick={() => fileRef.current?.click()} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 border border-white/10 text-sm">
               <Upload size={14} /> {photo ? "Byt foto" : "Ladda upp foto"}

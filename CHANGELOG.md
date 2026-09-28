@@ -7,6 +7,13 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.35.0 – 2026-09-28
+
+- Spelarkortet i Lineup: tryck på bilden för att se den stor, med Spara, Ladda upp ny, Ta bort och Stäng. Utan bild öppnas uppladdningen direkt.
+- Spelarkortet i Lineup: tre knappar i stället för en – röd Ta bort (med bekräftelse), Ta ur laget (direkt tillbaka till truppen, bara för placerade spelare) och Stäng.
+- Hockeykort: nyp med två fingrar för att zooma fotot direkt i kortet (scrolla på dator).
+- Hockeykort: specialkort "Guld ★" – svart och guld med folieglans, för utmärkelser.
+
 ## 2.34.1 – 2026-09-28
 
 - Hockeykort: nytt kort utan spelare är retro Svart; med spelare retro i spelarens lag (Grön/Vit), annars Svart.
