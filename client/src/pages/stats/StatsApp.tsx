@@ -6,14 +6,14 @@ import { useState, useMemo, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { IMAGES } from "@/lib/scoreConstants";
-import { ArrowLeft, BarChart3, Trophy, Award, Users, Shield, Settings, Loader2, Gauge } from "lucide-react";
+import { ArrowLeft, BarChart3, Trophy, Shield, Settings, Loader2, Gauge, X } from "lucide-react";
 import OverviewTab from "./OverviewTab";
 import LeadersTab from "./LeadersTab";
 import AwardsTab from "./AwardsTab";
-import PlayersTab from "./PlayersTab";
 import TeamsTab from "./TeamsTab";
 import PirTab from "./PirTab";
-import StatsAdminPanel from "./StatsAdminPanel";
+import StatsSettings from "./StatsSettings";
+import { PlayerProfileView } from "../players/PlayerProfile";
 
 // ─── Period helpers ─────────────────────────────────────────────────────────
 type PeriodPreset = "preseason" | "season" | "playoff" | "year" | "month" | "week" | "all";
@@ -51,11 +51,11 @@ const PERIOD_OPTIONS: { key: PeriodPreset; label: string }[] = [
   { key: "all", label: "Alla" },
 ];
 
+// Fyra flikar som får plats på en rad. Spelarprofilen öppnas från alla listor
+// (samma profil som på spelarsidan).
 const TABS = [
   { id: "overview", label: "Översikt", icon: BarChart3 },
-  { id: "leaders", label: "Poängligan", icon: Trophy },
-  { id: "awards", label: "Utmärkelser", icon: Award },
-  { id: "players", label: "Spelare", icon: Users },
+  { id: "leagues", label: "Ligor", icon: Trophy },
   { id: "teams", label: "Lag", icon: Shield },
   { id: "pir", label: "PIR", icon: Gauge },
 ] as const;
@@ -68,6 +68,8 @@ export default function StatsApp() {
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("season");
   const [showAdmin, setShowAdmin] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+  // Spelarregistret för att hitta rätt profil från namnet i listorna ("Namn #12" eller "Namn")
+  const { data: registry } = trpc.players.list.useQuery();
 
   // Swipe support for mobile (horizontal only, doesn't block vertical scroll)
   const touchStartX = useRef(0);
@@ -118,8 +120,17 @@ export default function StatsApp() {
 
   const handlePlayerClick = useCallback((name: string) => {
     setSelectedPlayer(name);
-    setActiveTab("players");
   }, []);
+  const profilePlayer = useMemo(() => {
+    if (!selectedPlayer || !registry) return null;
+    const label = selectedPlayer.trim().toLowerCase();
+    const bare = label.replace(/\s+#\d+$/, "");
+    return (
+      registry.find((p) => (p.number ? `${p.name} #${p.number}` : p.name).toLowerCase() === label) ??
+      registry.find((p) => p.name.toLowerCase() === bare) ??
+      null
+    );
+  }, [selectedPlayer, registry]);
 
   const isLoading = loadingStats || loadingAwards;
 
@@ -152,7 +163,7 @@ export default function StatsApp() {
             <button
               onClick={() => setShowAdmin(true)}
               className="text-[#687076] hover:text-[#0a7ea4] transition-colors p-2"
-              title="Inställningar"
+              title="Perioder"
             >
               <Settings size={18} />
             </button>
@@ -218,31 +229,21 @@ export default function StatsApp() {
                 onPlayerClick={handlePlayerClick}
               />
             )}
-            {activeTab === "leaders" && (
-              <LeadersTab
-                stats={seasonStats}
-                onPlayerClick={handlePlayerClick}
-                periodLabel={PERIOD_OPTIONS.find((p) => p.key === periodPreset)?.label ?? "Säsong"}
-                dateFilter={queryInput}
-              />
-            )}
-            {activeTab === "awards" && (
-              <AwardsTab
-                awards={awardsData}
-                onPlayerClick={handlePlayerClick}
-                periodLabel={PERIOD_OPTIONS.find((p) => p.key === periodPreset)?.label ?? "Säsong"}
-                periodPreset={periodPreset}
-              />
-            )}
-            {activeTab === "players" && (
-              <PlayersTab
-                stats={seasonStats}
-                pirData={pirData}
-                onPlayerClick={handlePlayerClick}
-                selectedPlayer={selectedPlayer}
-                onClearSelection={() => setSelectedPlayer(null)}
-                dateFilter={queryInput}
-              />
+            {activeTab === "leagues" && (
+              <div className="space-y-8">
+                <LeadersTab
+                  stats={seasonStats}
+                  onPlayerClick={handlePlayerClick}
+                  periodLabel={PERIOD_OPTIONS.find((p) => p.key === periodPreset)?.label ?? "Säsong"}
+                  dateFilter={queryInput}
+                />
+                <AwardsTab
+                  awards={awardsData}
+                  onPlayerClick={handlePlayerClick}
+                  periodLabel={PERIOD_OPTIONS.find((p) => p.key === periodPreset)?.label ?? "Säsong"}
+                  periodPreset={periodPreset}
+                />
+              </div>
             )}
             {activeTab === "pir" && <PirTab />}
             {activeTab === "teams" && (
@@ -256,11 +257,25 @@ export default function StatsApp() {
         )}
       </main>
 
-      {/* Admin panel */}
-      {showAdmin && (
-        <StatsAdminPanel
-          onClose={() => setShowAdmin(false)}
-        />
+      {/* Perioder */}
+      {showAdmin && <StatsSettings onClose={() => setShowAdmin(false)} />}
+
+      {/* Spelarprofil (samma som på spelarsidan) */}
+      {selectedPlayer && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setSelectedPlayer(null)}>
+          <div className="w-full sm:max-w-xl bg-[#161616] rounded-t-2xl sm:rounded-2xl border border-white/10 p-4 max-h-[92dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-end -mb-2">
+              <button onClick={() => setSelectedPlayer(null)} aria-label="Stäng" className="text-white/50 hover:text-white"><X size={18} /></button>
+            </div>
+            {profilePlayer ? (
+              <PlayerProfileView player={profilePlayer} all={registry ?? []} />
+            ) : (
+              <p className="text-sm text-white/50 py-6 text-center">
+                {registry ? `"${selectedPlayer}" finns inte i spelarregistret (gästspelare eller gammalt namn).` : "Laddar …"}
+              </p>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

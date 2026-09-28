@@ -388,35 +388,6 @@ export default function OverviewTab({ stats, pirData, onPlayerClick }: OverviewT
         )}
       </div>
 
-      {/* Goal type distribution */}
-      {stats.goalTypes && stats.goalTypes.length > 0 && (
-        <div className="bg-gradient-to-br from-[#1a1a1a] to-[#111] rounded-xl border border-[#2a2a2a] p-5">
-          <h3 className="text-[#ECEDEE] text-sm font-semibold mb-4 flex items-center gap-2">
-            <Target size={14} className="text-amber-400" />
-            Måltyper
-          </h3>
-          <div className="space-y-2">
-            {stats.goalTypes.map((gt: any) => {
-              const maxCount = stats.goalTypes[0]?.count ?? 1;
-              const pct = (gt.count / maxCount) * 100;
-              const label = gt.type === "even" ? "Lika styrka" : gt.type === "pp" ? "Powerplay" : gt.type === "sh" ? "Boxplay" : gt.type === "ps" ? "Straffslag" : gt.type === "en" ? "Tomt mål" : gt.type || "Okänd";
-              return (
-                <div key={gt.type} className="flex items-center gap-3">
-                  <span className="text-[#9BA1A6] text-xs w-24 text-right">{label}</span>
-                  <div className="flex-1 h-3 bg-[#0a0a0a] rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-amber-500/70 to-amber-500/30 transition-all duration-500"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  <span className="text-[#ECEDEE] text-xs font-bold w-8 text-right">{gt.count}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {/* Player records */}
       {(stats.playerRecordGoals || stats.playerRecordAssists || stats.playerRecordPoints) && (
         <div className="bg-gradient-to-br from-[#1a1a1a] to-[#111] rounded-xl border border-[#2a2a2a] p-5">

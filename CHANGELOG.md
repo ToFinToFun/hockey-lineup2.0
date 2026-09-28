@@ -7,6 +7,14 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.28.0 – 2026-09-28
+
+**Statistik – anpassad till hur appen ser ut nu (bara för styrelsen)**
+- Fyra flikar som får plats: Översikt, Ligor (poängliga, GWG, straff och utmärkelser), Lag och PIR.
+- Fliken Spelare borttagen: ett klick på en spelare var som helst öppnar samma spelarprofil som på spelarsidan (bild, form, rekord, kemi, matchlogg, PIR, jämförelse).
+- Inställningarna (kugghjulet) ändrar nu det som faktiskt används: datum för försäsong, säsong och slutspel. "Synlighet utan inloggning", "Visa PIR-rating" och "Minsta antal matcher" borttagna – de påverkade ingenting.
+- Översikten: sektionen Måltyper borttagen (bara Straff/Övrigt finns kvar och syns i Ligor).
+
 ## 2.27.2 – 2026-09-28
 
 - Spelarsidan: position är valfri ("– Ingen –"). Spelare utan position visade Målvakt i listan och gick inte att spara utan att välja en; nu sparas de som de är. Positionerna visar sitt namn i listan.
