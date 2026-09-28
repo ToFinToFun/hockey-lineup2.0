@@ -2,7 +2,7 @@
  * Stars of the Game (NHL-stil): tre stjärnor per match.
  *
  * Automatiskt urval:
- *  - Utespelare: mål 3 p, assist 2 p, matchvinnande mål +1, vinnande lag +1.
+ *  - Utespelare: mål 3 p, assist 2 p, vinnande lag +1 – matchvinnande mål (GWG) dubblar.
  *  - Målvakt: vinst +2, och färre insläppta ger mer (0 insläppta = hållen nolla).
  *    En målvakt som hållit nollan får alltid en stjärna.
  *  - Räcker inte poängen till tre fylls det på med slumpade spelare – samma
@@ -115,7 +115,9 @@ export function starCandidates(match: {
     if (c.position === "MV" && c.goalsAgainst !== null) {
       c.score = (won ? 2 : 0) + (c.goalsAgainst === 0 ? 10 : Math.max(0, 4 - c.goalsAgainst)) + c.goals * 3 + c.assists * 2;
     } else {
-      c.score = c.goals * 3 + c.assists * 2 + (c.gwg ? 1 : 0) + (won && (c.goals || c.assists) ? 1 : 0);
+      c.score = c.goals * 3 + c.assists * 2 + (won && (c.goals || c.assists) ? 1 : 0);
+      // Matchvinnande mål väger tungt: dubbla poängen
+      if (c.gwg) c.score *= 2;
     }
   }
   return [...byKey.values()].sort(
@@ -149,10 +151,16 @@ export function starStat(c: StarCandidate): string {
   return pts ? `${c.goals}G ${c.assists}A ${pts}TP` : "";
 }
 
+/** Statistik inklusive GWG, för bildtext och listor: "1G 2A 3TP GWG" */
+export function starStatWithGwg(c: StarCandidate): string {
+  const st = starStat(c);
+  return c.gwg ? `${st} GWG`.trim() : st;
+}
+
 /** "Jerry Paasovaara (VF) 2G 3A 5TP" – position och statistik kan väljas bort. */
 export function starLine(c: StarCandidate, opts: { position?: boolean; stats?: boolean } = {}): string {
   const pos = opts.position === false ? "" : starPositionLabel(c.position);
   const head = pos ? `${c.name} (${pos})` : c.name;
-  const stat = opts.stats === false ? "" : starStat(c);
+  const stat = opts.stats === false ? "" : starStatWithGwg(c);
   return stat ? `${head} ${stat}` : head;
 }

@@ -15,6 +15,8 @@ export interface ReportGoal {
   scorer?: string;
   assist?: string;
   penalty?: boolean;
+  /** Matchvinnande mål */
+  gwg?: boolean;
 }
 
 export interface ReportData {
@@ -27,7 +29,7 @@ export interface ReportData {
   dateLine: string; // "Tisdag 29/9"
   goals: ReportGoal[]; // i tidsordning, äldst först
   /** Stars of the Game, 1:a först: namn och statistik (tom = visas inte) */
-  stars: Array<{ name: string; stat: string }>;
+  stars: Array<{ name: string; stat: string; gwg?: boolean }>;
   /** Matchens sponsor ("presenteras av") */
   sponsor: { name: string; logo: string | null } | null;
   logoWhite: string;
@@ -136,9 +138,9 @@ function presentedBy(ctx: CanvasRenderingContext2D, sponsor: { name: string; img
   ctx.fillStyle = "rgba(255,255,255,0.45)";
   ctx.fillText("PRESENTERAS AV", IG_W / 2, y);
   ctx.letterSpacing = "0px";
-  const cy = y + 58;
+  const cy = y + 72;
   if (sponsor.img) {
-    const scale = Math.min(70 / sponsor.img.height, 380 / sponsor.img.width);
+    const scale = Math.min(96 / sponsor.img.height, 420 / sponsor.img.width);
     const w = sponsor.img.width * scale;
     const h = sponsor.img.height * scale;
     ctx.drawImage(sponsor.img, IG_W / 2 - w / 2, cy - h / 2, w, h);
@@ -176,31 +178,42 @@ export async function renderResultImage(d: ReportData): Promise<HTMLCanvasElemen
 
   const whiteWon = d.whiteScore > d.greenScore;
   const greenWon = d.greenScore > d.whiteScore;
-  const cy = 560;
-  logo(ctx, lw, 250, cy, 130, whiteWon ? WHITE : "rgba(226,232,240,0.35)");
-  logo(ctx, lg, IG_W - 250, cy, 130, greenWon ? GREEN : "rgba(52,211,153,0.35)");
+  // Logotyper ut mot kanterna, resultatet anpassas så att det aldrig krockar med dem
+  const cy = 480;
+  const logoR = 118;
+  const logoX = 175;
+  logo(ctx, lw, logoX, cy, logoR, whiteWon ? WHITE : "rgba(226,232,240,0.35)");
+  logo(ctx, lg, IG_W - logoX, cy, logoR, greenWon ? GREEN : "rgba(86,198,83,0.35)");
 
   ctx.textAlign = "center";
-  ctx.font = `700 46px ${HEAD}`;
+  ctx.font = `700 44px ${HEAD}`;
   ctx.letterSpacing = "6px";
   ctx.fillStyle = WHITE;
-  ctx.fillText(d.whiteName.toUpperCase(), 250, cy + 205);
+  ctx.fillText(d.whiteName.toUpperCase(), logoX, cy + logoR + 70);
   ctx.fillStyle = GREEN;
-  ctx.fillText(d.greenName.toUpperCase(), IG_W - 250, cy + 205);
+  ctx.fillText(d.greenName.toUpperCase(), IG_W - logoX, cy + logoR + 70);
   ctx.letterSpacing = "0px";
 
-  // Resultatet
-  ctx.font = `700 230px ${HEAD}`;
+  // Resultatet: så stort som ryms mellan loggorna (luft 28 px på var sida)
+  const room = IG_W - 2 * (logoX + logoR + 12 + 28);
+  const dashGap = 34;
+  let size = 230;
+  const widthAt = (px: number) => {
+    ctx.font = `700 ${px}px ${HEAD}`;
+    return ctx.measureText(String(d.whiteScore)).width + ctx.measureText(String(d.greenScore)).width + 2 * dashGap + px * 0.25;
+  };
+  while (size > 120 && widthAt(size) > room) size -= 6;
+  ctx.font = `700 ${size}px ${HEAD}`;
   ctx.textBaseline = "middle";
   ctx.fillStyle = whiteWon ? "#ffffff" : "rgba(255,255,255,0.55)";
   ctx.textAlign = "right";
-  ctx.fillText(String(d.whiteScore), IG_W / 2 - 34, cy + 4);
+  ctx.fillText(String(d.whiteScore), IG_W / 2 - dashGap, cy + 4);
   ctx.textAlign = "left";
   ctx.fillStyle = greenWon ? GREEN : "rgba(255,255,255,0.55)";
-  ctx.fillText(String(d.greenScore), IG_W / 2 + 34, cy + 4);
+  ctx.fillText(String(d.greenScore), IG_W / 2 + dashGap, cy + 4);
   ctx.textAlign = "center";
   ctx.fillStyle = "rgba(255,255,255,0.4)";
-  ctx.font = `700 110px ${HEAD}`;
+  ctx.font = `700 ${Math.round(size * 0.48)}px ${HEAD}`;
   ctx.fillText("–", IG_W / 2, cy);
   ctx.textBaseline = "alphabetic";
 
@@ -211,15 +224,15 @@ export async function renderResultImage(d: ReportData): Promise<HTMLCanvasElemen
   ctx.letterSpacing = "8px";
   const vw = ctx.measureText(verdict).width + 70;
   ctx.fillStyle = "rgba(0,0,0,0.45)";
-  roundRect(ctx, IG_W / 2 - vw / 2, 850, vw, 72, 36);
+  roundRect(ctx, IG_W / 2 - vw / 2, 712, vw, 72, 36);
   ctx.fill();
   ctx.strokeStyle = verdictColor;
   ctx.lineWidth = 2;
-  roundRect(ctx, IG_W / 2 - vw / 2, 850, vw, 72, 36);
+  roundRect(ctx, IG_W / 2 - vw / 2, 712, vw, 72, 36);
   ctx.stroke();
   ctx.fillStyle = verdictColor;
   ctx.textBaseline = "middle";
-  ctx.fillText(verdict, IG_W / 2 + 4, 887);
+  ctx.fillText(verdict, IG_W / 2 + 4, 749);
   ctx.textBaseline = "alphabetic";
   ctx.letterSpacing = "0px";
 
@@ -230,12 +243,12 @@ export async function renderResultImage(d: ReportData): Promise<HTMLCanvasElemen
     ctx.font = `600 24px ${BODY}`;
     ctx.letterSpacing = "5px";
     ctx.fillStyle = "rgba(255,255,255,0.5)";
-    ctx.fillText("STARS OF THE GAME", IG_W / 2, 985);
+    ctx.fillText("STARS OF THE GAME", IG_W / 2, 870);
     ctx.letterSpacing = "0px";
     const gold = "#fbbf24";
     const starW = 30;
     d.stars.slice(0, 3).forEach((st, i) => {
-      const y = 1032 + i * 56;
+      const y = 925 + i * 62;
       const count = 3 - i;
       const nameFont = `600 ${i === 0 ? 38 : 34}px ${BODY}`;
       ctx.font = nameFont;
@@ -247,17 +260,26 @@ export async function renderResultImage(d: ReportData): Promise<HTMLCanvasElemen
       ctx.textAlign = "center";
       ctx.fillStyle = "#ffffff";
       ctx.fillText(name, IG_W / 2, y);
+      let sx = IG_W / 2 + nameW / 2 + 20;
       if (st.stat) {
         ctx.textAlign = "left";
         ctx.font = `400 26px ${BODY}`;
         ctx.fillStyle = "rgba(255,255,255,0.65)";
-        ctx.fillText(st.stat, IG_W / 2 + nameW / 2 + 20, y + 1);
+        ctx.fillText(st.stat, sx, y + 1);
+        sx += ctx.measureText(st.stat).width + 12;
+      }
+      if (st.gwg) {
+        // Matchvinnande mål i guld
+        ctx.textAlign = "left";
+        ctx.font = `700 24px ${BODY}`;
+        ctx.fillStyle = gold;
+        ctx.fillText("GWG", sx, y + 1);
       }
       ctx.textBaseline = "alphabetic";
     });
   }
 
-  presentedBy(ctx, d.sponsor ? { name: d.sponsor.name, img: sp[0] ?? null } : null, 1232);
+  presentedBy(ctx, d.sponsor ? { name: d.sponsor.name, img: sp[0] ?? null } : null, 1135);
   return c;
 }
 
@@ -346,7 +368,17 @@ export async function renderGoalsImage(d: ReportData): Promise<HTMLCanvasElement
     ctx.textAlign = "left";
     ctx.fillStyle = "#ffffff";
     ctx.font = `600 ${Math.round(34 * s)}px ${BODY}`;
-    ctx.fillText(fit(ctx, `${goal.scorer || "Okänd målskytt"}${goal.penalty ? " (straff)" : ""}`, maxText), textX, hasAssist ? mid - 16 * s : mid);
+    ctx.font = `700 ${Math.round(20 * s)}px ${BODY}`;
+    const gwgW = goal.gwg ? ctx.measureText("GWG").width + 12 : 0;
+    ctx.font = `600 ${Math.round(34 * s)}px ${BODY}`;
+    const scorerText = fit(ctx, `${goal.scorer || "Okänd målskytt"}${goal.penalty ? " (straff)" : ""}`, maxText - gwgW);
+    ctx.fillText(scorerText, textX, hasAssist ? mid - 16 * s : mid);
+    if (goal.gwg) {
+      const gx = textX + ctx.measureText(scorerText).width + 12;
+      ctx.font = `700 ${Math.round(20 * s)}px ${BODY}`;
+      ctx.fillStyle = "#fbbf24";
+      ctx.fillText("GWG", gx, (hasAssist ? mid - 16 * s : mid) + 1);
+    }
     if (hasAssist) {
       ctx.font = `400 ${Math.round(24 * s)}px ${BODY}`;
       ctx.fillStyle = "rgba(255,255,255,0.55)";

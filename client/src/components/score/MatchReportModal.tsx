@@ -62,7 +62,13 @@ export function buildReportData(
   const greenName = cap(aWhite ? wrap.teamBName : wrap.teamAName, "Gröna");
 
   const chrono = [...(match.goalHistory ?? [])].reverse();
-  const goals: ReportGoal[] = chrono.map((g) => ({
+  // Matchvinnande mål: vinnarlagets mål nummer (förlorarens mål + 1)
+  const winner = match.teamWhiteScore > match.teamGreenScore ? "white" : match.teamGreenScore > match.teamWhiteScore ? "green" : null;
+  const loserScore = Math.min(match.teamWhiteScore, match.teamGreenScore);
+  let winnerCount = 0;
+  const gwgIndex = winner ? chrono.findIndex((g) => g.team === winner && winnerCount++ === loserScore) : -1;
+  const goals: ReportGoal[] = chrono.map((g, i) => ({
+    gwg: i === gwgIndex,
     team: g.team,
     time: g.timestamp?.match(/\d{2}:\d{2}/)?.[0],
     scorer: g.other === "Självmål" ? (g.scorer ? `${g.scorer} (självmål)` : "Självmål") : g.scorer,
@@ -77,7 +83,7 @@ export function buildReportData(
     dateLine: dateLine(match.matchEndTime ?? match.matchStartTime ?? match.createdAt),
     goals,
     // Bilden: bara namn och (valfritt) statistik – ingen position
-    stars: stars.map((c, i) => ({ name: c.name, stat: showStats[i] === false ? "" : starStat(c) })),
+    stars: stars.map((c, i) => ({ name: c.name, stat: showStats[i] === false ? "" : starStat(c), gwg: showStats[i] !== false && c.gwg })),
     sponsor,
     logoWhite: LOGO_WHITE, logoGreen: LOGO_GREEN, background: BACKGROUND,
   };

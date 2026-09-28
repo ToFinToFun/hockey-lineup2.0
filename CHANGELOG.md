@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.27.0 – 2026-09-28
+
+- Stars of the Game: matchvinnande mål (GWG) dubblar spelarens poäng i urvalet och visas som "GWG" (guld på bilden, "1G 2A 3TP GWG" i text och listor).
+- Målbilden markerar det matchvinnande målet med GWG.
+- Resultatbilden: loggorna längre ut och lite mindre, resultatet skalas så att det alltid ryms mellan dem (även tvåsiffrigt). Allt flyttat uppåt så att sponsorn får luft i nederkant, större sponsorlogga.
+
 ## 2.26.2 – 2026-09-28
 
 - Matchrapport: egen rubrik på resultatbilden (t.ex. Match 1/5, Julmatchen; tomt = Slutresultat), sparas på matchen.
