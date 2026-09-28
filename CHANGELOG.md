@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.27.1 – 2026-09-28
+
+- Målordningen är enhetlig: Score Tracker visar senaste målet överst under matchen; allt i efterhand (matchdetalj, redigering, matchrapport, statistik) visar första målet överst.
+- Rättning: redigera match visade målen med senaste överst men numrerade dem som om de var i tidsordning, och nya mål hamnade som första målet. Nu redigeras i tidsordning med ställning och klockslag per mål, nya mål läggs sist, och ordningen vänds rätt när det sparas.
+- Rättning: byta eller rensa målskytt/assist vid redigering behöll den tidigare spelaren (spelar-ID:t följde med). Nu sparas den nya spelaren, med ID när den väljs i listan.
+
 ## 2.27.0 – 2026-09-28
 
 - Stars of the Game: matchvinnande mål (GWG) dubblar spelarens poäng i urvalet och visas som "GWG" (guld på bilden, "1G 2A 3TP GWG" i text och listor).

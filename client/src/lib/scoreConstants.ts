@@ -7,6 +7,10 @@ export const IMAGES = {
 } as const;
 
 // Goal event type
+// ORDNING: goalHistory sparas och skickas alltid med SENASTE målet först (index 0),
+// precis som Score Tracker visar det under matchen. Vyer som visar matchen i
+// efterhand (detaljvy, redigering, matchrapport, statistik) vänder listan så att
+// FÖRSTA målet kommer överst – och vänder tillbaka innan de sparar.
 export interface GoalEvent {
   team: "white" | "green";
   timestamp: string;

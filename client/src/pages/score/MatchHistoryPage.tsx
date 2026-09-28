@@ -187,8 +187,9 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
     const match = matches?.find(m => m.id === matchId);
     if (!match) return;
     setEditName(match.name);
+    // Sparas nyast först (som Score Tracker visar). Här redigeras i tidsordning: första målet överst.
     const gh = (match.goalHistory as GoalEvent[] | null) ?? [];
-    setEditGoals(gh.map(g => ({ ...g })));
+    setEditGoals([...gh].reverse().map(g => ({ ...g })));
     setEditDialog(matchId);
   };
 
@@ -204,10 +205,15 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
   };
 
   // Goal editing helpers
-  const updateGoal = useCallback((idx: number, field: keyof GoalEvent, value: string) => {
+  const updateGoal = useCallback((idx: number, field: keyof GoalEvent, value: string, personId?: string) => {
     setEditGoals(prev => {
       const next = [...prev];
-      next[idx] = { ...next[idx], [field]: value };
+      const goal: GoalEvent & { scorerId?: string; assistId?: string } = { ...next[idx], [field]: value };
+      // Byts eller rensas målskytt/assist ska det gamla spelar-ID:t inte följa med
+      // (annars sparas den tidigare spelaren trots det nya namnet).
+      if (field === "scorer") goal.scorerId = value ? personId : undefined;
+      if (field === "assist") goal.assistId = value ? personId : undefined;
+      next[idx] = goal;
       return next;
     });
   }, []);
@@ -216,8 +222,9 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
     setEditGoals(prev => prev.filter((_, i) => i !== idx));
   }, []);
 
+  // Nytt mål läggs sist = senaste målet (samma klockslag som föregående mål)
   const addGoal = useCallback((team: "white" | "green") => {
-    setEditGoals(prev => [...prev, { team, timestamp: new Date().toISOString(), scorer: "", assist: "", other: "" }]);
+    setEditGoals(prev => [...prev, { team, timestamp: prev[prev.length - 1]?.timestamp ?? "", scorer: "", assist: "", other: "Övrigt" }]);
   }, []);
 
   // Drag and drop handlers
@@ -305,12 +312,12 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
     const otherTeamName = goalTeam === 'white' ? (isTeamAWhite ? teamBName : teamAName) : (isTeamAWhite ? teamAName : teamBName);
 
     const extractPlayers = (prefix: string) => {
-      const players: { name: string; number: string; displayName: string }[] = [];
+      const players: { id?: string; name: string; number: string; displayName: string }[] = [];
       for (const [slotId, p] of Object.entries(lineupEntries)) {
         if (!slotId.startsWith(prefix) || !p) continue;
         const pl = p as any;
         if (pl.name) {
-          players.push({ name: pl.name, number: pl.number || '', displayName: pl.number ? `${pl.name} #${pl.number}` : pl.name });
+          players.push({ id: pl.id, name: pl.name, number: pl.number || '', displayName: pl.number ? `${pl.name} #${pl.number}` : pl.name });
         }
       }
       return players.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
@@ -321,7 +328,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
 
     // Get all unique players from all matches for "Övriga spelare"
     const placedNames = new Set([...scoringPlayers, ...otherPlayers].map(p => p.displayName));
-    const allPlayerNames = new Set<string>();
+    const allPlayerNames = new Map<string, string | undefined>(); // visningsnamn → spelar-ID
     if (matches) {
       for (const m of matches) {
         const ml = (m as any).lineup;
@@ -330,7 +337,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
           if (p) {
             const pl = p as any;
             const dn = pl.number ? `${pl.name} #${pl.number}` : pl.name;
-            if (dn && !placedNames.has(dn)) allPlayerNames.add(dn);
+            if (dn && !placedNames.has(dn) && !allPlayerNames.get(dn)) allPlayerNames.set(dn, pl.id);
           }
         }
         // Also check players array
@@ -338,12 +345,12 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
         if (pArr && Array.isArray(pArr)) {
           for (const pl of pArr) {
             const dn = pl.number ? `${pl.name} #${pl.number}` : pl.name;
-            if (dn && !placedNames.has(dn)) allPlayerNames.add(dn);
+            if (dn && !placedNames.has(dn) && !allPlayerNames.get(dn)) allPlayerNames.set(dn, pl.id);
           }
         }
       }
     }
-    const allPlayers = Array.from(allPlayerNames).sort((a, b) => a.localeCompare(b, 'sv')).map(dn => ({ displayName: dn }));
+    const allPlayers = Array.from(allPlayerNames.entries()).sort((a, b) => a[0].localeCompare(b[0], 'sv')).map(([dn, id]) => ({ displayName: dn, id }));
 
     return { scoringPlayers, otherPlayers, allPlayers, scoringTeamName, otherTeamName };
   }, [editMatchLineup, matches]);
@@ -355,9 +362,9 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
     setPickerVisible(true);
   };
 
-  const selectPickerPlayer = (displayName: string) => {
+  const selectPickerPlayer = (displayName: string, id?: string) => {
     if (pickerGoalIdx !== null) {
-      updateGoal(pickerGoalIdx, pickerField, displayName);
+      updateGoal(pickerGoalIdx, pickerField, displayName, id);
     }
     setPickerVisible(false);
     setPickerSearch("");
@@ -375,7 +382,8 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
       name: updatedName,
       teamWhiteScore: whiteCount,
       teamGreenScore: greenCount,
-      goalHistory: editGoals,
+      // Tillbaka till lagringsordningen: nyast först
+      goalHistory: [...editGoals].reverse(),
     });
     setEditDialog(null);
     setSelectedMatch(null);
@@ -1114,13 +1122,17 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
             {/* Goal History Editor */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-[#9BA1A6] text-xs font-medium">Målhistorik</label>
+                <label className="text-[#9BA1A6] text-xs font-medium">Målhistorik <span className="text-white/35 font-normal">– första målet överst</span></label>
                 <span className="text-[#687076] text-[10px]">Dra för att ändra ordning</span>
               </div>
 
               <div ref={goalListRef} className="space-y-2" onTouchMove={handleTouchMove}>
                 {editGoals.map((goal, idx) => {
                   const isGreen = goal.team === "green";
+                  // Ställningen efter målet (listan är i tidsordning)
+                  const upTo = editGoals.slice(0, idx + 1);
+                  const runW = upTo.filter(g => g.team === "white").length;
+                  const runG = upTo.length - runW;
                   return (
                     <div
                       key={idx}
@@ -1148,7 +1160,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                         }`}>
                           {isGreen ? "GRÖNA" : "VITA"}
                         </span>
-                        <span className="text-[#687076] text-[10px] flex-1">Mål {idx + 1}</span>
+                        <span className="text-[#687076] text-[10px] flex-1">Mål {idx + 1} · {runW}–{runG}{goal.timestamp && /\d{2}:\d{2}/.test(goal.timestamp) ? ` · ${goal.timestamp.match(/\d{2}:\d{2}/)![0]}` : ""}</span>
                         <button
                           onClick={() => removeGoal(idx)}
                           className="text-[#EF4444]/60 hover:text-[#EF4444] transition-colors"
@@ -1290,7 +1302,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                         {data.scoringTeamName} (uppställning)
                       </div>
                       {filteredScoring.map((p, i) => (
-                        <button key={`s-${i}`} onClick={() => selectPickerPlayer(p.displayName)}
+                        <button key={`s-${i}`} onClick={() => selectPickerPlayer(p.displayName, p.id)}
                           className="w-full text-left px-4 py-3 border-b border-white/10 text-[#ECEDEE] hover:bg-white/[0.04] transition-colors flex items-center gap-2">
                           <span className="text-green-400 text-sm">✓</span>
                           <span>{p.displayName}</span>
@@ -1307,7 +1319,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                         {data.otherTeamName} (uppställning)
                       </div>
                       {filteredOther.map((p, i) => (
-                        <button key={`o-${i}`} onClick={() => selectPickerPlayer(p.displayName)}
+                        <button key={`o-${i}`} onClick={() => selectPickerPlayer(p.displayName, p.id)}
                           className="w-full text-left px-4 py-3 border-b border-white/10 text-[#ECEDEE] hover:bg-white/[0.04] transition-colors flex items-center gap-2">
                           <span className="text-green-400 text-sm">✓</span>
                           <span>{p.displayName}</span>
@@ -1321,7 +1333,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                         Övriga spelare
                       </div>
                       {filteredAll.map((p, i) => (
-                        <button key={`a-${i}`} onClick={() => selectPickerPlayer(p.displayName)}
+                        <button key={`a-${i}`} onClick={() => selectPickerPlayer(p.displayName, p.id)}
                           className="w-full text-left px-4 py-3 border-b border-white/10 text-[#9BA1A6] hover:bg-white/[0.04] transition-colors flex items-center gap-2">
                           <span>{p.displayName}</span>
                         </button>
