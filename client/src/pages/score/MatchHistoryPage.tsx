@@ -1,10 +1,11 @@
 import { trpc } from "@/lib/trpc";
 import { IMAGES } from "@/lib/scoreConstants";
 import { useSponsors, logoForName } from "@/lib/sponsors";
+import { POSITION_COLORS } from "@/lib/positionColors";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowLeft, Trash2, Trophy, Clock, Target, Search, Filter, X, Pencil, GripVertical, Plus, ChevronDown, Users, UserCheck, CheckSquare, Square, XCircle, Share2, Star } from "lucide-react";
-import MatchReportExport from "@/components/score/MatchReportExport";
+import { MatchReportModal } from "@/components/score/MatchReportModal";
 import { toast } from "sonner";
 
 interface MatchHistoryPageProps {
@@ -77,7 +78,6 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkDeleteDialog, setBulkDeleteDialog] = useState(false);
-  const [showExport, setShowExport] = useState(false);
   const [exportMatchData, setExportMatchData] = useState<any>(null);
 
   // Toggle selection
@@ -230,12 +230,15 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
   };
 
   const handleDragEnd = () => {
-    if (dragItem.current !== null && dragOverItem.current !== null && dragItem.current !== dragOverItem.current) {
+    // Läs positionerna nu – refs nollställs nedan innan React kör uppdateringen
+    const from = dragItem.current;
+    const to = dragOverItem.current;
+    if (from !== null && to !== null && from !== to) {
       setEditGoals(prev => {
+        if (from >= prev.length || to >= prev.length) return prev;
         const next = [...prev];
-        const draggedItem = next[dragItem.current!];
-        next.splice(dragItem.current!, 1);
-        next.splice(dragOverItem.current!, 0, draggedItem);
+        const [draggedItem] = next.splice(from, 1);
+        next.splice(to, 0, draggedItem);
         return next;
       });
     }
@@ -378,13 +381,13 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#1a1a1a]">
+    <div className="flex flex-col h-full bg-[#0a0a0a] text-white">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-[#3a3a3a]">
-        <button onClick={onBack} className="text-[#9BA1A6] hover:text-[#ECEDEE] transition-colors">
-          <ArrowLeft size={22} />
+      <div className="sticky top-0 z-20 flex items-center gap-3 px-4 py-3 border-b border-white/5 bg-[#0a0a0a]/95 backdrop-blur">
+        <button onClick={onBack} aria-label="Tillbaka" className="text-white/60 hover:text-white transition-colors">
+          <ArrowLeft size={20} />
         </button>
-        <h1 className="text-[#ECEDEE] font-bold text-lg">
+        <h1 className="text-white font-bold text-lg" style={{ fontFamily: "'Oswald', sans-serif" }}>
           {selectionMode ? `${selectedIds.size} valda` : "Matchhistorik"}
         </h1>
         <div className="ml-auto flex items-center gap-2">
@@ -416,7 +419,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
 
       {/* Selection toolbar */}
       {selectionMode && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-[#2a2a2a] border-b border-[#3a3a3a]">
+        <div className="flex items-center gap-2 px-4 py-2 bg-white/[0.04] border-b border-white/10">
           <button
             onClick={selectedIds.size === filteredMatches.length ? deselectAll : selectAll}
             className="text-[#0a7ea4] text-sm font-medium"
@@ -446,7 +449,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
               placeholder="Sök spelare, datum..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#2a2a2a] border border-[#3a3a3a] rounded-xl pl-9 pr-8 py-2 text-sm text-[#ECEDEE] placeholder-[#687076] focus:outline-none focus:border-[#0a7ea4]"
+              className="w-full bg-white/[0.04] border border-white/10 rounded-xl pl-9 pr-8 py-2 text-sm text-[#ECEDEE] placeholder-[#687076] focus:outline-none focus:border-[#0a7ea4]"
             />
             {searchQuery && (
               <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#687076]">
@@ -459,7 +462,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
             className={`p-2.5 rounded-xl border transition-colors ${
               hasActiveFilters
                 ? "bg-[#0a7ea4]/20 border-[#0a7ea4] text-[#0a7ea4]"
-                : "bg-[#2a2a2a] border-[#3a3a3a] text-[#9BA1A6]"
+                : "bg-white/[0.04] border-white/10 text-[#9BA1A6]"
             }`}
           >
             <Filter size={16} />
@@ -481,7 +484,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                   className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                     resultFilter === f.key
                       ? "bg-[#0a7ea4] text-white"
-                      : "bg-[#2a2a2a] text-[#9BA1A6] border border-[#3a3a3a]"
+                      : "bg-white/[0.04] text-[#9BA1A6] border border-white/10"
                   }`}
                 >
                   {f.label}
@@ -496,7 +499,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                   className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                     monthFilter === "all"
                       ? "bg-[#0a7ea4] text-white"
-                      : "bg-[#2a2a2a] text-[#9BA1A6] border border-[#3a3a3a]"
+                      : "bg-white/[0.04] text-[#9BA1A6] border border-white/10"
                   }`}
                 >
                   Alla månader
@@ -508,7 +511,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                       monthFilter === ym
                         ? "bg-[#0a7ea4] text-white"
-                        : "bg-[#2a2a2a] text-[#9BA1A6] border border-[#3a3a3a]"
+                        : "bg-white/[0.04] text-[#9BA1A6] border border-white/10"
                     }`}
                   >
                     {getMonthLabel(ym)}
@@ -548,7 +551,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                   const ids = (matches ?? []).filter(m => m.reviewStatus === "pending").map(m => m.id);
                   if (confirm(`Godkänna alla ${ids.length} väntande matcher?`)) reviewMutation.mutate({ ids, status: "approved" });
                 }}
-                className="text-xs px-3 py-1.5 rounded-full bg-[#22C55E]/20 border border-[#22C55E]/40 text-[#22C55E]"
+                className="text-xs px-3 py-1.5 rounded-full bg-[#34d399]/20 border border-[#34d399]/40 text-[#34d399]"
               >
                 Godkänn alla
               </button>
@@ -593,10 +596,10 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
               <button
                 key={match.id}
                 onClick={() => selectionMode ? toggleSelection(match.id) : setSelectedMatch(match.id)}
-                className={`w-full bg-[#2a2a2a] rounded-2xl p-4 border text-left active:opacity-80 transition-all ${
+                className={`w-full bg-white/[0.04] rounded-2xl p-4 border text-left active:opacity-80 transition-all ${
                   isSelected ? 'border-[#0a7ea4] bg-[#0a7ea4]/10'
                     : match.reviewStatus === "pending" ? 'border-amber-500/50'
-                    : 'border-[#3a3a3a]'
+                    : 'border-white/10'
                 } ${match.reviewStatus === "rejected" ? 'opacity-50' : ''}`}
               >
                 <div className="flex items-center justify-between mb-2">
@@ -623,7 +626,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                   ) : isWhiteWin ? (
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white font-medium">VITA VANN</span>
                   ) : (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#22C55E]/20 text-[#22C55E] font-medium">GRÖNA VANN</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#34d399]/20 text-[#34d399] font-medium">GRÖNA VANN</span>
                   )}
                 </div>
                 <div className="flex items-center justify-center gap-6">
@@ -635,7 +638,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                   </div>
                   <span className="text-[#687076] text-lg">-</span>
                   <div className="flex items-center gap-2">
-                    <span className={`text-2xl font-bold ${isGreenWin ? 'text-[#22C55E]' : 'text-[#9BA1A6]'}`}>
+                    <span className={`text-2xl font-bold ${isGreenWin ? 'text-[#34d399]' : 'text-[#9BA1A6]'}`}>
                       {match.teamGreenScore}
                     </span>
                     <img src={IMAGES.teamGreenLogo} alt="Gröna" className="w-8 h-8 object-contain" />
@@ -665,7 +668,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
 
       {/* Match Detail Modal */}
       <Dialog open={selectedMatch !== null} onOpenChange={(open) => { if (!open) setSelectedMatch(null); }}>
-        <DialogContent className="bg-[#1a1a1a] border-[#3a3a3a] max-w-sm max-h-[85vh] overflow-y-auto">
+        <DialogContent className="bg-[#161616] border-white/10 max-w-sm max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-[#ECEDEE] text-center">
               {selectedMatchData?.name}
@@ -693,14 +696,14 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                 <span className="text-[#687076] text-2xl">-</span>
                 <div className="flex flex-col items-center gap-1">
                   <img src={IMAGES.teamGreenLogo} alt="Gröna" className="w-12 h-12 object-contain" />
-                  <span className="text-3xl font-bold text-[#22C55E]">{selectedMatchData.teamGreenScore}</span>
+                  <span className="text-3xl font-bold text-[#34d399]">{selectedMatchData.teamGreenScore}</span>
                   <span className="text-[#9BA1A6] text-xs">GRÖNA</span>
                 </div>
               </div>
 
               {/* Goal History */}
               {goalHistory.length > 0 && (
-                <div className="bg-[#2a2a2a] rounded-xl p-3 border border-[#3a3a3a]">
+                <div className="bg-white/[0.04] rounded-xl p-3 border border-white/10">
                   <h3 className="text-[#ECEDEE] font-semibold text-sm mb-2 flex items-center gap-1.5">
                     <Target size={14} /> Målhistorik
                   </h3>
@@ -743,7 +746,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                           >
                             <span className="text-[#9BA1A6] text-xs w-8 shrink-0">{ws}-{gs}</span>
                             <div className="flex-1 min-w-0">
-                              <span className={isGreen ? "text-[#22C55E]" : "text-white"}>
+                              <span className={isGreen ? "text-[#34d399]" : "text-white"}>
                                 {goal.scorer || (isGreen ? "GRÖNA" : "VITA")}
                               </span>
                               {goal.assist && (
@@ -837,7 +840,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                         <Trophy size={20} className="text-[#F59E0B]" />
                       </div>
                       <div className="flex-1">
-                        <p className={`font-bold text-sm ${isGreen ? 'text-[#22C55E]' : 'text-white'}`}>{mvpName}</p>
+                        <p className={`font-bold text-sm ${isGreen ? 'text-[#34d399]' : 'text-white'}`}>{mvpName}</p>
                         <div className="flex items-center gap-2 text-xs text-[#9BA1A6]">
                           <span className="text-[#F59E0B] font-bold">{mvpStats.points} poäng</span>
                           <span>({mvpStats.goals} mål, {mvpStats.assists} assist)</span>
@@ -849,7 +852,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                     {sorted.length > 1 && (
                       <div className="mt-2 pt-2 border-t border-[#F59E0B]/20 flex flex-wrap gap-2">
                         {sorted.slice(1, 4).map(([name, s], i) => (
-                          <span key={i} className="text-[10px] text-[#9BA1A6] bg-[#1a1a1a]/50 px-2 py-0.5 rounded">
+                          <span key={i} className="text-[10px] text-[#9BA1A6] bg-[#111]/50 px-2 py-0.5 rounded">
                             {i + 2}. {name} <span className="text-[#F59E0B]">{s.points}p</span> ({s.goals}m {s.assists}a)
                           </span>
                         ))}
@@ -860,7 +863,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
               })()}
 
               {/* Match Info */}
-              <div className="bg-[#2a2a2a] rounded-xl p-3 border border-[#3a3a3a]">
+              <div className="bg-white/[0.04] rounded-xl p-3 border border-white/10">
                 <h3 className="text-[#ECEDEE] font-semibold text-sm mb-2 flex items-center gap-1.5">
                   <Clock size={14} /> Matchinfo
                 </h3>
@@ -934,9 +937,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
 
                 if (whitePlayers.length === 0 && greenPlayers.length === 0) return null;
 
-                const posColors: Record<string, string> = {
-                  MV: '#F59E0B', LW: '#22C55E', RW: '#22C55E', C: '#EF4444', B: '#3B82F6', RES: '#9BA1A6'
-                };
+                const posColors = POSITION_COLORS; // samma färger som i Lineup
 
                 const renderTeam = (players: typeof whitePlayers, teamLabel: string, color: string) => (
                   <div>
@@ -971,21 +972,21 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                 const greenAssists = greenPlayers.reduce((s, p) => s + p.assists, 0);
 
                 return (
-                  <div className="bg-[#2a2a2a] rounded-xl p-3 border border-[#3a3a3a]">
+                  <div className="bg-white/[0.04] rounded-xl p-3 border border-white/10">
                     <h3 className="text-[#ECEDEE] font-semibold text-sm mb-2 flex items-center gap-1.5">
                       <Users size={14} /> Laguppställning & Prestationer
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
                       {renderTeam(whitePlayers, whiteTeamName, '#ECEDEE')}
-                      {renderTeam(greenPlayers, greenTeamName, '#22C55E')}
+                      {renderTeam(greenPlayers, greenTeamName, '#34d399')}
                     </div>
                     {/* Team summary */}
-                    <div className="mt-3 pt-2 border-t border-[#3a3a3a] grid grid-cols-2 gap-3">
+                    <div className="mt-3 pt-2 border-t border-white/10 grid grid-cols-2 gap-3">
                       <div className="text-[10px] text-[#9BA1A6]">
                         <span className="text-white font-semibold">{whiteGoals}</span> mål, <span className="text-white font-semibold">{whiteAssists}</span> assist
                       </div>
                       <div className="text-[10px] text-[#9BA1A6]">
-                        <span className="text-[#22C55E] font-semibold">{greenGoals}</span> mål, <span className="text-[#22C55E] font-semibold">{greenAssists}</span> assist
+                        <span className="text-[#34d399] font-semibold">{greenGoals}</span> mål, <span className="text-[#34d399] font-semibold">{greenAssists}</span> assist
                       </div>
                     </div>
                   </div>
@@ -999,14 +1000,11 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                   setSelectedMatch(null);
                   // Delay export open until Dialog close animation completes
                   // Radix Dialog needs ~300ms to fully unmount and release event handlers
-                  setTimeout(() => {
-                    setExportMatchData(matchData);
-                    setShowExport(true);
-                  }, 350);
+                  setTimeout(() => setExportMatchData(matchData), 350);
                 }}
-                className="w-full flex items-center justify-center gap-2 bg-[#2a2a2a] border border-[#22C55E]/30 text-[#22C55E] py-2.5 rounded-xl text-sm font-medium hover:bg-[#22C55E]/10 transition-colors"
+                className="w-full flex items-center justify-center gap-2 bg-white/[0.04] border border-[#34d399]/30 text-[#34d399] py-2.5 rounded-xl text-sm font-medium hover:bg-[#34d399]/10 transition-colors"
               >
-                <Share2 size={14} /> Exportera matchrapport
+                <Share2 size={14} /> Matchrapport för Instagram
               </button>
 
               {/* Granskning */}
@@ -1021,7 +1019,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                     <button
                       onClick={() => reviewMutation.mutate({ ids: [selectedMatchData.id], status: "approved" })}
                       disabled={reviewMutation.isPending}
-                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#22C55E]/20 border border-[#22C55E]/40 text-[#22C55E] disabled:opacity-50"
+                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#34d399]/20 border border-[#34d399]/40 text-[#34d399] disabled:opacity-50"
                     >
                       Godkänn
                     </button>
@@ -1039,9 +1037,10 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
               ) : (
                 <button
                   onClick={() => { if (confirm("Avvisa matchen? Den tas bort ur statistiken men finns kvar här.")) reviewMutation.mutate({ ids: [selectedMatchData.id], status: "rejected" }); }}
-                  className="w-full text-[#687076] text-xs py-1 hover:text-[#EF4444]"
+                  disabled={reviewMutation.isPending}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium bg-white/[0.04] border border-amber-500/35 text-amber-300 hover:bg-amber-500/10 transition-colors disabled:opacity-50"
                 >
-                  Avvisa från statistiken
+                  <XCircle size={14} /> Avvisa från statistiken
                 </button>
               )}
 
@@ -1051,7 +1050,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                   onClick={() => {
                     openEditDialog(selectedMatchData.id);
                   }}
-                  className="flex-1 flex items-center justify-center gap-2 bg-[#2a2a2a] border border-[#0a7ea4]/30 text-[#0a7ea4] py-2.5 rounded-xl text-sm font-medium hover:bg-[#0a7ea4]/10 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 bg-white/[0.04] border border-[#0a7ea4]/30 text-[#0a7ea4] py-2.5 rounded-xl text-sm font-medium hover:bg-[#0a7ea4]/10 transition-colors"
                 >
                   <Pencil size={14} /> Redigera
                 </button>
@@ -1059,7 +1058,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                   onClick={() => {
                     setPasswordDialog({ action: "delete", matchId: selectedMatchData.id });
                   }}
-                  className="flex-1 flex items-center justify-center gap-2 bg-[#2a2a2a] border border-[#EF4444]/30 text-[#EF4444] py-2.5 rounded-xl text-sm font-medium hover:bg-[#EF4444]/10 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 bg-white/[0.04] border border-[#EF4444]/30 text-[#EF4444] py-2.5 rounded-xl text-sm font-medium hover:bg-[#EF4444]/10 transition-colors"
                 >
                   <Trash2 size={14} /> Ta bort
                 </button>
@@ -1071,7 +1070,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
 
       {/* Bekräfta radering */}
       <Dialog open={passwordDialog !== null} onOpenChange={(open) => { if (!open) setPasswordDialog(null); }}>
-        <DialogContent className="bg-[#2a2a2a] border-[#3a3a3a] max-w-xs">
+        <DialogContent className="bg-[#161616] border-white/10 max-w-xs">
           <DialogHeader>
             <DialogTitle className="text-[#ECEDEE] text-center">
               {passwordDialog?.action === "delete" ? "Ta bort match" : "Redigera match"}
@@ -1083,7 +1082,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
           <div className="flex gap-3 mt-1">
             <button
               onClick={() => setPasswordDialog(null)}
-              className="flex-1 bg-[#1a1a1a] text-[#ECEDEE] py-3 rounded-full font-semibold border border-[#444444]"
+              className="flex-1 bg-[#111] text-[#ECEDEE] py-3 rounded-full font-semibold border border-[#444444]"
             >
               Avbryt
             </button>
@@ -1101,7 +1100,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
 
       {/* Bulk Delete Dialog */}
       <Dialog open={bulkDeleteDialog} onOpenChange={(open) => { if (!open) setBulkDeleteDialog(false); }}>
-        <DialogContent className="bg-[#2a2a2a] border-[#3a3a3a] max-w-xs">
+        <DialogContent className="bg-[#161616] border-white/10 max-w-xs">
           <DialogHeader>
             <DialogTitle className="text-[#ECEDEE] text-center">Ta bort {selectedIds.size} matcher</DialogTitle>
           </DialogHeader>
@@ -1111,7 +1110,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
           <div className="flex gap-3 mt-1">
             <button
               onClick={() => setBulkDeleteDialog(false)}
-              className="flex-1 bg-[#1a1a1a] text-[#ECEDEE] py-3 rounded-full font-semibold border border-[#444444]"
+              className="flex-1 bg-[#111] text-[#ECEDEE] py-3 rounded-full font-semibold border border-[#444444]"
             >
               Avbryt
             </button>
@@ -1128,7 +1127,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
 
       {/* Edit Dialog */}
       <Dialog open={editDialog !== null} onOpenChange={(open) => { if (!open) setEditDialog(null); }}>
-        <DialogContent className="bg-[#2a2a2a] border-[#3a3a3a] max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-[#161616] border-white/10 max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-[#ECEDEE] text-center">Redigera match</DialogTitle>
           </DialogHeader>
@@ -1136,7 +1135,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
             {/* Match name - score suffix auto-updates */}
             <div>
               <label className="text-[#9BA1A6] text-xs font-medium block mb-1">Matchnamn</label>
-              <div className="w-full bg-[#1a1a1a] border border-[#3a3a3a] rounded-xl px-4 py-2.5 text-[#ECEDEE] text-sm">
+              <div className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-[#ECEDEE] text-sm">
                 {(() => {
                   const w = editGoals.filter(g => g.team === 'white').length;
                   const gr = editGoals.filter(g => g.team === 'green').length;
@@ -1158,7 +1157,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
               <div className="flex-1">
                 <label className="text-[#9BA1A6] text-xs font-medium block mb-1 text-center">Gröna</label>
                 <div className="flex items-center justify-center">
-                  <span className="text-2xl font-bold text-[#22C55E]">{editGoals.filter(g => g.team === 'green').length}</span>
+                  <span className="text-2xl font-bold text-[#34d399]">{editGoals.filter(g => g.team === 'green').length}</span>
                 </div>
               </div>
             </div>
@@ -1188,7 +1187,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                         draggingIdx === idx
                           ? "opacity-50 border-[#0a7ea4] bg-[#0a7ea4]/10"
                           : isGreen
-                            ? "border-[#22C55E]/30 bg-[#22C55E]/5"
+                            ? "border-[#34d399]/30 bg-[#34d399]/5"
                             : "border-white/10 bg-white/5"
                       }`}
                     >
@@ -1196,7 +1195,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                       <div className="flex items-center gap-2 mb-2">
                         <GripVertical size={14} className="text-[#687076] cursor-grab shrink-0" />
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          isGreen ? "bg-[#22C55E]/20 text-[#22C55E]" : "bg-white/10 text-white"
+                          isGreen ? "bg-[#34d399]/20 text-[#34d399]" : "bg-white/10 text-white"
                         }`}>
                           {isGreen ? "GRÖNA" : "VITA"}
                         </span>
@@ -1214,7 +1213,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                         <button
                           type="button"
                           onClick={() => openPicker(idx, "scorer")}
-                          className="w-full bg-[#1a1a1a] border border-[#3a3a3a] rounded-lg px-3 py-2 text-xs outline-none text-left flex items-center justify-between hover:border-[#0a7ea4] transition-colors"
+                          className="w-full bg-[#111] border border-white/10 rounded-lg px-3 py-2 text-xs outline-none text-left flex items-center justify-between hover:border-[#0a7ea4] transition-colors"
                         >
                           <span className={goal.scorer ? "text-[#ECEDEE]" : "text-[#687076]"}>
                             {goal.scorer || "Välj målskytt..."}
@@ -1228,7 +1227,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                         <button
                           type="button"
                           onClick={() => openPicker(idx, "assist")}
-                          className="w-full bg-[#1a1a1a] border border-[#3a3a3a] rounded-lg px-3 py-2 text-xs outline-none text-left flex items-center justify-between hover:border-[#0a7ea4] transition-colors"
+                          className="w-full bg-[#111] border border-white/10 rounded-lg px-3 py-2 text-xs outline-none text-left flex items-center justify-between hover:border-[#0a7ea4] transition-colors"
                         >
                           <span className={goal.assist ? "text-[#ECEDEE]" : "text-[#687076]"}>
                             {goal.assist || "Välj assist..."}
@@ -1248,7 +1247,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                               className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors ${
                                 goal.other === type
                                   ? "bg-[#0a7ea4] text-white"
-                                  : "bg-[#1a1a1a] text-[#9BA1A6] border border-[#3a3a3a]"
+                                  : "bg-[#111] text-[#9BA1A6] border border-white/10"
                               }`}
                             >
                               {type}
@@ -1271,7 +1270,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                 </button>
                 <button
                   onClick={() => addGoal("green")}
-                  className="flex-1 flex items-center justify-center gap-1 bg-[#22C55E]/5 border border-[#22C55E]/20 text-[#22C55E]/70 py-2 rounded-xl text-xs font-medium hover:bg-[#22C55E]/10 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1 bg-[#34d399]/5 border border-[#34d399]/20 text-[#34d399]/70 py-2 rounded-xl text-xs font-medium hover:bg-[#34d399]/10 transition-colors"
                 >
                   <Plus size={12} /> Gröna mål
                 </button>
@@ -1282,7 +1281,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
             <div className="flex gap-3">
               <button
                 onClick={() => setEditDialog(null)}
-                className="flex-1 bg-[#1a1a1a] text-[#ECEDEE] py-3 rounded-full font-semibold border border-[#444444]"
+                className="flex-1 bg-[#111] text-[#ECEDEE] py-3 rounded-full font-semibold border border-[#444444]"
               >
                 Avbryt
               </button>
@@ -1300,7 +1299,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
 
       {/* Player Picker Dialog for Edit Mode */}
       <Dialog open={pickerVisible} onOpenChange={setPickerVisible}>
-        <DialogContent className="bg-[#1a1a1a] border-[#3a3a3a] max-w-sm max-h-[80vh] flex flex-col" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <DialogContent className="bg-[#161616] border-white/10 max-w-sm max-h-[80vh] flex flex-col" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle className="text-[#ECEDEE]">
               {pickerField === "scorer" ? "Välj målskytt" : "Välj assist"}
@@ -1311,7 +1310,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
             placeholder="Sök spelare... (eller lägg till)"
             value={pickerSearch}
             onChange={(e) => setPickerSearch(e.target.value)}
-            className="w-full bg-[#2a2a2a] border border-[#3a3a3a] rounded-2xl px-4 py-3 text-[#ECEDEE] placeholder-[#9BA1A6] outline-none focus:border-[#0a7ea4]"
+            className="w-full bg-white/[0.04] border border-white/10 rounded-2xl px-4 py-3 text-[#ECEDEE] placeholder-[#9BA1A6] outline-none focus:border-[#0a7ea4]"
           />
           {pickerSearch && (
             <button onClick={() => selectPickerPlayer(pickerSearch)}
@@ -1343,7 +1342,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                       </div>
                       {filteredScoring.map((p, i) => (
                         <button key={`s-${i}`} onClick={() => selectPickerPlayer(p.displayName)}
-                          className="w-full text-left px-4 py-3 border-b border-[#3a3a3a] text-[#ECEDEE] hover:bg-[#2a2a2a] transition-colors flex items-center gap-2">
+                          className="w-full text-left px-4 py-3 border-b border-white/10 text-[#ECEDEE] hover:bg-white/[0.04] transition-colors flex items-center gap-2">
                           <span className="text-green-400 text-sm">✓</span>
                           <span>{p.displayName}</span>
                         </button>
@@ -1360,7 +1359,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                       </div>
                       {filteredOther.map((p, i) => (
                         <button key={`o-${i}`} onClick={() => selectPickerPlayer(p.displayName)}
-                          className="w-full text-left px-4 py-3 border-b border-[#3a3a3a] text-[#ECEDEE] hover:bg-[#2a2a2a] transition-colors flex items-center gap-2">
+                          className="w-full text-left px-4 py-3 border-b border-white/10 text-[#ECEDEE] hover:bg-white/[0.04] transition-colors flex items-center gap-2">
                           <span className="text-green-400 text-sm">✓</span>
                           <span>{p.displayName}</span>
                         </button>
@@ -1374,7 +1373,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                       </div>
                       {filteredAll.map((p, i) => (
                         <button key={`a-${i}`} onClick={() => selectPickerPlayer(p.displayName)}
-                          className="w-full text-left px-4 py-3 border-b border-[#3a3a3a] text-[#9BA1A6] hover:bg-[#2a2a2a] transition-colors flex items-center gap-2">
+                          className="w-full text-left px-4 py-3 border-b border-white/10 text-[#9BA1A6] hover:bg-white/[0.04] transition-colors flex items-center gap-2">
                           <span>{p.displayName}</span>
                         </button>
                       ))}
@@ -1388,31 +1387,28 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
             })()}
           </div>
           <button onClick={() => { setPickerVisible(false); setPickerSearch(""); }}
-            className="w-full bg-[#2a2a2a] border border-[#3a3a3a] text-[#ECEDEE] py-3 rounded-2xl font-semibold mt-2">
+            className="w-full bg-white/[0.04] border border-white/10 text-[#ECEDEE] py-3 rounded-2xl font-semibold mt-2">
             Avbryt
           </button>
         </DialogContent>
       </Dialog>
 
-      {/* Match Report Export */}
+      {/* Matchrapport för Instagram */}
       {exportMatchData && (
-        <MatchReportExport
+        <MatchReportModal
           match={{
             name: exportMatchData.name,
             teamWhiteScore: exportMatchData.teamWhiteScore,
             teamGreenScore: exportMatchData.teamGreenScore,
             goalHistory: (exportMatchData.goalHistory as GoalEvent[]) ?? [],
-            matchStartTime: exportMatchData.matchStartTime ? String(exportMatchData.matchStartTime) : undefined,
+            matchEndTime: exportMatchData.matchEndTime ? String(exportMatchData.matchEndTime) : null,
+            matchStartTime: exportMatchData.matchStartTime ? String(exportMatchData.matchStartTime) : null,
             createdAt: String(exportMatchData.createdAt),
-            lineup: exportMatchData.lineup,
+            lineup: exportMatchData.lineup as { teamAName?: string; teamBName?: string } | null,
           }}
-          open={showExport}
-          onOpenChange={(open) => {
-            setShowExport(open);
-            if (!open) {
-              setSelectedMatch(exportMatchData.id);
-              setExportMatchData(null);
-            }
+          onClose={() => {
+            setSelectedMatch(exportMatchData.id);
+            setExportMatchData(null);
           }}
         />
       )}

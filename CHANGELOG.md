@@ -7,6 +7,15 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.25.0 – 2026-09-28
+
+**Matchhistorik**
+- Rättning: appen kraschade ("Cannot read properties of undefined (reading 'team')") när man drog om ordningen på målen vid redigering.
+- Ny matchrapport för Instagram i stället för den gamla exporten (A4 borttaget): två bilder i 4:5 (1080×1350) som karusell – Resultat (logotyper, stort resultat, vinnare, matchens poängbäst, sponsorer) och Målen (alla mål i tidsordning med ställning, målskytt, assist, straff och klockslag; två kolumner vid fler än 12 mål). Välj vilka bilder som ska med, redigera bildtexten, Dela öppnar telefonens delningsmeny (texten kopieras samtidigt), annars laddas bilderna ned.
+- Samma positionsfärger som i Lineup (även i spelarprofilen och statistiken).
+- "Avvisa från statistiken" är en riktig knapp.
+- Utseende i linje med övriga appen: mörk bakgrund, rubrik i Oswald, kort och dialoger i samma stil, Gröna i samma gröna.
+
 ## 2.24.1 – 2026-09-28
 
 - Nyhet till laget.se: Avbryt, Spara bild och Kopiera till vänster, Publicera/Tidsinställ/Uppdatera till höger på samma rad.

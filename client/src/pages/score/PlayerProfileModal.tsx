@@ -1,3 +1,4 @@
+import { POSITION_COLORS } from "@/lib/positionColors";
 import { trpc } from "@/lib/trpc";
 import { X, Trophy, Target, TrendingUp, Loader2, Users, Star, Flame, Shield, Activity, Crosshair } from "lucide-react";
 
@@ -14,13 +15,7 @@ const positionLabels: Record<string, string> = {
   B: "Back",
 };
 
-const positionColors: Record<string, string> = {
-  MV: "#F59E0B",
-  LW: "#3B82F6",
-  RW: "#8B5CF6",
-  C: "#EF4444",
-  B: "#22C55E",
-};
+const positionColors: Record<string, string> = POSITION_COLORS; // samma som i Lineup
 
 export default function PlayerProfileModal({ playerName, onClose }: PlayerProfileModalProps) {
   const { data: profile, isLoading } = trpc.scoreStats.playerProfile.useQuery({ name: playerName });

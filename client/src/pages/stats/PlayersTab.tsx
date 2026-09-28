@@ -3,6 +3,7 @@
  * Includes: team split, goal types, form curve, full streaks, position bars,
  * detailed match history, sortable player table, goalkeeper stats
  */
+import { POSITION_COLORS } from "@/lib/positionColors";
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import {
@@ -43,13 +44,7 @@ const positionLabels: Record<string, string> = {
   B: "Back",
 };
 
-const positionColors: Record<string, string> = {
-  MV: "#F59E0B",
-  LW: "#3B82F6",
-  RW: "#8B5CF6",
-  C: "#EF4444",
-  B: "#22C55E",
-};
+const positionColors: Record<string, string> = POSITION_COLORS; // samma som i Lineup
 
 const goalTypeColors: Record<string, string> = {
   Straff: "#EF4444",

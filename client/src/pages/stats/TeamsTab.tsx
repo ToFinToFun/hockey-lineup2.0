@@ -1,6 +1,7 @@
 /**
  * TeamsTab – Team comparison (Vita vs Gröna) with visual bars + Head-to-Head player comparison
  */
+import { POSITION_COLORS } from "@/lib/positionColors";
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Shield, Target, Trophy, Users, Flame, Swords, ChevronDown, Search } from "lucide-react";
@@ -166,13 +167,7 @@ function HeadToHeadSection({ dateFilter }: { dateFilter?: { from?: string; to?: 
     setPickerSearch("");
   };
 
-  const positionColors: Record<string, string> = {
-    MV: "#F59E0B",
-    LW: "#3B82F6",
-    RW: "#8B5CF6",
-    C: "#EF4444",
-    B: "#22C55E",
-  };
+  const positionColors: Record<string, string> = POSITION_COLORS; // samma som i Lineup
 
   return (
     <div className="bg-gradient-to-br from-[#1a1a1a] to-[#111] rounded-xl border border-[#2a2a2a] overflow-hidden">
