@@ -42,7 +42,7 @@ import { useLineupDocSync } from "@/hooks/useLineupDocSync";
 import { useAuth } from "@/hooks/useAuth";
 import { MatchPredictionBar } from "@/components/MatchPredictionBar";
 import type { Player as PlayerType } from "@/lib/players";
-import { Newspaper, RefreshCw, TrendingUp, Link2, X as XIconSmall, Wifi, WifiOff, Share2, FileText, Check, CalendarDays, Shuffle, PanelLeft, Columns3, Undo2, BarChart3, Settings, Sun, Moon, Home as HomeIcon, Users, FlaskConical } from "lucide-react";
+import { Newspaper, RefreshCw, TrendingUp, Link2, BookmarkPlus, X as XIconSmall, Wifi, WifiOff, Share2, FileText, Check, CalendarDays, Shuffle, PanelLeft, Columns3, Undo2, BarChart3, Settings, Sun, Moon, Home as HomeIcon, Users, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 import { useLineupTheme } from "@/hooks/useLineupTheme";
 import { useForwardColor } from "@/hooks/useForwardColor";
@@ -125,6 +125,17 @@ function saveLocalState(state: SavedState) {
   }
 }
 
+/** "idag 18:43", "igår 09:05", "torsdag 18:43" eller "12/9 18:43" – alltid 24-timmarsklocka. */
+export function formatChanged(d: Date, now = new Date()): string {
+  const time = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diffDays = Math.round((day(now) - day(d)) / 86_400_000);
+  if (diffDays === 0) return `idag ${time}`;
+  if (diffDays === 1) return `igår ${time}`;
+  if (diffDays > 1 && diffDays < 7) return `${d.toLocaleDateString("sv-SE", { weekday: "long" })} ${time}`;
+  return `${d.getDate()}/${d.getMonth() + 1} ${time}`;
+}
+
 export default function Home() {
   const local = loadLocalState();
   const { theme: lineupTheme, toggle: toggleLineupTheme, isDark: isLineupDark } = useLineupTheme();
@@ -193,6 +204,7 @@ export default function Home() {
   const [isDragOutside, setIsDragOutside] = useState(false);
   const [showNews, setShowNews] = useState(false);
   const [showShareTools, setShowShareTools] = useState(false);
+  const [showSavedLineups, setShowSavedLineups] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [demoActive, setDemoActive] = useState(false);
@@ -400,6 +412,13 @@ export default function Home() {
       remoteToastTimer.current = setTimeout(() => setRemoteChangeToast(null), 2500);
     },
   });
+
+  // "Ändrad torsdag 18:43" – hämtas om när uppställningen synkats och varje minut
+  const lastChanged = trpc.lineup.lastChanged.useQuery(undefined, { refetchInterval: 60_000, refetchOnWindowFocus: true });
+  useEffect(() => {
+    if (sync.lastSyncAt) void lastChanged.refetch();
+  }, [sync.lastSyncAt]); // eslint-disable-line react-hooks/exhaustive-deps
+  const lastChangedLabel = lastChanged.data?.changedAt ? formatChanged(new Date(lastChanged.data.changedAt)) : null;
   const sseConnected: boolean | null = sync.status === "live" ? true : sync.status === "connecting" ? null : false;
 
   // Hämta PIR-inställningar, positionshistorik och PIR-värden (bara för visning).
@@ -1450,6 +1469,18 @@ export default function Home() {
                 </div>
               </div>
 
+              {/* Mitten: när uppställningen senast ändrades */}
+              {lastChangedLabel && (
+                <div className="flex-1 min-w-0 flex justify-center">
+                  <span
+                    className={`text-[10px] sm:text-[11px] font-medium truncate px-2 py-0.5 rounded-full ${isLineupDark ? 'text-white/55 bg-white/5' : 'text-gray-500 bg-gray-100'}`}
+                    title="Senast en spelare placerades, flyttades, togs ur laget eller lades till"
+                  >
+                    Ändrad {lastChangedLabel}
+                  </span>
+                </div>
+              )}
+
               {/* ── VERKTYGSRAD: Hem, anslutning och meny/inställningar (samma på mobil och desktop) ── */}
                 <div className="flex items-center gap-1 flex-1 justify-end">
                   {/* Home icon-only */}
@@ -1499,6 +1530,17 @@ export default function Home() {
                             ? 'bg-[#1a2744] border-white/10'
                             : 'bg-white border-gray-200'
                         }`}>
+                          {/* Sparade uppställningar (på desktop finns de även under truppen) */}
+                          <button
+                            onClick={() => { setShowSavedLineups(true); setShowHeaderMenu(false); }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
+                              isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            <BookmarkPlus className="w-4 h-4" />
+                            <span>Sparade uppställningar</span>
+                          </button>
+
                           {/* Matchtid */}
                           <div className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] ${
                             isLineupDark ? 'text-white/60' : 'text-gray-600'
@@ -2051,6 +2093,23 @@ export default function Home() {
       </div>
 
       {showShareTools && <ShareToolsModal onClose={() => setShowShareTools(false)} />}
+
+      {showSavedLineups && (
+        <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4" onClick={() => setShowSavedLineups(false)}>
+          <div className="w-full sm:max-w-md glass-panel-strong panel-solid rounded-t-2xl sm:rounded-2xl p-3 max-h-[85dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-end">
+              <button onClick={() => setShowSavedLineups(false)} className="text-white/50 hover:text-white text-xs px-2 py-1">Stäng</button>
+            </div>
+            <SavedLineupsPanel
+              teamAName={teamAName}
+              teamBName={teamBName}
+              lineup={lineup}
+              onLoadLineup={(saved) => { handleLoadLineup(saved); setShowSavedLineups(false); }}
+              defaultOpen
+            />
+          </div>
+        </div>
+      )}
 
       {/* Nyhet till laget.se */}
       {showNews && (

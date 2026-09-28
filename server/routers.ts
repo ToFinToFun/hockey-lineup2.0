@@ -15,7 +15,7 @@ import { getAllMatchResults, getConfigValue, setConfigValue, getMatchCacheVersio
 import { calculatePIR, DEFAULT_PIR_WEIGHTS, type PirWeights } from "./pir";
 import { analyzePir, sanitizeWeights, type PirAnalysis } from "./pirAnalysis";
 import { getRegistryMap, getRegistryVersion } from "./playersDb";
-import { getLineupSnapshot, applyLineupPatch } from "./lineupSync";
+import { getLineupSnapshot, applyLineupPatch, getLineupChangedAt } from "./lineupSync";
 import type { LineupOp } from "../shared/lineupDoc";
 import {
   createSavedLineup,
@@ -411,6 +411,9 @@ export const appRouter = router({
      */
     /** De senaste 30 matchernas vinnare (Vita/Gröna/oavgjort), äldst först – resultatraden under prediktionen. */
     recentResults: lineupProcedure.query(async () => recentWinners(await getAllMatchResults(), 30)),
+
+    /** När uppställningen senast ändrades (visas som "Ändrad torsdag 18:43"). */
+    lastChanged: lineupProcedure.query(async () => ({ changedAt: (await getLineupChangedAt())?.toISOString() ?? null })),
 
     positionHistory: lineupProcedure.query(async () => {
       const allMatches = await getAllMatchResults();

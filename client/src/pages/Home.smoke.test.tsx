@@ -70,3 +70,16 @@ it.skipIf(!canRun)("Lineup-sidan renderar, hämtar läget och flyttar utan fel",
   if (serious.length) console.log("FEL:", serious.map(e => String(e).slice(0, 300)));
   expect(serious.length).toBe(0);
 }, 30000);
+
+import { describe as describe2, it as it2, expect as expect2 } from "vitest";
+import { formatChanged } from "./Home";
+
+describe2("Ändrad-texten", () => {
+  const now = new Date(2026, 8, 28, 20, 0); // måndag
+  it2("idag, igår, veckodag och datum – 24-timmarsklocka", () => {
+    expect2(formatChanged(new Date(2026, 8, 28, 18, 43), now)).toBe("idag 18:43");
+    expect2(formatChanged(new Date(2026, 8, 27, 9, 5), now)).toBe("igår 09:05");
+    expect2(formatChanged(new Date(2026, 8, 24, 18, 43), now)).toBe("torsdag 18:43");
+    expect2(formatChanged(new Date(2026, 8, 12, 7, 0), now)).toBe("12/9 07:00");
+  });
+});

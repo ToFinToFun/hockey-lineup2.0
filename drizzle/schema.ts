@@ -20,6 +20,8 @@ export const lineupState = mysqlTable("lineup_state", {
   /** IDs of intentionally deleted players (prevents re-merge) */
   /** Monotonically increasing version number for optimistic concurrency */
   version: bigint("version", { mode: "number" }).notNull().default(0),
+  /** Senast en spelare placerades/flyttades/togs ur laget eller lades till i truppen (visas som "Ändrad …") */
+  lineupChangedAt: timestamp("lineupChangedAt"),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 

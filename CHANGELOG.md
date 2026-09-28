@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.38.0 – 2026-09-28
+
+- Lineup: "Ändrad idag 18:43" / "Ändrad torsdag 18:43" mitt i toppraden – senast en spelare placerades, flyttades, togs ur laget eller lades till i truppen (inte vid t.ex. hämtade anmälningar). 24-timmarsklocka. Uppdateras när ändringar synkas och varje minut.
+- Lineup: Sparade uppställningar finns i kugghjulsmenyn (på mobilen fanns de inte alls; på desktop även under truppen som förut). Tider i listan i 24-timmarsformat.
+
 ## 2.37.1 – 2026-09-28
 
 - Stars of the Game-kort: stjärnskylten ligger i ramen ovanför fotot (fotorutan börjar lägre) så att den aldrig hamnar över ansiktet.

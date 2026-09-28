@@ -35,6 +35,8 @@ interface Stored {
 let stored: Stored | null = null;
 let doc: LineupDoc | null = null;
 let version = 0;
+/** När en spelare senast placerades/flyttades/togs ur laget eller tillkom i truppen. */
+let lineupChangedAt: Date | null = null;
 const recentPatchIds: string[] = [];
 let queue: Promise<unknown> = Promise.resolve();
 let knownChecksum: string | null = null;
@@ -93,12 +95,13 @@ function dehydrate(d: LineupDoc): Stored {
   return { slots, attendance, teamAName: d.teamAName, teamBName: d.teamBName, teamAConfig: d.teamAConfig, teamBConfig: d.teamBConfig };
 }
 
-async function readStored(): Promise<{ stored: Stored; version: number }> {
+async function readStored(): Promise<{ stored: Stored; version: number; changedAt: Date | null }> {
   const db = await getDb();
   const row = db ? (await db.select().from(lineupState).where(eq(lineupState.id, STATE_ROW_ID)).limit(1))[0] : undefined;
   const base = emptyDoc();
   return {
     version: row?.version ?? 0,
+    changedAt: row?.lineupChangedAt ?? null,
     stored: {
       slots: (row?.slots as Stored["slots"]) ?? {},
       attendance: (row?.attendance as Stored["attendance"]) ?? {},
@@ -113,7 +116,7 @@ async function readStored(): Promise<{ stored: Stored; version: number }> {
 async function persist(s: Stored, nextVersion: number): Promise<void> {
   const db = await getDb();
   if (!db) return;
-  const values = { ...s, version: nextVersion };
+  const values = { ...s, version: nextVersion, lineupChangedAt };
   await db.insert(lineupState).values({ id: STATE_ROW_ID, ...values }).onDuplicateKeyUpdate({ set: values });
   knownChecksum = await tableChecksum("lineup_state");
 }
@@ -124,6 +127,7 @@ async function load(): Promise<void> {
   const r = await readStored();
   stored = r.stored;
   version = r.version;
+  lineupChangedAt = r.changedAt;
   doc = hydrate(stored, await getRegistryMap());
   lastExternalCheck = Date.now();
   startWatcher();
@@ -136,6 +140,7 @@ async function rebuild(reason: string, reread: boolean): Promise<void> {
     const r = await readStored();
     stored = r.stored;
     version = Math.max(version, r.version);
+    lineupChangedAt = r.changedAt;
   }
   doc = hydrate(stored!, await getRegistryMap());
   version += 1;
@@ -248,6 +253,14 @@ export function applyLineupPatch(patchId: string, ops: LineupOp[], clientId?: st
       applyingOwnRegistryWrite = false;
     }
 
+    // "Ändrad …": en spelare placerad, flyttad eller tagen ur laget, eller ny i truppen
+    const beforeIds = new Set([...before.players, ...Object.values(before.lineup)].map((p) => p.id));
+    const lineupTouched = ops.some((o) =>
+      (o.t === "slot" && (before.lineup[o.slot]?.id ?? null) !== (o.player?.id ?? null)) ||
+      (o.t === "rosterUpsert" && !beforeIds.has(o.player.id))
+    );
+    if (lineupTouched) lineupChangedAt = new Date();
+
     const nextStored = dehydrate(next);
     const nextVersion = version + 1;
     await persist(nextStored, nextVersion);
@@ -259,6 +272,15 @@ export function applyLineupPatch(patchId: string, ops: LineupOp[], clientId?: st
 
     sseManager.notifyLineupPatch({ version, patchId, clientId: clientId ?? null, ops });
     return { version, duplicate: false };
+  });
+}
+
+/** När uppställningen senast ändrades (spelare placerade/flyttade/nya). */
+export function getLineupChangedAt(): Promise<Date | null> {
+  return serialize(async () => {
+    await load();
+    await checkExternalChange();
+    return lineupChangedAt;
   });
 }
 

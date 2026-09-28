@@ -22,6 +22,8 @@ interface SavedLineupsPanelProps {
   teamBName: string;
   lineup: Record<string, Player>;
   onLoadLineup: (saved: { id: string; name: string; teamAName: string; teamBName: string; lineup: Record<string, Player>; savedAt: number }) => void;
+  /** Öppen från början (t.ex. i rutan från kugghjulsmenyn) */
+  defaultOpen?: boolean;
 }
 
 function formatDate(ts: number): string {
@@ -31,6 +33,7 @@ function formatDate(ts: number): string {
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
+    hourCycle: "h23",
   });
 }
 
@@ -39,10 +42,11 @@ export function SavedLineupsPanel({
   teamBName,
   lineup,
   onLoadLineup,
+  defaultOpen = false,
 }: SavedLineupsPanelProps) {
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultOpen);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
