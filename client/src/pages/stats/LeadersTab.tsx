@@ -17,12 +17,7 @@ type LeaderCategory = "points" | "goals" | "assists" | "gwg" | "matches";
 
 // ─── Goal Type Config ──────────────────────────────────────────────────────
 const goalTypeConfig: { type: string; label: string; color: string; icon: string }[] = [
-  { type: "Skott", label: "Skottligan", color: "#3B82F6", icon: "\uD83C\uDFAF" },
-  { type: "Styrning", label: "Styrningsligan", color: "#8B5CF6", icon: "\uD83C\uDFD2" },
-  { type: "Friläge", label: "Frilägesligan", color: "#F59E0B", icon: "\uD83D\uDCA8" },
-  { type: "Solo", label: "Sololigan", color: "#EC4899", icon: "\u26A1" },
   { type: "Straff", label: "Straffligan", color: "#EF4444", icon: "\uD83C\uDFAA" },
-  { type: "Självmål", label: "Självmålsligan", color: "#6B7280", icon: "\uD83D\uDE05" },
 ];
 
 // ─── Podium ─────────────────────────────────────────────────────────────────

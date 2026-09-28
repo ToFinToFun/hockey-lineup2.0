@@ -585,16 +585,20 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
           <div className="flex-1" />
           <button
             onClick={handleCopyText}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-300 text-xs font-bold uppercase tracking-wider hover:bg-sky-500/30"
+            title="Kopiera rubrik och text"
+            aria-label="Kopiera rubrik och text"
+            className="flex items-center justify-center px-3 py-2 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-300 hover:bg-sky-500/30"
           >
-            <Copy className="w-3.5 h-3.5" /> Kopiera text
+            <Copy className="w-4 h-4" />
           </button>
           <button
             onClick={handleSaveImage}
             disabled={!imageUrl || rendering || saving}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-bold uppercase tracking-wider hover:bg-emerald-500/30 disabled:opacity-50"
+            title="Spara bilden"
+            aria-label="Spara bilden"
+            className="flex items-center justify-center px-3 py-2 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-50"
           >
-            <Download className="w-3.5 h-3.5" /> Spara bild
+            <Download className="w-4 h-4" />
           </button>
           {!published && (
             <button

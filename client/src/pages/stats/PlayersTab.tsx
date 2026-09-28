@@ -52,12 +52,7 @@ const positionColors: Record<string, string> = {
 };
 
 const goalTypeColors: Record<string, string> = {
-  Skott: "#3B82F6",
-  Styrning: "#8B5CF6",
-  Friläge: "#F59E0B",
-  Solo: "#EC4899",
   Straff: "#EF4444",
-  Självmål: "#6B7280",
   Övrigt: "#0a7ea4",
 };
 

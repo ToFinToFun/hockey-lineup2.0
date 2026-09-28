@@ -7,6 +7,14 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.23.0 – 2026-09-27
+
+- Statistik: bara måltyperna Straff och Övrigt. Ligorna för Skott, Styrning, Friläge, Solo och Självmål är borttagna; äldre mål med de typerna räknas som Övrigt (självmål räknas inte).
+- Score Tracker, avsluta match: tydligt besked – "☁️ uppladdad" (godkänd direkt eller väntar på styrelsen) eller "📱 sparad lokalt".
+- Lokalt sparade matcher: gul rad med antal och knappen Skicka nu. Uppladdning sker automatiskt var 30:e sekund, när nätet kommer tillbaka och när appen öppnas igen, med besked när den gått igenom.
+- Rättning: en match som laddas upp senare får sin riktiga sluttid (inte tiden för uppladdningen). Tillfälliga serverfel och "för många anrop" behåller matchen i kön i stället för att den försvinner.
+- Nyhet till laget.se: Kopiera och Spara är ikonknappar.
+
 ## 2.22.0 – 2026-09-27
 
 - Laget.se-nyheten: hemmalaget väljs efter matchdagen – tisdag Gröna hemma, torsdag Vita hemma, andra dagar slumpas. Går att ändra i rutan.

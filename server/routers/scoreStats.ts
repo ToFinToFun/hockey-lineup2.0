@@ -1,3 +1,4 @@
+import { normalizeGoalType } from "../playerHistory";
 /**
  * Score Tracker statistics tRPC router.
  * Contains the heavier analytics endpoints:
@@ -176,9 +177,8 @@ export const scoreStatsRouter = router({
         totalGwg += matchGwg;
 
         for (const gd of goalDetails) {
-          if (gd.other) {
-            goalTypeCounts[gd.other] = (goalTypeCounts[gd.other] || 0) + 1;
-          }
+          const gt = normalizeGoalType(gd.other);
+          if (gt) goalTypeCounts[gt] = (goalTypeCounts[gt] || 0) + 1;
         }
 
         matchHistory.push({
@@ -754,10 +754,8 @@ export const scoreStatsRouter = router({
             playerStats[goal.assist].assists++;
             matchPlayerAssists[goal.assist] = (matchPlayerAssists[goal.assist] || 0) + 1;
           }
-          if (goal.other) {
-            const key = goal.other.trim();
-            if (key) goalTypes[key] = (goalTypes[key] || 0) + 1;
-          }
+          const key = normalizeGoalType(goal.other);
+          if (key) goalTypes[key] = (goalTypes[key] || 0) + 1;
         }
 
         // Track matches played per player

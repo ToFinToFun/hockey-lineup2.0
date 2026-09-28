@@ -1,3 +1,4 @@
+import { normalizeGoalType } from "../playerHistory";
 import { TRPCError } from "@trpc/server";
 /**
  * Score Tracker tRPC router.
@@ -144,9 +145,10 @@ export const scoreRouter = router({
         if (saveRateLimited(ctx.req.ip ?? "okänd")) {
           throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "För många sparade matcher, vänta en stund" });
         }
+        const reviewStatus = ctx.session?.role === "admin" ? "approved" : "pending";
         await saveMatch({
           // Styrelsens matcher godkänns direkt, övriga väntar på granskning.
-          reviewStatus: ctx.session?.role === "admin" ? "approved" : "pending",
+          reviewStatus,
           reviewedAt: ctx.session?.role === "admin" ? new Date() : null,
           name: input.name,
           teamWhiteScore: input.teamWhiteScore,
@@ -157,7 +159,7 @@ export const scoreRouter = router({
           createdAt: input.createdAt ? new Date(input.createdAt) : undefined,
           lineup: input.lineup ?? null,
         });
-        return { success: true };
+        return { success: true, reviewStatus };
       }),
 
     list: adminProcedure.query(async () => {
@@ -326,10 +328,8 @@ export const scoreRouter = router({
         for (const goal of goals) {
           if (goal.scorer && playerMap[goal.scorer]) {
             playerMap[goal.scorer].goals++;
-            if (goal.other) {
-              playerMap[goal.scorer].goalTypes[goal.other] =
-                (playerMap[goal.scorer].goalTypes[goal.other] || 0) + 1;
-            }
+            const gt = normalizeGoalType(goal.other);
+            if (gt) playerMap[goal.scorer].goalTypes[gt] = (playerMap[goal.scorer].goalTypes[gt] || 0) + 1;
           }
           if (goal.assist && playerMap[goal.assist]) {
             playerMap[goal.assist].assists++;

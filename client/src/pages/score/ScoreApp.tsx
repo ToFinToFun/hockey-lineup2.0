@@ -5,7 +5,7 @@
  * Uses tRPC to fetch lineup data instead of Firebase
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import MatchPage from "./MatchPage";
 import LineupPage from "./LineupPage";
 import PlayerProfileModal from "./PlayerProfileModal";
@@ -13,7 +13,7 @@ import { trpc } from "@/lib/trpc";
 import { saveLineupSnapshot, loadLineupSnapshot, getPendingMatches, flushPendingMatches } from "@/lib/offlineScore";
 import { toast } from "sonner";
 import { AppVersion } from "@/components/AppVersion";
-import { Home, Users, ArrowLeft } from "lucide-react";
+import { Home, Users, ArrowLeft, CloudOff, UploadCloud } from "lucide-react";
 import type { AppState } from "@/lib/lineup";
 import { Link } from "wouter";
 
@@ -65,21 +65,46 @@ export default function ScoreApp() {
   // Köade matcher (sparade utan nät) skickas när nätet är tillbaka.
   const utils = trpc.useUtils();
   const [pendingCount, setPendingCount] = useState(() => getPendingMatches().length);
+  const [flushingNow, setFlushingNow] = useState(false);
+  const flushRef = useRef<(manual?: boolean) => Promise<void>>(async () => {});
   useEffect(() => {
     const update = () => setPendingCount(getPendingMatches().length);
-    const flush = async () => {
+    const flush = async (manual = false) => {
       if (!getPendingMatches().length) return;
-      const sent = await flushPendingMatches((p) => utils.client.score.match.save.mutate(p as any));
-      if (sent > 0) toast.success(sent === 1 ? "Köad match skickad" : `${sent} köade matcher skickade`);
-      update();
+      if (manual) setFlushingNow(true);
+      try {
+        let pendingReview = 0;
+        const sent = await flushPendingMatches(async (p) => {
+          const res = await utils.client.score.match.save.mutate(p as any);
+          if ((res as { reviewStatus?: string })?.reviewStatus === "pending") pendingReview++;
+          return res;
+        });
+        if (sent > 0) {
+          toast.success(`☁️ ${sent === 1 ? "Lokalt sparad match uppladdad" : `${sent} lokalt sparade matcher uppladdade`}`, {
+            description: pendingReview > 0 ? "Väntar på godkännande av styrelsen (Matchhistorik)." : "Godkänd och med i statistiken.",
+            duration: 6000,
+          });
+        } else if (manual && getPendingMatches().length) {
+          toast.error("Kunde inte ladda upp – ingen anslutning", { description: "Försöker igen automatiskt." });
+        }
+      } finally {
+        update();
+        if (manual) setFlushingNow(false);
+      }
     };
-    flush();
-    const interval = setInterval(flush, 60_000);
-    window.addEventListener("online", flush);
+    flushRef.current = flush;
+    void flush();
+    // Försök regelbundet, när nätet kommer tillbaka och när appen öppnas igen
+    const interval = setInterval(() => void flush(), 30_000);
+    const onVisible = () => { if (document.visibilityState === "visible") void flush(); };
+    const onOnline = () => void flush();
+    window.addEventListener("online", onOnline);
+    document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("pending-matches-changed", update);
     return () => {
       clearInterval(interval);
-      window.removeEventListener("online", flush);
+      window.removeEventListener("online", onOnline);
+      document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("pending-matches-changed", update);
     };
   }, [utils]);
@@ -131,8 +156,19 @@ export default function ScoreApp() {
         }}
       >
         {pendingCount > 0 && (
-          <div className="flex-shrink-0 bg-amber-500/15 border-b border-amber-500/30 text-amber-300 text-xs text-center py-1.5">
-            {pendingCount === 1 ? "1 match väntar" : `${pendingCount} matcher väntar`} på att skickas – sker automatiskt när du har nät
+          <div className="flex-shrink-0 bg-amber-500/15 border-b border-amber-500/30 text-amber-300 text-xs flex items-center gap-2 px-3 py-1.5">
+            <CloudOff size={14} className="shrink-0" />
+            <span className="flex-1 min-w-0">
+              {pendingCount === 1 ? "1 match" : `${pendingCount} matcher`} sparad{pendingCount === 1 ? "" : "e"} bara på telefonen – laddas upp automatiskt när du har nät
+            </span>
+            <button
+              onClick={() => void flushRef.current(true)}
+              disabled={flushingNow}
+              className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/25 border border-amber-400/40 font-semibold disabled:opacity-50"
+            >
+              <UploadCloud size={12} className={flushingNow ? "animate-pulse" : ""} />
+              {flushingNow ? "Skickar…" : "Skicka nu"}
+            </button>
           </div>
         )}
 

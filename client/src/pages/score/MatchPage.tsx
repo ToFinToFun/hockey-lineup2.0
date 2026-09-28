@@ -329,23 +329,27 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
       teamGreenScore,
       goalHistory: goalHistory,
       matchStartTime: matchStartTime || undefined,
+      // Sluttiden sätts nu, så att en match som laddas upp senare (utan nät) får rätt tid
+      matchEndTime: new Date().toISOString(),
       lineup: lineupState || undefined,
     };
     try {
-      await saveMatchMutation.mutateAsync(payload);
+      const res = await saveMatchMutation.mutateAsync(payload);
       resetAfterSave();
-      toast.success("Matchen sparad!", {
-        description: name,
-        duration: 4000,
+      toast.success("☁️ Matchen är uppladdad", {
+        description: res?.reviewStatus === "approved"
+          ? `${name} – godkänd och med i statistiken`
+          : `${name} – väntar på godkännande av styrelsen (Matchhistorik)`,
+        duration: 6000,
       });
     } catch (e) {
       if (isNetworkError(e)) {
         // Ingen täckning: spara lokalt och skicka automatiskt senare.
         queueMatch(payload);
         resetAfterSave();
-        toast.success("Matchen sparad på telefonen", {
-          description: "Skickas automatiskt när du har nät igen.",
-          duration: 5000,
+        toast.warning("📱 Matchen är sparad lokalt på telefonen", {
+          description: "Den laddas upp automatiskt så fort du har nät – eller tryck Skicka nu i den gula raden.",
+          duration: 7000,
         });
       } else {
         console.error('Failed to save match:', e);

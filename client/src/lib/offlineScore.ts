@@ -55,6 +55,12 @@ export function isNetworkError(err: unknown): boolean {
   return true;
 }
 
+/** Servern ber oss vänta (för många anrop) eller hade ett tillfälligt fel – behåll matchen i kön. */
+function isRetryLater(err: unknown): boolean {
+  const code = (err as { data?: { code?: string; httpStatus?: number } } | null)?.data;
+  return code?.code === "TOO_MANY_REQUESTS" || (code?.httpStatus ?? 0) >= 500;
+}
+
 let flushing = false;
 /** Skickar köade matcher en i taget. Returnerar antal som skickades. */
 export async function flushPendingMatches(
@@ -70,7 +76,7 @@ export async function flushPendingMatches(
       try {
         await send(next.payload);
       } catch (err) {
-        if (isNetworkError(err)) break; // fortfarande offline – försök senare
+        if (isNetworkError(err) || isRetryLater(err)) break; // offline eller spärrad en stund – försök senare
         console.error("Kö-match avvisades av servern, tas bort:", err);
       }
       setPendingMatches(rest);
