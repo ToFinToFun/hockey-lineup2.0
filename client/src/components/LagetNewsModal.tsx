@@ -575,21 +575,13 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 px-4 py-3 border-t border-white/10 shrink-0">
+        {/* Vänster: Avbryt, Spara bild, Kopiera – höger: Publicera/Tidsinställ/Uppdatera */}
+        <div className="flex items-center gap-2 px-4 py-3 border-t border-white/10 shrink-0">
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-lg border border-white/15 text-white/70 text-xs font-bold uppercase tracking-wider hover:bg-white/5"
           >
             {published ? "Stäng" : "Avbryt"}
-          </button>
-          <div className="flex-1" />
-          <button
-            onClick={handleCopyText}
-            title="Kopiera rubrik och text"
-            aria-label="Kopiera rubrik och text"
-            className="flex items-center justify-center px-3 py-2 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-300 hover:bg-sky-500/30"
-          >
-            <Copy className="w-4 h-4" />
           </button>
           <button
             onClick={handleSaveImage}
@@ -600,6 +592,15 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
           >
             <Download className="w-4 h-4" />
           </button>
+          <button
+            onClick={handleCopyText}
+            title="Kopiera rubrik och text"
+            aria-label="Kopiera rubrik och text"
+            className="flex items-center justify-center px-3 py-2 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-300 hover:bg-sky-500/30"
+          >
+            <Copy className="w-4 h-4" />
+          </button>
+          <div className="flex-1" />
           {!published && (
             <button
               onClick={handlePublish}

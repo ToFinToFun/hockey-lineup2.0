@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.24.1 – 2026-09-28
+
+- Nyhet till laget.se: Avbryt, Spara bild och Kopiera till vänster, Publicera/Tidsinställ/Uppdatera till höger på samma rad.
+
 ## 2.24.0 – 2026-09-28
 
 - Statistik och PIR rättar uppställningen utifrån målen när en spelare bytt lag i sista stund: mål/assist bara för det andra laget → spelaren räknas till det laget (vinst/förlust, PIR, kemi, form). Mål/assist för båda lagen → målen räknas men matchen ger ingen vinst/förlust eller PIR för spelaren. Registrerad målskytt som saknas i uppställningen läggs till i målets lag. Den sparade matchen ändras inte.
