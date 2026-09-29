@@ -866,7 +866,26 @@ export async function publishNews(input: PublishNewsInput): Promise<PublishNewsR
   }
 }
 
-export async function deleteNews(newsId: number): Promise<{ success: boolean; error?: string }> {
+/**
+ * Finns nyheten kvar på laget.se? true/false, eller null om det inte gick att avgöra
+ * (inloggning misslyckades eller listan kunde inte läsas) – då ska inget rensas.
+ */
+export async function newsExists(newsId: number): Promise<boolean | null> {
+  const { client, followRedirects } = createClient();
+  try {
+    const loggedIn = await login(client, followRedirects);
+    if (!loggedIn) return null;
+    const list = await followRedirects(await client.get(`${ADMIN_BASE_URL}/${TEAM_SLUG}/NewsManagement`));
+    if (list.status !== 200 || typeof list.data !== "string") return null;
+    const items = parseNewsList(list.data);
+    if (items.length === 0) return null; // tom lista = kan inte avgöra säkert
+    return items.some((n) => n.id === newsId);
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteNews(newsId: number): Promise<{ success: boolean; error?: string; alreadyGone?: boolean }> {
   const { client, followRedirects } = createClient();
   try {
     const loggedIn = await login(client, followRedirects);
@@ -874,7 +893,11 @@ export async function deleteNews(newsId: number): Promise<{ success: boolean; er
     const resp = await followRedirects(
       await client.get(`${ADMIN_BASE_URL}/${TEAM_SLUG}/NewsManagement/Delete/${newsId}/1`)
     );
-    if (resp.status !== 200) return { success: false, error: `laget.se svarade med fel (${resp.status}).` };
+    if (resp.status !== 200) {
+      // Ofta för att nyheten redan är borttagen på laget.se
+      if ((await newsExists(newsId)) === false) return { success: true, alreadyGone: true };
+      return { success: false, error: `laget.se svarade med fel (${resp.status}).` };
+    }
     const stillThere = typeof resp.data === "string" && parseNewsList(resp.data).some((n) => n.id === newsId);
     return stillThere ? { success: false, error: "Nyheten finns kvar på laget.se." } : { success: true };
   } catch (err) {

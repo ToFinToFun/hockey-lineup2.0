@@ -301,7 +301,9 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
       recordHome();
       setPublished({ url: res.url, updated: res.updated, publishAt: res.publishAt ?? null });
       void utils.laget.newsLastPublished.invalidate();
-      toast.success(res.publishAt ? `Nyheten är tidsinställd till ${res.publishAt}` : res.updated ? "Nyheten är uppdaterad på laget.se" : "Nyheten är publicerad på laget.se");
+      toast.success(res.publishAt ? `Nyheten är tidsinställd till ${res.publishAt}` : res.updated ? "Nyheten är uppdaterad på laget.se" : "Nyheten är publicerad på laget.se", {
+        description: res.replacedMissing ? "Den tidigare nyheten fanns inte längre på laget.se, så en ny skapades." : undefined,
+      });
     } catch (err) {
       setPublishError((err as Error)?.message || "Publiceringen misslyckades");
     }
@@ -319,7 +321,7 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
       setConfirmDelete(false);
       setPublished(null);
       void utils.laget.newsLastPublished.invalidate();
-      toast.success("Nyheten är borttagen från laget.se");
+      toast.success(res.alreadyGone ? "Nyheten var redan borttagen på laget.se" : "Nyheten är borttagen från laget.se");
     } catch (err) {
       setPublishError((err as Error)?.message || "Nyheten kunde inte tas bort");
     }

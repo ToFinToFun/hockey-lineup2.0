@@ -12,7 +12,7 @@
  * kod som rutan "Nyhet till laget.se" i Lineup.
  */
 import { getConfigValue, setConfigValue } from "./scoreDb";
-import { fetchAttendance, publishNews } from "./lagetSe";
+import { fetchAttendance, publishNews, newsExists } from "./lagetSe";
 import { getLineupSnapshot } from "./lineupSync";
 import { listSponsors, recordSponsorNews } from "./sponsorsDb";
 import { readLastPublished, writeLastPublished } from "./newsState";
@@ -163,7 +163,12 @@ export async function autoNewsTick(now = new Date()): Promise<void> {
     if (phase === "preview" && s.previewSent) return;
     if (phase === "publish" && s.done) return;
 
-    const last = await readLastPublished();
+    let last = await readLastPublished();
+    // Borttagen på laget.se sedan den skapades? Då räknas det som att ingen nyhet finns
+    if (last && (await newsExists(last.id)) === false) {
+      await writeLastPublished(null);
+      last = null;
+    }
     const sameDay = last?.eventDate === ev.date ? last : null;
     const scheduledLater = sameDay?.publishAt ? new Date(sameDay.publishAt.replace(" ", "T")).getTime() > now.getTime() : false;
     const publishedAlready = !!sameDay && !scheduledLater;

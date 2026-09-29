@@ -3,7 +3,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, lineupProcedure, adminProcedure, router } from "./_core/trpc";
 import { authRouter } from "./routers/auth";
 import { playersRouter } from "./routers/players";
-import { fetchAttendance, updateAttendance, publishNews, deleteNews, fetchAccountName, NEWS_ADMIN_URL, type AttendingStatus } from "./lagetSe";
+import { newsExists, fetchAttendance, updateAttendance, publishNews, deleteNews, fetchAccountName, NEWS_ADMIN_URL, type AttendingStatus } from "./lagetSe";
 import { seasonHistory, seasonOf, recentForm, recentWinners } from "./playerHistory";
 import { ENV } from "./_core/env";
 import { setPlayerPhoto, deletePlayerPhoto, MAX_PHOTO_BASE64 } from "./playerPhotos";
@@ -143,6 +143,8 @@ async function getPirRatings() {
 }
 
 const NEWS_LAST_HOME_KEY = "laget_news_last_home";
+// Om den senaste nyheten finns kvar på laget.se (kontrolleras högst varannan minut)
+const newsExistsCache = new Map<number, { exists: boolean | null; at: number }>();
 
 type PlayerRecord = { matches: number; wins: number; draws: number; losses: number; goals: number; assists: number };
 
@@ -192,7 +194,22 @@ export const appRouter = router({
     newsAccount: lineupProcedure.query(async () => ({ name: await fetchAccountName(), adminUrl: NEWS_ADMIN_URL })),
 
     /** Senast publicerade nyheten från appen (för att kunna ersätta den vid ändringar). */
-    newsLastPublished: lineupProcedure.query(() => readLastPublished()),
+    /**
+     * Senast publicerade nyheten – kontrollerad mot laget.se, så att "Uppdatera
+     * befintlig nyhet" inte visas för en nyhet som tagits bort där.
+     */
+    newsLastPublished: lineupProcedure.query(async () => {
+      const last = await readLastPublished();
+      if (!last) return null;
+      const cached = newsExistsCache.get(last.id);
+      let exists = cached && Date.now() - cached.at < 2 * 60_000 ? cached.exists : await newsExists(last.id);
+      if (!cached || Date.now() - cached.at >= 2 * 60_000) newsExistsCache.set(last.id, { exists, at: Date.now() });
+      if (exists === false) {
+        await writeLastPublished(null);
+        return null;
+      }
+      return last;
+    }),
 
     /**
      * Publicera "Dagens lag" på laget.se via adminformuläret – direkt eller
@@ -219,8 +236,16 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input }) => {
+        // Borttagen på laget.se sedan senast? Då publiceras en ny i stället för att uppdatera
+        let updateId = input.updateId;
+        let replacedMissing = false;
+        if (updateId && (await newsExists(updateId)) === false) {
+          updateId = undefined;
+          replacedMissing = true;
+          await writeLastPublished(null);
+        }
         const result = await publishNews({
-          id: input.updateId,
+          id: updateId,
           title: input.title,
           body: input.body,
           image: Buffer.from(input.imageBase64, "base64"),
@@ -237,11 +262,12 @@ export const appRouter = router({
           publishAt: input.publishAt ? `${input.publishAt.date} ${input.publishAt.hour}:${input.publishAt.minute}` : null,
         };
         await writeLastPublished(published);
-        if (published.publishAt && !input.updateId) {
+        newsExistsCache.set(result.id, { exists: true, at: Date.now() });
+        if (published.publishAt && !updateId) {
           const m = mailLayout("Tidsinställd nyhet skapad", [`"${input.title}" går ut på laget.se ${published.publishAt}.`], { href: result.url, label: "Visa nyheten" });
           notifyLater("newsScheduled", () => ({ subject: `Tidsinställd: ${input.title}`, ...m }));
         }
-        return { success: true as const, id: result.id, url: result.url, updated: !!input.updateId, publishAt: published.publishAt };
+        return { success: true as const, id: result.id, url: result.url, updated: !!updateId, replacedMissing, publishAt: published.publishAt };
       }),
 
     /** Ta bort en nyhet som appen publicerat (samma som "Ta bort" i laget.se-admin). */
@@ -252,7 +278,8 @@ export const appRouter = router({
         if (!result.success) return { success: false as const, error: result.error ?? "Nyheten kunde inte tas bort" };
         const last = await readLastPublished();
         if (last?.id === input.id) await writeLastPublished(null);
-        return { success: true as const };
+        newsExistsCache.delete(input.id);
+        return { success: true as const, alreadyGone: !!result.alreadyGone };
       }),
 
     /** Automatisk nyhet: inställningar och senaste händelse. */

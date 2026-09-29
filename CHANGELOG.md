@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.40.1 – 2026-09-28
+
+- Nyhet till laget.se: appen kontrollerar mot laget.se att den senaste nyheten finns kvar innan "Uppdatera befintlig nyhet" visas. Har den tagits bort där visas valet inte.
+- Ta bort en nyhet som redan är borttagen på laget.se ger "Nyheten var redan borttagen" i stället för felet 500.
+- Uppdatera en nyhet som inte längre finns skapar en ny i stället, med ett besked om det. Samma kontroll görs av den automatiska nyheten.
+
 ## 2.40.0 – 2026-09-28
 
 **Lineup**
