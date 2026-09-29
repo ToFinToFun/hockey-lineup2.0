@@ -5,6 +5,7 @@ import { authRouter } from "./routers/auth";
 import { playersRouter } from "./routers/players";
 import { fetchAttendance, updateAttendance, publishNews, deleteNews, fetchAccountName, NEWS_ADMIN_URL, type AttendingStatus } from "./lagetSe";
 import { seasonHistory, seasonOf, recentForm, recentWinners } from "./playerHistory";
+import { ENV } from "./_core/env";
 import { setPlayerPhoto, deletePlayerPhoto, MAX_PHOTO_BASE64 } from "./playerPhotos";
 import { listCards, cardStats, saveCard, deleteCard, MAX_CARD_SOURCE_BASE64 } from "./playerCards";
 import { refreshLiveProfile } from "./cardProfile";
@@ -16,6 +17,9 @@ import { calculatePIR, DEFAULT_PIR_WEIGHTS, type PirWeights } from "./pir";
 import { analyzePir, sanitizeWeights, type PirAnalysis } from "./pirAnalysis";
 import { getRegistryMap, getRegistryVersion } from "./playersDb";
 import { getLineupSnapshot, applyLineupPatch, getLineupChangedAt } from "./lineupSync";
+import { readLastPublished, writeLastPublished, type PublishedNews } from "./newsState";
+import { getAutoNewsConfig, setAutoNewsConfig, getAutoNewsStatus } from "./autoNews";
+import { NOTIFICATION_TYPES, getRecipients, setRecipients, smtpConfigured, sendTestMail, notifyLater, mailLayout, type NotificationType } from "./notifications";
 import type { LineupOp } from "../shared/lineupDoc";
 import {
   createSavedLineup,
@@ -139,16 +143,6 @@ async function getPirRatings() {
 }
 
 const NEWS_LAST_HOME_KEY = "laget_news_last_home";
-/** Senast publicerade nyheten (JSON: id, url, title, eventDate, publishedAt). */
-const NEWS_LAST_PUBLISHED_KEY = "laget_news_last_published";
-
-type PublishedNews = { id: number; url: string; title: string; eventDate: string | null; publishedAt: string; publishAt?: string | null };
-
-async function readLastPublished(): Promise<PublishedNews | null> {
-  const raw = await getConfigValue(NEWS_LAST_PUBLISHED_KEY);
-  if (!raw) return null;
-  try { return JSON.parse(raw) as PublishedNews; } catch { return null; }
-}
 
 type PlayerRecord = { matches: number; wins: number; draws: number; losses: number; goals: number; assists: number };
 
@@ -242,7 +236,11 @@ export const appRouter = router({
           publishedAt: new Date().toISOString(),
           publishAt: input.publishAt ? `${input.publishAt.date} ${input.publishAt.hour}:${input.publishAt.minute}` : null,
         };
-        await setConfigValue(NEWS_LAST_PUBLISHED_KEY, JSON.stringify(published));
+        await writeLastPublished(published);
+        if (published.publishAt && !input.updateId) {
+          const m = mailLayout("Tidsinställd nyhet skapad", [`"${input.title}" går ut på laget.se ${published.publishAt}.`], { href: result.url, label: "Visa nyheten" });
+          notifyLater("newsScheduled", () => ({ subject: `Tidsinställd: ${input.title}`, ...m }));
+        }
         return { success: true as const, id: result.id, url: result.url, updated: !!input.updateId, publishAt: published.publishAt };
       }),
 
@@ -253,8 +251,17 @@ export const appRouter = router({
         const result = await deleteNews(input.id);
         if (!result.success) return { success: false as const, error: result.error ?? "Nyheten kunde inte tas bort" };
         const last = await readLastPublished();
-        if (last?.id === input.id) await setConfigValue(NEWS_LAST_PUBLISHED_KEY, "");
+        if (last?.id === input.id) await writeLastPublished(null);
         return { success: true as const };
+      }),
+
+    /** Automatisk nyhet: inställningar och senaste händelse. */
+    autoNews: adminProcedure.query(async () => ({ config: await getAutoNewsConfig(), status: await getAutoNewsStatus() })),
+    setAutoNews: adminProcedure
+      .input(z.object({ enabled: z.boolean(), minutesBefore: z.number().int().min(15).max(240), minPlayers: z.number().int().min(1).max(40) }))
+      .mutation(async ({ input }) => {
+        await setAutoNewsConfig(input);
+        return { success: true };
       }),
 
     /** Spara hemmalaget när en nyhet skapats, så att nästa nyhet växlar automatiskt. */
@@ -330,6 +337,29 @@ export const appRouter = router({
         await deleteCard(input.playerId);
         return { success: true };
       }),
+  }),
+
+  // ─── Notiser (e-post) ───────────────────────────────────────────────────────
+
+  notifications: router({
+    get: adminProcedure.query(async () => ({
+      smtpConfigured: smtpConfigured(),
+      from: ENV.smtpFrom || null,
+      types: Object.entries(NOTIFICATION_TYPES).map(([id, label]) => ({ id, label })),
+      recipients: await getRecipients(),
+    })),
+    set: adminProcedure
+      .input(z.array(z.object({
+        email: z.string().trim().email("Ogiltig e-postadress").max(200),
+        types: z.array(z.enum(Object.keys(NOTIFICATION_TYPES) as [NotificationType, ...NotificationType[]])),
+      })).max(30))
+      .mutation(async ({ input }) => {
+        await setRecipients(input);
+        return { success: true };
+      }),
+    test: adminProcedure
+      .input(z.object({ email: z.string().trim().email() }))
+      .mutation(({ input }) => sendTestMail(input.email)),
   }),
 
   // ─── Sponsorer ─────────────────────────────────────────────────────────────

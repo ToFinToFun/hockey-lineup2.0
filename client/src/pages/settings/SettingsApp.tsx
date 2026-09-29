@@ -9,7 +9,8 @@
  */
 import { useEffect, useState } from "react";
 import { Link, useSearch, useLocation } from "wouter";
-import { ArrowLeft, Gauge, Handshake, CalendarRange, Link2, Info, Loader2, CheckCircle2, AlertTriangle, ExternalLink } from "lucide-react";
+import { ArrowLeft, Gauge, Handshake, CalendarRange, Link2, Info, Loader2, CheckCircle2, AlertTriangle, ExternalLink, Bell } from "lucide-react";
+import { NotificationsPanel } from "./NotificationsPanel";
 import { trpc } from "@/lib/trpc";
 import { PirPanel } from "./PirPanel";
 import { PeriodsPanel } from "./PeriodsPanel";
@@ -21,6 +22,7 @@ const TABS = [
   { id: "sponsorer", label: "Sponsorer", icon: Handshake },
   { id: "perioder", label: "Perioder", icon: CalendarRange },
   { id: "laget", label: "laget.se", icon: Link2 },
+  { id: "notiser", label: "Notiser", icon: Bell },
   { id: "om", label: "Om appen", icon: Info },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
@@ -62,6 +64,7 @@ export default function SettingsApp() {
         {tab === "sponsorer" && <SponsorsPanel />}
         {tab === "perioder" && <PeriodsPanel />}
         {tab === "laget" && <LagetPanel />}
+        {tab === "notiser" && <NotificationsPanel />}
         {tab === "om" && <AboutPanel />}
       </main>
     </div>
@@ -97,6 +100,7 @@ function LagetPanel() {
           <p className="flex items-start gap-2 text-xs text-red-300"><AlertTriangle size={14} className="shrink-0 mt-px" /> {r.error}</p>
         ))}
       </div>
+      <AutoNewsSettings />
       {account.data?.adminUrl && (
         <a href={account.data.adminUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-sky-300/80 hover:text-sky-200">
           Nyheter i laget.se-admin <ExternalLink size={12} />
@@ -116,6 +120,51 @@ function AboutPanel() {
       <div className="rounded-xl bg-white/[0.03] border border-white/10 p-3">
         <DatabaseInfo />
       </div>
+    </div>
+  );
+}
+
+/** Automatisk nyhet till laget.se före träningen. */
+function AutoNewsSettings() {
+  const utils = trpc.useUtils();
+  const q = trpc.laget.autoNews.useQuery();
+  const save = trpc.laget.setAutoNews.useMutation({ onSuccess: () => { void utils.laget.autoNews.invalidate(); } });
+  const [cfg, setCfg] = useState<{ enabled: boolean; minutesBefore: number; minPlayers: number } | null>(null);
+  useEffect(() => { if (q.data && !cfg) setCfg(q.data.config); }, [q.data, cfg]);
+  if (!cfg) return null;
+  const dirty = JSON.stringify(cfg) !== JSON.stringify(q.data?.config);
+  const status = q.data?.status;
+  return (
+    <div className="rounded-xl bg-white/[0.03] border border-white/10 p-3 space-y-3">
+      <label className="flex items-center justify-between gap-3">
+        <span>
+          <span className="block text-sm font-semibold">Automatisk nyhet</span>
+          <span className="block text-[11px] text-white/45">Före träningen: uppdaterar en tidsinställd nyhet med aktuell uppställning, eller publicerar dagens lag om ingen nyhet finns.</span>
+        </span>
+        <input type="checkbox" className="w-5 h-5 shrink-0" checked={cfg.enabled} onChange={(e) => setCfg({ ...cfg, enabled: e.target.checked })} />
+      </label>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="text-[11px] text-white/50">Minuter före start
+          <input type="number" min={15} max={240} value={cfg.minutesBefore} onChange={(e) => setCfg({ ...cfg, minutesBefore: Number(e.target.value) || 45 })}
+            className="w-full rounded-lg bg-white/5 border border-white/10 text-white text-sm px-2.5 py-1.5" />
+        </label>
+        <label className="text-[11px] text-white/50">Minst anmälda i uppställningen
+          <input type="number" min={1} max={40} value={cfg.minPlayers} onChange={(e) => setCfg({ ...cfg, minPlayers: Number(e.target.value) || 10 })}
+            className="w-full rounded-lg bg-white/5 border border-white/10 text-white text-sm px-2.5 py-1.5" />
+        </label>
+      </div>
+      <p className="text-[10px] text-white/35">
+        Redan publicerade nyheter rörs inte. Förhandsvisning (eller varning vid för få spelare) går ut 15 min innan till dem som valt det under Notiser.
+      </p>
+      {status && (
+        <p className={`text-[11px] ${status.ok ? "text-emerald-300/80" : "text-amber-300/90"}`}>
+          Senast: {status.message}
+        </p>
+      )}
+      <button onClick={() => save.mutate(cfg)} disabled={!dirty || save.isPending}
+        className="w-full py-2 rounded-lg bg-[#0a7ea4] text-white text-sm font-semibold disabled:opacity-40">
+        {save.isPending ? "Sparar…" : dirty ? "Spara" : "Sparat"}
+      </button>
     </div>
   );
 }

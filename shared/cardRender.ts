@@ -8,40 +8,13 @@
  */
 import { skinById, resolveLogo, type CardSkin, type CardLogo, type RetroColors } from "./cardSkins";
 
-/**
- * Miljön kortet ritas i. Webbläsaren använder DOM-canvas; servern (som ritar om
- * profilkort automatiskt) sätter en egen med setCardEnv.
- */
-export interface CardEnv {
-  createCanvas(w: number, h: number): HTMLCanvasElement;
-  loadImage(src: string): Promise<HTMLImageElement>;
-}
+import { canvasEnv, setCanvasEnv, browserCanvasEnv, type CanvasEnv } from "./canvasEnv";
 
-/** Webbläsarens standardmiljö (exporteras för test). */
-export const browserCardEnv: CardEnv = {
-  createCanvas(w, h) {
-    // OBS: måste vara DOM-canvas här – inte env.createCanvas (då anropar den sig själv)
-    const c = document.createElement("canvas");
-    c.width = w;
-    c.height = h;
-    return c;
-  },
-  loadImage(src) {
-    return new Promise((res, rej) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => res(img);
-      img.onerror = () => rej(new Error(`Kunde inte ladda ${src}`));
-      img.src = src;
-    });
-  },
-};
-
-let env: CardEnv = browserCardEnv;
-
-export function setCardEnv(e: CardEnv) {
-  env = e;
-}
+/** Miljön kortet ritas i (se canvasEnv.ts). Behålls för bakåtkompatibilitet. */
+export type CardEnv = CanvasEnv;
+export const browserCardEnv = browserCanvasEnv;
+export const setCardEnv = setCanvasEnv;
+const env = { createCanvas: (w: number, h: number) => canvasEnv().createCanvas(w, h), loadImage: (src: string) => canvasEnv().loadImage(src) };
 
 const loadImage = (src: string) => env.loadImage(src);
 

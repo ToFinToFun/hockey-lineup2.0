@@ -7,6 +7,18 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.39.0 – 2026-09-28
+
+**Automatisk nyhet till laget.se** (Inställningar → laget.se, av som standard)
+- X minuter före evenemangets start (standard 45): en tidsinställd nyhet för dagen som inte gått ut uppdateras med aktuell uppställning; finns ingen nyhet publiceras dagens lag – om minst N anmälda spelare (standard 10) står i uppställningen. Redan publicerade nyheter rörs inte. Nyheten byggs på servern med samma kod som i Lineup (rubrik, sponsor som visats minst, hemmalag efter veckodag, dold avsändare).
+- "Senast: …" visar vad som hände förra gången.
+
+**Notiser via e-post** (Inställningar → Notiser)
+- Mottagare och vilka notiser var och en vill ha: match väntar på godkännande, tidsinställd nyhet skapad, automatisk nyhet om 15 min (förhandsvisning med bild), automatisk nyhet kan inte gå ut (för få spelare), automatisk nyhet publicerad/uppdaterad. Testmejl per mottagare.
+- Utgående konto via miljövariabler: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, SMTP_SECURE (true för 465). APP_URL för länkar (standard https://app.stalstadens.se).
+
+- Servern räknar i svensk tid (TZ=Europe/Stockholm).
+
 ## 2.38.1 – 2026-09-28
 
 - Score Tracker, välj målskytt/assist: positionen visas som färgad bricka (M, B, C, F – samma färger som överallt) mellan bocken och namnet. Målvakter sist, i övrigt namnordning.

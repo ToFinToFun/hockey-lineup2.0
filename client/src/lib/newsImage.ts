@@ -7,7 +7,10 @@
 import type { Player } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
 import { POSITION_COLORS, CAPTAIN_COLORS } from "@/lib/positionColors";
-import { loadImage, roundRect } from "@/lib/canvas";
+import { roundRect } from "@/lib/canvas";
+import { canvasEnv } from "@shared/canvasEnv";
+
+const loadImage = (src: string) => canvasEnv().loadImage(src);
 import {
   NEWS_IMAGE as L,
   teamColumns,
@@ -336,9 +339,7 @@ export async function renderNewsImage(opts: NewsImageOptions): Promise<HTMLCanva
   const hB = teamPanelHeight(teamColumns(opts.teamB.slots, opts.teamB.lineup));
   const layout = computeNewsLayout(hA, hB);
 
-  const canvas = document.createElement("canvas");
-  canvas.width = layout.width;
-  canvas.height = layout.height;
+  const canvas = canvasEnv().createCanvas(layout.width, layout.height);
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas stöds inte i den här webbläsaren");
 

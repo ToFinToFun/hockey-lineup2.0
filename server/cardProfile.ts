@@ -12,53 +12,14 @@
  * blir en vanlig profilbild (liten JPEG) som visas precis som förut.
  */
 import { createHash } from "crypto";
-import { createRequire } from "module";
-import path from "path";
-import fs from "fs";
-import { fileURLToPath } from "url";
-import { renderCard, setCardEnv, DEFAULT_SETTINGS, type CardSettings } from "../shared/cardRender";
+import { renderCard, DEFAULT_SETTINGS, type CardSettings } from "../shared/cardRender";
+import { serverCanvas } from "./serverCanvas";
 import { cellsFor } from "../shared/cardStats";
 import { cardStats, getCardRow, listLiveProfileIds, setRenderedHash } from "./playerCards";
 import { setPlayerPhoto } from "./playerPhotos";
 
 type Napi = typeof import("@napi-rs/canvas");
 let napi: Napi | null = null;
-let envReady: Promise<boolean> | null = null;
-
-/** Var klientens bilder (loggor) ligger: dist/public i produktion, client/public annars. */
-function publicDir(): string {
-  const here = path.dirname(fileURLToPath(import.meta.url));
-  for (const dir of [path.resolve(here, "public"), path.resolve(here, "../dist/public"), path.resolve(here, "../client/public"), path.resolve(process.cwd(), "client/public")]) {
-    if (fs.existsSync(path.join(dir, "images"))) return dir;
-  }
-  return path.resolve(process.cwd(), "client/public");
-}
-
-async function initEnv(): Promise<boolean> {
-  try {
-    napi = await import("@napi-rs/canvas");
-    const require = createRequire(import.meta.url);
-    for (const [pkg, family, weights] of [["@fontsource/oswald", "Oswald", ["500", "600", "700"]], ["@fontsource/inter", "Inter", ["400", "500", "600", "700"]]] as const) {
-      const base = path.dirname(require.resolve(`${pkg}/package.json`));
-      for (const w of weights) {
-        const file = path.join(base, "files", `${pkg.split("/")[1]}-latin-${w}-normal.woff2`);
-        if (fs.existsSync(file)) napi.GlobalFonts.registerFromPath(file, family);
-      }
-    }
-    const pub = publicDir();
-    setCardEnv({
-      createCanvas: (w, h) => napi!.createCanvas(w, h) as unknown as HTMLCanvasElement,
-      loadImage: async (src) => {
-        const file = src.startsWith("/") ? path.join(pub, src) : src;
-        return (await napi!.loadImage(file)) as unknown as HTMLImageElement;
-      },
-    });
-    return true;
-  } catch (err) {
-    console.error("[cardProfile] Kan inte rita kort på servern:", err);
-    return false;
-  }
-}
 
 /** Kortets val med aktuell statistik (samma logik som i webbläsaren). */
 export function settingsWithStats(saved: Partial<CardSettings>, stats: Awaited<ReturnType<typeof cardStats>>): CardSettings {
@@ -75,8 +36,8 @@ export function fingerprint(s: CardSettings): string {
 
 /** Rita om en spelares profilkort om något som syns har ändrats. Returnerar true om det ritades. */
 export async function refreshLiveProfile(playerId: string, force = false): Promise<boolean> {
-  envReady ??= initEnv();
-  if (!(await envReady) || !napi) return false;
+  napi = await serverCanvas();
+  if (!napi) return false;
   const row = await getCardRow(playerId);
   if (!row || !row.liveProfile) return false;
   const settings = settingsWithStats(row.settings as Partial<CardSettings>, await cardStats(playerId));

@@ -4,6 +4,8 @@ try {
 } catch {
   /* ingen .env – helt normalt i produktion */
 }
+// Svensk tid för allt som räknas i lokal tid (träningstider, tidsinställda nyheter, säsonger)
+process.env.TZ ||= "Europe/Stockholm";
 import express from "express";
 import helmet from "helmet";
 import { createServer } from "http";
@@ -12,6 +14,7 @@ import { readSession } from "../auth";
 import { getPlayerPhoto } from "../playerPhotos";
 import { getCardSource, getCardMask } from "../playerCards";
 import { startLiveProfileSchedule } from "../cardProfile";
+import { startAutoNewsSchedule } from "../autoNews";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -155,6 +158,8 @@ async function startServer() {
   server.listen(port, () => {
     // Profilkort som följer statistiken: kontroll efter start och sedan var sjätte timme
     startLiveProfileSchedule();
+    // Automatisk nyhet till laget.se (gör bara något om den är påslagen)
+    startAutoNewsSchedule();
     console.log(`Stålstadens v${APP_VERSION} kör på port ${port}`);
   });
 }

@@ -17,6 +17,7 @@ RUN pnpm install --frozen-lockfile --prod
 # ── Körbar image ────────────────────────────────────────────────────────────
 FROM node:22-slim AS production
 ENV NODE_ENV=production
+ENV TZ=Europe/Stockholm
 WORKDIR /app
 
 COPY --from=prod-deps /app/node_modules ./node_modules

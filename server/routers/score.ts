@@ -1,5 +1,7 @@
 import { normalizeGoalType } from "../playerHistory";
 import { scheduleLiveProfileRefresh } from "../cardProfile";
+import { notifyLater, mailLayout } from "../notifications";
+import { ENV } from "../_core/env";
 import { TRPCError } from "@trpc/server";
 /**
  * Score Tracker tRPC router.
@@ -183,6 +185,12 @@ export const scoreRouter = router({
           lineup: input.lineup ?? null,
         });
         scheduleLiveProfileRefresh(); // profilkort med statistik ritas om i bakgrunden
+        if (reviewStatus === "pending") {
+          const m = mailLayout("Match väntar på godkännande", [
+            `<b>${input.name}</b> – Vita ${input.teamWhiteScore}–${input.teamGreenScore} Gröna – är sparad och väntar på att godkännas innan den räknas i statistiken.`,
+          ], { href: `${ENV.appUrl}/history`, label: "Öppna matchhistoriken" });
+          notifyLater("matchPending", () => ({ subject: `Väntar på godkännande: ${input.name}`, ...m }));
+        }
         return { success: true, reviewStatus };
       }),
 
