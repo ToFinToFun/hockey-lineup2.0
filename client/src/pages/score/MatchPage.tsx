@@ -1005,7 +1005,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
           </DialogHeader>
           <div className="text-center space-y-4">
             <p className="text-[#9BA1A6] text-base">
-              Är du säker på att du vill avsluta matchen och spara data till statistiken?
+              Spara matchen till statistiken och börja om? Eller avsluta utan att spara.
             </p>
             <div className="bg-[#1a1a1a] rounded-xl p-4 border border-[#3a3a3a]">
               <p className="text-[#ECEDEE] text-lg font-bold">
@@ -1015,20 +1015,31 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
                 Sparas som: {getMatchName()}
               </p>
             </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setEndMatchModalVisible(false)}
-                disabled={savingMatch}
-                className="flex-1 bg-[#1a1a1a] text-[#ECEDEE] py-3.5 rounded-full font-semibold text-base border border-[#444444] disabled:opacity-50"
-              >
-                Nej
-              </button>
+            <div className="space-y-2">
               <button
                 onClick={handleEndMatch}
                 disabled={savingMatch}
-                className="flex-1 bg-[#22C55E] text-white py-3.5 rounded-full font-semibold text-base disabled:opacity-50 transition-opacity"
+                className="w-full bg-[#22C55E] text-white py-3.5 rounded-full font-semibold text-base disabled:opacity-50 transition-opacity"
               >
-                {savingMatch ? 'Sparar...' : 'Ja, spara'}
+                {savingMatch ? 'Sparar...' : 'Spara och avsluta'}
+              </button>
+              <button
+                onClick={() => {
+                  if (!confirm("Avsluta utan att spara? Målen raderas och matchen räknas inte i statistiken.")) return;
+                  resetAfterSave();
+                  toast("Matchen avslutades utan att sparas");
+                }}
+                disabled={savingMatch}
+                className="w-full bg-transparent text-[#EF4444] py-3 rounded-full font-semibold text-sm border border-[#EF4444]/50 disabled:opacity-50"
+              >
+                Avsluta utan att spara
+              </button>
+              <button
+                onClick={() => setEndMatchModalVisible(false)}
+                disabled={savingMatch}
+                className="w-full bg-[#1a1a1a] text-[#ECEDEE] py-3 rounded-full font-semibold text-sm border border-[#444444] disabled:opacity-50"
+              >
+                Avbryt – fortsätt matchen
               </button>
             </div>
           </div>

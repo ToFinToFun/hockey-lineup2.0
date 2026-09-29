@@ -948,7 +948,7 @@ export default function Home() {
   }, []);
 
   // Hämta anmälningar från laget.se via backend-API och markera matchade spelare
-  const handleBulkRegister = useCallback(async (forceRefresh = false): Promise<{ matched: number; declined?: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string; noEvent?: boolean }> => {
+  const handleBulkRegister = useCallback(async (forceRefresh = false): Promise<{ matched: number; declined?: number; unmatched: string[]; unmatchedDeclined?: string[]; changes?: string[]; eventTitle?: string; eventDate?: string; error?: string; noEvent?: boolean }> => {
     try {
       const data = await fetchAttendanceFromApi(forceRefresh);
 
@@ -989,8 +989,19 @@ export default function Home() {
       const updatePlayer = (p: Player): Player => ({
         ...p,
         isRegistered: matchedSet.has(p.id),
-        isDeclined: declinedSet.has(p.id),
+        isDeclined: declinedSet.has(p.id) && !matchedSet.has(p.id),
       });
+
+      // Vad ändrades? (visas i beskedet, så att det syns vad synken gjorde)
+      const statusOf = (p: Player) => (p.isRegistered ? "kommer" : p.isDeclined ? "kommer ej" : "inte svarat");
+      const changes: string[] = [];
+      const seenIds = new Set<string>();
+      for (const p of [...Object.values(lineupRef.current), ...availablePlayersRef.current]) {
+        if (seenIds.has(p.id)) continue;
+        seenIds.add(p.id);
+        const before = statusOf(p), after = statusOf(updatePlayer(p));
+        if (before !== after) changes.push(`${p.name}: ${after}`);
+      }
 
       setAvailablePlayers((prev) => prev.map(updatePlayer));
       setLineup((prev) => {
@@ -1005,7 +1016,11 @@ export default function Home() {
       const now = new Date();
       setLastSyncTime(now.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" }));
 
-      return { matched: matchedIds.length, declined: declinedResult.matchedIds.length, unmatched: unmatchedNames, eventTitle: data.eventTitle, eventDate: data.eventDate };
+      return {
+        matched: matchedIds.length, declined: declinedResult.matchedIds.length,
+        unmatched: unmatchedNames, unmatchedDeclined: declinedResult.unmatchedNames ?? [],
+        changes, eventTitle: data.eventTitle, eventDate: data.eventDate,
+      };
     } catch (err: any) {
       return { matched: 0, unmatched: [], error: err.message || "Kunde inte hämta data" };
     }
@@ -1324,6 +1339,15 @@ export default function Home() {
     try {
       const result = await handleBulkRegister(true);
       if (result.eventTitle) setEventInfo({ title: result.eventTitle, date: result.eventDate || "" });
+      // Visa vad som ändrades och vilka namn från laget.se som inte hittades i truppen
+      if (!result.error && !result.noEvent) {
+        const missing = [...(result.unmatched ?? []), ...(result.unmatchedDeclined ?? [])];
+        const lines = [
+          result.changes?.length ? `Ändrat: ${result.changes.join(", ")}` : "Inga ändringar",
+          missing.length ? `Hittades inte i truppen: ${missing.join(", ")}` : "",
+        ].filter(Boolean);
+        toast(result.eventTitle ? `Anmälningar – ${result.eventTitle}${result.eventDate ? ` ${result.eventDate}` : ""}` : "Anmälningar hämtade", { description: lines.join("\n"), duration: 7000 });
+      }
       setSyncReceipt(
         result.error ? { ok: false, error: result.error }
         : result.noEvent ? { ok: false, error: "Inget kommande evenemang på laget.se" }

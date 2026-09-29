@@ -134,7 +134,7 @@ export function matchDeclinedPlayers(
   declinedNames: string[],
   allPlayers: Player[],
   lineupPlayers: Record<string, Player>
-): { matchedIds: string[] } {
+): { matchedIds: string[]; unmatchedNames: string[] } {
   const allKnown: Player[] = [
     ...allPlayers,
     ...Object.values(lineupPlayers),
@@ -153,15 +153,18 @@ export function matchDeclinedPlayers(
   }
 
   const matchedIds: string[] = [];
+  const unmatchedNames: string[] = [];
   for (const name of declinedNames) {
     const normalized = normalizeName(name);
     const player = nameMap.get(normalized);
     if (player) {
       matchedIds.push(player.id);
+    } else {
+      unmatchedNames.push(name);
     }
   }
 
-  return { matchedIds };
+  return { matchedIds, unmatchedNames };
 }
 
 /**

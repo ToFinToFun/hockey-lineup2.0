@@ -7,6 +7,16 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.41.1 – 2026-09-29
+
+- Score Tracker, Avsluta: tre tydliga val – Spara och avsluta, Avsluta utan att spara (med bekräftelse, nollställer matchen) och Avbryt – fortsätt matchen. Förut var "Nej" bara avbryt.
+- Lineup, hämta anmälda: beskedet visar vad som ändrades ("Kalle: kommer ej") och vilka namn från laget.se som inte hittades i truppen, så att det syns om en spelares namn inte matchar. En spelare som står som både kommer och kommer ej räknas som kommer.
+
+## 2.41.1 – 2026-09-29
+
+- Score Tracker: Avsluta har tre val – Spara och avsluta, Avsluta utan att spara (med bekräftelse; nollställer matchen) och Fortsätt matchen. Förut fanns bara "Ja, spara" och "Nej" (som bara stängde rutan).
+- Lineup, Anmälda: beskedet efter hämtningen visar vad som ändrades ("Kalle: kommer ej") och vilka namn från laget.se som inte hittades i truppen, plus vilket evenemang som hämtades. En spelare som står både som kommer och kommer ej räknas som kommer.
+
 ## 2.41.0 – 2026-09-29
 
 **Lineup**
