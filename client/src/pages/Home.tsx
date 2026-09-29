@@ -1445,13 +1445,15 @@ export default function Home() {
           {/* Header – compact toolbar matching mockup exactly */}
           <header className="shrink-0">
             <div className="glass-header px-3 py-1.5 sm:py-2">
-              <div className="flex items-center gap-2 sm:gap-x-3 sm:gap-y-1.5 sm:flex-wrap max-w-[1400px] mx-auto">
+              <div className={`grid grid-cols-[auto_1fr_auto] sm:grid-cols-[1fr_auto_1fr] items-center gap-2 mx-auto ${!isMobile && !sideLayout ? "max-w-[940px]" : "max-w-[1400px]"}`}>
+              {/* Vänster: logga, namn (länk hem) och verktygen – mitten: senast ändrad */}
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0 justify-self-start">
               {/* Left: Logo + title + event info */}
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-0">
                 <Link href="/">
                   <img src="/images/logo-green.png" alt="Stålstadens" className="w-6 h-6 sm:w-7 sm:h-7 object-contain shrink-0" />
                 </Link>
-                <div className="leading-tight min-w-0">
+                <Link href="/" className="leading-tight min-w-0 block" title="Till startsidan">
                   <h1
                     className={`text-xs sm:text-sm font-black tracking-widest uppercase truncate ${isLineupDark ? 'text-white' : 'text-gray-900'}`}
                     style={{ fontFamily: "'Oswald', sans-serif" }}
@@ -1466,23 +1468,11 @@ export default function Home() {
                   ) : (
                     <p className={`text-[8px] sm:text-[9px] ${isLineupDark ? 'text-white/30' : 'text-gray-400'}`}>Formations-verktyg</p>
                   )}
-                </div>
+                </Link>
               </div>
 
-              {/* Mitten: när uppställningen senast ändrades */}
-              {lastChangedLabel && (
-                <div className="flex-1 min-w-0 flex justify-center">
-                  <span
-                    className={`text-[10px] sm:text-[11px] font-medium truncate px-2 py-0.5 rounded-full ${isLineupDark ? 'text-white/55 bg-white/5' : 'text-gray-500 bg-gray-100'}`}
-                    title="Senast en spelare placerades, flyttades, togs ur laget eller lades till"
-                  >
-                    Ändrad {lastChangedLabel}
-                  </span>
-                </div>
-              )}
-
               {/* ── VERKTYGSRAD: Hem, anslutning och meny/inställningar (samma på mobil och desktop) ── */}
-                <div className="flex items-center gap-1 flex-1 justify-end">
+                <div className="flex items-center gap-1 shrink-0">
                   {/* Home icon-only */}
                   <a
                     href="https://app.stalstadens.se"
@@ -1525,7 +1515,7 @@ export default function Home() {
                       <>
                         {/* Backdrop */}
                         <div className="fixed inset-0 z-40" onClick={() => setShowHeaderMenu(false)} />
-                        <div className={`absolute right-0 top-full mt-1 z-50 rounded-lg shadow-xl border min-w-[180px] py-1 ${
+                        <div className={`absolute left-0 top-full mt-1 z-50 rounded-lg shadow-xl border min-w-[180px] py-1 ${
                           isLineupDark
                             ? 'bg-[#1a2744] border-white/10'
                             : 'bg-white border-gray-200'
@@ -1605,6 +1595,17 @@ export default function Home() {
                             <FileText className="w-4 h-4" />
                             <span>Dela som text</span>
                           </button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => { setShowNews(true); setShowHeaderMenu(false); }}
+                              className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
+                                isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
+                              }`}
+                            >
+                              <Newspaper className="w-4 h-4" />
+                              <span>Dela på laget.se</span>
+                            </button>
+                          )}
 
                           {/* Separator */}
                           <div className={`my-1 border-t ${isLineupDark ? 'border-white/5' : 'border-gray-100'}`} />
@@ -1683,6 +1684,20 @@ export default function Home() {
                     )}
                   </div>
                 </div>
+              </div>
+              {/* Mitten: när uppställningen senast ändrades */}
+              {lastChangedLabel && (
+                <div className="min-w-0 flex justify-center">
+                  <span
+                    className={`text-[10px] sm:text-[11px] font-medium truncate px-2 py-0.5 rounded-full ${isLineupDark ? 'text-white/55 bg-white/5' : 'text-gray-500 bg-gray-100'}`}
+                    title="Senast en spelare placerades, flyttades, togs ur laget eller lades till"
+                  >
+                    Ändrad {lastChangedLabel}
+                  </span>
+                </div>
+              )}
+
+              <div aria-hidden />
               </div>
             </div>
           </header>
@@ -1791,19 +1806,13 @@ export default function Home() {
                 Trupp ({totalRegistered}/{totalPlayers})
               </button>
               {renderQuickActions(false)}
-              <div className="flex flex-col items-end leading-tight text-[10px] text-white/30">
-                <span className="text-slate-200">{teamAName} {teamARegistered}/{teamACount}</span>
-                <span className="text-emerald-400">{teamBName} {teamBRegistered}/{teamBCount}</span>
-              </div>
             </div>
           )}
 
           {/* Desktop: snabbknapparna ovanför lagen */}
           {!isMobile && (
             <div className="shrink-0 px-3 pt-2 pb-1 flex items-center justify-center gap-4 max-w-[1400px] mx-auto w-full">
-              <span className="text-[11px] text-slate-200/80">{teamAName} {teamARegistered}/{teamACount}</span>
               {renderQuickActions(true)}
-              <span className="text-[11px] text-emerald-400/90">{teamBName} {teamBRegistered}/{teamBCount}</span>
             </div>
           )}
 
@@ -1874,6 +1883,7 @@ export default function Home() {
                       onChangePosition={handleChangePosition}
                       onRenameTeam={setTeamAName}
                       onClearTeam={() => handleRequestClearTeam("team-a-", teamAName)}
+                      registeredLabel={`${teamARegistered}/${teamACount}`}
                       isWhite
                       config={teamAConfig}
                       onConfigChange={setTeamAConfig}
@@ -1899,6 +1909,7 @@ export default function Home() {
                       onChangePosition={handleChangePosition}
                       onRenameTeam={setTeamBName}
                       onClearTeam={() => handleRequestClearTeam("team-b-", teamBName)}
+                      registeredLabel={`${teamBRegistered}/${teamBCount}`}
                       isWhite={false}
                       config={teamBConfig}
                       onConfigChange={setTeamBConfig}
@@ -1933,6 +1944,7 @@ export default function Home() {
                     onChangePosition={handleChangePosition}
                     onRenameTeam={setTeamAName}
                     onClearTeam={() => handleRequestClearTeam("team-a-", teamAName)}
+                    registeredLabel={`${teamARegistered}/${teamACount}`}
                     isWhite
                     config={teamAConfig}
                     onConfigChange={setTeamAConfig}
@@ -1994,6 +2006,7 @@ export default function Home() {
                     onChangePosition={handleChangePosition}
                     onRenameTeam={setTeamBName}
                     onClearTeam={() => handleRequestClearTeam("team-b-", teamBName)}
+                    registeredLabel={`${teamBRegistered}/${teamBCount}`}
                     isWhite={false}
                     config={teamBConfig}
                     onConfigChange={setTeamBConfig}
@@ -2028,6 +2041,7 @@ export default function Home() {
                     onChangePosition={handleChangePosition}
                     onRenameTeam={setTeamAName}
                     onClearTeam={() => handleRequestClearTeam("team-a-", teamAName)}
+                    registeredLabel={`${teamARegistered}/${teamACount}`}
                     isWhite
                     config={teamAConfig}
                     onConfigChange={setTeamAConfig}
@@ -2056,6 +2070,7 @@ export default function Home() {
                     onChangePosition={handleChangePosition}
                     onRenameTeam={setTeamBName}
                     onClearTeam={() => handleRequestClearTeam("team-b-", teamBName)}
+                    registeredLabel={`${teamBRegistered}/${teamBCount}`}
                     isWhite={false}
                     config={teamBConfig}
                     onConfigChange={setTeamBConfig}

@@ -21,6 +21,8 @@ interface TeamPanelProps {
   onChangePosition: (playerId: string, pos: Position) => void;
   onRenameTeam: (name: string) => void;
   onClearTeam: () => void;
+  /** Anmälda / placerade i laget, t.ex. "4/8" – visas bredvid Rensa */
+  registeredLabel?: string;
   isWhite?: boolean;
   config: TeamConfig;
   onConfigChange: (config: TeamConfig) => void;
@@ -196,7 +198,7 @@ function ConfirmRemoveDialog({
 /* ── Main TeamPanel ── */
 export function TeamPanel({
   teamId, teamName, slots, lineup,
-  onRemovePlayer, onChangePosition, onRenameTeam, onClearTeam,
+  onRemovePlayer, onChangePosition, onRenameTeam, onClearTeam, registeredLabel,
   isWhite = false, config, onConfigChange, compact = false,
   otherConfig,
   matchTime = 60,
@@ -365,14 +367,12 @@ export function TeamPanel({
           />
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          {!compact && (
-            <span
-              className="text-white/40 font-bold text-xs"
-              title="Antal spelare i laguppställningen"
-            >
-              {filledCount}
-            </span>
-          )}
+          <span
+            className={`text-white/45 font-bold tabular-nums ${compact ? "text-[10px]" : "text-xs"}`}
+            title="Anmälda / spelare i laget"
+          >
+            {registeredLabel ?? filledCount}
+          </span>
           {filledCount > 0 && !compact && (
             <button
               onClick={() => onClearTeam()}
@@ -385,8 +385,9 @@ export function TeamPanel({
           {filledCount > 0 && compact && (
             <button
               onClick={() => onClearTeam()}
-              className="text-[8px] font-bold px-1 py-0.5 rounded border border-red-400/25 text-red-400/60 hover:text-red-400 transition-all"
-              title="Rensa"
+              className="text-[11px] leading-none font-bold w-6 h-6 flex items-center justify-center rounded-md border border-red-400/40 text-red-400/80 hover:text-red-300 hover:bg-red-400/10 transition-all"
+              title="Rensa laget"
+              aria-label="Rensa laget"
             >
               ✕
             </button>

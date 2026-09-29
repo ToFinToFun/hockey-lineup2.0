@@ -20,7 +20,9 @@ export function MatchResultsBar({ dark = true }: { dark?: boolean }) {
   };
 
   return (
-    <div className="shrink-0 px-3 py-1 max-w-[1400px] mx-auto w-full flex items-center gap-2">
+    <div className="shrink-0 px-3 py-1 w-full flex justify-center">
+    {/* Siffrorna ligger tätt intill raden, som en enhet (inte ute i kanterna) */}
+    <div className="w-full flex items-center gap-1.5" style={{ maxWidth: SLOTS * 13 + 44 }}>
       <span className={`text-[9px] font-bold tabular-nums shrink-0 ${dark ? "text-slate-200/80" : "text-gray-700"}`} title="Vitas vinster">{whiteWins}</span>
       <div
         className="flex-1 min-w-0 flex items-center justify-center gap-[3px]"
@@ -43,6 +45,7 @@ export function MatchResultsBar({ dark = true }: { dark?: boolean }) {
         ))}
       </div>
       <span className="text-[9px] font-bold tabular-nums shrink-0 text-emerald-400" title="Grönas vinster">{greenWins}</span>
+    </div>
     </div>
   );
 }

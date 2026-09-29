@@ -7,6 +7,19 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.40.0 – 2026-09-28
+
+**Lineup**
+- Toppraden: loggan och "Stålstadens SF" leder till startsidan. Hem, anslutning och kugghjulet ligger till vänster intill loggan; "Ändrad …" i mitten. På desktop är raden lika bred som kolumnerna under.
+- Kugghjulsmenyn: "Dela på laget.se" under Dela som text (styrelsen).
+- Anmälda/placerade (t.ex. 4/8) står i lagets ruta bredvid rensa-knappen i stället för ovanför; rensa-knappen (✕) är lite större. Gäller desktop och mobil.
+- Resultatraden: vinstsiffrorna ligger tätt intill blocken i stället för ute i kanterna.
+
+**Matchrapport**
+- Tryck på en bild för att se den större (med Ta med/Ta bort ur inlägget); bocken i hörnet väljer som förut.
+
+- Backlog: Media/Nyheter-modul för egna Instagram-inlägg med teman (se docs/BACKLOG.md).
+
 ## 2.39.0 – 2026-09-28
 
 **Automatisk nyhet till laget.se** (Inställningar → laget.se, av som standard)

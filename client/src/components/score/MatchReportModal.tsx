@@ -206,6 +206,8 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
   const [starPosts, setStarPosts] = useState<Array<{ key: string; name: string; hasCard: boolean; blob: Blob; url: string } | null>>([null, null, null]);
   const [includeStars, setIncludeStars] = useState<boolean[]>([true, true, true]);
   const [starsLoading, setStarsLoading] = useState(false);
+  // Förstorad förhandsvisning av en bild (med val om den ska med)
+  const [preview, setPreview] = useState<{ url: string; label: string; toggle: () => void; included: () => boolean } | null>(null);
   const starsKey = stars.map((c) => c.key).join("|");
   useEffect(() => {
     if (!savedCards.data) return;
@@ -327,16 +329,17 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
             {error && <p className="text-red-300 text-sm">Bilderna kunde inte skapas: {error}</p>}
             <div className="grid grid-cols-2 gap-2">
               {([["result", "Resultat", images?.resultUrl], ["goals", "Målen", images?.goalsUrl]] as const).map(([key, label, url]) => (
-                <button key={key} onClick={() => setInclude((p) => ({ ...p, [key]: !p[key] }))} aria-pressed={include[key]}
-                  className={`relative rounded-xl overflow-hidden border-2 transition-all ${include[key] ? "border-emerald-400" : "border-white/10 opacity-45"}`}
-                  title={include[key] ? `Ta bort ${label.toLowerCase()} ur inlägget` : `Ta med ${label.toLowerCase()} i inlägget`}>
-                  <div className="aspect-[4/5] bg-black flex items-center justify-center">
-                    {url ? <img src={url} alt={label} className="w-full h-full object-cover" /> : <Loader2 className="w-6 h-6 text-white/40 animate-spin" />}
-                  </div>
-                  <span className={`absolute top-1.5 left-1.5 flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${include[key] ? "bg-emerald-500 text-emerald-950" : "bg-black/70 text-white/60"}`}>
-                    {include[key] && <Check className="w-3 h-3" />}{label}
-                  </span>
-                </button>
+                <div key={key} className={`relative rounded-xl overflow-hidden border-2 transition-all ${include[key] ? "border-emerald-400" : "border-white/10"}`}>
+                  <button onClick={() => url && setPreview({ url, label, toggle: () => setInclude((p) => ({ ...p, [key]: !p[key] })), included: () => include[key] })}
+                    className={`block w-full aspect-[4/5] bg-black ${include[key] ? "" : "opacity-45"}`} title="Visa större">
+                    {url ? <img src={url} alt={label} className="w-full h-full object-cover" /> : <Loader2 className="w-6 h-6 text-white/40 animate-spin mx-auto" />}
+                  </button>
+                  <button onClick={() => setInclude((p) => ({ ...p, [key]: !p[key] }))} aria-pressed={include[key]}
+                    title={include[key] ? `Ta bort ${label.toLowerCase()} ur inlägget` : `Ta med ${label.toLowerCase()} i inlägget`}
+                    className={`absolute top-1.5 left-1.5 flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${include[key] ? "bg-emerald-500 text-emerald-950" : "bg-black/70 text-white/60 border border-white/20"}`}>
+                    {include[key] ? <Check className="w-3 h-3" /> : <span className="w-3 h-3 rounded-sm border border-white/50" />}{label}
+                  </button>
+                </div>
               ))}
             </div>
             {starsLoading && !starPosts.some(Boolean) && (
@@ -347,21 +350,24 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
                 <p className="text-white/50 text-[11px] pt-1">Stars of the Game-kort</p>
                 <div className="grid grid-cols-3 gap-2">
                   {starPosts.map((p, i) => p && (
-                    <button key={p.key} onClick={() => setIncludeStars((v) => v.map((x, k) => (k === i ? !x : x)))} aria-pressed={includeStars[i]}
-                      className={`relative rounded-lg overflow-hidden border-2 transition-all ${includeStars[i] ? "border-amber-300" : "border-white/10 opacity-45"}`}
-                      title={p.hasCard ? `${p.name} – guldkort från sparat hockeykort` : `${p.name} har inget sparat hockeykort – kortet visar klubbens märke`}>
-                      <div className="aspect-[4/5] bg-black"><img src={p.url} alt={`${["Första", "Andra", "Tredje"][i]} stjärnan`} className="w-full h-full object-cover" /></div>
-                      <span className={`absolute top-1 left-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${includeStars[i] ? "bg-amber-300 text-amber-950" : "bg-black/70 text-white/60"}`}>
-                        {"★".repeat(3 - i)}
-                      </span>
-                      {!p.hasCard && <span className="absolute bottom-1 inset-x-1 text-[8px] text-center bg-black/70 text-white/70 rounded px-1 py-0.5">Inget sparat kort</span>}
-                    </button>
+                    <div key={p.key} className={`relative rounded-lg overflow-hidden border-2 transition-all ${includeStars[i] ? "border-amber-300" : "border-white/10"}`}>
+                      <button onClick={() => setPreview({ url: p.url, label: p.name, toggle: () => setIncludeStars((v) => v.map((x, k) => (k === i ? !x : x))), included: () => includeStars[i] })}
+                        className={`block w-full aspect-[4/5] bg-black ${includeStars[i] ? "" : "opacity-45"}`}
+                        title={p.hasCard ? `${p.name} – visa större` : `${p.name} har inget sparat hockeykort – kortet visar klubbens märke`}>
+                        <img src={p.url} alt={`${["Första", "Andra", "Tredje"][i]} stjärnan`} className="w-full h-full object-cover" />
+                      </button>
+                      <button onClick={() => setIncludeStars((v) => v.map((x, k) => (k === i ? !x : x)))} aria-pressed={includeStars[i]}
+                        className={`absolute top-1 left-1 flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${includeStars[i] ? "bg-amber-300 text-amber-950" : "bg-black/70 text-white/60 border border-white/20"}`}>
+                        {includeStars[i] ? <Check className="w-2.5 h-2.5" /> : <span className="w-2.5 h-2.5 rounded-sm border border-white/50" />}{"★".repeat(3 - i)}
+                      </button>
+                      {!p.hasCard && <span className="pointer-events-none absolute bottom-1 inset-x-1 text-[8px] text-center bg-black/70 text-white/70 rounded px-1 py-0.5">Inget sparat kort</span>}
+                    </div>
                   ))}
                 </div>
                 <p className="text-white/35 text-[10px]">Guldkort med matchens siffror, bara för matchens stjärnor. Spelare utan sparat hockeykort får klubbens märke i stället för foto – skapa ett kort i Hockeykort så blir det spelarens bild.</p>
               </>
             )}
-            <p className="text-white/35 text-[10px]">4:5 (1080×1350). Tryck på en bild för att ta med eller utesluta den.</p>
+            <p className="text-white/35 text-[10px]">4:5 (1080×1350). Tryck på en bild för att se den större – bocken i hörnet väljer om den ska med.</p>
           </div>
 
           {/* Val */}
@@ -468,6 +474,18 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
           )}
         </div>
       </div>
+      {preview && (
+        <div className="fixed inset-0 z-[100000] bg-black/90 flex flex-col items-center justify-center p-4 gap-3" onClick={() => setPreview(null)}>
+          <img src={preview.url} alt={preview.label} className="max-w-[94vw] max-h-[78vh] rounded-lg shadow-2xl object-contain" onClick={(e) => e.stopPropagation()} />
+          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => { preview.toggle(); setPreview(null); }}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold ${preview.included() ? "bg-white/10 border border-white/20 text-white/80" : "bg-emerald-500 text-emerald-950"}`}>
+              {preview.included() ? "Ta bort ur inlägget" : "Ta med i inlägget"}
+            </button>
+            <button onClick={() => setPreview(null)} className="px-4 py-2 rounded-lg text-sm bg-white/10 border border-white/20 text-white/80">Stäng</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
