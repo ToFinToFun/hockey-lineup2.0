@@ -90,7 +90,7 @@ export function buildReportData(
     dateLine: dateLine(match.matchEndTime ?? match.matchStartTime ?? match.createdAt),
     goals,
     // Bilden: bara namn och (valfritt) statistik – ingen position
-    stars: stars.map((c, i) => ({ name: c.name, stat: showStats[i] === false ? "" : starStat(c), gwg: showStats[i] !== false && c.gwg })),
+    stars: stars.map((c, i) => ({ name: c.number ? `${c.name} #${c.number}` : c.name, stat: showStats[i] === false ? "" : starStat(c), gwg: showStats[i] !== false && c.gwg })),
     sponsor,
     logoWhite: LOGO_WHITE, logoGreen: LOGO_GREEN, background: BACKGROUND,
   };

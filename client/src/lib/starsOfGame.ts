@@ -22,6 +22,8 @@ export interface StarGoal {
 export interface StarCandidate {
   key: string; // spelar-ID eller namn
   name: string;
+  /** Tröjnummer (tomt om spelaren saknar nummer) */
+  number: string;
   team: "white" | "green";
   position: "MV" | "B" | "C" | "LW" | "RW" | "";
   goals: number;
@@ -38,7 +40,10 @@ const posOf = (slot: string): StarCandidate["position"] =>
   slot.includes("-gk-") ? "MV" : slot.includes("-def-") ? "B" : slot.endsWith("-c") ? "C" : slot.endsWith("-rw") ? "RW" : "LW";
 
 /** "Kalle Karlsson #12" → "Kalle Karlsson" */
-const bare = (label: string) => label.replace(/\s+#\d+\s*$/, "").trim();
+/** "Kalle Karlsson #12" eller "Kalle Karlsson #" → "Kalle Karlsson" */
+const bare = (label: string) => label.replace(/\s*#\d*\s*$/, "").trim();
+/** Numret ur "Kalle Karlsson #12" (tomt om det saknas) */
+const numberOf = (label: string) => label.match(/#(\d+)\s*$/)?.[1] ?? "";
 
 /** Förkortning i texten: M, B, C, VF, HF */
 export function starPositionLabel(p: StarCandidate["position"]): string {
@@ -71,13 +76,14 @@ export function starCandidates(match: {
     if (byKey.has(key)) continue;
     const team: "white" | "green" = slot.startsWith("team-a") === aWhite ? "white" : "green";
     const pos = posOf(slot);
-    const name = (p.name ?? key).trim();
+    const name = bare(p.name ?? key);
     byKey.set(key, {
-      key, name, team, position: pos, goals: 0, assists: 0, gwg: false,
+      key, name, number: (p.number ?? "").trim(), team, position: pos, goals: 0, assists: 0, gwg: false,
       goalsAgainst: pos === "MV" ? (team === "white" ? match.teamGreenScore : match.teamWhiteScore) : null, score: 0,
     });
     nameToKey.set(name.toLowerCase(), key);
     if (p.number) nameToKey.set(`${name} #${p.number}`.toLowerCase(), key);
+    nameToKey.set(`${name} #`.toLowerCase(), key);
   }
 
   const find = (id: string | undefined, label: string | undefined, team: "white" | "green") => {
@@ -87,7 +93,7 @@ export function starCandidates(match: {
       if (k) return byKey.get(k)!;
       // Målskytt som inte står i uppställningen
       const key = id || bare(label);
-      const c: StarCandidate = { key, name: bare(label), team, position: "", goals: 0, assists: 0, gwg: false, goalsAgainst: null, score: 0 };
+      const c: StarCandidate = { key, name: bare(label), number: numberOf(label), team, position: "", goals: 0, assists: 0, gwg: false, goalsAgainst: null, score: 0 };
       byKey.set(key, c);
       nameToKey.set(bare(label).toLowerCase(), key);
       return c;
@@ -160,7 +166,8 @@ export function starStatWithGwg(c: StarCandidate): string {
 /** "Jerry Paasovaara (VF) 2G 3A 5TP" – position och statistik kan väljas bort. */
 export function starLine(c: StarCandidate, opts: { position?: boolean; stats?: boolean } = {}): string {
   const pos = opts.position === false ? "" : starPositionLabel(c.position);
-  const head = pos ? `${c.name} (${pos})` : c.name;
+  const who = c.number ? `${c.name} #${c.number}` : c.name;
+  const head = pos ? `${who} (${pos})` : who;
   const stat = opts.stats === false ? "" : starStatWithGwg(c);
   return stat ? `${head} ${stat}` : head;
 }

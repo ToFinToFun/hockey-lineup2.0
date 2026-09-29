@@ -41,6 +41,8 @@ export function starCardSettings(
     position: ({ MV: "G", B: "D", C: "C", LW: "LW", RW: "RW" } as Record<string, string>)[c.position] ?? "",
     ...(saved ?? {}),
   };
+  // Nummer från det sparade kortet, annars från matchens uppställning (tomt = inget nummer)
+  base.number = (saved?.number ?? "").trim() || c.number || "";
   return {
     ...base,
     skin: "retro-guld",

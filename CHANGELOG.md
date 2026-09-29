@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.42.2 – 2026-09-29
+
+- Stars of the Game: namn och nummer är konsekventa i bildtext, resultatbild, stjärnkort och matchens detaljvy – "Namn #12" när spelaren har nummer, bara namnet annars. Rättat att en spelare utan nummer fick ett ensamt "#" efter namnet (från målskyttens etikett "Namn #"), och att numret saknades i texten. Stjärnkortet tar numret från det sparade kortet, annars från matchens uppställning.
+
 ## 2.42.1 – 2026-09-29
 
 - Nyhet till laget.se: Spara bild laddar ned bilden direkt (öppnade delningsmenyn på Android).
