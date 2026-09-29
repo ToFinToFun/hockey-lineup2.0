@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.41.2 – 2026-09-29
+
+- Nyhet till laget.se: laget.se:s flöde tar bort radbrytningar i utdraget ("…JLcoVITAMV Vide…"). Första raden ("Dagens matchsponsor: …") fylls därför ut med mellanslag till 115 tecken när nyheten skickas, så att utdraget slutar efter sponsorn oavsett namnets längd. Syns inte i nyheten och inte i textrutan i appen. Gäller manuella och automatiska nyheter.
+
 ## 2.41.1 – 2026-09-29
 
 - Score Tracker, Avsluta: tre tydliga val – Spara och avsluta, Avsluta utan att spara (med bekräftelse, nollställer matchen) och Avbryt – fortsätt matchen. Förut var "Nej" bara avbryt.

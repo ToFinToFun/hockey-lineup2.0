@@ -58,7 +58,8 @@ describe("laget.se nyheter (adminformuläret)", () => {
     );
     expect(f).toContainEqual(["Id", "0"]);
     expect(f).toContainEqual(["Picture.FileId", "0"]);
-    expect(f).toContainEqual(["Body", "a\r\n<b>b</b>"]);
+    // Första raden fylls ut med mellanslag för laget.se:s flöde (se padFeedPreview)
+    expect(f).toContainEqual(["Body", `a${" ".repeat(114)}\r\n<b>b</b>`]);
     expect(f).toContainEqual(["PublishNow", "false"]);
     expect(f).toContainEqual(["NewsTime", "2026-09-29"]);
     expect(f).toContainEqual(["PublishHourSelect", "21"]);
@@ -135,5 +136,22 @@ describe("måltyper i statistiken", () => {
     expect(normalizeGoalType("Övrigt")).toBeNull();
     expect(normalizeGoalType(undefined)).toBeNull();
     expect(normalizeGoalType("Självmål")).toBeNull();
+  });
+});
+
+import { padFeedPreview, FEED_PREVIEW_FIRST_LINE } from "./lagetSe";
+
+describe("utdraget i laget.se:s flöde", () => {
+  it("första raden fylls ut så att andra raden inte syns i utdraget", () => {
+    const body = "Dagens matchsponsor: <b>JLco</b>\n\nVITA\nMV Vide";
+    const out = padFeedPreview(body);
+    const first = out.split("\n")[0];
+    expect(first.replace(/<[^>]+>/g, "").length).toBe(FEED_PREVIEW_FIRST_LINE);
+    expect(out.endsWith("\n\nVITA\nMV Vide")).toBe(true);
+  });
+  it("lång sponsor eller en rad: oförändrat", () => {
+    expect(padFeedPreview("En rad")).toBe("En rad");
+    const long = `Dagens matchsponsor: ${"x".repeat(130)}\nVITA`;
+    expect(padFeedPreview(long)).toBe(long);
   });
 });

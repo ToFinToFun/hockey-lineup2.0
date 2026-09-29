@@ -784,7 +784,7 @@ export function buildNewsFormFields(
     // Tomt värde godtas inte ("The FileId field is required").
     ["Picture.FileId", "0"],
     ["Name", input.title],
-    ["Body", input.body.replace(/\r?\n/g, "\r\n")],
+    ["Body", padFeedPreview(input.body).replace(/\r?\n/g, "\r\n")],
   ];
   // Kryssrutor i ASP.NET: "true" + dold "false" när ikryssad, bara "false" annars
   if (existing?.isTopNews) f.push(["IsTopNews", "true"]);
@@ -812,6 +812,23 @@ function formErrors(html: string): string[] {
     .map((_, el) => $(el).text().replace(/\s+/g, " ").trim())
     .get()
     .filter(Boolean);
+}
+
+/**
+ * laget.se:s flöde visar en kort utdragstext där radbrytningar försvinner
+ * ("…JLcoVITAMV Vide…"). Första raden fylls därför ut med mellanslag till en
+ * längd som gör att utdraget tar slut innan andra raden börjar. Syns inte i
+ * själva nyheten. 105 tecken är provat live ("Dagens matchsponsor: JLco" + 80
+ * mellanslag); vi tar lite marginal. Taggar som <b> räknas inte.
+ */
+export const FEED_PREVIEW_FIRST_LINE = 115;
+export function padFeedPreview(body: string): string {
+  const nl = body.indexOf("\n");
+  if (nl <= 0) return body;
+  const first = body.slice(0, nl).replace(/\s+$/, "");
+  const visible = first.replace(/<[^>]+>/g, "").replace(/&[a-z]+;/g, "x").length;
+  const pad = Math.max(0, FEED_PREVIEW_FIRST_LINE - visible);
+  return first + " ".repeat(pad) + body.slice(nl);
 }
 
 export async function publishNews(input: PublishNewsInput): Promise<PublishNewsResult> {
