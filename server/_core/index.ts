@@ -15,6 +15,7 @@ import { getPlayerPhoto } from "../playerPhotos";
 import { getCardSource, getCardMask } from "../playerCards";
 import { startLiveProfileSchedule } from "../cardProfile";
 import { startAutoNewsSchedule } from "../autoNews";
+import { getMediaPhoto } from "../mediaPosts";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -127,6 +128,20 @@ async function startServer() {
       res.setHeader("ETag", etag);
       if (req.headers["if-none-match"] === etag) return res.status(304).end();
       res.type("image/png").send(m.image);
+    } catch {
+      res.status(500).end();
+    }
+  });
+
+  // Media: egen bild i ett sparat inlägg – bara styrelsen
+  app.get("/api/media/:id/photo", async (req, res) => {
+    try {
+      const session = await readSession(req);
+      if (session?.role !== "admin") return res.status(401).end();
+      const p = await getMediaPhoto(Number(req.params.id));
+      if (!p) return res.status(404).end();
+      res.setHeader("Cache-Control", "private, no-cache");
+      res.type("image/jpeg").send(p.image);
     } catch {
       res.status(500).end();
     }

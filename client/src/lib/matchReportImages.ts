@@ -42,13 +42,13 @@ export interface ReportData {
   background: string;
 }
 
-const HEAD = "'Oswald', sans-serif";
-const BODY = "'Inter', sans-serif";
-const WHITE = "#e2e8f0";
+export const HEAD = "'Oswald', sans-serif";
+export const BODY = "'Inter', sans-serif";
+export const WHITE = "#e2e8f0";
 /** Klubbgrön: samma nyans som Grönas logga (#337931), ljusare för mörk bakgrund */
-const GREEN = "#56c653";
+export const GREEN = "#56c653";
 
-async function tryLoad(src: string | null | undefined) {
+export async function tryLoad(src: string | null | undefined) {
   if (!src) return null;
   try {
     return await loadImage(src);
@@ -57,7 +57,7 @@ async function tryLoad(src: string | null | undefined) {
   }
 }
 
-async function ensureFonts() {
+export async function ensureFonts() {
   if (typeof document === "undefined" || !document.fonts) return;
   await Promise.all(
     [`700 200px ${HEAD}`, `600 40px ${HEAD}`, `600 34px ${BODY}`, `400 26px ${BODY}`, `500 28px ${BODY}`].map((f) =>
@@ -66,21 +66,21 @@ async function ensureFonts() {
   );
 }
 
-function fit(ctx: CanvasRenderingContext2D, text: string, max: number) {
+export function fit(ctx: CanvasRenderingContext2D, text: string, max: number) {
   if (ctx.measureText(text).width <= max) return text;
   let t = text;
   while (t.length > 1 && ctx.measureText(`${t}…`).width > max) t = t.slice(0, -1);
   return `${t.trimEnd()}…`;
 }
 
-function canvas(): [HTMLCanvasElement, CanvasRenderingContext2D] {
+export function canvas(): [HTMLCanvasElement, CanvasRenderingContext2D] {
   const c = canvasEnv().createCanvas(IG_W, IG_H);
   const ctx = c.getContext("2d");
   if (!ctx) throw new Error("Canvas stöds inte");
   return [c, ctx];
 }
 
-function backdrop(ctx: CanvasRenderingContext2D, bg: HTMLImageElement | null, dim = 0.62) {
+export function backdrop(ctx: CanvasRenderingContext2D, bg: HTMLImageElement | null, dim = 0.62) {
   ctx.fillStyle = "#0b1410";
   ctx.fillRect(0, 0, IG_W, IG_H);
   if (bg) {
@@ -97,7 +97,7 @@ function backdrop(ctx: CanvasRenderingContext2D, bg: HTMLImageElement | null, di
   ctx.fillRect(0, 0, IG_W, IG_H);
 }
 
-function header(ctx: CanvasRenderingContext2D, title: string, dateLine: string) {
+export function header(ctx: CanvasRenderingContext2D, title: string, dateLine: string) {
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = "rgba(255,255,255,0.6)";
@@ -133,7 +133,7 @@ function logo(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null, cx: n
   ctx.stroke();
 }
 
-function presentedBy(ctx: CanvasRenderingContext2D, sponsor: { name: string; img: HTMLImageElement | null } | null, y: number) {
+export function presentedBy(ctx: CanvasRenderingContext2D, sponsor: { name: string; img: HTMLImageElement | null } | null, y: number) {
   if (!sponsor) return;
   ctx.textAlign = "center";
   ctx.font = `600 22px ${BODY}`;
@@ -157,7 +157,7 @@ function presentedBy(ctx: CanvasRenderingContext2D, sponsor: { name: string; img
 }
 
 /** Stjärna ritad som figur (inga emoji-typsnitt behövs) */
-function star(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string) {
+export function star(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string) {
   ctx.beginPath();
   for (let i = 0; i < 10; i++) {
     const rad = i % 2 === 0 ? r : r * 0.45;

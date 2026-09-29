@@ -7,6 +7,15 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.43.0 – 2026-09-29
+
+**Media (ny bricka, styrelsen)** – egna Instagram-bilder i samma grafiska profil och format som matchrapporten (4:5, 1080×1350):
+- Lagets uppställning: välj Vita eller Gröna – laget hämtas direkt från Lineup (målvakter, backpar, kedjor med positionsbrickor, nummer och C/A), datum/plats från laget.se.
+- Text / egen bild: rubrik, text och en info-rad i färg (t.ex. nästa träning, hämtas med ett tryck), med arenan eller egen bild bakom (mörkläggning justerbar).
+- Teman: Standard, Jul, Nyår, Påsk (accentfärg och dekor). Valfri sponsor ("Presenteras av").
+- Bildtext förifylld med klubbens hashtags (samma som i matchrapporten), fritt redigerbar.
+- Ladda ned, Dela (Instagram m.fl.; texten kopieras), Kopiera text. Spara som utkast, öppna och ändra igen, Spara som nytt, Ta bort.
+
 ## 2.42.2 – 2026-09-29
 
 - Stars of the Game: namn och nummer är konsekventa i bildtext, resultatbild, stjärnkort och matchens detaljvy – "Namn #12" när spelaren har nummer, bara namnet annars. Rättat att en spelare utan nummer fick ett ensamt "#" efter namnet (från målskyttens etikett "Namn #"), och att numret saknades i texten. Stjärnkortet tar numret från det sparade kortet, annars från matchens uppställning.

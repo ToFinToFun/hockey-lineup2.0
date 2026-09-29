@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { AccessPanel } from "@/components/auth/AccessPanel";
 import { AppVersion } from "@/components/AppVersion";
-import { BarChart3, Users, ChevronRight, Trophy, ClipboardList, Timer, TrendingUp, Sparkles, History, Settings as SettingsIcon } from "lucide-react";
+import { BarChart3, Users, ChevronRight, Trophy, ClipboardList, Timer, TrendingUp, Sparkles, History, Settings as SettingsIcon, Image as ImageIcon } from "lucide-react";
 
 // Keep the hub artwork on the same origin as the application. The old external
 // CDN links can expire or reject requests in production, while Vite serves
@@ -253,6 +253,24 @@ export default function Hub() {
                   size={20}
                   className="text-white/20 group-hover:text-purple-500 transition-colors flex-shrink-0"
                 />
+              </div>
+            </div>
+          </Link>
+          )}
+
+          {/* Media */}
+          {isAdmin && (
+          <Link href="/media">
+            <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] hover:border-fuchsia-400/60 transition-all duration-300 cursor-pointer">
+              <div className="p-5 sm:p-6 flex items-center gap-4">
+                <div className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-fuchsia-400/10 border border-fuchsia-400/20 flex items-center justify-center">
+                  <ImageIcon size={24} className="text-fuchsia-300" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold tracking-tight">Media</h2>
+                  <p className="text-white/40 text-xs sm:text-sm mt-0.5">Instagram-bilder: lagets uppställning, nyheter och teman</p>
+                </div>
+                <ChevronRight size={20} className="text-white/20 group-hover:text-fuchsia-300 transition-colors flex-shrink-0" />
               </div>
             </div>
           </Link>

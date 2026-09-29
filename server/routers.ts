@@ -9,6 +9,7 @@ import { ENV } from "./_core/env";
 import { setPlayerPhoto, deletePlayerPhoto, MAX_PHOTO_BASE64 } from "./playerPhotos";
 import { listCards, cardStats, saveCard, deleteCard, MAX_CARD_SOURCE_BASE64 } from "./playerCards";
 import { refreshLiveProfile } from "./cardProfile";
+import { listMediaPosts, mediaPhotoIds, saveMediaPost, deleteMediaPost, MAX_MEDIA_PHOTO_BASE64 } from "./mediaPosts";
 import { listSponsors, createSponsor, updateSponsor, deleteSponsor, moveSponsor, recordSponsorNews } from "./sponsorsDb";
 import { scoreRouter } from "./routers/score";
 import { scoreStatsRouter } from "./routers/scoreStats";
@@ -362,6 +363,36 @@ export const appRouter = router({
       .input(z.object({ playerId: z.string().min(1).max(64) }))
       .mutation(async ({ input }) => {
         await deleteCard(input.playerId);
+        return { success: true };
+      }),
+  }),
+
+  // ─── Media: egna Instagram-inlägg ──────────────────────────────────────────
+  // Egen bild visas via GET /api/media/:id/photo (se server/_core/index.ts).
+
+  media: router({
+    list: adminProcedure.query(async () => {
+      const [posts, withPhoto] = await Promise.all([listMediaPosts(), mediaPhotoIds()]);
+      return posts.map((p) => ({ ...p, hasPhoto: withPhoto.has(p.id) }));
+    }),
+    save: adminProcedure
+      .input(z.object({
+        id: z.number().int().positive().optional(),
+        type: z.enum(["lineup", "text"]),
+        title: z.string().trim().min(1).max(120),
+        settings: z.record(z.string(), z.unknown()),
+        caption: z.string().max(3000),
+        photoBase64: z.string().max(MAX_MEDIA_PHOTO_BASE64, "Bilden är för stor").regex(/^[A-Za-z0-9+/=]+$/).nullable().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        if (input.photoBase64 && !input.photoBase64.startsWith("/9j/")) throw new TRPCError({ code: "BAD_REQUEST", message: "Bilden måste vara JPEG" });
+        if (JSON.stringify(input.settings).length > 60_000) throw new TRPCError({ code: "BAD_REQUEST", message: "För mycket data i inlägget" });
+        return { id: await saveMediaPost(input) };
+      }),
+    delete: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        await deleteMediaPost(input.id);
         return { success: true };
       }),
   }),

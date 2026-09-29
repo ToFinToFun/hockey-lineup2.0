@@ -52,5 +52,5 @@ Prioriterad lista från genomgången 2026-09-24. Bocka av när klart.
 - [ ] Automatisk synk från medlemsregistret (laget.se) – förberett med laget-namn och externt ID
 
 ## Framåt (idéer från Jerry, 2026-09-28)
-- [ ] **Media/Nyheter-modul** på startsidan: snygga Instagram-inlägg (4:5) i samma stil och process som matchrapporten, men med fritext – t.ex. "Nu börjar serien", "Nu börjar slutspelet", "Anmäl er till julmatchen". Lägg till egen bild, redigera text i bilden, text för inlägget och hashtags (samma sparade taggar). Teman i samma grundstil: jul, nyår, påsk m.fl.
+- [x] **Media/Nyheter-modul** (v2.43.0 – första versionen) på startsidan: snygga Instagram-inlägg (4:5) i samma stil och process som matchrapporten, men med fritext – t.ex. "Nu börjar serien", "Nu börjar slutspelet", "Anmäl er till julmatchen". Lägg till egen bild, redigera text i bilden, text för inlägget och hashtags (samma sparade taggar). Teman i samma grundstil: jul, nyår, påsk m.fl.
 - [ ] Utskriftsark för hockeykort (A4, nio kort 63×88 mm med skärmärken) – skippat tills vidare.

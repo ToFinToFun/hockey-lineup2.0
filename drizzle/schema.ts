@@ -265,3 +265,20 @@ export const playerCards = mysqlTable("player_cards", {
   renderedHash: varchar("renderedHash", { length: 64 }),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
+
+// ─── Media (egna Instagram-inlägg) ───────────────────────────────────────────
+// Sparade utkast: mall, val och bildtext – så att de kan öppnas och ändras igen.
+
+export const mediaPosts = mysqlTable("media_posts", {
+  id: int("id").autoincrement().primaryKey(),
+  /** "lineup" (ett lags uppställning) eller "text" (rubrik, text, egen bild) */
+  type: varchar("type", { length: 20 }).notNull(),
+  /** Namn i listan över sparade inlägg */
+  title: varchar("title", { length: 120 }).notNull(),
+  settings: json("settings").$type<Record<string, unknown>>().notNull(),
+  caption: text("caption"),
+  /** Egen bakgrundsbild (JPEG, base64) – valfri */
+  photo: mediumtext("photo"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
