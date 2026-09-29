@@ -242,21 +242,15 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
     if (!blob) return;
     setSaving(true);
     try {
-      const file = new File([blob], fileName, { type: "image/jpeg" });
-      const canShareFile =
-        typeof navigator !== "undefined" &&
-        !!navigator.canShare?.({ files: [file] }) &&
-        window.matchMedia("(pointer: coarse)").matches;
-      if (canShareFile) {
-        await navigator.share({ files: [file], title });
-      } else {
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = fileName;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-        toast.success("Bilden sparad", { description: fileName });
-      }
+      // Alltid nedladdning (inte delningsmenyn) – så gör "Spara" det knappen säger
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      toast.success("Bilden sparad", { description: fileName });
       recordHome();
     } catch (err) {
       if ((err as DOMException)?.name !== "AbortError") toast.error("Bilden kunde inte sparas");

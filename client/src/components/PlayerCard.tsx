@@ -753,9 +753,10 @@ export function TeamColorIndicator({ teamColor, compact, mostPlayedTeam }: { tea
 
   // Waivers: alltid ett grått W. Har spelaren oftast spelat i ett lag syns det
   // som en tunn färgad kant (och i texten vid hovring) – samma symbol överallt.
-  const hint = mostPlayedTeam === "green" ? "border-emerald-400/70" : mostPlayedTeam === "white" ? "border-white/70" : "border-white/20";
+  // Oftast i ett lag: W och kant i lagets färg (vit/grön), annars grått
+  const tone = mostPlayedTeam === "green" ? "border-emerald-400 text-emerald-400" : mostPlayedTeam === "white" ? "border-white text-white" : "border-white/20 text-white/45";
   const hintText = mostPlayedTeam === "green" ? " – oftast Gröna" : mostPlayedTeam === "white" ? " – oftast Vita" : "";
-  return <div title={`Waivers – inget lag${hintText}`} className={`${cls} ${letter} border ${hint} bg-white/5 text-white/45`}>W</div>;
+  return <div title={`Waivers – inget lag${hintText}`} className={`${cls} ${letter} border bg-white/5 ${tone}`}>W</div>;
 }
 
 // Drag overlay card

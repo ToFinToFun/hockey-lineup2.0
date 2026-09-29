@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.42.1 – 2026-09-29
+
+- Nyhet till laget.se: Spara bild laddar ned bilden direkt (öppnade delningsmenyn på Android).
+- Waivers: W och kant i vitt eller grönt när spelaren oftast spelat i Vita respektive Gröna; annars grått.
+
 ## 2.42.0 – 2026-09-29
 
 **Score Tracker – starttid**
