@@ -27,6 +27,11 @@ describe("matchrapport", () => {
   it("målen i tidsordning, straff och självmål markerade", () => {
     const d = buildReportData(match, stars, null);
     expect(d.goals.map((g) => g.time)).toEqual(["21:05", "21:10", "21:20", "21:30", "21:40"]);
+    // Ingen känd starttid → inga minuter
+    expect(d.goals[0].minute).toBeNull();
+    // Starttid från träningen 21:00 → minuter in i matchen
+    const withStart = buildReportData({ ...match, matchStartTime: new Date(2026, 8, 29, 21, 0).toISOString() }, stars, null);
+    expect(withStart.goals.map((g) => g.minute)).toEqual([5, 10, 20, 30, 40]);
     expect(d.goals[1].scorer).toBe("Pelle (självmål)");
     expect(d.goals[3].penalty).toBe(true);
     // 3–2 till Vita: Vitas tredje mål (21:40) är matchvinnande
@@ -46,9 +51,10 @@ describe("matchrapport", () => {
     expect(text.endsWith("#StålstadensSF #Gubbhockey")).toBe(true);
   });
 
-  it("målbildens layout: en kolumn upp till 12 mål, sedan två", () => {
+  it("målbildens layout: en kolumn upp till 8 mål, sedan två", () => {
     expect(goalsLayout(5)).toMatchObject({ columns: 1, rowH: 118 });
-    expect(goalsLayout(12).columns).toBe(1);
+    expect(goalsLayout(8).columns).toBe(1);
+    expect(goalsLayout(9).columns).toBe(2);
     const many = goalsLayout(25);
     expect(many.columns).toBe(2);
     expect(many.top + many.perCol * many.rowH).toBeLessThanOrEqual(1350 - 90);

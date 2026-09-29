@@ -23,7 +23,7 @@ const TABS = [
   { id: "perioder", label: "Perioder", icon: CalendarRange },
   { id: "laget", label: "laget.se", icon: Link2 },
   { id: "notiser", label: "Notiser", icon: Bell },
-  { id: "om", label: "Om appen", icon: Info },
+  { id: "om", label: "Om", icon: Info },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
@@ -47,13 +47,15 @@ export default function SettingsApp() {
           <Link href="/" className="text-white/60 hover:text-white" aria-label="Tillbaka"><ArrowLeft size={20} /></Link>
           <h1 className="text-lg font-bold flex-1" style={{ fontFamily: "'Oswald', sans-serif" }}>Inställningar</h1>
         </div>
-        <nav className="max-w-3xl mx-auto px-4 pb-2 flex gap-1 overflow-x-auto scrollbar-hide">
+        {/* Flikar: ikon med kort text under – får plats på mobilen utan att brytas konstigt */}
+        <nav className="max-w-3xl mx-auto px-2 pb-2 grid grid-cols-6 gap-1">
           {TABS.map(({ id, label, icon: Icon }) => (
-            <button key={id} onClick={() => choose(id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
-                tab === id ? "bg-[#0a7ea4] text-white" : "bg-white/5 text-white/55 hover:text-white"
+            <button key={id} onClick={() => choose(id)} aria-current={tab === id ? "page" : undefined}
+              className={`flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-lg min-w-0 transition-all ${
+                tab === id ? "bg-[#0a7ea4] text-white" : "text-white/55 hover:text-white hover:bg-white/5"
               }`}>
-              <Icon size={13} /> {label}
+              <Icon size={16} />
+              <span className="text-[10px] leading-tight font-medium truncate max-w-full">{label}</span>
             </button>
           ))}
         </nav>

@@ -4,14 +4,19 @@
  *  2. Målen: alla mål i tidsordning med ställning, målskytt och assist.
  *     Raderna anpassas efter antalet mål; många mål ger två kolumner.
  */
-import { loadImage, roundRect } from "@/lib/canvas";
+import { roundRect } from "@/lib/canvas";
+import { canvasEnv } from "@shared/canvasEnv";
+
+const loadImage = (src: string) => canvasEnv().loadImage(src);
 
 export const IG_W = 1080;
 export const IG_H = 1350;
 
 export interface ReportGoal {
   team: "white" | "green";
-  time?: string; // "HH:MM" eller "HH:MM:SS"
+  time?: string; // "HH:MM" eller "HH:MM:SS" (klockslag, sparas också)
+  /** Minuter in i matchen, när starttiden är känd */
+  minute?: number | null;
   scorer?: string;
   assist?: string;
   penalty?: boolean;
@@ -69,9 +74,7 @@ function fit(ctx: CanvasRenderingContext2D, text: string, max: number) {
 }
 
 function canvas(): [HTMLCanvasElement, CanvasRenderingContext2D] {
-  const c = document.createElement("canvas");
-  c.width = IG_W;
-  c.height = IG_H;
+  const c = canvasEnv().createCanvas(IG_W, IG_H);
   const ctx = c.getContext("2d");
   if (!ctx) throw new Error("Canvas stöds inte");
   return [c, ctx];
@@ -286,10 +289,12 @@ export async function renderResultImage(d: ReportData): Promise<HTMLCanvasElemen
 /** Hur målraderna ska se ut för ett visst antal mål (exporteras för test). */
 export function goalsLayout(n: number, top = 300, bottom = IG_H - 90) {
   const avail = bottom - top;
-  const columns = n > 12 ? 2 : 1;
+  // Två kolumner redan från 9 mål – annars blir raderna för låga och texten för liten
+  const columns = n > 8 ? 2 : 1;
   const perCol = Math.max(1, Math.ceil(n / columns));
   const rowH = Math.min(118, Math.floor(avail / perCol));
-  const scale = Math.max(0.55, Math.min(1, rowH / 118));
+  // I två kolumner styr även bredden textstorleken
+  const scale = Math.max(0.62, Math.min(columns === 2 ? 0.8 : 1, rowH / 118));
   return { columns, perCol, rowH, scale, top: top + Math.max(0, Math.floor((avail - perCol * rowH) / 2)) };
 }
 
@@ -345,7 +350,7 @@ export async function renderGoalsImage(d: ReportData): Promise<HTMLCanvasElement
     // Ställning efter målet
     ctx.textAlign = "center";
     ctx.font = `700 ${Math.round(40 * s)}px ${HEAD}`;
-    const scoreX = x + 30 * s + 60 * s;
+    const scoreX = x + (L.columns === 2 ? 70 : 90) * s;
     ctx.fillStyle = "rgba(255,255,255,0.4)";
     ctx.fillText("–", scoreX, mid);
     ctx.textAlign = "right";
@@ -356,10 +361,10 @@ export async function renderGoalsImage(d: ReportData): Promise<HTMLCanvasElement
     ctx.fillText(String(g), scoreX + 12 * s, mid);
 
     // Målskytt och assist
-    const textX = x + 190 * s;
+    const textX = x + (L.columns === 2 ? 150 : 190) * s;
     const right = x + colW - 24 * s;
-    // Två kolumner: namnet får platsen i stället för klockslaget
-    const timeText = goal.time && L.columns === 1 ? goal.time.slice(0, 5) : "";
+    // Minuter in i matchen ("12'") när starttiden är känd, annars klockslaget
+    const timeText = goal.minute != null ? `${goal.minute}'` : goal.time && L.columns === 1 ? goal.time.slice(0, 5) : "";
     ctx.font = `400 ${Math.round(24 * s)}px ${BODY}`;
     const timeW = timeText ? ctx.measureText(timeText).width + 16 : 0;
     const maxText = right - textX - timeW;

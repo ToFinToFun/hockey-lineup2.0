@@ -21,7 +21,7 @@ vi.mock("@/lib/trpc", () => {
           history: [{ matchId: 1, date: "2026-09-01T20:00:00Z", rating: 1010, result: "V" }, { matchId: 2, date: "2026-09-08T20:00:00Z", rating: 1060, result: "V" }] }) },
         setWeights: { useMutation: m }, setAdjustment: { useMutation: m },
       },
-      score: { config: { getPeriods: { useQuery: () => q({ seasonFrom: "2026-09-01", seasonTo: "2027-04-30", playoffFrom: "2027-05-01", playoffTo: "2027-05-31", preseasonFrom: "2026-08-01", preseasonTo: "2026-08-31" }) }, updatePeriods: { useMutation: m } } },
+      score: { config: { getPeriods: { useQuery: () => q({ seasonFrom: "2026-09-01", seasonTo: "2027-04-30", playoffFrom: "2027-05-01", playoffTo: "2027-05-31", preseasonFrom: "2026-08-01", preseasonTo: "2026-08-31", recurring: { seasonFrom: "09-01", seasonTo: "04-30", playoffFrom: "05-01", playoffTo: "05-31", preseasonFrom: "08-01", preseasonTo: "08-31" } }) }, updatePeriods: { useMutation: m } } },
       laget: {
         newsAccount: { useQuery: () => q({ name: "Styrelsen", adminUrl: "https://admin.laget.se/x" }) },
         autoNews: { useQuery: () => q({ config: { enabled: false, minutesBefore: 45, minPlayers: 10 }, status: { at: "", eventDate: null, message: "Hoppade över 28/9 – bara 8 anmälda", ok: false } }) },
@@ -56,7 +56,7 @@ describe("Inställningar", () => {
     expect(screen.getByText(/bara 8 anmälda/)).toBeTruthy();
     fireEvent.click(screen.getByText("Notiser"));
     expect(screen.getByText(/Utgående e-post är inte inställd/)).toBeTruthy();
-    fireEvent.click(screen.getByText("Om appen"));
+    fireEvent.click(screen.getByText("Om"));
     expect(screen.getByText(/v9\.9\.9/)).toBeTruthy();
     fireEvent.click(screen.getByText("Sponsorer"));
     expect(screen.getByText("Sponsorpanel")).toBeTruthy();

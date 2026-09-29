@@ -1,4 +1,5 @@
 import { normalizeGoalType } from "../playerHistory";
+import { resolvePeriods, toMonthDay, type MonthDayPeriods } from "../../shared/periods";
 import { scheduleLiveProfileRefresh } from "../cardProfile";
 import { notifyLater, mailLayout } from "../notifications";
 import { ENV } from "../_core/env";
@@ -54,6 +55,8 @@ function filterMatchesByDate(
 }
 
 // Default period config values
+/** Månad-dag ("10-01"); gamla värden med år ("2025-10-01") godtas och sparas utan år. */
+const monthDay = z.string().regex(/^(\d{4}-)?(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/, "Ange månad och dag").transform(toMonthDay);
 const DEFAULT_SEASON_FROM = "2025-10-01";
 const DEFAULT_SEASON_TO = "2026-04-01";
 const DEFAULT_PLAYOFF_FROM = "2026-04-01";
@@ -86,26 +89,31 @@ const DEFAULT_REPORT_TAGS = ["#StålstadensSF", "#Gubbhockey"];
 export const scoreRouter = router({
   /** App configuration (season/playoff dates) */
   config: router({
+    /**
+     * Perioderna: månad-dag som återkommer varje år (recurring) och de konkreta
+     * datumen för det pågående hockeyåret (som statistiken filtrerar på).
+     */
     getPeriods: adminProcedure.query(async () => {
       const config = await getAllConfig();
-      return {
-        seasonFrom: config["season_from"] ?? DEFAULT_SEASON_FROM,
-        seasonTo: config["season_to"] ?? DEFAULT_SEASON_TO,
-        playoffFrom: config["playoff_from"] ?? DEFAULT_PLAYOFF_FROM,
-        playoffTo: config["playoff_to"] ?? DEFAULT_PLAYOFF_TO,
-        preseasonFrom: config["preseason_from"] ?? DEFAULT_PRESEASON_FROM,
-        preseasonTo: config["preseason_to"] ?? DEFAULT_PRESEASON_TO,
+      const recurring: MonthDayPeriods = {
+        seasonFrom: toMonthDay(config["season_from"] ?? DEFAULT_SEASON_FROM),
+        seasonTo: toMonthDay(config["season_to"] ?? DEFAULT_SEASON_TO),
+        playoffFrom: toMonthDay(config["playoff_from"] ?? DEFAULT_PLAYOFF_FROM),
+        playoffTo: toMonthDay(config["playoff_to"] ?? DEFAULT_PLAYOFF_TO),
+        preseasonFrom: toMonthDay(config["preseason_from"] ?? DEFAULT_PRESEASON_FROM),
+        preseasonTo: toMonthDay(config["preseason_to"] ?? DEFAULT_PRESEASON_TO),
       };
+      return { ...resolvePeriods(recurring), recurring };
     }),
     updatePeriods: adminProcedure
       .input(
         z.object({
-          seasonFrom: z.string().optional(),
-          seasonTo: z.string().optional(),
-          playoffFrom: z.string().optional(),
-          playoffTo: z.string().optional(),
-          preseasonFrom: z.string().optional(),
-          preseasonTo: z.string().optional(),
+          seasonFrom: monthDay.optional(),
+          seasonTo: monthDay.optional(),
+          playoffFrom: monthDay.optional(),
+          playoffTo: monthDay.optional(),
+          preseasonFrom: monthDay.optional(),
+          preseasonTo: monthDay.optional(),
         })
       )
       .mutation(async ({ input }) => {

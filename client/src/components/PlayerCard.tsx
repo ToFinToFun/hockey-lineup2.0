@@ -751,28 +751,11 @@ export function TeamColorIndicator({ teamColor, compact, mostPlayedTeam }: { tea
     return <div title="Tillhör Vita" className={`${cls} ${letter} bg-white border border-white/60 text-slate-900`}>V</div>;
   }
 
-  // Ghost variant: show faded most-played team color for unassigned players
-  // Solid colored border + colored diagonal stripes on transparent background
-  if (mostPlayedTeam === "green") {
-    return (
-      <div
-        title="Oftast Gröna"
-        className={`${cls} border border-emerald-400`}
-        style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgb(52,211,153) 2px, rgb(52,211,153) 4px)' }}
-      />
-    );
-  }
-  if (mostPlayedTeam === "white") {
-    return (
-      <div
-        title="Oftast Vita"
-        className={`${cls} border border-white`}
-        style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgb(255,255,255) 2px, rgb(255,255,255) 4px)' }}
-      />
-    );
-  }
-
-  return <div title="Waivers – inget lag" className={`${cls} ${letter} border border-white/20 bg-white/5 text-white/45`}>W</div>;
+  // Waivers: alltid ett grått W. Har spelaren oftast spelat i ett lag syns det
+  // som en tunn färgad kant (och i texten vid hovring) – samma symbol överallt.
+  const hint = mostPlayedTeam === "green" ? "border-emerald-400/70" : mostPlayedTeam === "white" ? "border-white/70" : "border-white/20";
+  const hintText = mostPlayedTeam === "green" ? " – oftast Gröna" : mostPlayedTeam === "white" ? " – oftast Vita" : "";
+  return <div title={`Waivers – inget lag${hintText}`} className={`${cls} ${letter} border ${hint} bg-white/5 text-white/45`}>W</div>;
 }
 
 // Drag overlay card

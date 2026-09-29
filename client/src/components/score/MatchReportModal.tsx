@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useSponsors, logoForName } from "@/lib/sponsors";
 import { renderResultImage, renderGoalsImage, type ReportData, type ReportGoal } from "@/lib/matchReportImages";
 import { starCardSettings, renderStarPost } from "@/lib/starCards";
+import { elapsedMinutes } from "@shared/matchTiming";
 import type { CardSettings } from "@shared/cardRender";
 
 interface RawGoal {
@@ -69,10 +70,14 @@ export function buildReportData(
   const loserScore = Math.min(match.teamWhiteScore, match.teamGreenScore);
   let winnerCount = 0;
   const gwgIndex = winner ? chrono.findIndex((g) => g.team === winner && winnerCount++ === loserScore) : -1;
+  // Äldre matcher fick starttiden från första målet – då vet vi inte riktig start (visa klockslag)
+  const firstMinute = chrono.length ? elapsedMinutes(chrono[0].timestamp, match.matchStartTime ?? null) : null;
+  const startKnown = !!match.matchStartTime && firstMinute !== 0;
   const goals: ReportGoal[] = chrono.map((g, i) => ({
     gwg: i === gwgIndex,
     team: g.team,
     time: g.timestamp?.match(/\d{2}:\d{2}/)?.[0],
+    minute: startKnown ? elapsedMinutes(g.timestamp, match.matchStartTime ?? null) : null,
     scorer: g.other === "Självmål" ? (g.scorer ? `${g.scorer} (självmål)` : "Självmål") : g.scorer,
     assist: g.assist,
     penalty: g.other === "Straff",

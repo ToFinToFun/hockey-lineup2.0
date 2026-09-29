@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { IMAGES, COLORS, STORAGE_KEY, type GoalEvent, type MatchState } from "@/lib/scoreConstants";
 import { useSponsors, pickLeastShown, logoForName } from "@/lib/sponsors";
 import { useWakeLock } from "@/hooks/useWakeLock";
+import { resolveMatchStart, matchName } from "@shared/matchTiming";
 import { playGoalSound as playGoalSoundFx, playEndSignal, unlockAudio } from "@/lib/matchSounds";
 import { type AppState, createTeamSlots, MAX_TEAM_CONFIG } from "@/lib/lineup";
 import { type Player } from "@/lib/players";
@@ -256,19 +257,10 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
   // ─── End match / save to database ──────────────────────────────
   const saveMatchMutation = trpc.score.match.save.useMutation();
 
-  const getMatchName = () => {
-    const d = new Date();
-    const weekdays = ['Söndag', 'Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag'];
-    const yy = String(d.getFullYear()).slice(2);
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const weekday = weekdays[d.getDay()];
-    // Subtract 1 hour, then round to nearest whole hour
-    const adjustedDate = new Date(d.getTime() - 60 * 60 * 1000);
-    const endHour = adjustedDate.getMinutes() >= 30 ? adjustedDate.getHours() + 1 : adjustedDate.getHours();
-    const hh = String(endHour % 24).padStart(2, '0');
-    return `${yy}-${mm}-${dd} ${weekday} ${hh}:00 ${teamWhiteScore}-${teamGreenScore}`;
-  };
+  // Starttid från dagens träning på laget.se (hämtas när Avsluta öppnas), annars uppskattad
+  const eventQuery = trpc.laget.attendance.useQuery(undefined, { enabled: endMatchModalVisible, staleTime: 10 * 60_000, retry: false, refetchOnWindowFocus: false });
+  const resolvedStart = () => resolveMatchStart(eventQuery.data ?? null, matchStartTime ?? null);
+  const getMatchName = () => matchName(resolvedStart().start, teamWhiteScore, teamGreenScore);
 
   const resetAfterSave = () => {
     setTeamWhiteScore(0);
@@ -281,13 +273,14 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
 
   const handleEndMatch = async () => {
     setSavingMatch(true);
-    const name = getMatchName();
+    const { start } = resolvedStart();
+    const name = matchName(start, teamWhiteScore, teamGreenScore);
     const payload = {
       name,
       teamWhiteScore,
       teamGreenScore,
       goalHistory: goalHistory,
-      matchStartTime: matchStartTime || undefined,
+      matchStartTime: start.toISOString(),
       // Sluttiden sätts nu, så att en match som laddas upp senare (utan nät) får rätt tid
       matchEndTime: new Date().toISOString(),
       lineup: lineupState || undefined,
@@ -1013,6 +1006,9 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
               </p>
               <p className="text-[#9BA1A6] text-xs mt-1">
                 Sparas som: {getMatchName()}
+                <span className="block text-[11px] text-[#687076] mt-0.5">
+                  {eventQuery.isLoading ? "Hämtar träningstiden från laget.se …" : resolvedStart().source === "event" ? "Starttid från träningen på laget.se" : resolvedStart().source === "goal" ? "Starttid = första målet (ingen träning hittades)" : "Uppskattad starttid (ingen träning hittades)"}
+                </span>
               </p>
             </div>
             <div className="space-y-2">

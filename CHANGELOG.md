@@ -7,6 +7,22 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.42.0 – 2026-09-29
+
+**Score Tracker – starttid**
+- Matchens starttid tas från dagens träning på laget.se (om den startat inom 6 timmar), annars första målet eller en uppskattning. Namnet byggs av starttiden: "26-09-29 Tisdag 22:15 3-2" – rätt dag även om Avsluta trycks efter midnatt. Avsluta-rutan visar varifrån starttiden kommer.
+
+**Matchrapport**
+- Målbilden: två kolumner redan från 9 mål, tätare rader och större text, så att namnen får plats.
+- Målens tid visas som minuter in i matchen ("12'") när starttiden är känd; klockslaget sparas som förut. Äldre matcher (starttid = första målet) visar klockslag.
+
+**Inställningar**
+- Flikarna är ikon med kort text under, så att de får plats på mobilen.
+- Perioder anges som dag och månad och återkommer varje år (hockeyåret börjar med försäsongen). "Nu:" visar årets datum.
+
+**Lineup**
+- Waivers visas alltid som ett grått W; har spelaren oftast spelat i ett lag syns det som en tunn färgad kant.
+
 ## 2.41.2 – 2026-09-29
 
 - Nyhet till laget.se: laget.se:s flöde tar bort radbrytningar i utdraget ("…JLcoVITAMV Vide…"). Första raden ("Dagens matchsponsor: …") fylls därför ut med mellanslag till 115 tecken när nyheten skickas, så att utdraget slutar efter sponsorn oavsett namnets längd. Syns inte i nyheten och inte i textrutan i appen. Gäller manuella och automatiska nyheter.
