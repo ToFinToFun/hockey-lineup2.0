@@ -4,8 +4,9 @@
 // 3-cell grid layout: name+number | badges | edit icon
 
 import { RosterSummary, type RosterCounts } from "./RosterSummary";
+import { AddPlayerModal } from "./AddPlayerModal";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, Search, Users, ChevronRight, ChevronLeft, ClipboardCheck, Plus, Pencil, Trash2 } from "lucide-react";
+import { X, Search, Users, ChevronRight, ChevronLeft, ClipboardCheck, Plus, Pencil, Trash2, UserPlus } from "lucide-react";
 import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
 import { ALL_POSITIONS, getPositionBadgeColor, positionName } from "@/lib/players";
 import type { Slot, TeamConfig } from "@/lib/lineup";
@@ -19,6 +20,8 @@ interface MobileRosterDrawerProps {
   onClose: () => void;
   players: Player[];
   onAddPlayer?: (name: string, position: Position) => void;
+  /** Lägg till en ny spelare i truppen (öppnar samma ruta som på desktop) */
+  onCreatePlayer?: (player: Player) => void;
   onDeletePlayer?: (id: string) => void;
   onChangePosition?: (id: string, pos: Position) => void;
   onChangeTeamColor?: (id: string, color: TeamColor) => void;
@@ -77,6 +80,7 @@ export function MobileRosterDrawer({
   totalDeclined = 0,
   totalPlayers = 0,
   rosterCounts,
+  onCreatePlayer,
   onTapAssignToSlot,
   onAddDefensePair,
   onAddForwardLine,
@@ -104,6 +108,7 @@ export function MobileRosterDrawer({
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [editName, setEditName] = useState("");
   const [editNumber, setEditNumber] = useState("");
+  const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   // PIR settings
@@ -408,6 +413,19 @@ export function MobileRosterDrawer({
                 ))}
               </div>
             </div>
+
+            {/* Lägg till spelare */}
+            {onCreatePlayer && (
+              <div className="px-3 py-1.5 border-b border-white/8">
+                <button
+                  onClick={() => setShowAddPlayer(true)}
+                  className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border bg-emerald-500/10 border-emerald-400/30 text-emerald-300"
+                >
+                  <UserPlus className="w-3.5 h-3.5" /> Lägg till spelare
+                </button>
+                {showAddPlayer && <AddPlayerModal onAdd={onCreatePlayer} onClose={() => setShowAddPlayer(false)} />}
+              </div>
+            )}
 
             {/* Hämta anmälningar */}
             {onBulkRegister && (

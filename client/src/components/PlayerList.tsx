@@ -2,6 +2,7 @@
 // Visible glass border, frosted background, clean layout
 
 import { RosterSummary, type RosterCounts } from "./RosterSummary";
+import { AddPlayerModal } from "./AddPlayerModal";
 import { useState, useCallback } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard, TeamColorIndicator } from "./PlayerCard";
@@ -442,222 +443,17 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
         )}
       </div>
 
-      {/* Add player */}
+      {/* Lägg till spelare – samma ruta som på mobilen */}
       <div className="p-2 border-t border-white/[0.08]">
-        {!showAddForm ? (
-          <button
-            onClick={() => {
-              setShowAddForm(true);
-              setNewName("");
-              setNewNumber("");
-              setNewPosition("IB");
-              setNewTeamColor(null);
-              setNewCaptainRole(null);
-            }}
-            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/[0.04] border border-white/[0.1] text-white/50 hover:bg-emerald-500/10 hover:border-emerald-400/30 hover:text-emerald-300 transition-all text-xs font-medium"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            Lägg till spelare
-          </button>
-        ) : (
-          <div className="flex flex-col gap-2 bg-white/[0.04] border border-emerald-400/30 rounded-lg p-3">
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="Spelarens namn"
-                className="flex-1 bg-white/10 border border-emerald-400/40 rounded px-2 py-1 text-xs text-white placeholder-white/30 outline-none focus:border-emerald-400"
-                onKeyDown={(e) => e.key === "Enter" && handleAddPlayer()}
-                autoFocus
-              />
-              <button
-                onClick={handleAddPlayer}
-                disabled={!newName.trim()}
-                className="text-xs font-bold text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded hover:bg-white/10 transition-colors whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Lägg till
-              </button>
-            </div>
-            <div className="flex items-center gap-1.5 pt-1 border-t border-white/10">
-              <span className="text-white/40 text-[10px] w-6">Lag:</span>
-              {([
-                { value: "white" as TeamColor, label: "Vita" },
-                { value: "green" as TeamColor, label: "Gröna" },
-                { value: null, label: "Waivers" },
-              ] as { value: TeamColor; label: string }[]).map(({ value, label }) => (
-                <button
-                  key={String(value)}
-                  onClick={() => setNewTeamColor(value)}
-                  className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded border transition-all ${
-                    (newTeamColor ?? null) === value
-                      ? "bg-white/15 text-white/80 border-white/30 ring-1 ring-white/20"
-                      : "bg-white/5 text-white/30 border-white/10 hover:bg-white/10 hover:text-white/50"
-                  }`}
-                >
-                  <TeamColorIndicator teamColor={value} compact />
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-1 pt-1 border-t border-white/10 flex-wrap">
-              <span className="text-white/40 text-[10px] w-6">Pos:</span>
-              {ALL_POSITIONS.map((pos) => (
-                <button
-                  title={positionName(pos)}
-                  key={pos}
-                  onClick={() => setNewPosition(pos)}
-                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded transition-all ${
-                    newPosition === pos
-                      ? `${getPositionBadgeColor(pos, fc.badgeBg)} ring-1 ring-white/30`
-                      : "bg-white/5 text-white/30 border border-white/10 hover:bg-white/10 hover:text-white/50"
-                  }`}
-                >
-                  {pos}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-3 pt-1 border-t border-white/10">
-              <div className="flex items-center gap-1">
-                <span className="text-white/40 text-[10px]">Nr:</span>
-                <span className="text-white/50 text-xs">#</span>
-                <input
-                  type="text"
-                  value={newNumber}
-                  maxLength={3}
-                  placeholder="—"
-                  onChange={(e) => setNewNumber(e.target.value.replace(/\D/g, ""))}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddPlayer()}
-                  className="w-12 bg-white/10 border border-emerald-400/40 rounded px-2 py-1 text-xs text-white text-center outline-none focus:border-emerald-400"
-                />
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-white/40 text-[10px]">Roll:</span>
-                {([
-                  { value: "C" as CaptainRole, label: "C" },
-                  { value: "A" as CaptainRole, label: "A" },
-                  { value: null, label: "—" },
-                ] as { value: CaptainRole; label: string }[]).map(({ value, label }) => (
-                  <button
-                    key={String(value)}
-                    onClick={() => setNewCaptainRole(value)}
-                    className={`text-[9px] font-black px-2 py-1 rounded border transition-all ${
-                      newCaptainRole === value
-                        ? value === "C"
-                          ? "bg-yellow-400/25 text-yellow-300 border-yellow-400/50 ring-1 ring-yellow-400/30"
-                          : value === "A"
-                          ? "bg-orange-400/25 text-orange-300 border-orange-400/50 ring-1 ring-orange-400/30"
-                          : "bg-white/15 text-white/60 border-white/30 ring-1 ring-white/20"
-                        : "bg-white/5 text-white/30 border-white/10 hover:bg-white/10 hover:text-white/50"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <button
-              onClick={() => { setShowAddForm(false); setNewName(""); setNewNumber(""); setNewPosition("IB"); setNewTeamColor(null); setNewCaptainRole(null); }}
-              className="w-full py-1 rounded bg-white/5 border border-white/10 text-white/40 text-xs hover:bg-white/10 transition-all"
-            >
-              Avbryt
-            </button>
-          </div>
-        )}
+        <button
+          onClick={() => setShowAddForm(true)}
+          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/[0.04] border border-white/[0.1] text-white/50 hover:bg-emerald-500/10 hover:border-emerald-400/30 hover:text-emerald-300 transition-all text-xs font-medium"
+        >
+          <UserPlus className="w-3.5 h-3.5" />
+          Lägg till spelare
+        </button>
+        {showAddForm && <AddPlayerModal onAdd={onAddPlayer} onClose={() => setShowAddForm(false)} />}
       </div>
-
-      {/* Fetch attendance from laget.se */}
-      {onBulkRegister && (
-        <div className="p-2 border-t border-white/[0.08]">
-          <button
-            onClick={async () => {
-              if (isLoadingAttendance) return;
-              setIsLoadingAttendance(true);
-              setRegisterResult(null);
-              try {
-                const result = await onBulkRegister(true);
-                setRegisterResult(result);
-                if (onEventInfoUpdate) {
-                  if (result.eventTitle) {
-                    onEventInfoUpdate({ title: result.eventTitle, date: result.eventDate || "" });
-                  } else if (result.noEvent) {
-                    onEventInfoUpdate(null);
-                  }
-                }
-                if (!result.error) {
-                  setTimeout(() => setRegisterResult(null), result.noEvent ? 6000 : 8000);
-                }
-              } catch {
-                setRegisterResult({ matched: 0, unmatched: [], error: "Kunde inte hämta data" });
-              } finally {
-                setIsLoadingAttendance(false);
-              }
-            }}
-            disabled={isLoadingAttendance}
-            className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border text-[10px] font-bold transition-all uppercase tracking-wider ${
-              isLoadingAttendance
-                ? "bg-sky-500/10 border-sky-400/20 text-sky-300/50 cursor-wait"
-                : "bg-sky-500/20 border-sky-400/40 text-sky-300 hover:bg-sky-500/30"
-            }`}
-          >
-            {isLoadingAttendance ? (
-              <>
-                <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                Hämtar från laget.se...
-              </>
-            ) : (
-              <>
-                <ClipboardCheck className="w-3.5 h-3.5" />
-                Hämta anmälningar (laget.se)
-              </>
-            )}
-          </button>
-          {registerResult && (
-            <div className={`mt-1.5 text-[10px] px-2 py-1.5 rounded-lg border ${
-              registerResult.error
-                ? "bg-red-500/15 border-red-400/30 text-red-300"
-                : registerResult.noEvent
-                ? "bg-slate-500/15 border-slate-400/30 text-slate-300"
-                : registerResult.unmatched.length === 0
-                ? "bg-emerald-500/15 border-emerald-400/30 text-emerald-300"
-                : "bg-amber-500/15 border-amber-400/30 text-amber-300"
-            }`}>
-              {registerResult.error ? (
-                <span>
-                  {registerResult.error.includes("NO_CREDENTIALS:") ? (
-                    <>Laget.se-inloggning saknas på servern. Styrelsen behöver lägga in LAGET_SE_USERNAME och LAGET_SE_PASSWORD i Coolify.</>
-                  ) : registerResult.error.includes("LOGIN_FAILED:") ? (
-                    <>Kunde inte logga in på laget.se. Styrelsen behöver kontrollera laget.se-uppgifterna i Coolify.</>
-                  ) : registerResult.error.includes("AUTH_ERROR:") ? (
-                    <>Åtkomst nekad av laget.se. Styrelsen behöver kontrollera laget.se-uppgifterna i Coolify.</>
-                  ) : registerResult.error.includes("RATE_LIMITED:") ? (
-                    <>Laget.se blockerar tillfälligt förfrågningar. Vänta några minuter och försök igen.</>
-                  ) : (
-                    <>{registerResult.error.replace(/^[A-Z_]+:\s*/, "")}</>
-                  )}
-                </span>
-              ) : registerResult.noEvent ? (
-                <span>Ingen träning idag eller imorgon — anmälningar nollställda</span>
-              ) : (
-                <>
-                  <span className="font-bold">{registerResult.matched}</span> spelare markerade som anmälda
-                  {registerResult.eventTitle && (
-                    <span className="ml-1 opacity-70">({registerResult.eventTitle}{registerResult.eventDate ? ` · ${registerResult.eventDate}` : ""})</span>
-                  )}
-                  {registerResult.unmatched.length > 0 && (
-                    <div className="mt-0.5 text-[9px] opacity-80">
-                      Ej matchade: {registerResult.unmatched.join(", ")}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

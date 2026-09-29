@@ -469,6 +469,27 @@ export const appRouter = router({
     /** De senaste 30 matchernas vinnare (Vita/Gröna/oavgjort), äldst först – resultatraden under prediktionen. */
     recentResults: lineupProcedure.query(async () => recentWinners(await getAllMatchResults(), 30)),
 
+    /** De tio senaste spelade matchernas uppställningar (från Score Tracker), för att hämta dem igen. */
+    recentMatchLineups: lineupProcedure.query(async () => {
+      const matches = (await getAllMatchResults())
+        .filter((m) => (m.lineup as { lineup?: Record<string, unknown> } | null)?.lineup && Object.keys((m.lineup as { lineup: Record<string, unknown> }).lineup).length > 0)
+        .sort((a, b) => new Date((b.matchStartTime ?? b.matchEndTime ?? b.createdAt) as unknown as string).getTime() - new Date((a.matchStartTime ?? a.matchEndTime ?? a.createdAt) as unknown as string).getTime())
+        .slice(0, 10);
+      return matches.map((m) => {
+        const d = new Date((m.matchStartTime ?? m.matchEndTime ?? m.createdAt) as unknown as string);
+        const wrap = m.lineup as { teamAName?: string; teamBName?: string; lineup: Record<string, unknown> };
+        return {
+          id: m.id,
+          label: `Lagen ${d.getDate()}/${d.getMonth() + 1} – ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+          result: `${m.teamWhiteScore}–${m.teamGreenScore}`,
+          teamAName: wrap.teamAName ?? "VITA",
+          teamBName: wrap.teamBName ?? "GRÖNA",
+          lineup: wrap.lineup,
+          playedAt: d.toISOString(),
+        };
+      });
+    }),
+
     /** När uppställningen senast ändrades (visas som "Ändrad torsdag 18:43"). */
     lastChanged: lineupProcedure.query(async () => ({ changedAt: (await getLineupChangedAt())?.toISOString() ?? null })),
 

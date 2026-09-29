@@ -7,6 +7,14 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.41.0 – 2026-09-29
+
+**Lineup**
+- Ny snabbknapp "Sparade" (bokmärke) till höger om Anmälda, på mobil och desktop – öppnar sparade uppställningar. Panelen längst ned på desktop och "Hämta anmälningar" i botten av spelarlistan är borttagna (finns som snabbknappar).
+- Spara uppställning: namnet är förifyllt "Namn - 9 vs 10 - 14:32" (antal i Vita vs Gröna, 24-timmarsklocka) – ändra "Namn" eller tryck bara Spara.
+- "Senaste matcherna": de tio senaste spelade matchernas uppställningar från Score Tracker, t.ex. "Lagen 29/9 – 20:00" med resultat, går att hämta direkt.
+- Lägg till spelare: samma ruta på mobil (ny knapp i trupplistan) och desktop – namn, nummer, position, lag och C/A.
+
 ## 2.40.2 – 2026-09-29
 
 - Lineup: truppens siffror är desamma på mobil och desktop – totalt i truppen, ✓ kommer (grönt), ✕ kommer ej (rött) och ! anmälda som inte är utplacerade (gult, bara när det finns några). Mobilens Trupp-knapp, trupplistan på mobilen (med förklaring) och Spelartrupp på desktop. Förklaring vid hovring och för skärmläsare.

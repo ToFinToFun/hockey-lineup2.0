@@ -1403,6 +1403,14 @@ export default function Home() {
             <><RefreshCw className={`${icon} ${syncingAttendance ? "animate-spin" : ""}`} />{label("Anmälda")}</>
           )}
         </button>
+        <button
+          onClick={() => setShowSavedLineups(true)}
+          title="Sparade uppställningar – spara eller hämta"
+          aria-label="Sparade uppställningar"
+          className={`${btn} ${size} ${isLineupDark ? "bg-white/5 border border-white/10 text-white/70 hover:bg-white/10" : "bg-gray-100 border border-gray-200 text-gray-700 hover:bg-gray-200"}`}
+        >
+          <BookmarkPlus className={icon} />{label("Sparade")}
+        </button>
       </div>
     );
   };
@@ -1865,12 +1873,6 @@ export default function Home() {
                          onCancelTarget={() => setDesktopTarget(null)}
                        />
                     </div>
-                    <SavedLineupsPanel
-                       teamAName={teamAName}
-                       teamBName={teamBName}
-                       lineup={lineup}
-                       onLoadLineup={handleLoadLineup}
-                    />
                   </div>
 
                   {/* Lagen bredvid varandra */}
@@ -1991,12 +1993,6 @@ export default function Home() {
                         onCancelTarget={() => setDesktopTarget(null)}
                       />
                     </div>
-                    <SavedLineupsPanel
-                      teamAName={teamAName}
-                      teamBName={teamBName}
-                      lineup={lineup}
-                      onLoadLineup={handleLoadLineup}
-                    />
                   </div>
 
                   {/* Lag B (GRÖNA) – höger */}
@@ -2180,6 +2176,7 @@ export default function Home() {
           totalDeclined={totalDeclined}
           totalPlayers={totalPlayers}
           rosterCounts={rosterCounts}
+          onCreatePlayer={handleAddPlayer}
           onTapAssignToSlot={handleTapAssignToSlot}
           onAddDefensePair={handleAddDefensePair}
           onAddForwardLine={handleAddForwardLine}

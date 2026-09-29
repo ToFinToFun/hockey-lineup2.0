@@ -44,7 +44,14 @@ export function SavedLineupsPanel({
   onLoadLineup,
   defaultOpen = false,
 }: SavedLineupsPanelProps) {
-  const [name, setName] = useState("");
+  // Förifyllt: "Namn - 9 vs 10 - 14:32" – ändra "Namn" eller tryck bara Spara
+  const [name, setName] = useState(() => {
+    const a = Object.keys(lineup).filter((k) => k.startsWith("team-a-")).length;
+    const b = Object.keys(lineup).filter((k) => k.startsWith("team-b-")).length;
+    const now = new Date();
+    return `Namn - ${a} vs ${b} - ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  });
+  const recent = trpc.lineup.recentMatchLineups.useQuery(undefined, { enabled: defaultOpen, staleTime: 60_000 });
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState(defaultOpen);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
@@ -261,6 +268,30 @@ export function SavedLineupsPanel({
                   )}
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Senaste spelade matcherna (från Score Tracker) */}
+          {defaultOpen && (recent.data?.length ?? 0) > 0 && (
+            <div className="mt-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-1.5">Senaste matcherna</p>
+              <div className="space-y-1">
+                {recent.data!.map((m) => (
+                  <div key={m.id} className="flex items-center gap-2 rounded-lg bg-white/[0.03] border border-white/[0.08] px-2.5 py-1.5">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-white/85 truncate">{m.label}</p>
+                      <p className="text-[10px] text-white/35">{Object.keys(m.lineup).length} spelare · {m.teamAName} {m.result} {m.teamBName}</p>
+                    </div>
+                    <button
+                      onClick={() => onLoadLineup({ id: `match-${m.id}`, name: m.label, teamAName: m.teamAName, teamBName: m.teamBName, lineup: m.lineup as Record<string, Player>, savedAt: new Date(m.playedAt).getTime() })}
+                      title="Hämta den här uppställningen"
+                      className="p-1.5 rounded-md text-sky-300/70 hover:text-sky-200 hover:bg-sky-500/10 transition-all"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
