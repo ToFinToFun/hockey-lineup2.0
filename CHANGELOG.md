@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.40.2 – 2026-09-29
+
+- Lineup: truppens siffror är desamma på mobil och desktop – totalt i truppen, ✓ kommer (grönt), ✕ kommer ej (rött) och ! anmälda som inte är utplacerade (gult, bara när det finns några). Mobilens Trupp-knapp, trupplistan på mobilen (med förklaring) och Spelartrupp på desktop. Förklaring vid hovring och för skärmläsare.
+
 ## 2.40.1 – 2026-09-28
 
 - Nyhet till laget.se: appen kontrollerar mot laget.se att den senaste nyheten finns kvar innan "Uppdatera befintlig nyhet" visas. Har den tagits bort där visas valet inte.

@@ -1,6 +1,7 @@
 // Mittenpanel med spelarlista – Glassmorphism v2
 // Visible glass border, frosted background, clean layout
 
+import { RosterSummary, type RosterCounts } from "./RosterSummary";
 import { useState, useCallback } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { DraggablePlayerCard, TeamColorIndicator } from "./PlayerCard";
@@ -29,6 +30,8 @@ interface PlayerListProps {
   totalRegistered?: number;
   totalDeclined?: number;
   totalPlayers?: number;
+  /** Truppens siffror (samma som på mobilen) */
+  rosterCounts?: RosterCounts;
   /** Vald tom plats (desktop): listan sorteras för platsen och ett klick placerar spelaren där. */
   targetSlot?: { slotType: string; slotLabel: string; teamName: string; teamId: string } | null;
   onPickForTarget?: (player: Player) => void;
@@ -85,7 +88,7 @@ function sortPlayers(players: Player[], key: SortKey, dir: SortDir): Player[] {
   });
 }
 
-export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber, onChangeName, onChangeCaptainRole, onChangeRegistered, onSyncToLaget, syncingPlayerIds, onBulkSyncToLaget, onChangeGamesPlayed, onBulkRegister, onEventInfoUpdate, totalRegistered, totalDeclined, totalPlayers, targetSlot, onPickForTarget, onCancelTarget }: PlayerListProps) {
+export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosition, onChangeTeamColor, onChangeNumber, onChangeName, onChangeCaptainRole, onChangeRegistered, onSyncToLaget, syncingPlayerIds, onBulkSyncToLaget, onChangeGamesPlayed, onBulkRegister, onEventInfoUpdate, totalRegistered, totalDeclined, totalPlayers, rosterCounts, targetSlot, onPickForTarget, onCancelTarget }: PlayerListProps) {
   const { colors: fc } = useForwardColor();
   const [bulkSelectMode, setBulkSelectMode] = useState(false);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
@@ -190,14 +193,9 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
             <h2 className="text-white font-bold text-sm uppercase tracking-widest whitespace-nowrap" style={{ fontFamily: "'Oswald', sans-serif" }}>
               Spelartrupp
             </h2>
-            <span className="text-white/40 text-xs whitespace-nowrap">
-              {players.length}/{totalPlayers ?? players.length}
-            </span>
+            {rosterCounts && <RosterSummary counts={rosterCounts} />}
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-emerald-400/70 text-xs font-semibold whitespace-nowrap">
-              Anmälda {players.filter(p => p.isRegistered).length}/{totalRegistered ?? players.filter(p => p.isRegistered).length}
-            </span>
             {onBulkSyncToLaget && (
               <button
                 onClick={() => {

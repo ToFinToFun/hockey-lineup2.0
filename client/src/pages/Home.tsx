@@ -30,6 +30,7 @@ import { TeamPanel } from "@/components/TeamPanel";
 import { PlayerCardOverlay } from "@/components/PlayerCard";
 import { LagetNewsModal } from "@/components/LagetNewsModal";
 import { ShareToolsModal } from "@/components/auth/ShareToolsModal";
+import { RosterSummary } from "@/components/RosterSummary";
 import { MatchResultsBar } from "@/components/MatchResultsBar";
 import { SlotHighlightContext } from "@/components/PlayerSlot";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -1294,6 +1295,13 @@ export default function Home() {
 
   // Totalt antal spelare (trupp + lineup)
   const totalPlayers = availablePlayers.length + Object.keys(lineup).length;
+  // Truppens siffror (samma på mobil och desktop)
+  const rosterCounts = useMemo(() => ({
+    total: totalPlayers,
+    registered: totalRegistered,
+    declined: totalDeclined,
+    unplacedRegistered: availablePlayers.filter((p) => p.isRegistered).length,
+  }), [totalPlayers, totalRegistered, totalDeclined, availablePlayers]);
 
   // Kollisionsdetektion: pointerWithin först, sedan closestCenter som fallback.
   // Eftersom vi nu bara renderar EN layout (åt gången) behövs ingen filtrering.
@@ -1803,7 +1811,8 @@ export default function Home() {
                 style={{ fontFamily: "'Oswald', sans-serif" }}
               >
                 <Users className="w-3.5 h-3.5" />
-                Trupp ({totalRegistered}/{totalPlayers})
+                <span className="hidden min-[380px]:inline">Trupp</span>
+                <RosterSummary counts={rosterCounts} size="xs" />
               </button>
               {renderQuickActions(false)}
             </div>
@@ -1850,6 +1859,7 @@ export default function Home() {
                          totalRegistered={totalRegistered}
                          totalDeclined={totalDeclined}
                          totalPlayers={totalPlayers}
+          rosterCounts={rosterCounts}
                          targetSlot={desktopTarget}
                          onPickForTarget={(player) => { if (desktopTarget) { handleTapAssignToSlot(player, desktopTarget.slotId); setDesktopTarget(null); } }}
                          onCancelTarget={() => setDesktopTarget(null)}
@@ -1975,6 +1985,7 @@ export default function Home() {
                         totalRegistered={totalRegistered}
                         totalDeclined={totalDeclined}
                         totalPlayers={totalPlayers}
+          rosterCounts={rosterCounts}
                         targetSlot={desktopTarget}
                         onPickForTarget={(player) => { if (desktopTarget) { handleTapAssignToSlot(player, desktopTarget.slotId); setDesktopTarget(null); } }}
                         onCancelTarget={() => setDesktopTarget(null)}
@@ -2168,6 +2179,7 @@ export default function Home() {
           totalRegistered={totalRegistered}
           totalDeclined={totalDeclined}
           totalPlayers={totalPlayers}
+          rosterCounts={rosterCounts}
           onTapAssignToSlot={handleTapAssignToSlot}
           onAddDefensePair={handleAddDefensePair}
           onAddForwardLine={handleAddForwardLine}

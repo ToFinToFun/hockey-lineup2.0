@@ -3,6 +3,7 @@
 // Visar spelarlistan med sök, filter och stöd för tap-to-assign med slot-picker
 // 3-cell grid layout: name+number | badges | edit icon
 
+import { RosterSummary, type RosterCounts } from "./RosterSummary";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { X, Search, Users, ChevronRight, ChevronLeft, ClipboardCheck, Plus, Pencil, Trash2 } from "lucide-react";
 import type { Player, Position, TeamColor, CaptainRole } from "@/lib/players";
@@ -31,6 +32,8 @@ interface MobileRosterDrawerProps {
   totalRegistered?: number;
   totalDeclined?: number;
   totalPlayers?: number;
+  /** Truppens siffror (samma som på desktop) */
+  rosterCounts?: RosterCounts;
   // Tap-to-assign with slot selection
   onTapAssignToSlot?: (player: Player, slotId: string) => void;
   onAddDefensePair?: (team: "team-a" | "team-b") => void;
@@ -73,6 +76,7 @@ export function MobileRosterDrawer({
   totalRegistered = 0,
   totalDeclined = 0,
   totalPlayers = 0,
+  rosterCounts,
   onTapAssignToSlot,
   onAddDefensePair,
   onAddForwardLine,
@@ -346,10 +350,12 @@ export function MobileRosterDrawer({
               {targetSlot ? `${targetSlot.teamName} · ${targetSlot.slotLabel}` : assignStep === "select-player" ? "Trupp" : assignStep === "select-team" ? "Välj lag" : `${teamName}`}
             </span>
             {assignStep === "select-player" && (
-              <span className="text-[10px] text-white/40">
-                {totalRegistered}/{totalPlayers} anmälda
-                {totalDeclined > 0 && <> · <span className="text-red-400/60">{totalDeclined} nej</span></>}
-              </span>
+              rosterCounts ? <RosterSummary counts={rosterCounts} size="xs" legend /> : (
+                <span className="text-[10px] text-white/40">
+                  {totalRegistered}/{totalPlayers} anmälda
+                  {totalDeclined > 0 && <> · <span className="text-red-400/60">{totalDeclined} nej</span></>}
+                </span>
+              )
             )}
           </div>
           <button
