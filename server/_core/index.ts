@@ -14,6 +14,7 @@ import { readSession } from "../auth";
 import { getPlayerPhoto } from "../playerPhotos";
 import { getCardSource, getCardMask } from "../playerCards";
 import { startLiveProfileSchedule } from "../cardProfile";
+import { runOneTimeFixes } from "../oneTimeFixes";
 import { startAutoNewsSchedule } from "../autoNews";
 import { getMediaPhoto } from "../mediaPosts";
 import { appRouter } from "../routers";
@@ -172,6 +173,8 @@ async function startServer() {
 
   server.listen(port, () => {
     // Profilkort som följer statistiken: kontroll efter start och sedan var sjätte timme
+    // Engångsrättning: återställ lag för spelarna från 29/9 (körs bara en gång)
+    void runOneTimeFixes();
     startLiveProfileSchedule();
     // Automatisk nyhet till laget.se (gör bara något om den är påslagen)
     startAutoNewsSchedule();

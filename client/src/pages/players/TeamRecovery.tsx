@@ -10,13 +10,28 @@ import { trpc } from "@/lib/trpc";
 export function TeamRecovery() {
   const utils = trpc.useUtils();
   const q = trpc.players.teamSuggestions.useQuery(undefined, { staleTime: 60_000 });
+  const log = trpc.players.teamRestoreLog.useQuery(undefined, { staleTime: 5 * 60_000 });
+  const [logOpen, setLogOpen] = useState(false);
   const apply = trpc.players.applyTeams.useMutation();
   const [open, setOpen] = useState(false);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   useEffect(() => {
     if (q.data) setChecked(Object.fromEntries(q.data.map((s) => [s.playerId, true])));
   }, [q.data]);
-  if (!q.data?.length) return null;
+  const restored = log.data?.restored ?? [];
+  const logBox = restored.length > 0 && (
+    <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+      <button onClick={() => setLogOpen((v) => !v)} className="w-full text-left">
+        {restored.length} spelare fick tillbaka sitt lag automatiskt från matchen {log.data?.matchName ?? ""}. {logOpen ? "Dölj" : "Visa vilka"}
+      </button>
+      {logOpen && (
+        <ul className="mt-1.5 space-y-0.5 text-white/75">
+          {restored.map((r) => <li key={r.id}>{r.name} → {r.team === "green" ? "Grön" : "Vit"}</li>)}
+        </ul>
+      )}
+    </div>
+  );
+  if (!q.data?.length) return logBox || null;
   const selected = q.data.filter((s) => checked[s.playerId]);
 
   const run = async () => {
@@ -29,6 +44,7 @@ export function TeamRecovery() {
 
   return (
     <>
+      {logBox}
       <button onClick={() => setOpen(true)} className="w-full flex items-center gap-2 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2.5 text-left text-sm text-amber-200">
         <RotateCcw size={15} className="shrink-0" />
         <span className="flex-1">{q.data.length} spelare saknar lag – det finns förslag på att återställa dem</span>

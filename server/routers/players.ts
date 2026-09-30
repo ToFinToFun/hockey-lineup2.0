@@ -1,3 +1,4 @@
+import { getConfigValue } from "../scoreDb";
 import { teamSuggestions, applyTeams } from "../teamRecovery";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -218,4 +219,10 @@ export const playersRouter = router({
   applyTeams: adminProcedure
     .input(z.array(z.object({ playerId: z.string().min(1).max(64), teamColor: z.enum(["white", "green"]) })).max(200))
     .mutation(async ({ input }) => ({ updated: await applyTeams(input) })),
+
+  /** Resultatet av engångsrättningen 30/9 (vilka spelare som fick tillbaka laget). */
+  teamRestoreLog: adminProcedure.query(async () => {
+    const raw = await getConfigValue("fix_team_restore_20260930");
+    return raw ? (JSON.parse(raw) as { at: string; matchName: string | null; restored: Array<{ id: string; name: string; team: string }> }) : null;
+  }),
 });

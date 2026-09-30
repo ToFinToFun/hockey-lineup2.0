@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.44.7 – 2026-09-30
+
+- Engångsrättning vid start: spelare som spelade 29/9 och saknar lag får tillbaka laget de spelade i den matchen. Spelare som redan har lag rörs inte. Körs en gång; resultatet visas på Spelare ("N spelare fick tillbaka sitt lag automatiskt … Visa vilka") och i serverloggen.
+
 ## 2.44.6 – 2026-09-30
 
 - Spelarsidan: "Återställ lag" visas när aktiva spelare saknar lag. Förslaget är laget spelaren spelat i oftast de senaste 10 matcherna (minst 3 matcher, minst 70 %), eller från en äldre sparad uppställning med spelarens uppgifter. Kontrollera, kryssa ur de som ska vara Waivers och återställ med ett tryck.
