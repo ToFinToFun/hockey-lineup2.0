@@ -27,8 +27,21 @@ export function overlayFromTheme(theme: string | undefined): MediaOverlay {
 }
 const ACCENT = GREEN;
 
+/** Bakgrundsbilder (4:5, lätt mjukade så att innehållet syns) */
+export type MediaBackground = "arena" | "ute" | "omklad";
+export const MEDIA_BACKGROUNDS: Array<{ id: MediaBackground; name: string; url: string }> = [
+  { id: "arena", name: "Isen", url: "/images/background.jpg" },
+  { id: "ute", name: "Arenan i snö", url: "/images/bg-arena-ute.jpg" },
+  { id: "omklad", name: "Omklädningsrummet", url: "/images/bg-omkladningsrum.jpg" },
+];
+const bgUrl = (id: MediaBackground | undefined) => (MEDIA_BACKGROUNDS.find((b) => b.id === id) ?? MEDIA_BACKGROUNDS[0]).url;
+/** De nya bilderna är redan mörka – mörka dem mindre så att miljön syns */
+const dimFor = (id: MediaBackground | undefined, base: number) => base * (id === "ute" ? 0.45 : id === "omklad" ? 0.6 : 1);
+
 export interface MediaCommon {
   overlay: MediaOverlay;
+  /** Bakgrundsbild (standard isen) */
+  background?: MediaBackground;
   /** Liten rad under klubbnamnet, t.ex. "Tisdag 29/9 · Arenan 20:00" */
   dateLine: string;
   sponsor: { name: string; logo: string | null } | null;
@@ -247,9 +260,9 @@ export function lineupHeights(groups: LineupGroup[], k: number) {
 }
 
 async function renderLineup(d: LineupPostData): Promise<HTMLCanvasElement> {
-  const [bg, logo, sp] = await Promise.all([tryLoad("/images/background.jpg"), tryLoad(LOGO[d.team]), tryLoad(d.sponsor?.logo)]);
+  const [bg, logo, sp] = await Promise.all([tryLoad(bgUrl(d.background)), tryLoad(LOGO[d.team]), tryLoad(d.sponsor?.logo)]);
   const [c, ctx] = canvas();
-  backdrop(ctx, bg, 0.6);
+  backdrop(ctx, bg, dimFor(d.background, 0.6));
   decorate(ctx, d.overlay);
 
   // Liten rad överst: rubrik och datum
@@ -408,7 +421,7 @@ async function renderLineup(d: LineupPostData): Promise<HTMLCanvasElement> {
 }
 
 async function renderText(d: TextPostData): Promise<HTMLCanvasElement> {
-  const [bg, sp] = await Promise.all([d.photo ? Promise.resolve(null) : tryLoad("/images/background.jpg"), tryLoad(d.sponsor?.logo)]);
+  const [bg, sp] = await Promise.all([d.photo ? Promise.resolve(null) : tryLoad(bgUrl(d.background)), tryLoad(d.sponsor?.logo)]);
   const [c, ctx] = canvas();
   const accent = ACCENT;
   if (d.photo) {
@@ -424,7 +437,7 @@ async function renderText(d: TextPostData): Promise<HTMLCanvasElement> {
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, IG_W, IG_H);
   } else {
-    backdrop(ctx, bg, 0.62);
+    backdrop(ctx, bg, dimFor(d.background, 0.62));
   }
   decorate(ctx, d.overlay);
   clubHeader(ctx, d.dateLine, accent);
@@ -562,9 +575,9 @@ export function cardSlots(n: number, top: number, bottom: number): Array<{ x: nu
 }
 
 async function renderCards(d: CardsPostData): Promise<HTMLCanvasElement> {
-  const [bg, sp] = await Promise.all([tryLoad("/images/background.jpg"), tryLoad(d.sponsor?.logo)]);
+  const [bg, sp] = await Promise.all([tryLoad(bgUrl(d.background)), tryLoad(d.sponsor?.logo)]);
   const [c, ctx] = canvas();
-  backdrop(ctx, bg, 0.62);
+  backdrop(ctx, bg, dimFor(d.background, 0.62));
   decorate(ctx, d.overlay);
   const top = titleBlock(ctx, d.title, d.subtitle, d.dateLine) + 10;
   const bottom = d.sponsor ? IG_H - 180 : IG_H - 60;
@@ -589,9 +602,9 @@ async function renderCards(d: CardsPostData): Promise<HTMLCanvasElement> {
 }
 
 async function renderStats(d: StatsPostData): Promise<HTMLCanvasElement> {
-  const [bg, sp] = await Promise.all([tryLoad("/images/background.jpg"), tryLoad(d.sponsor?.logo)]);
+  const [bg, sp] = await Promise.all([tryLoad(bgUrl(d.background)), tryLoad(d.sponsor?.logo)]);
   const [c, ctx] = canvas();
-  backdrop(ctx, bg, 0.66);
+  backdrop(ctx, bg, dimFor(d.background, 0.66));
   decorate(ctx, d.overlay);
   const top = titleBlock(ctx, d.title, d.subtitle, d.dateLine) + 10;
   const bottom = d.sponsor ? IG_H - 180 : IG_H - 60;

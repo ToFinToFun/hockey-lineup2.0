@@ -17,7 +17,7 @@ import { useSponsors, logoForName } from "@/lib/sponsors";
 import { createTeamSlots, groupSlots, type TeamConfig } from "@/lib/lineup";
 import type { Player } from "@/lib/players";
 import { prepareSourcePhoto } from "@/lib/cardPhoto";
-import { renderMediaPost, MEDIA_OVERLAYS, overlayFromTheme, type MediaOverlay, type LineupGroup, type MediaPostData } from "@/lib/mediaImages";
+import { renderMediaPost, MEDIA_OVERLAYS, MEDIA_BACKGROUNDS, overlayFromTheme, type MediaOverlay, type MediaBackground, type LineupGroup, type MediaPostData } from "@/lib/mediaImages";
 import { renderCard, DEFAULT_SETTINGS as CARD_DEFAULTS, type CardSettings } from "@shared/cardRender";
 import { cellsFor, defaultStatsTitle } from "@shared/cardStats";
 import { STAT_CATEGORIES, STAT_PERIODS, periodRange, statRows, type StatCategory, type StatPeriod } from "./mediaStats";
@@ -27,6 +27,7 @@ type Kind = "lineup" | "text" | "cards" | "stats";
 interface Settings {
   kind: Kind;
   overlay: MediaOverlay;
+  background: MediaBackground;
   /** Äldre sparade inlägg */
   theme?: string;
   subtitle: string;
@@ -50,7 +51,7 @@ interface Settings {
 }
 
 const BASE: Omit<Settings, "kind"> = {
-  overlay: "none", subtitle: "", cardPlayers: [], statCategory: "points", statPeriod: "season", statLimit: 10,
+  overlay: "none", background: "arena", subtitle: "", cardPlayers: [], statCategory: "points", statPeriod: "season", statLimit: 10,
   dateLine: "", sponsorName: null, team: "green", title: "", teamName: "", groups: [], body: "", info: "", photoDim: 0.5,
 };
 const NEW: Record<Kind, Settings> = {
@@ -209,7 +210,7 @@ export default function MediaApp() {
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(async () => {
-      const common = { overlay: s.overlay, dateLine: s.dateLine, sponsor };
+      const common = { overlay: s.overlay, background: s.background, dateLine: s.dateLine, sponsor };
       const data: MediaPostData =
         s.kind === "lineup" ? { ...common, kind: "lineup", team: s.team, teamName: s.teamName, title: s.title, groups: s.groups }
         : s.kind === "cards" ? { ...common, kind: "cards", title: s.title, subtitle: s.subtitle, cards: cardCanvases }
@@ -481,6 +482,21 @@ export default function MediaApp() {
               <button onClick={() => update({ dateLine: eventLine(event.data) })} title="Nästa träning från laget.se" className="shrink-0 px-2 rounded-lg bg-white/5 border border-white/10"><CalendarDays size={14} /></button>
             </div>
           </label>
+
+          {!(s.kind === "text" && photo) && (
+            <div>
+              <p className="text-[11px] text-white/50 mb-1.5">Bakgrund</p>
+              <div className="grid grid-cols-3 gap-1.5">
+                {MEDIA_BACKGROUNDS.map((b) => (
+                  <button key={b.id} onClick={() => update({ background: b.id })} title={b.name}
+                    className={`relative rounded-lg overflow-hidden border-2 aspect-[4/5] ${s.background === b.id ? "border-emerald-400" : "border-white/10 opacity-70 hover:opacity-100"}`}>
+                    <img src={b.url} alt="" className="w-full h-full object-cover" />
+                    <span className="absolute inset-x-0 bottom-0 text-[10px] bg-black/60 text-white/85 py-0.5 text-center truncate px-1">{b.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div>
             <p className="text-[11px] text-white/50 mb-1.5">Överlägg</p>
