@@ -7,6 +7,16 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.45.0 – 2026-09-30
+
+**Plats från laget.se används där det finns datum och tid**
+- Score Tracker: platsen sparas med matchen när starttiden kommer från träningen; Avsluta-rutan visar "Starttid från träningen på laget.se · Coop Arena C-Hallen".
+- Matchhistoriken: platsen visas i matchens detaljvy (📍) och går att ändra/lägga till vid Redigera (förslag: Coop Arena C-Hallen, Sunderby ishall).
+- Matchrapporten: datumraden på resultat- och målbilden blir t.ex. "Tisdag 29/9 · Coop Arena C-Hallen", med val "Visa plats". Stjärnkorten visar bara datum (plats får inte plats). Datumet räknas från starttiden.
+- Lineup: raden under klubbnamnet visar "Träning · tors 1/10 20:00 · Coop Arena C-Hallen".
+- (Redan: nyhetens rubrik och bild, den automatiska nyheten och Medias datumrad.)
+- Backlog: statistik per hall.
+
 ## 2.44.7 – 2026-09-30
 
 - Engångsrättning vid start: spelare som spelade 29/9 och saknar lag får tillbaka laget de spelade i den matchen. Spelare som redan har lag rörs inte. Körs en gång; resultatet visas på Spelare ("N spelare fick tillbaka sitt lag automatiskt … Visa vilka") och i serverloggen.

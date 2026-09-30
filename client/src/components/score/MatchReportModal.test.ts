@@ -60,3 +60,11 @@ describe("matchrapport", () => {
     expect(many.top + many.perCol * many.rowH).toBeLessThanOrEqual(1350 - 90);
   });
 });
+
+describe("plats i matchrapporten", () => {
+  it("datumraden får platsen när den finns och ska visas", () => {
+    const m = { id: 9, name: "x", teamWhiteScore: 1, teamGreenScore: 0, createdAt: "2026-09-29T20:30:00Z", matchStartTime: "2026-09-29T20:15:00Z", goalHistory: [], lineup: null, location: "Coop Arena C-Hallen" };
+    expect(buildReportData(m, [], null).dateLine).toMatch(/ · Coop Arena C-Hallen$/);
+    expect(buildReportData(m, [], null, undefined, undefined, false).dateLine).not.toMatch(/Coop/);
+  });
+});

@@ -273,7 +273,8 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
 
   const handleEndMatch = async () => {
     setSavingMatch(true);
-    const { start } = resolvedStart();
+    const { start, source } = resolvedStart();
+    const location = source === "event" ? (eventQuery.data?.eventLocation ?? undefined) : undefined;
     const name = matchName(start, teamWhiteScore, teamGreenScore);
     const payload = {
       name,
@@ -281,6 +282,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
       teamGreenScore,
       goalHistory: goalHistory,
       matchStartTime: start.toISOString(),
+      location,
       // Sluttiden sätts nu, så att en match som laddas upp senare (utan nät) får rätt tid
       matchEndTime: new Date().toISOString(),
       lineup: lineupState || undefined,
@@ -1007,7 +1009,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
               <p className="text-[#9BA1A6] text-xs mt-1">
                 Sparas som: {getMatchName()}
                 <span className="block text-[11px] text-[#687076] mt-0.5">
-                  {eventQuery.isLoading ? "Hämtar träningstiden från laget.se …" : resolvedStart().source === "event" ? "Starttid från träningen på laget.se" : resolvedStart().source === "goal" ? "Starttid = första målet (ingen träning hittades)" : "Uppskattad starttid (ingen träning hittades)"}
+                  {eventQuery.isLoading ? "Hämtar träningstiden från laget.se …" : resolvedStart().source === "event" ? `Starttid från träningen på laget.se${eventQuery.data?.eventLocation ? ` · ${eventQuery.data.eventLocation}` : ""}` : resolvedStart().source === "goal" ? "Starttid = första målet (ingen träning hittades)" : "Uppskattad starttid (ingen träning hittades)"}
                 </span>
               </p>
             </div>

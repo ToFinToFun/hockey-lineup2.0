@@ -94,6 +94,8 @@ export const matchResults = mysqlTable("match_results", {
    * Granskning: matcher sparade utan inloggning är "pending" tills styrelsen
    * godkänner ("approved") eller avvisar ("rejected"). Bara godkända räknas i statistiken.
    */
+  /** Plats från träningen på laget.se när matchen sparades, t.ex. "Coop Arena C-Hallen" */
+  location: varchar("location", { length: 120 }),
   reviewStatus: mysqlEnum("reviewStatus", ["pending", "approved", "rejected"]).default("approved").notNull(),
   reviewedAt: timestamp("reviewedAt"),
   /**

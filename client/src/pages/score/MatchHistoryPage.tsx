@@ -109,6 +109,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
   // Edit dialog state
   const [editDialog, setEditDialog] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
+  const [editLocation, setEditLocation] = useState("");
 
   const [editGoals, setEditGoals] = useState<GoalEvent[]>([]);
 
@@ -185,6 +186,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
     const match = matches?.find(m => m.id === matchId);
     if (!match) return;
     setEditName(match.name);
+    setEditLocation((match as { location?: string | null }).location ?? "");
     // Sparas nyast först (som Score Tracker visar). Här redigeras i tidsordning: första målet överst.
     const gh = (match.goalHistory as GoalEvent[] | null) ?? [];
     setEditGoals([...gh].reverse().map(g => ({ ...g })));
@@ -382,6 +384,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
       teamGreenScore: greenCount,
       // Tillbaka till lagringsordningen: nyast först
       goalHistory: [...editGoals].reverse(),
+      location: editLocation.trim(),
     });
     setEditDialog(null);
     setSelectedMatch(null);
@@ -684,6 +687,9 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
 
           {selectedMatchData && (
             <div className="space-y-4">
+              {(selectedMatchData as { location?: string | null }).location && (
+                <p className="text-center text-xs text-white/55 -mt-2">📍 {(selectedMatchData as { location?: string | null }).location}</p>
+              )}
               {/* Edited indicator */}
               {(selectedMatchData as any).editedAt && (
                 <div className="text-center">
@@ -1100,6 +1106,14 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
               </div>
             </div>
 
+            {/* Plats (från laget.se när matchen sparades – går att ändra) */}
+            <div>
+              <label className="text-[#9BA1A6] text-xs font-medium block mb-1">Plats</label>
+              <input value={editLocation} onChange={(e) => setEditLocation(e.target.value)} maxLength={120} placeholder="T.ex. Coop Arena C-Hallen"
+                list="known-venues" className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-[#ECEDEE] text-sm" />
+              <datalist id="known-venues"><option value="Coop Arena C-Hallen" /><option value="Sunderby ishall" /></datalist>
+            </div>
+
             {/* Scores - auto-calculated from goal history */}
             <div className="flex gap-4">
               <div className="flex-1">
@@ -1359,6 +1373,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
             matchStartTime: exportMatchData.matchStartTime ? String(exportMatchData.matchStartTime) : null,
             createdAt: String(exportMatchData.createdAt),
             lineup: exportMatchData.lineup as ReportMatch["lineup"],
+            location: (exportMatchData as { location?: string | null }).location ?? null,
             report: (exportMatchData as { report?: ReportMatch["report"] }).report ?? null,
           }}
           onClose={() => {

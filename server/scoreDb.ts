@@ -39,6 +39,8 @@ export interface MatchInput {
   lineup?: { teamAName?: string; teamBName?: string; lineup?: Record<string, { id?: string; name?: string } | null> } | null;
   matchStartTime?: Date | null;
   matchEndTime?: Date;
+  /** Plats från träningen på laget.se */
+  location?: string | null;
   createdAt?: Date;
   reviewStatus?: "pending" | "approved" | "rejected";
   reviewedAt?: Date | null;
@@ -221,6 +223,7 @@ export async function saveMatch(input: MatchInput): Promise<number> {
       teamWhiteScore: input.teamWhiteScore,
       teamGreenScore: input.teamGreenScore,
       matchStartTime: input.matchStartTime ?? null,
+      location: input.location?.trim() || null,
       matchEndTime: input.matchEndTime ?? new Date(),
       createdAt: input.createdAt,
       reviewStatus: input.reviewStatus ?? "pending",
@@ -247,7 +250,7 @@ export async function setMatchReport(id: number, report: { stars?: string[]; spo
 
 export async function updateMatch(
   id: number,
-  data: Partial<Pick<MatchInput, "name" | "teamWhiteScore" | "teamGreenScore" | "goalHistory" | "matchEndTime" | "createdAt">>
+  data: Partial<Pick<MatchInput, "name" | "teamWhiteScore" | "teamGreenScore" | "goalHistory" | "matchEndTime" | "createdAt" | "location">>
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

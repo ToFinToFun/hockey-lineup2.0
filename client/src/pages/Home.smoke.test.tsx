@@ -83,3 +83,12 @@ describe2("Ändrad-texten", () => {
     expect2(formatChanged(new Date(2026, 8, 12, 7, 0), now)).toBe("12/9 07:00");
   });
 });
+
+import { eventLabel } from "./Home";
+
+describe2("Lineups evenemangsrad", () => {
+  it2("dag, tid och plats", () => {
+    expect2(eventLabel({ title: "Träning", date: "2026-10-01", time: "20:00", location: "Coop Arena C-Hallen" })).toMatch(/^Träning · [a-zåäö]+\.? 1\/10 20:00 · Coop Arena C-Hallen$/);
+    expect2(eventLabel({ title: "Träning", date: "2026-10-01" })).toMatch(/^Träning · [a-zåäö]+\.? 1\/10$/);
+  });
+});

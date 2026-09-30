@@ -170,6 +170,7 @@ export const scoreRouter = router({
             .optional(),
           matchStartTime: z.string().max(40).optional(),
           matchEndTime: z.string().max(40).optional(),
+          location: z.string().trim().max(120).optional(),
           createdAt: z.string().max(40).optional(),
           lineup: z.any().optional(),
         })
@@ -188,6 +189,7 @@ export const scoreRouter = router({
           teamGreenScore: input.teamGreenScore,
           goalHistory: input.goalHistory ?? null,
           matchStartTime: input.matchStartTime ? new Date(input.matchStartTime) : null,
+          location: input.location || null,
           matchEndTime: input.matchEndTime ? new Date(input.matchEndTime) : new Date(),
           createdAt: input.createdAt ? new Date(input.createdAt) : undefined,
           lineup: input.lineup ?? null,
@@ -250,14 +252,17 @@ export const scoreRouter = router({
           })).max(200).optional(),
           matchEndTime: z.string().optional(),
           createdAt: z.string().optional(),
+          /** Plats (tom sträng tar bort den) */
+          location: z.string().trim().max(120).optional(),
         })
       )
       .mutation(async ({ input }) => {
-        const { id, matchEndTime, createdAt, ...data } = input;
+        const { id, matchEndTime, createdAt, location, ...data } = input;
         await updateMatch(id, {
           ...data,
           matchEndTime: matchEndTime ? new Date(matchEndTime) : undefined,
           createdAt: createdAt ? new Date(createdAt) : undefined,
+          ...(location !== undefined ? { location: location || null } : {}),
         });
         scheduleLiveProfileRefresh(); // profilkort med statistik ritas om i bakgrunden
         return { success: true };

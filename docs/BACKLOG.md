@@ -54,3 +54,5 @@ Prioriterad lista från genomgången 2026-09-24. Bocka av när klart.
 ## Framåt (idéer från Jerry, 2026-09-28)
 - [x] **Media/Nyheter-modul** (v2.43.0 – första versionen) på startsidan: snygga Instagram-inlägg (4:5) i samma stil och process som matchrapporten, men med fritext – t.ex. "Nu börjar serien", "Nu börjar slutspelet", "Anmäl er till julmatchen". Lägg till egen bild, redigera text i bilden, text för inlägget och hashtags (samma sparade taggar). Teman i samma grundstil: jul, nyår, påsk m.fl.
 - [ ] Utskriftsark för hockeykort (A4, nio kort 63×88 mm med skärmärken) – skippat tills vidare.
+
+- [ ] **Statistik per hall** (plats sparas per match från v2.45.0): vilket lag vinner oftast i respektive hall, bästa målskytt per hall, spelares favorithall (flest poäng per match), snittmål per match per hall. Kräver några veckors matcher med plats innan det blir intressant.

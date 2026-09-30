@@ -126,6 +126,13 @@ function saveLocalState(state: SavedState) {
   }
 }
 
+/** "Träning · tors 1/10 20:00 · Coop Arena C-Hallen" (exporteras för test) */
+export function eventLabel(e: { title: string; date: string; time?: string; location?: string }): string {
+  const m = e.date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const day = m ? (() => { const d = new Date(+m[1], +m[2] - 1, +m[3]); return `${d.toLocaleDateString("sv-SE", { weekday: "short" })} ${d.getDate()}/${d.getMonth() + 1}`; })() : e.date;
+  return [e.title, [day, e.time].filter(Boolean).join(" "), e.location].filter(Boolean).join(" · ");
+}
+
 /** "idag 18:43", "igår 09:05", "torsdag 18:43" eller "12/9 18:43" – alltid 24-timmarsklocka. */
 export function formatChanged(d: Date, now = new Date()): string {
   const time = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -212,7 +219,7 @@ export default function Home() {
   const [shareState, setShareState] = useState<"idle" | "saving" | "copied">("idle");
 
   // Event-info från senaste anmälningshämtning
-  const [eventInfo, setEventInfo] = useState<{ title: string; date: string } | null>(null);
+  const [eventInfo, setEventInfo] = useState<{ title: string; date: string; time?: string; location?: string } | null>(null);
 
   // Tidstämpel för senaste synk
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
@@ -951,7 +958,7 @@ export default function Home() {
   }, []);
 
   // Hämta anmälningar från laget.se via backend-API och markera matchade spelare
-  const handleBulkRegister = useCallback(async (forceRefresh = false): Promise<{ matched: number; declined?: number; unmatched: string[]; unmatchedDeclined?: string[]; changes?: string[]; eventTitle?: string; eventDate?: string; error?: string; noEvent?: boolean }> => {
+  const handleBulkRegister = useCallback(async (forceRefresh = false): Promise<{ matched: number; declined?: number; unmatched: string[]; unmatchedDeclined?: string[]; changes?: string[]; eventTitle?: string; eventDate?: string; eventTime?: string; eventLocation?: string; error?: string; noEvent?: boolean }> => {
     try {
       const data = await fetchAttendanceFromApi(forceRefresh);
 
@@ -1022,7 +1029,7 @@ export default function Home() {
       return {
         matched: matchedIds.length, declined: declinedResult.matchedIds.length,
         unmatched: unmatchedNames, unmatchedDeclined: declinedResult.unmatchedNames ?? [],
-        changes, eventTitle: data.eventTitle, eventDate: data.eventDate,
+        changes, eventTitle: data.eventTitle, eventDate: data.eventDate, eventTime: data.eventTime, eventLocation: data.eventLocation,
       };
     } catch (err: any) {
       return { matched: 0, unmatched: [], error: err.message || "Kunde inte hämta data" };
@@ -1089,7 +1096,7 @@ export default function Home() {
     setTimeout(() => {
       handleBulkRegister().then((result) => {
         if (result.eventTitle) {
-          setEventInfo({ title: result.eventTitle, date: result.eventDate || "" });
+          setEventInfo({ title: result.eventTitle, date: result.eventDate || "", time: result.eventTime, location: result.eventLocation });
         } else if (result.noEvent) {
           setEventInfo(null);
         }
@@ -1341,7 +1348,7 @@ export default function Home() {
     setSyncReceipt(null);
     try {
       const result = await handleBulkRegister(true);
-      if (result.eventTitle) setEventInfo({ title: result.eventTitle, date: result.eventDate || "" });
+      if (result.eventTitle) setEventInfo({ title: result.eventTitle, date: result.eventDate || "", time: result.eventTime, location: result.eventLocation });
       // Visa vad som ändrades och vilka namn från laget.se som inte hittades i truppen
       if (!result.error && !result.noEvent) {
         const missing = [...(result.unmatched ?? []), ...(result.unmatchedDeclined ?? [])];
@@ -1506,7 +1513,7 @@ export default function Home() {
                   {eventInfo ? (
                     <p className={`flex items-center gap-1 text-[8px] sm:text-[9px] font-medium truncate ${isLineupDark ? 'text-sky-300/70' : 'text-sky-600'}`}>
                       <CalendarDays className="w-2.5 h-2.5 shrink-0" />
-                      <span className="truncate">{eventInfo.title}{eventInfo.date ? ` · ${eventInfo.date}` : ""}</span>
+                      <span className="truncate">{eventLabel(eventInfo)}</span>
                     </p>
                   ) : (
                     <p className={`text-[8px] sm:text-[9px] ${isLineupDark ? 'text-white/30' : 'text-gray-400'}`}>Formations-verktyg</p>

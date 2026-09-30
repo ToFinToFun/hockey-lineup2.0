@@ -33,6 +33,8 @@ export interface ReportMatch {
   matchStartTime?: string | null;
   createdAt: string;
   lineup?: { teamAName?: string; teamBName?: string; lineup?: Record<string, { id?: string; name?: string; number?: string }> } | null;
+  /** Plats från träningen (sparas när matchen avslutas i Score Tracker) */
+  location?: string | null;
   /** Sparade val: stjärnor (nycklar) och sponsor */
   report?: { stars?: string[]; sponsor?: string | null; showStats?: boolean[]; title?: string | null } | null;
 }
@@ -53,7 +55,8 @@ export function buildReportData(
   stars: StarCandidate[],
   sponsor: { name: string; logo: string | null } | null,
   showStats: boolean[] = [true, true, true],
-  title?: string
+  title?: string,
+  showLocation = true
 ): ReportData {
   const wrap = match.lineup ?? {};
   const aWhite = (wrap.teamAName ?? "VITA").toLowerCase().includes("vit");
@@ -87,7 +90,8 @@ export function buildReportData(
     title,
     whiteName, greenName,
     whiteScore: match.teamWhiteScore, greenScore: match.teamGreenScore,
-    dateLine: dateLine(match.matchEndTime ?? match.matchStartTime ?? match.createdAt),
+    // Datum – och plats när den finns och ska visas, t.ex. "Tisdag 29/9 · Coop Arena C-Hallen"
+    dateLine: [dateLine(match.matchStartTime ?? match.matchEndTime ?? match.createdAt), showLocation ? match.location : null].filter(Boolean).join(" · "),
     goals,
     // Bilden: bara namn och (valfritt) statistik – ingen position
     stars: stars.map((c, i) => ({ name: c.number ? `${c.name} #${c.number}` : c.name, stat: showStats[i] === false ? "" : starStat(c), gwg: showStats[i] !== false && c.gwg })),
@@ -194,7 +198,8 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
   };
   const removeTag = (tag: string) => saveTags.mutate(tags.filter((t) => t !== tag));
 
-  const data = useMemo(() => buildReportData(match, stars, sponsor, showStats, titleDebounced), [match, stars, sponsor?.name, sponsor?.logo, showStats, titleDebounced]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [showLocation, setShowLocation] = useState(true);
+  const data = useMemo(() => buildReportData(match, stars, sponsor, showStats, titleDebounced, showLocation), [match, stars, sponsor?.name, sponsor?.logo, showStats, titleDebounced, showLocation]); // eslint-disable-line react-hooks/exhaustive-deps
   const autoCaption = useMemo(() => buildCaption(stars, sponsorName, tags, showStats), [stars, sponsorName, tags, showStats]);
   const [caption, setCaption] = useState(autoCaption);
   const [captionEdited, setCaptionEdited] = useState(false);
@@ -224,7 +229,8 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
       i.src = src;
     });
     const whiteWon = match.teamWhiteScore > match.teamGreenScore ? true : match.teamWhiteScore < match.teamGreenScore ? false : null;
-    const matchLine = `${data.whiteName} ${match.teamWhiteScore}–${match.teamGreenScore} ${data.greenName} · ${data.dateLine}`;
+    // Stjärnkortet har liten plats – bara datum, inte plats
+    const matchLine = `${data.whiteName} ${match.teamWhiteScore}–${match.teamGreenScore} ${data.greenName} · ${dateLine(match.matchStartTime ?? match.matchEndTime ?? match.createdAt)}`;
     setStarsLoading(true);
     (async () => {
       const bg = await load("/images/background.jpg");
@@ -389,6 +395,12 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
                 className={select}
               />
               <p className="text-white/35 text-[10px] mt-1">T.ex. Match 1/5 eller Julmatchen. Tomt = Slutresultat.</p>
+              {match.location && (
+                <label className="flex items-center gap-2 mt-2 text-[11px] text-white/60">
+                  <input type="checkbox" checked={showLocation} onChange={(e) => setShowLocation(e.target.checked)} />
+                  Visa plats ({match.location})
+                </label>
+              )}
             </div>
 
             <div>
