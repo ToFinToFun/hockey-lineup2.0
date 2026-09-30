@@ -845,9 +845,12 @@ export default function Home() {
     for (const [slotId, savedPlayer] of Object.entries(safeLineup)) {
       const current = currentPlayerMap.get(savedPlayer.id);
       if (current) {
-        // Use saved placement but merge in live status fields
+        // Bara platsen tas från den sparade uppställningen. Spelarens uppgifter (namn,
+        // nummer, lag, C/A, anmälan, PIR …) är alltid de aktuella – annars skrevs t.ex.
+        // lagfärgen över av en gammal kopia.
         mergedLineup[slotId] = {
           ...savedPlayer,
+          ...current,
           isRegistered: current.isRegistered,
           isDeclined: current.isDeclined,
           pir: current.pir,

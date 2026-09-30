@@ -226,9 +226,13 @@ export function applyLineupPatch(patchId: string, ops: LineupOp[], clientId?: st
       const fields: PlayerFields = {};
       const src = p as unknown as Record<string, unknown>;
       for (const key of REGISTRY_FIELDS) {
-        // Namn, nummer och position: saknas fältet ändras inget. Lag och C/A: saknas = borttaget.
+        // Saknas fältet ändras ingenting i registret. Lag och C/A tas bara bort när
+        // de uttryckligen satts till null (t.ex. valt "Waivers" i spelarkortet) –
+        // aldrig för att ett spelarobjekt (t.ex. från en gammal sparad uppställning
+        // eller en spelad match) saknar fältet.
         const optional = key === "teamColor" || key === "captainRole";
-        if (!optional && (src[key] === undefined || src[key] === null)) continue;
+        if (src[key] === undefined) continue;
+        if (!optional && src[key] === null) continue;
         const value = src[key] ?? null;
         if ((row as unknown as Record<string, unknown>)[key] !== value) (fields as Record<string, unknown>)[key] = value;
       }

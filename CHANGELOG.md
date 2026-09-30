@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.44.5 – 2026-09-30
+
+- Rättning (allvarlig): att ladda en tidigare uppställning (Sparade uppställningar / Senaste matcherna) kunde nollställa spelarnas lag (→ Waivers) och C/A i spelarregistret, eftersom den gamla kopian av spelaren saknade laget och servern tolkade det som "borttaget". Nu tas bara platsen från den laddade uppställningen – spelarens uppgifter är alltid de aktuella – och servern ändrar aldrig lag eller C/A för att ett fält saknas, bara när det uttryckligen satts (t.ex. Waivers i spelarkortet).
+
 ## 2.44.4 – 2026-09-30
 
 - Plats och tid för evenemanget: läses från fältet "PlaceName" (fliken Aktivitetsinfo) och det dolda fältet "StartDateTime" på aktivitetens adminsida – verifierat mot en riktig sida (Coop Arena C-Hallen, 22:15). Orsaken till att platsen saknades: adminsidan har ingen deltagarlista, så hämtningen föll tillbaka till den publika listan och tappade platsen. Nu följer plats och tid med oavsett var deltagarna hämtas.
