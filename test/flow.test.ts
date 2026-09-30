@@ -22,6 +22,11 @@ describe.skipIf(!process.env.DATABASE_URL)("hela flödet", () => {
     const state = await c.lineup.getState();
     expect(state.lineup["team-a-fwd-1-c"]?.id).toBe("flow-w");
 
+    // Rensa ev. match från en tidigare körning (samma datum)
+    for (const old of (await c.score.match.list()).filter((x: { name: string }) => x.name === "31-06-01 Söndag 20:00 2-1")) {
+      await c.score.match.delete({ id: (old as { id: number }).id });
+    }
+
     // Score Tracker sparar matchen (med uppställningen som den var)
     const end = new Date(2031, 5, 1, 21, 30);
     await c.score.match.save({
