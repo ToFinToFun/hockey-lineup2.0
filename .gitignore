@@ -112,3 +112,4 @@ temp/
 # AI-agent artifacts
 .manus/
 client/public/mediapipe/
+test/golden/out/
