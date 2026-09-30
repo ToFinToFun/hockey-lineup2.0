@@ -10,6 +10,7 @@ import { Link } from "wouter";
 import { toast } from "sonner";
 import { ArrowLeft, Download, Upload, Plus, Search, Loader2, X, AlertTriangle, GitMerge } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { TeamRecovery } from "./TeamRecovery";
 import { positionName } from "@/lib/players";
 import { PlayerProfileView } from "./PlayerProfile";
 
@@ -210,6 +211,7 @@ export default function PlayersApp() {
       </header>
 
       <main className="max-w-3xl mx-auto p-4 space-y-4">
+        <TeamRecovery />
         <p className="text-white/40 text-xs">
           Varje spelare har ett fast ID. Ändringar här syns direkt i Lineup och Score Tracker, och statistiken följer med vid namn- eller nummerbyte.
           Spelare som inte finns i medlemsregistret flaggas som <b>ej medlem</b> men finns kvar.

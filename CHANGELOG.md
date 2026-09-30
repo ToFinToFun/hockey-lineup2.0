@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.44.6 – 2026-09-30
+
+- Spelarsidan: "Återställ lag" visas när aktiva spelare saknar lag. Förslaget är laget spelaren spelat i oftast de senaste 10 matcherna (minst 3 matcher, minst 70 %), eller från en äldre sparad uppställning med spelarens uppgifter. Kontrollera, kryssa ur de som ska vara Waivers och återställ med ett tryck.
+
 ## 2.44.5 – 2026-09-30
 
 - Rättning (allvarlig): att ladda en tidigare uppställning (Sparade uppställningar / Senaste matcherna) kunde nollställa spelarnas lag (→ Waivers) och C/A i spelarregistret, eftersom den gamla kopian av spelaren saknade laget och servern tolkade det som "borttaget". Nu tas bara platsen från den laddade uppställningen – spelarens uppgifter är alltid de aktuella – och servern ändrar aldrig lag eller C/A för att ett fält saknas, bara när det uttryckligen satts (t.ex. Waivers i spelarkortet).

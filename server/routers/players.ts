@@ -1,3 +1,4 @@
+import { teamSuggestions, applyTeams } from "../teamRecovery";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { adminProcedure, router } from "../_core/trpc";
@@ -209,4 +210,12 @@ export const playersRouter = router({
       await updatePlayers(updates);
       return { created: creates.length, updated: updates.length };
     }),
+
+  /** Förslag på lag för spelare som saknar lag (efter oavsiktlig nollställning). */
+  teamSuggestions: adminProcedure.query(() => teamSuggestions()),
+
+  /** Sätt lag för valda spelare (efter att förslagen godkänts). */
+  applyTeams: adminProcedure
+    .input(z.array(z.object({ playerId: z.string().min(1).max(64), teamColor: z.enum(["white", "green"]) })).max(200))
+    .mutation(async ({ input }) => ({ updated: await applyTeams(input) })),
 });
