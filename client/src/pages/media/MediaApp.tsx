@@ -486,7 +486,7 @@ export default function MediaApp() {
           {!(s.kind === "text" && photo) && (
             <div>
               <p className="text-[11px] text-white/50 mb-1.5">Bakgrund</p>
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-4 gap-1.5">
                 {MEDIA_BACKGROUNDS.map((b) => (
                   <button key={b.id} onClick={() => update({ background: b.id })} title={b.name}
                     className={`relative rounded-lg overflow-hidden border-2 aspect-[4/5] ${s.background === b.id ? "border-emerald-400" : "border-white/10 opacity-70 hover:opacity-100"}`}>

@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.44.2 – 2026-09-30
+
+- Media: fem nya bakgrunder – Utomhusrinken, Klubblokalen, Gymmet, Skogsstigen och Vinterskogen. Samma behandling som de förra (4:5, lätt mjukade, något dämpad färg, anpassad mörkläggning). Bakgrundsvalet visas i fyra kolumner.
+
 ## 2.44.1 – 2026-09-30
 
 - Media: välj bakgrund – Isen (som förut), Arenan i snö eller Omklädningsrummet. De nya bilderna är beskurna till 4:5, lätt mjukade (oskärpa och något dämpad färg) så att texten och innehållet syns, och mörkas mindre än isen eftersom de redan är mörka. Gäller alla mallar (text med egen bild använder sin bild).
