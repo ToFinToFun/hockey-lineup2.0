@@ -8,7 +8,7 @@ describe("Media – statistik", () => {
     expect(periodRange("season", periods)).toMatchObject({ from: "2026-10-01", label: "Säsong 2026/27" });
     const w = periodRange("week", periods, new Date(2026, 8, 30));
     expect(w).toMatchObject({ from: "2026-09-28", to: "2026-10-04", label: "Vecka 40" });
-    expect(periodRange("all", periods)).toEqual({ label: "Alla matcher" });
+    expect(periodRange("all", periods)).toEqual({ label: "Totalt" });
   });
   it("topplista med delad placering, utan nollor", () => {
     const s = { topScorers: [

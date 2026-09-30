@@ -126,7 +126,7 @@ export default function CardsApp() {
       if (s.statsMode === "custom") return { ...s, form: stats.data!.form };
       const { title, cells } = cellsFor(s.statsMode, stats.data);
       // Egen rubrik står kvar; tom eller standardrubrik byts mot den aktuella
-      const isDefault = !s.statsTitle || /^Säsong \d{4}\/\d{2}$/.test(s.statsTitle) || s.statsTitle === "Karriär" || s.statsTitle === "Form";
+      const isDefault = !s.statsTitle || /^Säsong \d{4}\/\d{2}$/.test(s.statsTitle) || s.statsTitle === "Karriär" || s.statsTitle === "Totalt" || s.statsTitle === "Form";
       return { ...s, cells, statsTitle: isDefault ? title : s.statsTitle, form: stats.data!.form };
     });
   }, [stats.data, settings.statsMode]);
@@ -490,7 +490,7 @@ export default function CardsApp() {
           <div className="space-y-2">
             <p className="text-[11px] text-white/50">Statistik</p>
             <div className="flex flex-wrap gap-1.5">
-              {([["season", "Säsong"], ["career", "Karriär"], ["form", "Form"], ["custom", "Egen"], ["none", "Ingen"]] as const).map(([k, l]) => (
+              {([["season", "Säsong"], ["career", "Totalt"], ["form", "Form"], ["custom", "Egen"], ["none", "Ingen"]] as const).map(([k, l]) => (
                 <button key={k} onClick={() => update({ statsMode: k, statsTitle: k === "custom" ? settings.statsTitle : defaultStatsTitle(k, stats.data) })}
                   className={`px-3 py-1 rounded-full text-xs border ${settings.statsMode === k ? "bg-white/15 border-white/40" : "border-white/10 text-white/55"}`}>{l}</button>
               ))}
@@ -514,7 +514,7 @@ export default function CardsApp() {
                     </div>
                   ))}
                 </div>
-                <p className="text-[10px] text-white/35">Säsong och Karriär räknas fram och uppdateras automatiskt. Ändrar du ett värde blir rutan "Egen" och står kvar som du skrev.</p>
+                <p className="text-[10px] text-white/35">Säsong och Totalt räknas fram och uppdateras automatiskt. Ändrar du ett värde blir rutan "Egen" och står kvar som du skrev.</p>
               </>
             )}
           </div>

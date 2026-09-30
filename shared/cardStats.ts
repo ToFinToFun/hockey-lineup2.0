@@ -34,7 +34,7 @@ export function currentSeasonLabel(now = new Date()): string {
 /** Standardrubrik för statistikrutan – sätts automatiskt när läget väljs (exporteras för test). */
 export function defaultStatsTitle(mode: CardSettings["statsMode"], stats?: Stats): string {
   if (mode === "season") return `Säsong ${stats?.season.label ?? currentSeasonLabel()}`;
-  if (mode === "career") return "Karriär";
+  if (mode === "career") return "Totalt";
   if (mode === "form") return "Form";
   return "";
 }
@@ -45,7 +45,7 @@ export function cellsFor(mode: CardSettings["statsMode"], stats: Stats | undefin
     return { title: mode === "form" ? "Form" : "", cells: [] };
   }
   const line = mode === "career" ? stats.career : stats.season;
-  const title = mode === "career" ? "Karriär" : `Säsong ${line.label}`;
+  const title = mode === "career" ? "Totalt" : `Säsong ${line.label}`;
   if (stats.isGoalie && line.goalie) {
     return {
       title,

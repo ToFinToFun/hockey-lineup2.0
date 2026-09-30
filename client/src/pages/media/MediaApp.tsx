@@ -165,7 +165,7 @@ export default function MediaApp() {
         let settings: CardSettings = { ...CARD_DEFAULTS, ...(card.settings as Partial<CardSettings>) };
         if (stats && settings.statsMode !== "custom" && settings.statsMode !== "none") {
           const { cells } = cellsFor(settings.statsMode, stats);
-          settings = { ...settings, cells, statsTitle: settings.statsTitle && !/^Säsong \d{4}\/\d{2}$|^Karriär$|^Form$/.test(settings.statsTitle) ? settings.statsTitle : defaultStatsTitle(settings.statsMode, stats), form: stats.form };
+          settings = { ...settings, cells, statsTitle: settings.statsTitle && !/^Säsong \d{4}\/\d{2}$|^Karriär$|^Totalt$|^Form$/.test(settings.statsTitle) ? settings.statsTitle : defaultStatsTitle(settings.statsMode, stats), form: stats.form };
         }
         out.push(await renderCard({ settings, photo, mask, scale: 0.9 }));
       }

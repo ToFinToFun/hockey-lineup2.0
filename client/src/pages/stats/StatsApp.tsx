@@ -47,7 +47,7 @@ const PERIOD_OPTIONS: { key: PeriodPreset; label: string }[] = [
   { key: "preseason", label: "Försäsong" },
   { key: "month", label: "Månad" },
   { key: "week", label: "Vecka" },
-  { key: "all", label: "Alla" },
+  { key: "all", label: "Totalt" },
 ];
 
 // Tre flikar: Översikt, Spelare och Lag. PIR-modellen och perioderna finns under

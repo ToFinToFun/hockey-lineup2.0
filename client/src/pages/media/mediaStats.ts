@@ -9,7 +9,7 @@ export type StatCategory = "points" | "goals" | "assists" | "gwg" | "matches" | 
 
 export const STAT_PERIODS: Array<{ id: StatPeriod; name: string }> = [
   { id: "season", name: "Säsong" }, { id: "playoff", name: "Slutspel" }, { id: "preseason", name: "Försäsong" },
-  { id: "month", name: "Månad" }, { id: "week", name: "Vecka" }, { id: "all", name: "Alla" },
+  { id: "month", name: "Månad" }, { id: "week", name: "Vecka" }, { id: "all", name: "Totalt" },
 ];
 export const STAT_CATEGORIES: Array<{ id: StatCategory; name: string; title: string; valueLabel: string }> = [
   { id: "points", name: "Poäng", title: "Poängligan", valueLabel: "PTS" },
@@ -42,7 +42,7 @@ export function periodRange(
     const m = now.toLocaleDateString("sv-SE", { month: "long" });
     return { from: iso(from), to: iso(to), label: `${m.charAt(0).toUpperCase()}${m.slice(1)} ${now.getFullYear()}` };
   }
-  if (p === "all" || !periods) return { label: "Alla matcher" };
+  if (p === "all" || !periods) return { label: "Totalt" };
   const pair = p === "season" ? [periods.seasonFrom, periods.seasonTo] : p === "playoff" ? [periods.playoffFrom, periods.playoffTo] : [periods.preseasonFrom, periods.preseasonTo];
   const y1 = pair[0].slice(0, 4), y2 = pair[1].slice(2, 4);
   const name = p === "season" ? "Säsong" : p === "playoff" ? "Slutspel" : "Försäsong";

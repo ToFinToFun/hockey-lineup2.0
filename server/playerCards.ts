@@ -102,7 +102,7 @@ export async function cardStats(playerId: string): Promise<CardStats> {
   const gkShare = p.matchLog.filter((e) => e.position === "MV").length;
   return {
     season: line(seasonNow, seasonLog),
-    career: line("Karriär", p.matchLog),
+    career: line("Totalt", p.matchLog),
     form: p.form,
     isGoalie: p.matchLog.length > 0 && gkShare >= p.matchLog.length / 2,
   };

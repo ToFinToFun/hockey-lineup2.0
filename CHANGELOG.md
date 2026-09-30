@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.45.1 – 2026-09-30
+
+- "Totalt" är samma val överallt för all statistik sedan starten (säsongen 2026/27): Statistik (förut "Alla"), Media → Statistik (förut "Alla"/"Alla matcher") och hockeykortens statistikruta (förut "Karriär"). Sparade kort med rubriken "Karriär" får "Totalt" automatiskt.
+
 ## 2.45.0 – 2026-09-30
 
 **Plats från laget.se används där det finns datum och tid**

@@ -7,12 +7,12 @@ const line = (o = {}) => ({ label: "2026/27", matches: 10, goals: 5, assists: 7,
 
 describe("hockeykort", () => {
   it("statistikrutan för utespelare och målvakt", () => {
-    const skater = cellsFor("season", { season: line(), career: line({ label: "Karriär", matches: 30 }), form: "VVF", isGoalie: false });
+    const skater = cellsFor("season", { season: line(), career: line({ label: "Totalt", matches: 30 }), form: "VVF", isGoalie: false });
     expect(skater.title).toBe("Säsong 2026/27");
     expect(skater.cells.map((c) => c.label)).toEqual(["GP", "G", "A", "PTS", "W%"]);
     expect(skater.cells[3].value).toBe("12");
-    const gk = cellsFor("career", { season: line(), career: line({ label: "Karriär", goalie: { matches: 8, gaa: 2.25, shutouts: 2 } }), form: "", isGoalie: true });
-    expect(gk.title).toBe("Karriär");
+    const gk = cellsFor("career", { season: line(), career: line({ label: "Totalt", goalie: { matches: 8, gaa: 2.25, shutouts: 2 } }), form: "", isGoalie: true });
+    expect(gk.title).toBe("Totalt");
     expect(gk.cells.map((c) => `${c.label}=${c.value}`)).toEqual(["GP=8", "GAA=2,3", "SO=2", "W%=60%"]);
     expect(cellsFor("none", undefined).cells).toEqual([]);
   });
@@ -57,7 +57,7 @@ describe("automatiska rubriker", () => {
     expect(currentSeasonLabel(new Date(2026, 8, 28))).toBe("2026/27");
     expect(currentSeasonLabel(new Date(2027, 2, 1))).toBe("2026/27");
     expect(defaultStatsTitle("season")).toMatch(/^Säsong \d{4}\/\d{2}$/);
-    expect(defaultStatsTitle("career")).toBe("Karriär");
+    expect(defaultStatsTitle("career")).toBe("Totalt");
     expect(defaultStatsTitle("form")).toBe("Form");
     expect(defaultStatsTitle("none")).toBe("");
   });
