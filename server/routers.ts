@@ -378,7 +378,7 @@ export const appRouter = router({
     save: adminProcedure
       .input(z.object({
         id: z.number().int().positive().optional(),
-        type: z.enum(["lineup", "text"]),
+        type: z.enum(["lineup", "text", "cards", "stats"]),
         title: z.string().trim().min(1).max(120),
         settings: z.record(z.string(), z.unknown()),
         caption: z.string().max(3000),

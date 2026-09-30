@@ -7,6 +7,15 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.44.0 – 2026-09-30
+
+**Media**
+- Lagets uppställning i ny layout efter skissen: ett kort med lagets logga och namn, målvakter och backar (per backpar) till vänster, forwards (per kedja) till höger. Raderna är tonade i positionens färg med färgad kant, positionsbricka, C/A före namnet och nummer i grått. Standardstorlek för upp till 2 målvakter, 3 backpar och 3 kedjor; med en fjärde kedja krymps innehållet så att allt får plats.
+- Ny mall Spelarkort: välj 1–4 spelare med sparade hockeykort (med aktuell statistik). 1 kort blir stort, 2 står bredvid varandra, 3–4 i två rader. Rubrik och underrubrik ovanför.
+- Ny mall Statistik: poäng, mål, assist, GWG, matcher, utmärkelser eller rekord för säsong, slutspel, försäsong, månad, vecka eller alla matcher – topp 3, 5 eller 10. Samma data som statistikmodulen (utom PIR). Bildtexten får listan.
+- Teman ersatta av överlägg utan färgbyten: snöflingor, ägg, fyrverkerier, löv och sol – diskret, mest i kanterna. Äldre sparade inlägg får motsvarande överlägg.
+- Egen text står i en mörk, halvgenomskinlig ruta med skugga och en accentlinje.
+
 ## 2.43.0 – 2026-09-29
 
 **Media (ny bricka, styrelsen)** – egna Instagram-bilder i samma grafiska profil och format som matchrapporten (4:5, 1080×1350):

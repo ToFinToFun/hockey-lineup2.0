@@ -11,19 +11,31 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
-import { ArrowLeft, Download, Share2, Copy, Check, Save, Plus, Trash2, Loader2, RefreshCw, Upload, X, Users, Type, CalendarDays } from "lucide-react";
+import { ArrowLeft, Download, Share2, Copy, Check, Save, Plus, Trash2, Loader2, RefreshCw, Upload, X, Users, Type, CalendarDays, IdCard, BarChart3 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useSponsors, logoForName } from "@/lib/sponsors";
 import { createTeamSlots, groupSlots, type TeamConfig } from "@/lib/lineup";
 import type { Player } from "@/lib/players";
 import { prepareSourcePhoto } from "@/lib/cardPhoto";
-import { renderMediaPost, MEDIA_THEMES, type MediaTheme, type LineupGroup, type MediaPostData } from "@/lib/mediaImages";
+import { renderMediaPost, MEDIA_OVERLAYS, overlayFromTheme, type MediaOverlay, type LineupGroup, type MediaPostData } from "@/lib/mediaImages";
+import { renderCard, DEFAULT_SETTINGS as CARD_DEFAULTS, type CardSettings } from "@shared/cardRender";
+import { cellsFor, defaultStatsTitle } from "@shared/cardStats";
+import { STAT_CATEGORIES, STAT_PERIODS, periodRange, statRows, type StatCategory, type StatPeriod } from "./mediaStats";
 
-type Kind = "lineup" | "text";
+type Kind = "lineup" | "text" | "cards" | "stats";
 
 interface Settings {
   kind: Kind;
-  theme: MediaTheme;
+  overlay: MediaOverlay;
+  /** Äldre sparade inlägg */
+  theme?: string;
+  subtitle: string;
+  // cards
+  cardPlayers: string[];
+  // stats
+  statCategory: StatCategory;
+  statPeriod: StatPeriod;
+  statLimit: number;
   dateLine: string;
   sponsorName: string | null;
   // lineup
@@ -37,9 +49,15 @@ interface Settings {
   photoDim: number;
 }
 
+const BASE: Omit<Settings, "kind"> = {
+  overlay: "none", subtitle: "", cardPlayers: [], statCategory: "points", statPeriod: "season", statLimit: 10,
+  dateLine: "", sponsorName: null, team: "green", title: "", teamName: "", groups: [], body: "", info: "", photoDim: 0.5,
+};
 const NEW: Record<Kind, Settings> = {
-  lineup: { kind: "lineup", theme: "standard", dateLine: "", sponsorName: null, team: "green", title: "Dagens lag", teamName: "Gröna", groups: [], body: "", info: "", photoDim: 0.5 },
-  text: { kind: "text", theme: "standard", dateLine: "", sponsorName: null, team: "green", title: "", teamName: "", groups: [], body: "", info: "", photoDim: 0.5 },
+  lineup: { ...BASE, kind: "lineup", title: "Dagens lag", teamName: "Gröna" },
+  text: { ...BASE, kind: "text" },
+  cards: { ...BASE, kind: "cards", title: "Veckans spelare" },
+  stats: { ...BASE, kind: "stats", title: "Poängligan" },
 };
 
 const WEEKDAYS = ["Söndag", "Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag"];
@@ -84,6 +102,9 @@ function defaultCaption(s: Settings, tags: string[]): string {
     const lines = s.groups.map((g) => `${g.label}: ${g.players.map((p) => `${p.name}${p.number ? ` #${p.number}` : ""}`).join(", ")}`);
     return [`${s.title || "Dagens lag"} – ${s.teamName} ${s.team === "green" ? "💚" : "🤍"}`, s.dateLine, "", ...lines, s.sponsorName ? `\nPresenteras av ${s.sponsorName}` : "", "", tagLine].filter((l, i, a) => !(l === "" && a[i - 1] === "")).join("\n").trim();
   }
+  if (s.kind === "stats" || s.kind === "cards") {
+    return [s.title, s.subtitle, s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tagLine].filter(Boolean).join("\n\n");
+  }
   return [s.title, s.body, s.info, s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tagLine].filter(Boolean).join("\n\n");
 }
 
@@ -96,6 +117,9 @@ export default function MediaApp() {
   const event = trpc.laget.attendance.useQuery(undefined, { staleTime: 10 * 60_000, retry: false, refetchOnWindowFocus: false });
   const tagsQuery = trpc.score.reportTags.get.useQuery(undefined, { staleTime: 60_000 });
   const { sponsors } = useSponsors();
+  const registry = trpc.players.list.useQuery(undefined, { staleTime: 60_000 });
+  const savedCards = trpc.cards.list.useQuery(undefined, { staleTime: 60_000 });
+  const periodsQ = trpc.score.config.getPeriods.useQuery(undefined, { staleTime: 10 * 60_000 });
 
   const [postId, setPostId] = useState<number | null>(null);
   const [s, setS] = useState<Settings>(NEW.lineup);
@@ -110,6 +134,45 @@ export default function MediaApp() {
   const fileRef = useRef<HTMLInputElement>(null);
   const update = (patch: Partial<Settings>) => setS((prev) => ({ ...prev, ...patch }));
   const tags = tagsQuery.data ?? [];
+
+  // ─── Statistik ───
+  const range = periodRange(s.statPeriod, periodsQ.data as never);
+  const rangeInput = range.from ? { from: range.from, to: range.to } : {};
+  const statsQ = trpc.scoreStats.seasonStats.useQuery(rangeInput, { enabled: s.kind === "stats" && s.statCategory !== "awards" });
+  const awardsQ = trpc.scoreStats.seasonAwards.useQuery(rangeInput, { enabled: s.kind === "stats" && s.statCategory === "awards" });
+  const statCat = STAT_CATEGORIES.find((c) => c.id === s.statCategory)!;
+  const rows = useMemo(() => statRows(s.statCategory, statsQ.data as never, awardsQ.data?.awards as never, s.statLimit), [s.statCategory, s.statLimit, statsQ.data, awardsQ.data]);
+
+  // ─── Spelarkort: rita valda spelares sparade kort med aktuell statistik ───
+  const [cardCanvases, setCardCanvases] = useState<HTMLCanvasElement[]>([]);
+  const cardsKey = s.kind === "cards" ? s.cardPlayers.join("|") : "";
+  useEffect(() => {
+    if (s.kind !== "cards" || !savedCards.data) { setCardCanvases([]); return; }
+    let cancelled = false;
+    const load = (src: string) => new Promise<HTMLImageElement | null>((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
+    (async () => {
+      const out: HTMLCanvasElement[] = [];
+      for (const id of s.cardPlayers.slice(0, 4)) {
+        const card = savedCards.data!.find((c) => c.playerId === id);
+        if (!card) continue;
+        const v = new Date(card.updatedAt).getTime();
+        const [photo, mask, stats] = await Promise.all([
+          load(`/api/players/${encodeURIComponent(id)}/card-source?v=${v}`),
+          load(`/api/players/${encodeURIComponent(id)}/card-mask?v=${v}`),
+          utils.client.cards.stats.query({ playerId: id }).catch(() => undefined),
+        ]);
+        let settings: CardSettings = { ...CARD_DEFAULTS, ...(card.settings as Partial<CardSettings>) };
+        if (stats && settings.statsMode !== "custom" && settings.statsMode !== "none") {
+          const { cells } = cellsFor(settings.statsMode, stats);
+          settings = { ...settings, cells, statsTitle: settings.statsTitle && !/^Säsong \d{4}\/\d{2}$|^Karriär$|^Form$/.test(settings.statsTitle) ? settings.statsTitle : defaultStatsTitle(settings.statsMode, stats), form: stats.form };
+        }
+        out.push(await renderCard({ settings, photo, mask, scale: 0.9 }));
+      }
+      if (!cancelled) setCardCanvases(out);
+    })().catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [cardsKey, s.kind, savedCards.data]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cardPlayers = (registry.data ?? []).filter((p) => savedCards.data?.some((c) => c.playerId === p.id)).sort((a, b) => a.name.localeCompare(b.name, "sv"));
 
   const loadTeam = (team: "white" | "green", announce = false) => {
     if (!lineupState.data) return;
@@ -126,7 +189,18 @@ export default function MediaApp() {
     if (postId === null && !s.dateLine && event.data) update({ dateLine: eventLine(event.data) });
   }, [event.data]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const autoCaption = useMemo(() => defaultCaption(s, tags), [s, tags]);
+  // Bildtext: statistiken får periodens namn och listan, korten spelarnas namn
+  const autoCaption = useMemo(() => {
+    if (s.kind === "stats") {
+      const list = rows.map((r) => `${/^\d+$/.test(r.rank ?? "") ? `${r.rank}.` : r.rank ?? "•"} ${r.name}${r.sub && s.statCategory === "awards" ? ` – ${r.sub}` : ""} ${r.value}`).join("\n");
+      return [`${s.title || statCat.title} – ${s.subtitle || range.label}`, list, s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tags.join(" ")].filter(Boolean).join("\n\n");
+    }
+    if (s.kind === "cards") {
+      const names = s.cardPlayers.map((id) => registry.data?.find((p) => p.id === id)?.name).filter(Boolean).join(", ");
+      return [s.title, s.subtitle, names, s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tags.join(" ")].filter(Boolean).join("\n\n");
+    }
+    return defaultCaption(s, tags);
+  }, [s, tags, rows, range.label, statCat.title, registry.data]);
   useEffect(() => { if (!captionEdited) setCaption(autoCaption); }, [autoCaption, captionEdited]);
 
   const sponsor = s.sponsorName ? { name: s.sponsorName, logo: logoForName(sponsors, s.sponsorName) } : null;
@@ -135,9 +209,12 @@ export default function MediaApp() {
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(async () => {
-      const data: MediaPostData = s.kind === "lineup"
-        ? { kind: "lineup", theme: s.theme, dateLine: s.dateLine, sponsor, team: s.team, teamName: s.teamName, title: s.title, groups: s.groups }
-        : { kind: "text", theme: s.theme, dateLine: s.dateLine, sponsor, title: s.title, body: s.body, info: s.info, photo, photoDim: s.photoDim };
+      const common = { overlay: s.overlay, dateLine: s.dateLine, sponsor };
+      const data: MediaPostData =
+        s.kind === "lineup" ? { ...common, kind: "lineup", team: s.team, teamName: s.teamName, title: s.title, groups: s.groups }
+        : s.kind === "cards" ? { ...common, kind: "cards", title: s.title, subtitle: s.subtitle, cards: cardCanvases }
+        : s.kind === "stats" ? { ...common, kind: "stats", title: s.title, subtitle: s.subtitle || range.label, valueLabel: statCat.valueLabel, rows }
+        : { ...common, kind: "text", title: s.title, body: s.body, info: s.info, photo, photoDim: s.photoDim };
       const c = await renderMediaPost(data);
       if (cancelled || !canvasRef.current) return;
       canvasRef.current.width = c.width;
@@ -146,14 +223,14 @@ export default function MediaApp() {
       c.toBlob((b) => { if (!cancelled) setBlob(b); }, "image/jpeg", 0.92);
     }, 120);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [s, photo, sponsor?.name, sponsor?.logo]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [s, photo, sponsor?.name, sponsor?.logo, cardCanvases, rows, range.label]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startNew = (kind: Kind) => {
     setPostId(null);
     setPhoto(null);
     setNewPhoto(undefined);
     setCaptionEdited(false);
-    setS({ ...NEW[kind], dateLine: eventLine(event.data) });
+    setS({ ...NEW[kind], dateLine: kind === "lineup" || kind === "text" ? eventLine(event.data) : "" });
     if (kind === "lineup" && lineupState.data) {
       const { name, groups } = teamGroups(lineupState.data as never, "green");
       setS({ ...NEW.lineup, dateLine: eventLine(event.data), teamName: name, groups });
@@ -162,7 +239,8 @@ export default function MediaApp() {
 
   const open = async (p: NonNullable<typeof posts.data>[number]) => {
     setPostId(p.id);
-    setS({ ...NEW[(p.type as Kind) ?? "text"], ...(p.settings as Partial<Settings>) });
+    const saved = p.settings as Partial<Settings>;
+    setS({ ...NEW[(p.type as Kind) ?? "text"], ...saved, overlay: saved.overlay ?? overlayFromTheme(saved.theme) });
     setCaption(p.caption ?? "");
     setCaptionEdited(!!p.caption);
     setNewPhoto(undefined);
@@ -186,7 +264,10 @@ export default function MediaApp() {
     }
   };
 
-  const titleFor = () => (s.kind === "lineup" ? `${s.title || "Dagens lag"} – ${s.teamName}${s.dateLine ? ` (${s.dateLine.split(" · ")[0]})` : ""}` : s.title || "Inlägg utan rubrik");
+  const titleFor = () =>
+    s.kind === "lineup" ? `${s.title || "Dagens lag"} – ${s.teamName}${s.dateLine ? ` (${s.dateLine.split(" · ")[0]})` : ""}`
+    : s.kind === "stats" ? `${s.title || statCat.title} – ${s.subtitle || range.label}`
+    : s.title || "Inlägg utan rubrik";
 
   const doSave = async (asNew: boolean) => {
     setBusy("save");
@@ -265,6 +346,8 @@ export default function MediaApp() {
           <div className="grid grid-cols-2 lg:grid-cols-1 gap-2">
             <button onClick={() => startNew("lineup")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Users size={14} /> Lagets uppställning</button>
             <button onClick={() => startNew("text")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Type size={14} /> Text / egen bild</button>
+            <button onClick={() => startNew("cards")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><IdCard size={14} /> Spelarkort</button>
+            <button onClick={() => startNew("stats")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><BarChart3 size={14} /> Statistik</button>
           </div>
           <div>
             <p className="text-[11px] text-white/45 mb-1.5">Sparade inlägg</p>
@@ -308,7 +391,51 @@ export default function MediaApp() {
 
         {/* Inställningar */}
         <section className="space-y-4">
-          {s.kind === "lineup" ? (
+          {s.kind === "cards" && (
+            <>
+              <label className="block text-[11px] text-white/50">Rubrik<input value={s.title} onChange={(e) => update({ title: e.target.value })} maxLength={40} className={input} /></label>
+              <label className="block text-[11px] text-white/50">Underrubrik<input value={s.subtitle} onChange={(e) => update({ subtitle: e.target.value })} maxLength={60} placeholder="T.ex. Vecka 40" className={input} /></label>
+              <div>
+                <p className="text-[11px] text-white/50 mb-1.5">Spelare (1–4, med sparade hockeykort) – {s.cardPlayers.length} valda</p>
+                {cardPlayers.length === 0 ? <p className="text-xs text-white/35">Inga sparade hockeykort än – skapa dem i Hockeykort.</p> : (
+                  <div className="flex flex-wrap gap-1.5 max-h-44 overflow-y-auto">
+                    {cardPlayers.map((p) => {
+                      const on = s.cardPlayers.includes(p.id);
+                      return (
+                        <button key={p.id} onClick={() => update({ cardPlayers: on ? s.cardPlayers.filter((x) => x !== p.id) : [...s.cardPlayers, p.id].slice(0, 4) })}
+                          disabled={!on && s.cardPlayers.length >= 4} className={`${chip(on)} disabled:opacity-35`}>{p.name}</button>
+                      );
+                    })}
+                  </div>
+                )}
+                <p className="text-[10px] text-white/35 mt-1">1 kort = stort, 2 = bredvid varandra, 3–4 = två rader. Korten får aktuell statistik.</p>
+              </div>
+            </>
+          )}
+          {s.kind === "stats" && (
+            <>
+              <div>
+                <p className="text-[11px] text-white/50 mb-1.5">Visa</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {STAT_CATEGORIES.map((c) => <button key={c.id} onClick={() => update({ statCategory: c.id, title: c.title })} className={chip(s.statCategory === c.id)}>{c.name}</button>)}
+                </div>
+              </div>
+              <div>
+                <p className="text-[11px] text-white/50 mb-1.5">Period</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {STAT_PERIODS.map((p) => <button key={p.id} onClick={() => update({ statPeriod: p.id, subtitle: "" })} className={chip(s.statPeriod === p.id)}>{p.name}</button>)}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <p className="text-[11px] text-white/50">Antal</p>
+                {[3, 5, 10].map((n) => <button key={n} onClick={() => update({ statLimit: n })} className={chip(s.statLimit === n)}>Topp {n}</button>)}
+              </div>
+              <label className="block text-[11px] text-white/50">Rubrik<input value={s.title} onChange={(e) => update({ title: e.target.value })} maxLength={40} className={input} /></label>
+              <label className="block text-[11px] text-white/50">Underrubrik<input value={s.subtitle} onChange={(e) => update({ subtitle: e.target.value })} maxLength={60} placeholder={range.label} className={input} /></label>
+              {(statsQ.isLoading || awardsQ.isLoading) && <p className="text-[11px] text-white/40 flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> Hämtar statistik …</p>}
+            </>
+          )}
+          {s.kind === "cards" || s.kind === "stats" ? null : s.kind === "lineup" ? (
             <>
               <div>
                 <p className="text-[11px] text-white/50 mb-1.5">Lag</p>
@@ -356,9 +483,9 @@ export default function MediaApp() {
           </label>
 
           <div>
-            <p className="text-[11px] text-white/50 mb-1.5">Tema</p>
+            <p className="text-[11px] text-white/50 mb-1.5">Överlägg</p>
             <div className="flex flex-wrap gap-1.5">
-              {MEDIA_THEMES.map((t) => <button key={t.id} onClick={() => update({ theme: t.id })} className={chip(s.theme === t.id)}>{t.name}</button>)}
+              {MEDIA_OVERLAYS.map((t) => <button key={t.id} onClick={() => update({ overlay: t.id })} className={chip(s.overlay === t.id)}>{t.name}</button>)}
             </div>
           </div>
 
