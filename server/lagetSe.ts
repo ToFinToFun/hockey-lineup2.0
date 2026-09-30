@@ -327,6 +327,11 @@ export function extractEventDetailsFromEditPage(html: string): { location?: stri
   $("input, select, textarea").each((_, el) => {
     const $el = $(el);
     const type = ($el.attr("type") || "").toLowerCase();
+    // Starttiden finns som dolt fält "StartDateTime" = "2026-09-01 22:15:00"
+    if (!result.time && ($el.attr("name") || "") === "StartDateTime") {
+      const t = ($el.attr("value") || "").match(/\b(\d{1,2}):(\d{2})/);
+      if (t) result.time = `${t[1].padStart(2, "0")}:${t[2]}`;
+    }
     if (type === "hidden" || type === "checkbox" || type === "radio") return;
     const tag = ((el as { tagName?: string }).tagName || "").toLowerCase();
     const value =
@@ -649,6 +654,8 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
 
     // Steg 2: Försök hämta via admin-kalendern först
     let eventInfo: { eventId: string; eventDate: string; eventTitle: string; eventTime?: string } | null = null;
+    // Plats och tid från aktivitetens adminsida – sparas även om deltagarlistan inte finns där
+    let editDetails: { location?: string; time?: string } = {};
 
     try {
       {
@@ -665,6 +672,7 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
           if (editPage.status === 200 && typeof editPage.data === "string") {
             const { registered, declined } = extractAttendeesFromEditPage(editPage.data);
             const details = extractEventDetailsFromEditPage(editPage.data);
+            editDetails = details;
 
             if (registered.length > 0 || declined.length > 0) {
               return {
@@ -726,6 +734,8 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
     return {
       eventTitle: eid.eventTitle || "Träning",
       eventDate: eid.eventDate,
+      eventTime: eventInfo?.eventTime || editDetails.time,
+      eventLocation: editDetails.location,
       registeredNames: registered,
       declinedNames: declined,
       totalRegistered: registered.length,

@@ -1,0 +1,114 @@
+<!-- Utdrag ur laget.se 'Redigera aktiviteten' (bara formulärfält), 2026-09-30 -->
+<form>
+<input type="hidden" id="js-userbar-search-user-url" value="/Common/UserMenu/SearchUser">
+<input type="hidden" id="js-userbar-search-user-birth-url" value="/Common/UserMenu/SearchUserByBirth">
+<input class="searchForm__input ignore-changes" id="search-input" type="text" name="query" placeholder="Sök klubbar &amp; grupper" autocomplete="off" onclick="_gaq.push(['_trackEvent', 'UserbarSearch', 'focus']);">
+<select id="js-fastPublishNews-selectSite" class="publishNewsPopover__select is-hidden">
+<input id="js-fastPublishNews-title" type="text" class="publishNewsPopover__headerInput" placeholder="Nyhetsrubrik" laget-validation-required="" laget-validation-minlength="2" laget-validation-maxlength="60">
+<textarea id="js-fastPublishNews-content" class="publishNewsPopover__contentInput" placeholder="Sammanfattning av senaste veckan" laget-validation-required="" laget-validation-minlength="2" laget-validation-maxlength="7000"></textarea>
+<input id="js-fastPublishNews-file" class="is-hidden" type="file">
+<input id="hdfLoggedInKeepAlive" name="hdfLoggedInKeepAlive" type="hidden" value="True">
+<input id="hdfSiteName" name="hdfSiteName" type="hidden" value="Stalstadens">
+<input id="hdfTempSiteName" name="hdfTempSiteName" type="hidden" value="Stalstadens">
+<input id="hdfEditAttendeeUrl" name="hdfEditAttendeeUrl" type="hidden" value="/Stalstadens/Calendar/EditAttendee">
+<input id="hdfSaveAttendeeInfoUrl" name="hdfSaveAttendeeInfoUrl" type="hidden" value="/Stalstadens/Calendar/SaveAttendeeInfo">
+<input id="hdfSetAttendeeStatusUrl" name="hdfSetAttendeeStatusUrl" type="hidden" value="/Stalstadens/Calendar/SetAttendeeStatus">
+<input id="hdfAddGroupUrl" name="hdfAddGroupUrl" type="hidden" value="/Stalstadens/Calendar/AddGroup">
+<input id="hdfDeleteGuestUrl" name="hdfDeleteGuestUrl" type="hidden" value="/Stalstadens/Calendar/DeleteGuest">
+<input id="hdfRemoveAttendeeUrl" name="hdfRemoveAttendeeUrl" type="hidden" value="/Stalstadens/Calendar/RemoveAttendee">
+<input id="hdfManageAttendeesUrl" name="hdfManageAttendeesUrl" type="hidden" value="/Stalstadens/Calendar/ManageAttendees/30216261">
+<input id="hdfManageRecurringAttendeesUrl" name="hdfManageRecurringAttendeesUrl" type="hidden" value="/Stalstadens/Calendar/ManageRecurringAttendees/30216261">
+<input id="hdfAttendeeInfoUrl" name="hdfAttendeeInfoUrl" type="hidden" value="/Stalstadens/Calendar/SaveAttendeeInformation">
+<input id="hdfInvalidParticipantsUrl" name="hdfInvalidParticipantsUrl" type="hidden" value="/Stalstadens/Calendar/InvalidParticipants">
+<input id="hdfReminderUrl" name="hdfReminderUrl" type="hidden" value="/Stalstadens/Calendar/SendEventReminder">
+<input id="addGuestToEventUrl" name="addGuestToEventUrl" type="hidden" value="/Stalstadens/Calendar/AddGuest">
+<input id="hdfEventId" name="hdfEventId" type="hidden" value="30216261">
+<input id="municipalityId" name="municipalityId" type="hidden" value="2580">
+<input id="hdfEventId" name="hdfEventId" type="hidden" value="30216261">
+<input id="hdfEventIsRecurring" name="hdfEventIsRecurring" type="hidden" value="true">
+<input id="showCallAnswer" name="showCallAnswer" type="hidden" value="True">
+<input id="hdfCallNewActive" name="hdfCallNewActive" type="hidden" value="False">
+<input id="placeDetailsUrl" name="placeDetailsUrl" type="hidden" value="/Stalstadens/Calendar/PlaceDetails">
+<input id="placeSearchUrl" name="placeSearchUrl" type="hidden" value="/Stalstadens/Calendar/PlaceSearch">
+<input data-val="true" data-val-date="The field StartDateTime must be a date." data-val-required="The StartDateTime field is required." id="StartDateTime" name="StartDateTime" type="hidden" value="2026-09-01 22:15:00">
+<input id="StartMinuteSelect" name="StartMinuteSelect" type="hidden" value="15">
+<input id="StartHourSelect" name="StartHourSelect" type="hidden" value="22">
+<input id="EndHourSelect" name="EndHourSelect" type="hidden" value="23">
+<input id="EndMinuteSelect" name="EndMinuteSelect" type="hidden" value="00">
+<input data-val="true" data-val-required="The IgnoreTeamValidation field is required." id="IgnoreTeamValidation" name="IgnoreTeamValidation" type="hidden" value="False">
+<input data-val="true" data-val-required="The ShowIsEventInSameMunicipalityAsTeam field is required." id="ShowIsEventInSameMunicipalityAsTeam" name="ShowIsEventInSameMunicipalityAsTeam" type="hidden" value="False">
+<input data-val="true" data-val-required="The EventType field is required." id="EventType" name="EventType" type="hidden" value="Training">
+<input type="radio" name="RecurrenceType" value="Single" class="radio" checked="true">
+<input type="radio" name="RecurrenceType" value="Recurrent" class="radio">
+<input data-val="true" data-val-number="The field Id must be a number." data-val-required="The Id field is required." id="Id" name="Id" type="hidden" value="30216261">
+<input data-val="true" data-val-number="The field PlaceId must be a number." data-val-required="The PlaceId field is required." id="PlaceId" name="PlaceId" type="hidden" value="439065">
+<input size="12" class="datepicMe hasDatepicker" data-val="true" data-val-date="The field StartDate must be a date." data-val-required="Startdatum måste anges" id="StartDate" name="StartDate" type="text" value="2026-09-01 22:15:00">
+<select data-val="true" data-val-number="The field StartHour must be a number." data-val-required="The StartHour field is required." id="StartHour" name="StartHour">
+<select data-val="true" data-val-number="The field StartMinute must be a number." data-val-required="The StartMinute field is required." id="StartMinute" name="StartMinute">
+<input size="12" class="datepicMe hasDatepicker" data-val="true" data-val-comparedate="Måste vara efter startdatum" data-val-comparedate-checktime="True" data-val-comparedate-comparetype="2" data-val-comparedate-dependencypropertyname="StartDate" data-val-comparedate-ignorepropertyname="" data-val-comparedate-ignorepropertyreversed="False" data-val-date="The field EndDate must be a date." data-val-daterange="Max 14 dagar mellan start- och slutdatum" data-val-daterange-datestep="1" data-val-daterange-dependencypropertyname="StartDate" data-val-daterange-step="14" data-val-required="Slutdatum måste anges" id="EndDate" name="EndDate" type="text" value="2026-09-01 23:00:00">
+<select data-val="true" data-val-number="The field EndHour must be a number." data-val-required="The EndHour field is required." id="EndHour" name="EndHour">
+<select data-val="true" data-val-number="The field EndMinute must be a number." data-val-required="The EndMinute field is required." id="EndMinute" name="EndMinute">
+<input size="12" class="datepicMe hasDatepicker" data-val="true" data-val-comparedate="Måste vara efter starttiden" data-val-comparedate-checktime="False" data-val-comparedate-comparetype="2" data-val-comparedate-dependencypropertyname="StartDate" data-val-comparedate-ignorepropertyname="" data-val-comparedate-ignorepropertyreversed="False" data-val-date="The field RecurrenceEndDate must be a date." data-val-requiredif="Slutdatum måste anges" data-val-requiredif-dependencypropertyname="RecurrenceType" data-val-requiredif-dependencypropertyvalue="Recurrent" id="RecurrenceEndDate" name="RecurrenceEndDate" type="text" value="2027-03-30 22:15:00">
+<input data-val="true" data-val-required="The IsAllDayEvent field is required." desc="" id="eventIsAllDayEvent" name="IsAllDayEvent" title="" type="checkbox" value="true">
+<input name="IsAllDayEvent" type="hidden" value="false">
+<input class="l" data-val="true" data-val-length="Minst två och max 100 tecken" data-val-length-max="100" data-val-length-min="2" data-val-required="Namn måste anges" id="Name" name="Name" type="text" value="Träning">
+<input class="xl ui-autocomplete-input" data-val="true" data-val-length="Max 50 tecken" data-val-length-max="50" data-val-requiredif="En LOK-aktivitet måste ha en plats angiven." data-val-requiredif-dependencypropertyname="IsFundable" data-val-requiredif-dependencypropertyvalue="True" id="placeName" name="PlaceName" type="text" value="Coop Arena C-Hallen" autocomplete="off">
+<input class="xl" data-val="true" data-val-length="Max 255 tecken" data-val-length-max="255" id="PlaceInfo" name="PlaceInfo" type="text" value="">
+<input checked="checked" data-val="true" data-val-required="The IsFundable field is required." desc="" id="intEventFunding" name="IsFundable" title="" type="checkbox" value="true">
+<input name="IsFundable" type="hidden" value="false">
+<input data-val="true" data-val-required="The ShareEvent field is required." id="ShareEvent" name="ShareEvent" type="checkbox" value="true">
+<input name="ShareEvent" type="hidden" value="false">
+<textarea cols="80" data-val="true" data-val-length="Max 1000 tecken" data-val-length-max="1000" data-val-regex="Texten får inte innehålla HTML kod" data-val-regex-pattern="^(?:(?!&lt;(?:&quot;[^&quot;]*&quot;['&quot;]*|'[^']*'['&quot;]*|[^'&quot;&gt;])+&gt;)[\s\S])*$" id="strEventBody" mxchr="1000" name="Body" onkeyup="javascript:CalculateRemainingChars('#strEventBody', '#BodyCounter', 1000);" placeholder="" rows="3" title="">Alla betalar 50kr per tillfälle mellan 1 april till 1 oktober. Plussar betalar alltid 50kr per tillfälle innan träning startar.</textarea>
+<input data-val="true" data-val-required="The IgnoreValidationOnAssemblyDateTimeCalculated field is required." id="IgnoreValidationOnAssemblyDateTimeCalculated" name="IgnoreValidationOnAssemblyDateTimeCalculated" style="height:0;visibility:hidden;width:0;" type="checkbox" value="true">
+<input name="IgnoreValidationOnAssemblyDateTimeCalculated" type="hidden" value="false">
+<input data-val="true" data-val-required="The ShowAssembly field is required." desc="" id="eventShowAssembly" name="ShowAssembly" title="" type="checkbox" value="true">
+<input name="ShowAssembly" type="hidden" value="false">
+<select data-val="true" data-val-number="The field AssemblyValue must be a number." data-val-required="The AssemblyValue field is required." id="AssemblyValue" name="AssemblyValue">
+<select data-val="true" data-val-number="The field AssemblyHour must be a number." data-val-required="The AssemblyHour field is required." id="AssemblyHour" name="AssemblyHour">
+<select data-val="true" data-val-number="The field AssemblyMinute must be a number." data-val-required="The AssemblyMinute field is required." id="AssemblyMinute" name="AssemblyMinute">
+<input data-val="true" data-val-comparedate="Måste vara innan startdatum" data-val-comparedate-checktime="True" data-val-comparedate-comparetype="4" data-val-comparedate-dependencypropertyname="StartDateTime" data-val-comparedate-ignorepropertyname="IgnoreValidationOnAssemblyDateTimeCalculated" data-val-comparedate-ignorepropertyreversed="False" data-val-date="The field AssemblyDateCalculated must be a date." data-val-required="The AssemblyDateCalculated field is required." id="AssemblyDateCalculated" name="AssemblyDateCalculated" style="height:0;visibility:hidden;width:0;" type="text" value="2026-09-01 20:15:00">
+<input data-val="true" data-val-length="Max 50 tecken" data-val-length-max="50" id="AssemblyBody" name="AssemblyBody" style="width: 275px;" type="text" value="">
+<input data-val="true" data-val-required="The IgnoreValidationOnRsvpDateTimeCalculated field is required." id="IgnoreValidationOnRsvpDateTimeCalculated" name="IgnoreValidationOnRsvpDateTimeCalculated" style="height:0;visibility:hidden;width:0;" type="checkbox" value="true">
+<input name="IgnoreValidationOnRsvpDateTimeCalculated" type="hidden" value="false">
+<input checked="checked" data-val="true" data-val-required="The ShowRsvp field is required." desc="Glöm inte att efter detta även kalla berörda medlemmar (Föräldrar till kallade aktiva får även automatiskt kallelsen)" id="eventShowRsvp" name="ShowRsvp" title="" type="checkbox" value="true">
+<input name="ShowRsvp" type="hidden" value="false">
+<input checked="checked" data-id="rsvp-scheduled-rsvp" data-val="true" data-val-required="The ShowScheduledRsvp field is required." id="ShowScheduledRsvp" name="ShowScheduledRsvp" type="checkbox" value="true">
+<input name="ShowScheduledRsvp" type="hidden" value="false">
+<input data-val="true" data-val-date="The field ScheduledRsvpDateTime must be a date." id="ScheduledRsvpDateTime" name="ScheduledRsvpDateTime" style="height:0;visibility:hidden;width:0;" type="text" value="2026-08-29 22:15:00">
+<input size="12" class="datepicMe hasDatepicker" data-val="true" data-val-date="The field ScheduledRsvpDate must be a date." data-val-required="The ScheduledRsvpDate field is required." id="ScheduledRsvpDate" name="ScheduledRsvpDate" style="display: none;" type="text" value="2026-08-29 22:15:00">
+<select data-val="true" data-val-number="The field ScheduledRsvpDays must be a number." id="ScheduledRsvpDays" name="ScheduledRsvpDays" style="">
+<input checked="checked" data-id="rsvp-scheduled-reminder" data-val="true" data-val-required="The ShowScheduledReminder field is required." id="ShowScheduledReminder" name="ShowScheduledReminder" type="checkbox" value="true">
+<input name="ShowScheduledReminder" type="hidden" value="false">
+<input data-val="true" data-val-date="The field ScheduledReminderDateTime must be a date." id="ScheduledReminderDateTime" name="ScheduledReminderDateTime" style="height:0;visibility:hidden;width:0;" type="text" value="2026-08-31 22:15:00">
+<input size="12" class="datepicMe hasDatepicker" data-val="true" data-val-date="The field ScheduledReminderDate must be a date." data-val-required="The ScheduledReminderDate field is required." id="ScheduledReminderDate" name="ScheduledReminderDate" style="display: none;" type="text" value="2026-08-31 22:15:00">
+<select data-val="true" data-val-number="The field ScheduledReminderDays must be a number." id="ScheduledReminderDays" name="ScheduledReminderDays" style="">
+<input checked="checked" data-id="rsvp-deadline" data-val="true" data-val-required="The ShowDeadlineRsvp field is required." id="ShowDeadlineRsvp" name="ShowDeadlineRsvp" type="checkbox" value="true">
+<input name="ShowDeadlineRsvp" type="hidden" value="false">
+<input data-val="true" data-val-comparedate="Måste vara innan startdatum" data-val-comparedate-checktime="True" data-val-comparedate-comparetype="4" data-val-comparedate-dependencypropertyname="StartDateTime" data-val-comparedate-ignorepropertyname="IgnoreValidationOnRsvpDateTimeCalculated" data-val-comparedate-ignorepropertyreversed="False" data-val-date="The field RsvpDeadlineDateTime must be a date." id="RsvpDeadlineDateTime" name="RsvpDeadlineDateTime" style="height:0;visibility:hidden;width:0;" type="text" value="2026-09-01 12:00:00">
+<input size="12" class="datepicMe hasDatepicker" data-val="true" data-val-date="The field RsvpDeadlineDate must be a date." data-val-required="The RsvpDeadlineDate field is required." id="RsvpDeadlineDate" name="RsvpDeadlineDate" style="display: none;" type="text" value="2026-09-01 12:00:00">
+<select data-val="true" data-val-number="The field RsvpDeadlineDays must be a number." data-val-required="The RsvpDeadlineDays field is required." id="RsvpDeadlineDays" name="RsvpDeadlineDays" style="">
+<select data-val="true" data-val-number="The field RsvpDeadlineHours must be a number." data-val-required="The RsvpDeadlineHours field is required." id="RsvpDeadlineHours" name="RsvpDeadlineHours">
+<select data-val="true" data-val-number="The field RsvpDeadlineMinutes must be a number." data-val-required="The RsvpDeadlineMinutes field is required." id="RsvpDeadlineMinutes" name="RsvpDeadlineMinutes">
+<input checked="checked" data-val="true" data-val-required="The ShowCallAnswers field is required." id="ShowCallAnswers" name="ShowCallAnswers" type="checkbox" value="true">
+<input name="ShowCallAnswers" type="hidden" value="false">
+<input value="30" data-val="true" data-val-number="The field RsvpLimitMax must be a number." data-val-range="Antalet kan inte vara negativt" data-val-range-max="9999" data-val-range-min="0" data-val-required="The RsvpLimitMax field is required." id="RsvpLimitMax" name="RsvpLimitMax" type="text">
+<input data-val="true" data-val-required="The ShowCarQuestion field is required." id="ShowCarQuestion" name="ShowCarQuestion" type="checkbox" value="true">
+<input name="ShowCarQuestion" type="hidden" value="false">
+<input data-val="true" data-val-required="The ShowAssemblyQuestion field is required." id="ShowAssemblyQuestion" name="ShowAssemblyQuestion" type="checkbox" value="true">
+<input name="ShowAssemblyQuestion" type="hidden" value="false">
+<input size="50" data-val="true" data-val-length="Max 255 tecken" data-val-length-max="255" id="RsvpBody" name="RsvpBody" type="text" value="">
+<textarea cols="10" id="txtScript" name="txtScript" rows="10"></textarea>
+<input id="linkText" name="linkText" size="40" type="text" value="">
+<input id="linkUrl" name="linkUrl" size="40" type="text" value="http://">
+<input checked="checked" id="cbxTargetBlank" name="cbxTargetBlank" type="checkbox" value="true">
+<input name="cbxTargetBlank" type="hidden" value="false">
+<input id="imageText" name="imageText" size="40" type="text" value="">
+<input id="imageUrl" name="imageUrl" size="40" type="text" value="http://">
+<input id="hdfIsPageDirty" name="hdfIsPageDirty" type="hidden" value="false">
+<input id="hdfIsDirtyMessage" name="hdfIsDirtyMessage" type="hidden" value="Tryck OK om du är säker på att du vill lämna sidan utan att spara">
+<input id="hdfLoginUrl" name="hdfLoginUrl" type="hidden" value="/Common/Auth/Login">
+<input id="hdfSiteName" name="hdfSiteName" type="hidden" value="Stalstadens">
+<input class="inputMedium" id="password" name="password" placeholder="Lösenord" type="password" value="">
+<input type="checkbox" id="rememberMe" name="rememberMe" checked="checked">
+<textarea class="composer-input" placeholder="Ask Metamate to help you with something" rows="1"></textarea>
+</form>
