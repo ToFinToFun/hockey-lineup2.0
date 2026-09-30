@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.44.3 – 2026-09-30
+
+- Rättning: ändra deltagarstatus för en spelare gav "Inget event hittades" när nästa träning låg i nästa månad (t.ex. i morgon den 1:a), medan hämtningen av anmälningar hittade den. Båda letar nu på samma sätt: adminkalendern för innevarande månad, annars lagets startsida.
+- Hämtningen läser nu anmälningar och detaljer från evenemangets adminsida även när evenemanget hittades via startsidan (förut bara via den publika listan, utan plats).
+- Plats: om formulärfältet inte går att läsa letar appen efter klubbens hallar i sidans text (Coop Arena C-Hallen, Coop Arena, Sunderby ishall).
+
 ## 2.44.2 – 2026-09-30
 
 - Media: fem nya bakgrunder – Utomhusrinken, Klubblokalen, Gymmet, Skogsstigen och Vinterskogen. Samma behandling som de förra (4:5, lätt mjukade, något dämpad färg, anpassad mörkläggning). Bakgrundsvalet visas i fyra kolumner.

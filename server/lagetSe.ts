@@ -343,7 +343,44 @@ export function extractEventDetailsFromEditPage(html: string): { location?: stri
     }
   });
 
+  // Reserv: klubbens kända hallar någonstans i sidans text
+  if (!result.location) result.location = findKnownVenue(html);
   return result;
+}
+
+/** Klubbens vanliga platser – hittas i sidans text om formulärfältet inte gick att läsa. */
+export const KNOWN_VENUES = ["Coop Arena C-Hallen", "Coop Arena", "Sunderby ishall", "Sunderby Ishall"];
+export function findKnownVenue(html: string): string | undefined {
+  const text = html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ");
+  const m = text.match(/Coop Arena(?:\s*[-–]\s*|\s+)C-?\s?hallen|Coop Arena|Sunderby\s+ishall/i);
+  if (!m) return undefined;
+  const v = m[0].replace(/\s+/g, " ");
+  if (/^coop arena/i.test(v) && /c-?\s?hallen/i.test(v)) return "Coop Arena C-Hallen";
+  if (/^coop arena/i.test(v)) return "Coop Arena";
+  return "Sunderby ishall";
+}
+
+/**
+ * Nästa evenemangs id: först adminkalendern (innevarande månad), annars lagets
+ * publika startsida – som också visar evenemang i nästa månad (t.ex. i morgon
+ * när det är den sista i månaden).
+ */
+async function findNextEvent(
+  client: ReturnType<typeof createClient>["client"],
+  followRedirects: ReturnType<typeof createClient>["followRedirects"]
+): Promise<{ eventId: string; eventDate: string; eventTitle: string; eventTime?: string } | null> {
+  try {
+    const cal = await followRedirects(await client.get(`${ADMIN_BASE_URL}/${TEAM_SLUG}/Calendar`));
+    if (cal.status === 200 && typeof cal.data === "string") {
+      const ev = findNextEventFromCalendar(cal.data);
+      if (ev) return ev;
+    }
+  } catch { /* reserv nedan */ }
+  try {
+    const pub = await followRedirects(await client.get(`${BASE_URL}/${TEAM_SLUG}`));
+    if (pub.status === 200 && typeof pub.data === "string") return findNextEventId(pub.data);
+  } catch { /* inget */ }
+  return null;
 }
 
 /**
@@ -480,14 +517,9 @@ export async function updateAttendance(
     // Steg 2: Hitta eventId
     let eventId = eventIdOverride;
     if (!eventId) {
-      const calResp = await client.get(`${ADMIN_BASE_URL}/${TEAM_SLUG}/Calendar`);
-      const calPage = await followRedirects(calResp);
-      if (calPage.status !== 200) {
-        return { success: false, error: "Kunde inte ladda kalendern" };
-      }
-      const eventInfo = findNextEventFromCalendar(calPage.data);
+      const eventInfo = await findNextEvent(client, followRedirects);
       if (!eventInfo) {
-        return { success: false, error: "Inget event hittades" };
+        return { success: false, error: "Inget kommande evenemang hittades på laget.se" };
       }
       eventId = eventInfo.eventId;
     }
@@ -619,11 +651,9 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
     let eventInfo: { eventId: string; eventDate: string; eventTitle: string; eventTime?: string } | null = null;
 
     try {
-      const calendarResp = await client.get(`${ADMIN_BASE_URL}/${TEAM_SLUG}/Calendar`);
-      const calResp = await followRedirects(calendarResp);
-
-      if (calResp.status === 200 && typeof calResp.data === "string") {
-        eventInfo = findNextEventFromCalendar(calResp.data);
+      {
+        // Innevarande månads kalender, annars nästa evenemang från startsidan
+        eventInfo = await findNextEvent(client, followRedirects);
 
         if (eventInfo) {
           // Hämta redigeringssidan för att få Deltar/Deltar ej

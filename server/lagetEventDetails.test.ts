@@ -155,3 +155,19 @@ describe("utdraget i laget.se:s flöde", () => {
     expect(padFeedPreview(long)).toBe(long);
   });
 });
+
+import { findKnownVenue } from "./lagetSe";
+
+describe("plats för evenemanget", () => {
+  it("klubbens hallar hittas i sidans text om fältet inte går att läsa", () => {
+    expect(findKnownVenue("<div>Plats: <b>Coop Arena - C-hallen</b></div>")).toBe("Coop Arena C-Hallen");
+    expect(findKnownVenue("<p>Coop Arena C-Hallen, Luleå</p>")).toBe("Coop Arena C-Hallen");
+    expect(findKnownVenue("<span>Sunderby Ishall</span>")).toBe("Sunderby ishall");
+    expect(findKnownVenue("<span>Coop Arena</span>")).toBe("Coop Arena");
+    expect(findKnownVenue("<span>Någon annanstans</span>")).toBeUndefined();
+  });
+  it("formulärfältet går före", () => {
+    expect(extractEventDetailsFromEditPage('<input name="Location" value="Sunderby ishall"><p>Coop Arena</p>').location).toBe("Sunderby ishall");
+    expect(extractEventDetailsFromEditPage("<p>Samling vid Coop Arena C-hallen</p>").location).toBe("Coop Arena C-Hallen");
+  });
+});
