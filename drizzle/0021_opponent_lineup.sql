@@ -1,0 +1,1 @@
+ALTER TABLE `opponents` ADD `lineup` json;

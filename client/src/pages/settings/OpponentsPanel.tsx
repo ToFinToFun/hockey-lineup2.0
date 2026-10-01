@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Plus, Trash2, Upload, Archive, ChevronRight } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Trash2, Upload, Archive, ChevronRight, Link2, Copy, Share2, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { prepareLogo } from "./ClubPanel";
 
@@ -15,6 +15,43 @@ function Logo({ url, color, size = 36 }: { url: string | null; color: string; si
   return url
     ? <img src={url} alt="" style={{ width: size, height: size }} className="object-contain shrink-0" />
     : <span style={{ width: size, height: size, background: color }} className="rounded-full shrink-0 border border-white/20" />;
+}
+
+/** Länk som motståndaren kan öppna för att fylla i lag, spelare och uppställning. */
+function ShareLinks({ opponentId, name }: { opponentId: number; name: string }) {
+  const utils = trpc.useUtils();
+  const links = trpc.opponents.links.useQuery({ opponentId });
+  const create = trpc.opponents.createLink.useMutation({ onSuccess: () => void utils.opponents.links.invalidate({ opponentId }) });
+  const revoke = trpc.opponents.revokeLink.useMutation({ onSuccess: () => void utils.opponents.links.invalidate({ opponentId }) });
+  const [showOurs, setShowOurs] = useState(false);
+  const url = (token: string) => `${window.location.origin}/lag/${token}`;
+  const share = async (token: string) => {
+    const u = url(token);
+    try {
+      if (navigator.share) await navigator.share({ title: `Lagets uppställning – ${name}`, url: u });
+      else { await navigator.clipboard.writeText(u); toast.success("Länken kopierad"); }
+    } catch { /* avbrutet */ }
+  };
+  return (
+    <div className="rounded-xl border border-sky-400/25 bg-sky-500/5 p-3 space-y-2">
+      <p className="text-xs font-semibold text-sky-200 flex items-center gap-1.5"><Link2 size={13} /> Dela länk till laget</p>
+      <p className="text-[11px] text-white/45">Laget kan själva fylla i namn, logga och spelare och göra sin uppställning – utan inloggning. Länken gäller i 7 dagar.</p>
+      <label className="flex items-center gap-2 text-xs text-white/70"><input type="checkbox" checked={showOurs} onChange={(e) => setShowOurs(e.target.checked)} /> Visa vårt lag för dem</label>
+      <button onClick={() => create.mutate({ opponentId, showOurTeam: showOurs, days: 7 })} disabled={create.isPending}
+        className="w-full py-2 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-100 text-sm font-semibold disabled:opacity-40">Skapa länk</button>
+      {(links.data ?? []).map((l) => (
+        <div key={l.token} className="flex items-center gap-2 rounded-lg bg-black/30 px-2 py-1.5">
+          <span className="flex-1 min-w-0">
+            <span className="block text-[11px] text-white/80 truncate">{url(l.token)}</span>
+            <span className="block text-[10px] text-white/40">{l.showOurTeam ? "Ser vårt lag" : "Ser inte vårt lag"} · gäller till {new Date(l.expiresAt).toLocaleDateString("sv-SE", { day: "numeric", month: "numeric" })}</span>
+          </span>
+          <button onClick={() => { void navigator.clipboard.writeText(url(l.token)); toast.success("Länken kopierad"); }} aria-label="Kopiera" className="p-1.5 text-white/60 hover:text-white"><Copy size={13} /></button>
+          <button onClick={() => void share(l.token)} aria-label="Dela" className="p-1.5 text-white/60 hover:text-white"><Share2 size={13} /></button>
+          <button onClick={() => revoke.mutate({ token: l.token })} aria-label="Stäng länken" className="p-1.5 text-red-300/70 hover:text-red-300"><X size={13} /></button>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function OpponentEditor({ id, onBack }: { id: number; onBack: () => void }) {
@@ -82,6 +119,8 @@ function OpponentEditor({ id, onBack }: { id: number; onBack: () => void }) {
         </ul>
         {o.players.length === 0 && <p className="text-xs text-white/35">Inga spelare än – lägg till dem ovan (eller direkt i uppställningen senare).</p>}
       </div>
+
+      <ShareLinks opponentId={id} name={o.name} />
 
       <div className="flex gap-2 pt-2 border-t border-white/10">
         <button onClick={() => save.mutate({ id, name: o.name, archived: !o.archived })} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs"><Archive size={13} /> {o.archived ? "Visa igen" : "Arkivera"}</button>

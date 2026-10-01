@@ -13,6 +13,7 @@ import { refreshLiveProfile } from "./cardProfile";
 import { club } from "../shared/club";
 import { getClubOverrides, saveClubOverrides, loadClub } from "./clubConfig";
 import { getFeatures, setFeatures } from "./features";
+import { createOpponentLink, listOpponentLinks, revokeOpponentLink, resolveLink, linkView, setLinkSlot, afterLinkPlayerChange, getStoredOpponentLineup } from "./opponentLinks";
 import { listOpponents, getOpponent, saveOpponent, deleteOpponent, addOpponentPlayer, updateOpponentPlayer, deleteOpponentPlayer, MAX_OPPONENT_LOGO_BASE64 } from "./opponents";
 import { CLUB_ASSET_KEYS, MAX_CLUB_ASSET_BASE64, setClubAsset, deleteClubAsset, listClubAssets } from "./clubAssets";
 import { listMediaPosts, mediaPhotoIds, saveMediaPost, deleteMediaPost, MAX_MEDIA_PHOTO_BASE64 } from "./mediaPosts";
@@ -462,6 +463,71 @@ export const appRouter = router({
       .input(z.object({ opponentId: z.number().int().positive(), id: z.number().int().positive() }))
       .mutation(async ({ input }) => {
         await deleteOpponentPlayer(input.opponentId, input.id);
+        return { success: true };
+      }),
+    /** Lagets sparade uppställning (plats → spelar-id) – fylls i Lineup när laget väljs. */
+    storedLineup: adminProcedure.input(z.object({ id: z.number().int().positive() })).query(({ input }) => getStoredOpponentLineup(input.id)),
+    /** Delningslänkar till laget */
+    links: adminProcedure.input(z.object({ opponentId: z.number().int().positive() })).query(({ input }) => listOpponentLinks(input.opponentId)),
+    createLink: adminProcedure
+      .input(z.object({ opponentId: z.number().int().positive(), showOurTeam: z.boolean(), days: z.number().int().min(1).max(60).default(7) }))
+      .mutation(({ input }) => createOpponentLink(input.opponentId, input.showOurTeam, input.days)),
+    revokeLink: adminProcedure.input(z.object({ token: z.string().max(64) })).mutation(async ({ input }) => {
+      await revokeOpponentLink(input.token);
+      return { success: true };
+    }),
+  }),
+
+  // ─── Motståndarens delningslänk (utan inloggning, med token) ───────────────
+
+  opponentLink: router({
+    view: publicProcedure.input(z.object({ token: z.string().min(10).max(64) })).query(async ({ input }) => {
+      try { return await linkView(input.token); } catch (e) { throw new TRPCError({ code: "NOT_FOUND", message: (e as Error).message }); }
+    }),
+    saveTeam: publicProcedure
+      .input(z.object({
+        token: z.string().min(10).max(64),
+        name: z.string().trim().min(1).max(80),
+        shortName: z.string().trim().max(10).nullable().optional(),
+        color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+        logoBase64: z.string().max(MAX_OPPONENT_LOGO_BASE64, "Loggan är för stor").regex(/^[A-Za-z0-9+/=]+$/).nullable().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const link = await resolveLink(input.token).catch((e) => { throw new TRPCError({ code: "NOT_FOUND", message: (e as Error).message }); });
+        await saveOpponent({ id: link.opponentId, name: input.name, shortName: input.shortName, color: input.color, logoBase64: input.logoBase64 });
+        return { success: true };
+      }),
+    addPlayer: publicProcedure
+      .input(z.object({ token: z.string().min(10).max(64), name: z.string().trim().min(1).max(80), number: z.string().trim().max(4).nullable().optional(), position: z.enum(["MV", "B", "C", "F", ""]).nullable().optional() }))
+      .mutation(async ({ input }) => {
+        const link = await resolveLink(input.token).catch((e) => { throw new TRPCError({ code: "NOT_FOUND", message: (e as Error).message }); });
+        const o = await getOpponent(link.opponentId);
+        if ((o?.players.length ?? 0) >= 60) throw new TRPCError({ code: "BAD_REQUEST", message: "Max 60 spelare" });
+        return { id: await addOpponentPlayer(link.opponentId, { ...input, position: input.position || null }) };
+      }),
+    updatePlayer: publicProcedure
+      .input(z.object({ token: z.string().min(10).max(64), id: z.number().int().positive(), name: z.string().trim().min(1).max(80).optional(), number: z.string().trim().max(4).nullable().optional(), position: z.enum(["MV", "B", "C", "F", ""]).nullable().optional() }))
+      .mutation(async ({ input }) => {
+        const link = await resolveLink(input.token).catch((e) => { throw new TRPCError({ code: "NOT_FOUND", message: (e as Error).message }); });
+        await updateOpponentPlayer(link.opponentId, input.id, { ...input, position: input.position === undefined ? undefined : input.position || null });
+        await afterLinkPlayerChange(link.opponentId);
+        return { success: true };
+      }),
+    deletePlayer: publicProcedure
+      .input(z.object({ token: z.string().min(10).max(64), id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const link = await resolveLink(input.token).catch((e) => { throw new TRPCError({ code: "NOT_FOUND", message: (e as Error).message }); });
+        // Tas ur uppställningen först (om spelaren står där)
+        const view = await linkView(input.token);
+        for (const [slot, pid] of Object.entries(view.lineup)) if (pid === input.id) await setLinkSlot(input.token, slot, null);
+        await updateOpponentPlayer(link.opponentId, input.id, { active: false });
+        await afterLinkPlayerChange(link.opponentId);
+        return { success: true };
+      }),
+    setSlot: publicProcedure
+      .input(z.object({ token: z.string().min(10).max(64), slot: z.string().max(40), playerId: z.number().int().positive().nullable() }))
+      .mutation(async ({ input }) => {
+        try { await setLinkSlot(input.token, input.slot, input.playerId); } catch (e) { throw new TRPCError({ code: "BAD_REQUEST", message: (e as Error).message }); }
         return { success: true };
       }),
   }),

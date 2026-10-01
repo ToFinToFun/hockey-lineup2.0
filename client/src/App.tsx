@@ -8,6 +8,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Hub from "./pages/Hub";
 const Home = lazy(() => import("./pages/Home"));
 const ShareView = lazy(() => import("./pages/ShareView"));
+const OpponentLinkPage = lazy(() => import("./pages/opponent/OpponentLinkPage"));
 import ScoreApp from "./pages/score/ScoreApp";
 const IceTimeApp = lazy(() => import("./pages/icetime/IceTimeApp"));
 const StatsApp = lazy(() => import("./pages/stats/StatsApp"));
@@ -37,6 +38,12 @@ const SharedLineupPage = (props: any) => (
     <ShareView {...props} />
   </Suspense>
 );
+// Motståndarens länk: öppen (token i adressen, servern kontrollerar den)
+const OpponentLinkRoute = (props: any) => (
+  <Suspense fallback={<div className="min-h-[100dvh] bg-[#0a0a0a]" />}>
+    <OpponentLinkPage {...props} />
+  </Suspense>
+);
 const IceTimePage = guard("admin", IceTimeApp);
 const StatsPage = guard("admin", StatsApp);
 const CardsPage = guard("admin", CardsApp);
@@ -55,6 +62,9 @@ function Router() {
       {/* Lineup app */}
       <Route path="/lineup" component={LineupPage} />
       <Route path="/lineup/:id" component={SharedLineupPage} />
+
+      {/* Motståndarens länk: fyll i lag och uppställning */}
+      <Route path="/lag/:token" component={OpponentLinkRoute} />
 
       {/* Tillfällig länk från styrelsen */}
       <Route path="/lank/:token" component={InviteRedeem} />

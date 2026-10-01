@@ -1,6 +1,6 @@
 # Plan: klubbinställningar, lag som begrepp och matcher mot andra lag
 
-Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **steg 0–3 klara på main (ej driftsatta)**.
+Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **steg 0–4 klara på main (ej driftsatta)**.
 
 ## Målbild
 
@@ -52,7 +52,8 @@ Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **steg 0–3 klara på mai
 - Sida för att skapa/redigera motståndare och deras spelare.
 - **Klart när:** motståndare kan skapas, redigeras och tas bort; inget annat påverkas.
 
-### Steg 4 – Lineup mot motståndare (bakom flagga)
+### Steg 4 – Lineup mot motståndare (bakom flagga) ✅
+- Gjort: matchtyp i uppställningen, motståndarpanel för lag B, vårt lags namn/logga, motståndarens delningslänk (/lag/<länk>) med val att visa vårt lag.
 - Val per uppställning: **Internmatch** / **Mot motståndare**.
 - Mot motståndare: vår sida från hela truppen med valbart namn/logga (standard klubben), motståndarens sparade spelare dras in på platserna, nya läggs till direkt och sparas i registret.
 - **Klart när:** en extern uppställning kan byggas, sparas och laddas igen; interna uppställningar fungerar som förut.

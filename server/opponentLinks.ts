@@ -1,0 +1,140 @@
+/**
+ * Delningslänk för motståndaren: laget fyller i/ändrar sitt namn, logga och
+ * spelare och gör sin uppställning själv – utan inloggning. Valfritt om de
+ * får se vårt lag. Länkarna sparas i app_config "opponent_links".
+ */
+import { randomBytes } from "crypto";
+import { eq } from "drizzle-orm";
+import { getConfigValue, setConfigValue } from "./scoreDb";
+import { getDb } from "./db";
+import { opponents } from "../drizzle/schema";
+import { getOpponent } from "./opponents";
+import { applyLineupPatch, getLineupSnapshot, refreshOpponentPlayers } from "./lineupSync";
+import { opponentPlayerId, opponentPlayerDbId, isOpponentPlayerId } from "../shared/matchSetup";
+import { createTeamSlots, MAX_TEAM_CONFIG, type TeamConfig } from "../client/src/lib/lineup";
+import { club } from "../shared/club";
+
+export interface OpponentLink {
+  token: string;
+  opponentId: number;
+  showOurTeam: boolean;
+  createdAt: string;
+  expiresAt: string;
+}
+
+const KEY = "opponent_links";
+
+async function readLinks(): Promise<OpponentLink[]> {
+  try {
+    const raw = await getConfigValue(KEY);
+    const list = raw ? (JSON.parse(raw) as OpponentLink[]) : [];
+    return list.filter((l) => new Date(l.expiresAt).getTime() > Date.now());
+  } catch {
+    return [];
+  }
+}
+const writeLinks = (l: OpponentLink[]) => setConfigValue(KEY, JSON.stringify(l));
+
+export async function createOpponentLink(opponentId: number, showOurTeam: boolean, days = 7): Promise<OpponentLink> {
+  const link: OpponentLink = {
+    token: randomBytes(18).toString("base64url"),
+    opponentId, showOurTeam,
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + days * 86_400_000).toISOString(),
+  };
+  await writeLinks([...(await readLinks()), link]);
+  return link;
+}
+
+export async function listOpponentLinks(opponentId: number): Promise<OpponentLink[]> {
+  return (await readLinks()).filter((l) => l.opponentId === opponentId);
+}
+
+export async function revokeOpponentLink(token: string) {
+  await writeLinks((await readLinks()).filter((l) => l.token !== token));
+}
+
+/** Giltig länk eller fel. */
+export async function resolveLink(token: string): Promise<OpponentLink> {
+  const l = (await readLinks()).find((x) => x.token === token);
+  if (!l) throw new Error("Länken är ogiltig eller har gått ut");
+  return l;
+}
+
+/** Är Lineup just nu inställd på en match mot det här laget? */
+async function liveFor(opponentId: number) {
+  const { doc } = await getLineupSnapshot();
+  return doc.setup.mode === "external" && doc.setup.opponentId === opponentId ? doc : null;
+}
+
+/** Allt laget behöver på länksidan. */
+export async function linkView(token: string) {
+  const link = await resolveLink(token);
+  const o = await getOpponent(link.opponentId);
+  if (!o) throw new Error("Laget finns inte längre");
+  const live = await liveFor(link.opponentId);
+  const config: TeamConfig = live?.teamBConfig ?? MAX_TEAM_CONFIG;
+  // Lagets uppställning: den aktuella i Lineup om matchen är vald, annars lagets sparade
+  const stored = await storedLineup(link.opponentId);
+  const lineup: Record<string, number> = live
+    ? Object.fromEntries(Object.entries(live.lineup).filter(([k, p]) => k.startsWith("team-b-") && isOpponentPlayerId(p.id)).map(([k, p]) => [k, opponentPlayerDbId(p.id)]))
+    : stored;
+  const ours = live && link.showOurTeam
+    ? {
+      name: live.teamAName,
+      config: live.teamAConfig,
+      lineup: Object.fromEntries(Object.entries(live.lineup).filter(([k]) => k.startsWith("team-a-")).map(([k, p]) => [k, { name: p.name, number: p.number ?? "", position: p.position }])),
+    }
+    : null;
+  return {
+    club: { name: club().name, logo: club().logo },
+    showOurTeam: link.showOurTeam,
+    expiresAt: link.expiresAt,
+    live: !!live,
+    opponent: { id: o.id, name: o.name, shortName: o.shortName, color: o.color, logoUrl: o.logoUrl, players: o.players.filter((p) => p.active) },
+    config,
+    lineup,
+    ours,
+  };
+}
+
+async function storedLineup(opponentId: number): Promise<Record<string, number>> {
+  const db = await getDb();
+  if (!db) return {};
+  const [r] = await db.select({ lineup: opponents.lineup }).from(opponents).where(eq(opponents.id, opponentId)).limit(1);
+  return (r?.lineup as Record<string, number> | null) ?? {};
+}
+
+/**
+ * Sätt/töm en plats i lagets uppställning. Sparas på laget och – om Lineup är
+ * inställd på matchen mot laget – direkt i den aktuella uppställningen.
+ */
+export async function setLinkSlot(token: string, slot: string, playerId: number | null) {
+  const link = await resolveLink(token);
+  if (!/^team-b-/.test(slot) || !createTeamSlots("team-b", MAX_TEAM_CONFIG).some((s) => s.id === slot)) throw new Error("Ogiltig plats");
+  const o = await getOpponent(link.opponentId);
+  if (!o) throw new Error("Laget finns inte längre");
+  const player = playerId ? o.players.find((p) => p.id === playerId && p.active) : null;
+  if (playerId && !player) throw new Error("Spelaren finns inte i laget");
+
+  const stored = await storedLineup(link.opponentId);
+  for (const [k, v] of Object.entries(stored)) if (v === playerId) delete stored[k];
+  if (playerId) stored[slot] = playerId; else delete stored[slot];
+  const db = await getDb();
+  if (db) await db.update(opponents).set({ lineup: stored }).where(eq(opponents.id, link.opponentId));
+
+  if (await liveFor(link.opponentId)) {
+    await applyLineupPatch(`opplink-${token.slice(0, 6)}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, [{
+      t: "slot", slot,
+      player: player ? { id: opponentPlayerId(player.id), name: player.name, number: player.number ?? "", position: (player.position || "F") as never, isOpponent: true } : null,
+    }]);
+  }
+}
+
+/** Efter ändrade spelare: uppdatera namnen i den aktuella uppställningen. */
+export async function afterLinkPlayerChange(opponentId: number) {
+  if (await liveFor(opponentId)) await refreshOpponentPlayers();
+}
+
+/** Lagets sparade uppställning (för Lineup när laget väljs). */
+export const getStoredOpponentLineup = storedLineup;

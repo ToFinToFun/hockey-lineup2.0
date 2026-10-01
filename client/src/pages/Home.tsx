@@ -36,7 +36,7 @@ import { RosterSummary } from "@/components/RosterSummary";
 import { INTERNAL_SETUP, isOpponentPlayerId, type MatchSetup } from "@shared/matchSetup";
 import { useFeatures } from "@/contexts/ClubContext";
 import { MatchSetupBar, ourLogoUrl } from "@/components/opponent/MatchSetupBar";
-import { OpponentTeamPanel } from "@/components/opponent/OpponentTeamPanel";
+import { OpponentTeamPanel, toLineupPlayer } from "@/components/opponent/OpponentTeamPanel";
 import { MatchResultsBar } from "@/components/MatchResultsBar";
 import { SlotHighlightContext } from "@/components/PlayerSlot";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -706,6 +706,25 @@ export default function Home() {
     }
     setupRef.current = next;
     setSetup(next);
+    // Ny motståndare: fyll lag B med lagets sparade uppställning (t.ex. ifylld via deras länk)
+    if (switching && next.mode === "external" && next.opponentId) {
+      const oppId = next.opponentId;
+      void Promise.all([
+        opponentUtils.client.opponents.get.query({ id: oppId }),
+        opponentUtils.client.opponents.storedLineup.query({ id: oppId }),
+      ]).then(([o, stored]) => {
+        if (setupRef.current.opponentId !== oppId) return;
+        const byId = new Map(o.players.filter((p) => p.active).map((p) => [p.id, p]));
+        setLineup((prevL) => {
+          const out = { ...prevL };
+          for (const [slot, pid] of Object.entries(stored)) {
+            const p = byId.get(pid);
+            if (p && slot.startsWith("team-b-") && !out[slot]) out[slot] = toLineupPlayer(p);
+          }
+          return out;
+        });
+      }).catch(() => undefined);
+    }
   }, [pushUndo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Placera/ta bort en motståndarspelare på lag B (påverkar aldrig vår trupp). */

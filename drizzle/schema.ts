@@ -311,6 +311,8 @@ export const opponents = mysqlTable("opponents", {
   logo: mediumtext("logo"),
   logoMime: varchar("logoMime", { length: 30 }),
   archived: boolean("archived").notNull().default(false),
+  /** Lagets egen uppställning (plats → opponent_players.id) – fylls i via länken eller i Lineup */
+  lineup: json("lineup").$type<Record<string, number>>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

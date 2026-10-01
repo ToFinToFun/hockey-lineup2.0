@@ -33,6 +33,11 @@ Versionen höjs i `package.json` vid varje deploy till `production`, och commite
 - Databasen: nya tabeller opponents och opponent_players (bara tillägg). Loggan visas via /api/opponents/:id/logo och kan ritas på servern.
 - Inget annat i appen påverkas än – uppställning, Score Tracker och bilder mot motståndare kommer i steg 4–6.
 
+**Steg 4 – Lineup mot motståndare (beta)**
+- 4a: Uppställningen har en matchtyp (intern / mot motståndare, sparas i lineup_state.matchSetup). Motståndarens spelare (id "opp-…") hamnar aldrig i vår trupp eller vårt spelarregister och räknas inte i vår statistik.
+- 4b: Med flaggan på (styrelsen) finns raden Internmatch / Mot motståndare överst i Lineup: välj lag, vårt lags namn (standard klubbens namn) och logga (klubben, Vita eller Gröna). Vårt lag är lag A; lag B blir motståndarens panel där varje plats väljs bland lagets sparade spelare (rätt position först) eller en ny spelare läggs till direkt. Auto är avstängd mot motståndare. Byte tillbaka till internmatch tömmer motståndarens platser och ger lagen standardnamnen.
+- 4c: Delningslänk till motståndaren (Inställningar → Motståndare → laget → Dela länk): laget fyller utan inloggning i namn, kortnamn, färg, logga och spelare och gör sin uppställning på /lag/<länk>. Val "Visa vårt lag". Länken gäller 7 dagar och kan stängas. Uppställningen sparas på laget och fylls i automatiskt när laget väljs i Lineup; är laget redan valt syns deras ändringar direkt.
+
 ## 2.45.1 – 2026-09-30
 
 - "Totalt" är samma val överallt för all statistik sedan starten (säsongen 2026/27): Statistik (förut "Alla"), Media → Statistik (förut "Alla"/"Alla matcher") och hockeykortens statistikruta (förut "Karriär"). Sparade kort med rubriken "Karriär" får "Totalt" automatiskt.

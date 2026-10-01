@@ -148,6 +148,13 @@
       "when": 1790837732196,
       "tag": "0020_lineup_match_setup",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1790838283643,
+      "tag": "0021_opponent_lineup",
+      "breakpoints": true
     }
   ]
 }
