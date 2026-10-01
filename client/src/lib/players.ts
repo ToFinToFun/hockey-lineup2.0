@@ -57,6 +57,8 @@ export interface Player {
   statsForm?: string;
   /** Namnet som det står i laget.se om det skiljer sig. */
   lagetName?: string;
+  /** Motståndarens spelare (id "opp-…") – inte i vårt register */
+  isOpponent?: boolean;
   isRegistered?: boolean;   // Anmäld till dagens match ("Kommer")
   isDeclined?: boolean;     // Avböjt dagens match ("Kommer inte")
   gamesPlayed?: number;     // Antal matcher spelade

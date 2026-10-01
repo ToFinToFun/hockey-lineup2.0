@@ -141,6 +141,13 @@
       "when": 1790834755578,
       "tag": "0019_opponents",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1790837732196,
+      "tag": "0020_lineup_match_setup",
+      "breakpoints": true
     }
   ]
 }

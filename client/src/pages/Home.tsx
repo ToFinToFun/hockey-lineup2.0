@@ -33,6 +33,7 @@ import { PlayerCardOverlay } from "@/components/PlayerCard";
 import { LagetNewsModal } from "@/components/LagetNewsModal";
 import { ShareToolsModal } from "@/components/auth/ShareToolsModal";
 import { RosterSummary } from "@/components/RosterSummary";
+import { INTERNAL_SETUP, type MatchSetup } from "@shared/matchSetup";
 import { MatchResultsBar } from "@/components/MatchResultsBar";
 import { SlotHighlightContext } from "@/components/PlayerSlot";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -168,6 +169,9 @@ export default function Home() {
   const [teamAConfig, setTeamAConfig] = useState<TeamConfig>(
     local?.teamAConfig ?? { ...DEFAULT_TEAM_CONFIG }
   );
+  // Matchtyp: intern (som alltid) eller mot motståndare (beta)
+  const [setup, setSetup] = useState<MatchSetup>(INTERNAL_SETUP);
+  const setupRef = useRef<MatchSetup>(INTERNAL_SETUP);
   const [teamBConfig, setTeamBConfig] = useState<TeamConfig>(
     local?.teamBConfig ?? { ...DEFAULT_TEAM_CONFIG }
   );
@@ -393,6 +397,7 @@ export default function Home() {
       teamAConfig: teamAConfigRef.current,
       teamBConfig: teamBConfigRef.current,
       deletedPlayerIds: Array.from(deletedPlayerIdsRef.current),
+      setup: setupRef.current,
     }),
     writeLocalDoc: (doc) => {
       const players = doc.players.map(enrichPlayer);
@@ -413,6 +418,8 @@ export default function Home() {
       setTeamAConfig(doc.teamAConfig);
       setTeamBConfig(doc.teamBConfig);
       setDeletedPlayerIds(deleted);
+      setupRef.current = doc.setup ?? INTERNAL_SETUP;
+      setSetup(doc.setup ?? INTERNAL_SETUP);
     },
     onRemoteChange: (description) => {
       setRemoteChangeToast(description);

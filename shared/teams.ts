@@ -39,6 +39,8 @@ export function isTeamAWhite(teamAName: string | null | undefined): boolean {
   const white = club().teams.white.name.toLowerCase();
   const green = club().teams.green.name.toLowerCase();
   if (n.includes(white) || n.includes("vit")) return true;
+  // Mot motståndare är vårt lag alltid lag A (och räknas som "white" i lagringen)
+  if (n.includes(club().name.toLowerCase()) || (club().shortName && n === club().shortName.toLowerCase())) return true;
   if (n.includes(green) || n.includes("grön")) return false;
   return false;
 }

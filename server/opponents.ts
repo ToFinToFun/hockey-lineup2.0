@@ -6,6 +6,8 @@
 import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { opponents, opponentPlayers } from "../drizzle/schema";
+import { opponentPlayerId } from "../shared/matchSetup";
+import type { Player } from "../client/src/lib/players";
 
 async function requireDb() {
   const db = await getDb();
@@ -127,4 +129,15 @@ export async function updateOpponentPlayer(opponentId: number, id: number, p: { 
 export async function deleteOpponentPlayer(opponentId: number, id: number) {
   const db = await requireDb();
   await db.delete(opponentPlayers).where(and(eq(opponentPlayers.id, id), eq(opponentPlayers.opponentId, opponentId)));
+}
+
+/** Alla aktiva motståndarspelare som uppställningsspelare ("opp-<id>"). */
+export async function getOpponentPlayerMap(): Promise<Map<string, Player>> {
+  const db = await getDb();
+  if (!db) return new Map();
+  const rows = await db.select({ id: opponentPlayers.id, name: opponentPlayers.name, number: opponentPlayers.number, position: opponentPlayers.position })
+    .from(opponentPlayers).where(eq(opponentPlayers.active, true));
+  return new Map(rows.map((r) => [opponentPlayerId(r.id), {
+    id: opponentPlayerId(r.id), name: r.name, number: r.number ?? "", position: (r.position || "F") as Player["position"], isOpponent: true,
+  }]));
 }

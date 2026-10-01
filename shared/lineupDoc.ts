@@ -11,6 +11,7 @@
  * ett ställe – antingen i truppen (players) eller på en plats (lineup).
  */
 import { defaultTeamNames } from "./teams";
+import { INTERNAL_SETUP, isOpponentPlayerId, normalizeSetup, type MatchSetup } from "./matchSetup";
 import { createTeamSlots, DEFAULT_TEAM_CONFIG, type TeamConfig } from "../client/src/lib/lineup";
 import type { Player } from "../client/src/lib/players";
 
@@ -24,9 +25,11 @@ export interface LineupDoc {
   teamAConfig: TeamConfig;
   teamBConfig: TeamConfig;
   deletedPlayerIds: string[];
+  /** Intern match eller mot motståndare (motståndarens spelare har id "opp-…") */
+  setup: MatchSetup;
 }
 
-export type FieldKey = "teamAName" | "teamBName" | "teamAConfig" | "teamBConfig" | "deletedPlayerIds";
+export type FieldKey = "teamAName" | "teamBName" | "teamAConfig" | "teamBConfig" | "deletedPlayerIds" | "setup";
 
 export type LineupOp =
   /** Sätt (eller töm med null) en plats. */
@@ -52,6 +55,7 @@ export function emptyDoc(): LineupDoc {
     teamAConfig: { ...DEFAULT_TEAM_CONFIG },
     teamBConfig: { ...DEFAULT_TEAM_CONFIG },
     deletedPlayerIds: [],
+    setup: INTERNAL_SETUP,
   };
 }
 
@@ -118,6 +122,7 @@ export function normalizeDoc(input: Partial<LineupDoc> | null | undefined): Line
     teamAConfig: input?.teamAConfig ?? base.teamAConfig,
     teamBConfig: input?.teamBConfig ?? base.teamBConfig,
     deletedPlayerIds: Array.isArray(input?.deletedPlayerIds) ? [...input!.deletedPlayerIds] : [],
+    setup: normalizeSetup(input?.setup),
     lineup: {},
     players: [],
   };
@@ -186,19 +191,21 @@ export function applyOps(source: LineupDoc, ops: LineupOp[]): LineupDoc {
         if (!isValidSlot(doc, op.slot)) {
           // Platsen finns inte (t.ex. formationen minskades av någon annan) – till truppen.
           removeFromSlots(doc.lineup, player.id);
-          doc.players = [player, ...doc.players.filter((p) => p.id !== player.id)];
+          // Motståndarens spelare hör inte hemma i vår trupp – de försvinner bara från platsen
+          if (!isOpponentPlayerId(player.id)) doc.players = [player, ...doc.players.filter((p) => p.id !== player.id)];
           break;
         }
         removeFromSlots(doc.lineup, player.id, op.slot);
         doc.players = doc.players.filter((p) => p.id !== player.id);
         doc.lineup[op.slot] = player;
         // Spelaren som stod på platsen får inte försvinna.
-        if (previous && previous.id !== player.id && !isPlaced(doc, previous.id)) {
+        if (previous && previous.id !== player.id && !isPlaced(doc, previous.id) && !isOpponentPlayerId(previous.id)) {
           doc.players = [previous, ...doc.players];
         }
         break;
       }
       case "rosterUpsert": {
+        if (isOpponentPlayerId(op.player.id)) break; // aldrig i vår trupp
         const player = stripPlayer(op.player);
         removeFromSlots(doc.lineup, player.id);
         const rest = doc.players.filter((p) => p.id !== player.id);
@@ -223,7 +230,7 @@ export function applyOps(source: LineupDoc, ops: LineupOp[]): LineupDoc {
 
 // ─── Skillnader ───────────────────────────────────────────────────────────────
 
-const FIELD_KEYS: FieldKey[] = ["teamAConfig", "teamBConfig", "teamAName", "teamBName", "deletedPlayerIds"];
+const FIELD_KEYS: FieldKey[] = ["teamAConfig", "teamBConfig", "teamAName", "teamBName", "deletedPlayerIds", "setup"];
 
 /**
  * Operationerna som tar `prev` till `next`. Ordningen spelar roll:

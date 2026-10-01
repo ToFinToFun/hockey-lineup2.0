@@ -1,0 +1,1 @@
+ALTER TABLE `lineup_state` ADD `matchSetup` json;

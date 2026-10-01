@@ -18,12 +18,16 @@ import { getDb, tableChecksum } from "./db";
 import { lineupState, type PlayerRow } from "../drizzle/schema";
 import { sseManager } from "./sse";
 import { applyOps, emptyDoc, isValidSlot, type LineupDoc, type LineupOp, type Player } from "../shared/lineupDoc";
+import { isOpponentPlayerId, normalizeSetup, type MatchSetup } from "../shared/matchSetup";
+import { getOpponentPlayerMap } from "./opponents";
 import { createPlayers, getRegistryMap, onRegistryChange, updatePlayers, type PlayerFields } from "./playersDb";
 
 const STATE_ROW_ID = 1;
 const RECENT_PATCH_LIMIT = 500;
 
 interface Stored {
+  /** Intern match eller mot motståndare */
+  setup: MatchSetup;
   slots: Record<string, string>;
   attendance: Record<string, "registered" | "declined">;
   teamAName: string;
@@ -68,12 +72,19 @@ function toPlayer(row: PlayerRow, attendance: Stored["attendance"]): Player {
   } as Player;
 }
 
-function hydrate(s: Stored, registry: Map<string, PlayerRow>): LineupDoc {
-  const d: LineupDoc = { ...emptyDoc(), teamAName: s.teamAName, teamBName: s.teamBName, teamAConfig: s.teamAConfig, teamBConfig: s.teamBConfig };
+function hydrate(s: Stored, registry: Map<string, PlayerRow>, opponentPlayers: Map<string, Player> = new Map()): LineupDoc {
+  const d: LineupDoc = { ...emptyDoc(), teamAName: s.teamAName, teamBName: s.teamBName, teamAConfig: s.teamAConfig, teamBConfig: s.teamBConfig, setup: s.setup };
   const placed = new Set<string>();
   for (const [slot, id] of Object.entries(s.slots)) {
+    if (placed.has(id) || !isValidSlot(d, slot)) continue;
+    // Motståndarens spelare (bara i matcher mot motståndare)
+    if (isOpponentPlayerId(id)) {
+      const opp = opponentPlayers.get(id);
+      if (opp && s.setup.mode === "external") { d.lineup[slot] = opp; placed.add(id); }
+      continue;
+    }
     const row = registry.get(id);
-    if (!row || placed.has(id) || !isValidSlot(d, slot)) continue;
+    if (!row) continue;
     d.lineup[slot] = toPlayer(row, s.attendance);
     placed.add(id);
   }
@@ -92,7 +103,7 @@ function dehydrate(d: LineupDoc): Stored {
     if (p.isRegistered) attendance[p.id] = "registered";
     else if (p.isDeclined) attendance[p.id] = "declined";
   }
-  return { slots, attendance, teamAName: d.teamAName, teamBName: d.teamBName, teamAConfig: d.teamAConfig, teamBConfig: d.teamBConfig };
+  return { setup: normalizeSetup(d.setup), slots, attendance, teamAName: d.teamAName, teamBName: d.teamBName, teamAConfig: d.teamAConfig, teamBConfig: d.teamBConfig };
 }
 
 async function readStored(): Promise<{ stored: Stored; version: number; changedAt: Date | null }> {
@@ -103,6 +114,7 @@ async function readStored(): Promise<{ stored: Stored; version: number; changedA
     version: row?.version ?? 0,
     changedAt: row?.lineupChangedAt ?? null,
     stored: {
+      setup: normalizeSetup(row?.matchSetup as Partial<MatchSetup> | null),
       slots: (row?.slots as Stored["slots"]) ?? {},
       attendance: (row?.attendance as Stored["attendance"]) ?? {},
       teamAName: row?.teamAName ?? base.teamAName,
@@ -116,7 +128,8 @@ async function readStored(): Promise<{ stored: Stored; version: number; changedA
 async function persist(s: Stored, nextVersion: number): Promise<void> {
   const db = await getDb();
   if (!db) return;
-  const values = { ...s, version: nextVersion, lineupChangedAt };
+  const { setup, ...rest } = s;
+  const values = { ...rest, matchSetup: setup, version: nextVersion, lineupChangedAt };
   await db.insert(lineupState).values({ id: STATE_ROW_ID, ...values }).onDuplicateKeyUpdate({ set: values });
   knownChecksum = await tableChecksum("lineup_state");
 }
@@ -128,7 +141,7 @@ async function load(): Promise<void> {
   stored = r.stored;
   version = r.version;
   lineupChangedAt = r.changedAt;
-  doc = hydrate(stored, await getRegistryMap());
+  doc = hydrate(stored, await getRegistryMap(), await getOpponentPlayerMap());
   lastExternalCheck = Date.now();
   startWatcher();
 }
@@ -142,7 +155,7 @@ async function rebuild(reason: string, reread: boolean): Promise<void> {
     version = Math.max(version, r.version);
     lineupChangedAt = r.changedAt;
   }
-  doc = hydrate(stored!, await getRegistryMap());
+  doc = hydrate(stored!, await getRegistryMap(), await getOpponentPlayerMap());
   version += 1;
   console.log(`[lineup] ${reason} – laddar om (version ${version})`);
   sseManager.notifyLineupReset({ version });
@@ -215,6 +228,7 @@ export function applyLineupPatch(patchId: string, ops: LineupOp[], clientId?: st
     const creates: Array<PlayerFields & { id: string; name: string }> = [];
     const updates: Array<{ id: string; fields: PlayerFields }> = [];
     for (const p of inNext.values()) {
+      if (isOpponentPlayerId(p.id)) continue; // motståndarens spelare – aldrig i vårt register
       const row = registry.get(p.id);
       if (!row) {
         creates.push({
@@ -297,4 +311,12 @@ export function resetLineupCacheForTests() {
   doc = null;
   version = 0;
   recentPatchIds.length = 0;
+}
+
+/** Motståndarens spelare ändrades (namn/nummer) – bygg om uppställningen så att alla ser det. */
+export function refreshOpponentPlayers(): Promise<void> {
+  return serialize(async () => {
+    await load();
+    await rebuild("motståndarens spelare ändrades", false);
+  });
 }

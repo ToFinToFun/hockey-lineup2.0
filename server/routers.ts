@@ -52,6 +52,12 @@ const lineupOpSchema = z.union([
   z.object({ t: z.literal("field"), key: z.enum(["teamAName", "teamBName"]), value: z.string().max(100) }),
   z.object({ t: z.literal("field"), key: z.enum(["teamAConfig", "teamBConfig"]), value: teamConfigSchema }),
   z.object({ t: z.literal("field"), key: z.literal("deletedPlayerIds"), value: z.array(z.string().max(100)).max(1000) }),
+  z.object({ t: z.literal("field"), key: z.literal("setup"), value: z.object({
+    mode: z.enum(["internal", "external"]),
+    opponentId: z.number().int().positive().nullable(),
+    ourName: z.string().max(80).nullable(),
+    ourLogo: z.enum(["club", "white", "green"]),
+  }) }),
 ]);
 
 let pirCache: { key: string; result: Array<ReturnType<typeof calculatePIR>[number] & { label: string }> } | null = null;
