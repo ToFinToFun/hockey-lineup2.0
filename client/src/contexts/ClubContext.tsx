@@ -8,6 +8,7 @@ import { club, setClub, type ClubProfile } from "@shared/club";
 import { trpc } from "@/lib/trpc";
 
 const ClubContext = createContext<ClubProfile>(club());
+const FeaturesContext = createContext<{ opponents: boolean }>({ opponents: false });
 
 export function ClubProvider({ children }: { children: ReactNode }) {
   const q = trpc.club.get.useQuery(undefined, { staleTime: 10 * 60_000, refetchOnWindowFocus: false, retry: 1 });
@@ -17,8 +18,16 @@ export function ClubProvider({ children }: { children: ReactNode }) {
     setClub(q.data.club);
     setValue(q.data.club); // renderar om sidorna med klubbens värden
   }, [q.data]);
-  return <ClubContext.Provider value={value}>{children}</ClubContext.Provider>;
+  const features = q.data?.features ?? { opponents: false };
+  return (
+    <ClubContext.Provider value={value}>
+      <FeaturesContext.Provider value={features}>{children}</FeaturesContext.Provider>
+    </ClubContext.Provider>
+  );
 }
 
 /** Klubben i en komponent (renderas om när inställningarna ändras). */
 export const useClub = () => useContext(ClubContext);
+
+/** Funktionsflaggor (t.ex. beta: matcher mot andra lag). */
+export const useFeatures = () => useContext(FeaturesContext);

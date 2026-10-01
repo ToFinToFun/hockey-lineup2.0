@@ -23,6 +23,8 @@ interface TeamPanelProps {
   /** Anmälda / placerade i laget, t.ex. "4/8" – visas bredvid Rensa */
   registeredLabel?: string;
   isWhite?: boolean;
+  /** Egen logga (t.ex. vårt lag mot motståndare) */
+  logoUrl?: string;
   config: TeamConfig;
   onConfigChange: (config: TeamConfig) => void;
   compact?: boolean;
@@ -198,13 +200,13 @@ function ConfirmRemoveDialog({
 export function TeamPanel({
   teamId, teamName, slots, lineup,
   onRemovePlayer, onChangePosition, onRenameTeam, onClearTeam, registeredLabel,
-  isWhite = false, config, onConfigChange, compact = false,
+  isWhite = false, logoUrl, config, onConfigChange, compact = false,
   otherConfig,
   matchTime = 60,
   onChangeName, onChangeNumber, onChangeTeamColor, onChangeCaptainRole, onChangeRegistered, onSyncToLaget, onDeletePlayer,
   onEmptySlotClick,
 }: TeamPanelProps) {
-  const logo = isWhite ? teamLogo("white") : teamLogo("green");
+  const logo = logoUrl ?? (isWhite ? teamLogo("white") : teamLogo("green"));
   const accentColor = isWhite ? "text-slate-200" : "text-emerald-400";
   // Subtle top border accent for team identity
   const topBorderColor = isWhite

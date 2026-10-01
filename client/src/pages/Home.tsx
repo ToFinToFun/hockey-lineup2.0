@@ -33,7 +33,10 @@ import { PlayerCardOverlay } from "@/components/PlayerCard";
 import { LagetNewsModal } from "@/components/LagetNewsModal";
 import { ShareToolsModal } from "@/components/auth/ShareToolsModal";
 import { RosterSummary } from "@/components/RosterSummary";
-import { INTERNAL_SETUP, type MatchSetup } from "@shared/matchSetup";
+import { INTERNAL_SETUP, isOpponentPlayerId, type MatchSetup } from "@shared/matchSetup";
+import { useFeatures } from "@/contexts/ClubContext";
+import { MatchSetupBar, ourLogoUrl } from "@/components/opponent/MatchSetupBar";
+import { OpponentTeamPanel } from "@/components/opponent/OpponentTeamPanel";
 import { MatchResultsBar } from "@/components/MatchResultsBar";
 import { SlotHighlightContext } from "@/components/PlayerSlot";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -307,6 +310,12 @@ export default function Home() {
   }, []);
 
   const { isAdmin } = useAuth();
+  // ─── Mot motståndare (beta) ───
+  const features = useFeatures();
+  const external = setup.mode === "external";
+  const opponentQ = trpc.opponents.get.useQuery({ id: setup.opponentId ?? 0 }, { enabled: external && !!setup.opponentId && isAdmin, staleTime: 30_000 });
+  const addOpponentPlayerM = trpc.opponents.addPlayer.useMutation();
+  const opponentUtils = trpc.useUtils();
   // Tillfälliga länkar ser inte PIR – men Auto balanserar ändå efter det i bakgrunden
   const displayPirSettings = useMemo<PirSettings>(
     () => (isAdmin ? pirSettings : { ...pirSettings, enabled: false, showRating: false, showTrend: false, showTeamStrength: false, showPrediction: false, useForBalance: true }),
@@ -462,7 +471,7 @@ export default function Home() {
     saveLocalState({ availablePlayers, lineup, teamAName, teamBName, teamAConfig, teamBConfig, matchTime });
     sync.notifyLocalChange();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [availablePlayers, lineup, teamAName, teamBName, deletedPlayerIds, teamAConfig, teamBConfig, matchTime]);
+  }, [availablePlayers, lineup, teamAName, teamBName, deletedPlayerIds, teamAConfig, teamBConfig, matchTime, setup]);
 
   // Spara en snapshot i undo-stacken
   const pushUndo = useCallback(() => {
@@ -667,6 +676,69 @@ export default function Home() {
 
   // Öppna bekräftelsedialog för Rensa
   // Rensa ett lag direkt – går att ångra, därför ingen bekräftelsedialog
+  /** Byt matchtyp/motståndare. Vårt lag är alltid lag A; lag B blir motståndaren. */
+  const applySetup = useCallback((next: MatchSetup, opponentName?: string) => {
+    const prev = setupRef.current;
+    pushUndo();
+    const current = lineupRef.current;
+    const newLineup: Record<string, Player> = {};
+    const back: Player[] = [];
+    const switching = prev.mode !== next.mode || prev.opponentId !== next.opponentId;
+    for (const [slotId, p] of Object.entries(current)) {
+      if (switching && slotId.startsWith("team-b-")) {
+        // Lag B töms vid byte: våra spelare tillbaka till truppen, motståndarens försvinner
+        if (!isOpponentPlayerId(p.id)) back.push(p);
+        continue;
+      }
+      if (next.mode === "internal" && isOpponentPlayerId(p.id)) continue;
+      newLineup[slotId] = p;
+    }
+    if (switching) {
+      setLineup(newLineup);
+      if (back.length) setAvailablePlayers((ap) => [...back, ...ap]);
+    }
+    if (next.mode === "external") {
+      setTeamAName((next.ourName || club().name).toUpperCase());
+      setTeamBName((opponentName || "Motståndare").toUpperCase());
+    } else if (prev.mode === "external") {
+      setTeamAName(defaultTeamNames().teamAName);
+      setTeamBName(defaultTeamNames().teamBName);
+    }
+    setupRef.current = next;
+    setSetup(next);
+  }, [pushUndo]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Placera/ta bort en motståndarspelare på lag B (påverkar aldrig vår trupp). */
+  const placeOpponent = useCallback((slotId: string, player: Player | null) => {
+    pushUndo();
+    setLineup((prev) => {
+      const next = { ...prev };
+      if (player) {
+        for (const [k, v] of Object.entries(next)) if (v.id === player.id) delete next[k];
+        next[slotId] = player;
+      } else delete next[slotId];
+      return next;
+    });
+  }, [pushUndo]);
+
+  const renderOpponentPanel = (compact: boolean) => (
+    <OpponentTeamPanel
+      teamName={teamBName || "Motståndare"}
+      logoUrl={opponentQ.data?.logoUrl ?? null}
+      color={opponentQ.data?.color ?? "#ef4444"}
+      config={teamBConfig}
+      lineup={Object.fromEntries(Object.entries(lineup).filter(([k]) => k.startsWith("team-b-")))}
+      roster={isAdmin && opponentQ.data ? opponentQ.data.players : null}
+      onPlace={isAdmin ? placeOpponent : undefined}
+      onAddPlayer={isAdmin && setup.opponentId ? async (p) => {
+        const r = await addOpponentPlayerM.mutateAsync({ opponentId: setup.opponentId!, name: p.name, number: p.number || null, position: (p.position || null) as never });
+        void opponentUtils.opponents.get.invalidate();
+        return { id: r.id, name: p.name, number: p.number || null, position: p.position };
+      } : undefined}
+      compact={compact}
+    />
+  );
+
   const handleRequestClearTeam = useCallback((teamPrefix: string, teamName: string) => {
     pushUndo(); // spara snapshot innan rensning (även lagets storlek)
     const currentLineup = lineupRef.current;
@@ -678,7 +750,8 @@ export default function Home() {
     }
     if (removedPlayers.length > 0) {
       setLineup(newLineup);
-      setAvailablePlayers((prev) => [...removedPlayers, ...prev]);
+      const ours = removedPlayers.filter((p) => !isOpponentPlayerId(p.id));
+      if (ours.length) setAvailablePlayers((prev) => [...ours, ...prev]);
     }
     // Tillbaka till 1 målvakt, 1 backpar och 1 kedja
     const defaultConfig = { goalkeepers: 1, defensePairs: 1, forwardLines: 1 };
@@ -1395,6 +1468,7 @@ export default function Home() {
           <Undo2 className={icon} />{label("Ångra")}
         </button>
         <button
+          disabled={external}
           onClick={() => {
             handleAutoDistribute();
             toast.success("Anmälda fördelade på lagen", { action: { label: "Ångra", onClick: () => handleUndo() }, duration: 5000 });
@@ -1875,6 +1949,11 @@ export default function Home() {
           )}
 
           <main className="px-2 md:px-3 pb-8 overflow-x-hidden max-w-[1400px] mx-auto w-full">
+            {features.opponents && isAdmin && (
+              <div className="mb-2">
+                <MatchSetupBar setup={setup} onChange={applySetup} dark={isLineupDark} />
+              </div>
+            )}
             {/* Villkorlig rendering: ANTINGEN desktop ELLER mobil – aldrig båda */}
             {/* Detta eliminerar dubbla droppables som förvirrar dnd-kit */}
             {!isMobile ? (
@@ -1921,6 +2000,7 @@ export default function Home() {
                     {/* Lag A (VITA) – vänster */}
                     <TeamPanel
                       teamId="team-a"
+                      logoUrl={external ? ourLogoUrl(setup) : undefined}
                       onEmptySlotClick={handleDesktopSlotClickA}
                       onChangeName={handleChangeName}
                       onChangeNumber={handleChangeNumber}
@@ -1945,7 +2025,8 @@ export default function Home() {
                     />
 
                     {/* Lag B (GRÖNA) – höger */}
-                    <TeamPanel
+                    {external ? renderOpponentPanel(false) : (
+<TeamPanel
                       teamId="team-b"
                       onEmptySlotClick={handleDesktopSlotClickB}
                       onChangeName={handleChangeName}
@@ -1969,6 +2050,7 @@ export default function Home() {
                       otherConfig={teamAConfig}
                       matchTime={matchTime}
                     />
+)}
                   </div>
                 </div>
               ) : (
@@ -1982,6 +2064,7 @@ export default function Home() {
                   {/* Lag A (VITA) – vänster */}
                   <TeamPanel
                     teamId="team-a"
+                      logoUrl={external ? ourLogoUrl(setup) : undefined}
                     onEmptySlotClick={handleDesktopSlotClickA}
                     onChangeName={handleChangeName}
                     onChangeNumber={handleChangeNumber}
@@ -2037,7 +2120,8 @@ export default function Home() {
                   </div>
 
                   {/* Lag B (GRÖNA) – höger */}
-                  <TeamPanel
+                  {external ? renderOpponentPanel(true) : (
+<TeamPanel
                     teamId="team-b"
                     onEmptySlotClick={handleDesktopSlotClickB}
                     onChangeName={handleChangeName}
@@ -2062,6 +2146,7 @@ export default function Home() {
                     matchTime={matchTime}
                     compact
                   />
+)}
                 </div>
               )}
               </SlotHighlightContext.Provider>
@@ -2082,6 +2167,7 @@ export default function Home() {
                 <div className="mobile-team-col">
                   <TeamPanel
                     teamId="team-a"
+                      logoUrl={external ? ourLogoUrl(setup) : undefined}
                     teamName={teamAName}
                     slots={TEAM_A_SLOTS}
                     lineup={teamALineup}
@@ -2109,7 +2195,8 @@ export default function Home() {
 
                 {/* Lag B (GRÖNA) – höger kolumn */}
                 <div className="mobile-team-col">
-                  <TeamPanel
+                  {external ? renderOpponentPanel(true) : (
+<TeamPanel
                     teamId="team-b"
                     teamName={teamBName}
                     slots={TEAM_B_SLOTS}
@@ -2134,6 +2221,7 @@ export default function Home() {
                     onDeletePlayer={handleDeletePlayer}
                     onEmptySlotClick={handleEmptySlotClickB}
                   />
+)}
                 </div>
               </div>
             ) : null}
