@@ -37,6 +37,10 @@ Versionen höjs i `package.json` vid varje deploy till `production`, och commite
 - 4a: Uppställningen har en matchtyp (intern / mot motståndare, sparas i lineup_state.matchSetup). Motståndarens spelare (id "opp-…") hamnar aldrig i vår trupp eller vårt spelarregister och räknas inte i vår statistik.
 - 4b: Med flaggan på (styrelsen) finns raden Internmatch / Mot motståndare överst i Lineup: välj lag, vårt lags namn (standard klubbens namn) och logga (klubben, Vita eller Gröna). Vårt lag är lag A; lag B blir motståndarens panel där varje plats väljs bland lagets sparade spelare (rätt position först) eller en ny spelare läggs till direkt. Auto är avstängd mot motståndare. Byte tillbaka till internmatch tömmer motståndarens platser och ger lagen standardnamnen.
 - 4c: Delningslänk till motståndaren (Inställningar → Motståndare → laget → Dela länk): laget fyller utan inloggning i namn, kortnamn, färg, logga och spelare och gör sin uppställning på /lag/<länk>. Val "Visa vårt lag". Länken gäller 7 dagar och kan stängas. Uppställningen sparas på laget och fylls i automatiskt när laget väljs i Lineup; är laget redan valt syns deras ändringar direkt.
+## 2.45.4 – 2026-10-01
+
+- Spelarkortet: "Alt" (alternativ position) ligger på samma rad som positionen, direkt efter positionsknapparna. Vad historiken säger visas när man håller över.
+
 ## 2.45.3 – 2026-10-01
 
 - Lineup: positionsbrickan blir tvåfärgad när spelaren också brukar spela en annan position – t.ex. blå/lila för en back som ofta spelat center. Bokstaven är fortfarande spelarens position. Gäller MV, B, C och F (vänster/höger räknas som F). Hovra för förklaring ("spelar även Center (30 % av matcherna)").
