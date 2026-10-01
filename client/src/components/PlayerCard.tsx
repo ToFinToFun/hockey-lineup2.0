@@ -427,14 +427,14 @@ export function DraggablePlayerCard({
                       {pos}
                     </button>
                   ))}
+                  {/* Alternativ position (hybridspelare) – går före historiken i brickan och för Auto */}
+                  <AltPositionRow player={player} badgeBg={fc.badgeBg} />
                   <span className="flex items-center gap-1 ml-1 pl-1.5 border-l border-white/10">
                     <span className="text-white/40 text-[10px]">Spelat:</span>
                     <PositionShare stats={player.positionStats} />
                   </span>
                 </div>
               )}
-              {/* Alternativ position (hybridspelare) – går före historiken i brickan och för Auto */}
-              {onChangePosition && <AltPositionRow player={player} badgeBg={fc.badgeBg} />}
               {/* Number + Captain role */}
               {(onChangeNumber || onChangeCaptainRole) && (
                 <div className="flex items-center gap-3 pt-1 border-t border-white/10">
@@ -814,8 +814,8 @@ function AltPositionRow({ player, badgeBg }: { player: Player; badgeBg: string }
   const fc = { badgeBg };
   return (
 
-                <div className="flex items-center gap-1 pt-1 border-t border-white/10 flex-wrap">
-                  <span className="text-white/40 text-[10px]" title="Hybridspelare: position spelaren också kan spela">Alt. pos:</span>
+                <span className="flex items-center gap-1 ml-1 pl-1.5 border-l border-white/10" title={!player.altPosition && player.secondaryPosition ? `Enligt historiken: ${player.secondaryPosition} (${Math.round((player.secondaryShare ?? 0) * 100)} % av matcherna)` : "Hybridspelare: position spelaren också kan spela"}>
+                  <span className="text-white/40 text-[10px]">Alt:</span>
                   {(["", "MV", "B", "C", "F"] as const).map((pos) => (
                     <button
                       key={pos || "none"}
@@ -834,10 +834,6 @@ function AltPositionRow({ player, badgeBg }: { player: Player; badgeBg: string }
                       {pos || "–"}
                     </button>
                   ))}
-                  {!player.altPosition && player.secondaryPosition && (
-                    <span className="text-[9px] text-white/35 ml-1">Historik: {player.secondaryPosition} ({Math.round((player.secondaryShare ?? 0) * 100)} %)</span>
-                  )}
-                </div>
-              
+                </span>
   );
 }

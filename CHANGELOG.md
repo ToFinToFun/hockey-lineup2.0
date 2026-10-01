@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.45.4 – 2026-10-01
+
+- Spelarkortet: "Alt" (alternativ position) ligger på samma rad som positionen, direkt efter positionsknapparna. Vad historiken säger visas när man håller över.
+
 ## 2.45.3 – 2026-10-01
 
 - Lineup: positionsbrickan blir tvåfärgad när spelaren också brukar spela en annan position – t.ex. blå/lila för en back som ofta spelat center. Bokstaven är fortfarande spelarens position. Gäller MV, B, C och F (vänster/höger räknas som F). Hovra för förklaring ("spelar även Center (30 % av matcherna)").
