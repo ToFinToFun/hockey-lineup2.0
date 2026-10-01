@@ -9,6 +9,8 @@ import { ENV } from "./_core/env";
 import { setPlayerPhoto, deletePlayerPhoto, MAX_PHOTO_BASE64 } from "./playerPhotos";
 import { listCards, cardStats, saveCard, deleteCard, MAX_CARD_SOURCE_BASE64 } from "./playerCards";
 import { refreshLiveProfile } from "./cardProfile";
+import { club } from "../shared/club";
+import { getClubOverrides, saveClubOverrides } from "./clubConfig";
 import { listMediaPosts, mediaPhotoIds, saveMediaPost, deleteMediaPost, MAX_MEDIA_PHOTO_BASE64 } from "./mediaPosts";
 import { listSponsors, createSponsor, updateSponsor, deleteSponsor, moveSponsor, recordSponsorNews } from "./sponsorsDb";
 import { scoreRouter } from "./routers/score";
@@ -365,6 +367,30 @@ export const appRouter = router({
         await deleteCard(input.playerId);
         return { success: true };
       }),
+  }),
+
+  // ─── Klubben: namn, lag, hallar m.m. (profil + inställningar) ─────────────
+
+  club: router({
+    /** Klubbens identitet – används av alla sidor och bilder (inga hemligheter). */
+    get: publicProcedure.query(async () => ({ club: club(), overrides: await getClubOverrides() })),
+    set: adminProcedure
+      .input(z.object({
+        name: z.string().trim().max(60).optional(),
+        shortName: z.string().trim().max(10).optional(),
+        fullName: z.string().trim().max(100).optional(),
+        hubTitle: z.string().trim().max(40).optional(),
+        hubSubtitle: z.string().trim().max(40).optional(),
+        appUrl: z.string().trim().max(200).optional(),
+        hashtags: z.array(z.string().trim().min(2).max(40)).max(12).optional(),
+        venues: z.array(z.string().trim().min(2).max(60)).max(12).optional(),
+        laget: z.object({ slug: z.string().trim().max(60).regex(/^[A-Za-z0-9_-]*$/, "Bara bokstäver a–z, siffror, - och _").optional() }).optional(),
+        teams: z.object({
+          white: z.object({ name: z.string().trim().max(20).optional(), shortName: z.string().trim().max(6).optional(), color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional() }).optional(),
+          green: z.object({ name: z.string().trim().max(20).optional(), shortName: z.string().trim().max(6).optional(), color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional() }).optional(),
+        }).optional(),
+      }))
+      .mutation(async ({ input }) => ({ club: await saveClubOverrides(input) })),
   }),
 
   // ─── Media: egna Instagram-inlägg ──────────────────────────────────────────

@@ -5,6 +5,7 @@
 // - localStorage som fallback om servern är offline
 // - Ångra-funktion (Ctrl+Z + knapp i header)
 // - In-app bekräftelsedialog för Rensa
+import { teamLogo, club, clubHeading } from "@shared/club";
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
   DndContext,
@@ -62,8 +63,6 @@ type MobileTab = "vita" | "trupp" | "grona";
 const BG_URL =
   "/images/background.jpg";
 
-const LOGO_GREEN = "/images/logo-green.png";
-const LOGO_WHITE = "/images/logo-white.png";
 const DEMO_PLAYER_COUNT = 17;
 
 const STORAGE_KEY = "stalstadens-lineup-v2";
@@ -1501,7 +1500,7 @@ export default function Home() {
               {/* Left: Logo + title + event info */}
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-0">
                 <Link href="/">
-                  <img src="/images/logo-green.png" alt="Stålstadens" className="w-6 h-6 sm:w-7 sm:h-7 object-contain shrink-0" />
+                  <img src={club().logo} alt={club().name} className="w-6 h-6 sm:w-7 sm:h-7 object-contain shrink-0" />
                 </Link>
                 <Link href="/" className="leading-tight min-w-0 block" title="Till startsidan">
                   <h1
@@ -1525,7 +1524,7 @@ export default function Home() {
                 <div className="flex items-center gap-1 shrink-0">
                   {/* Home icon-only */}
                   <a
-                    href="https://app.stalstadens.se"
+                    href="/"
                     title="Hem"
                     className={`p-1 rounded transition-all ${isLineupDark ? 'text-white/40 hover:text-white/70 hover:bg-white/8' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}
                   >
@@ -2178,8 +2177,8 @@ export default function Home() {
           teamALineup={teamALineup}
           teamBLineup={teamBLineup}
           lineupText={lineupStateToText({ teamAName, teamBName, teamAConfig, teamBConfig, lineup }, { bold: true })}
-          logoWhite={LOGO_WHITE}
-          logoGreen={LOGO_GREEN}
+          logoWhite={teamLogo("white")}
+          logoGreen={teamLogo("green")}
           bgUrl={BG_URL}
         />
       )}

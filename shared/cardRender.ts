@@ -6,6 +6,7 @@
  * ram → glans. Bildbehandlingen görs pixel för pixel så att resultatet blir
  * likadant i alla webbläsare.
  */
+import { clubHeading, club } from "./club";
 import { skinById, resolveLogo, type CardSkin, type CardLogo, type RetroColors } from "./cardSkins";
 
 import { canvasEnv, setCanvasEnv, browserCanvasEnv, type CanvasEnv } from "./canvasEnv";
@@ -55,7 +56,8 @@ export interface CardSettings {
   /** Äldre sparade kort: false = inget märke */
   showLogo?: boolean;
   /** Raden under namnet (retro), t.ex. "Stålstadens SF" */
-  subtitle: string;
+  /** Raden under namnet; saknas den används klubbens namn */
+  subtitle?: string;
   statsMode: "season" | "career" | "form" | "custom" | "none";
   /** Stars of the Game-kort: 1 = första stjärnan (tre stjärnor i toppen), 2, 3 */
   starRank?: 1 | 2 | 3;
@@ -78,7 +80,7 @@ export const DEFAULT_SETTINGS: CardSettings = {
   position: "",
   captain: "",
   logo: "auto",
-  subtitle: "Stålstadens SF",
+  subtitle: undefined,
   statsMode: "season",
   statsTitle: "",
   cells: [],
@@ -524,7 +526,7 @@ async function renderModern({ settings: s, photo, mask, scale = 1 }: RenderInput
   ctx.letterSpacing = "6px";
   ctx.fillStyle = skin.id === "vit" ? "rgba(20,28,36,0.8)" : "rgba(255,255,255,0.75)";
   ctx.textAlign = "center";
-  ctx.fillText("STÅLSTADENS SF", CARD_W / 2, CARD_H - 5);
+  ctx.fillText(clubHeading(), CARD_W / 2, CARD_H - 5);
   ctx.letterSpacing = "0px";
 
   return canvas;
@@ -784,7 +786,7 @@ async function renderRetro({ settings: s, photo, mask, scale = 1 }: RenderInput)
   ctx.textBaseline = "middle";
   drawName(ctx, name, s.captain, N.x + N.w / 2, N.y + N.nameH / 2 + 3, N.w - 30, 74, 34, c.ink, c.ink, "1px");
 
-  const sub = s.subtitle ?? "";
+  const sub = s.subtitle ?? club().name;
   if (sub) {
     const midY = N.y + N.nameH + (N.subH - 6) / 2;
     ctx.fillStyle = c.onPanel;

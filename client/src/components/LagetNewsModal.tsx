@@ -2,6 +2,7 @@
 // Publicera direkt på laget.se (servern loggar in med föreningens konto),
 // eller spara bilden och kopiera texten för att lägga in den manuellt.
 
+import { club } from "@shared/club";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { X, Download, Copy, Loader2, Send, ExternalLink, CheckCircle2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
@@ -538,7 +539,7 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
                 <span className="min-w-0 truncate">Visa avsändare ({newsAccount.data?.name ?? "kontot som publicerar"})</span>
               </label>
               <a
-                href={newsAccount.data?.adminUrl ?? "https://admin.laget.se/Stalstadens/NewsManagement"}
+                href={newsAccount.data?.adminUrl ?? `https://admin.laget.se/${club().laget.slug}/NewsManagement`}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 text-[11px] text-sky-300/80 hover:text-sky-200 underline-offset-2 hover:underline"

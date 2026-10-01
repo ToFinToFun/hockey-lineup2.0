@@ -4,6 +4,7 @@
  * Links to Score Tracker (/score) and Lineup (/lineup)
  */
 
+import { teamLogo, club, clubHeading } from "@shared/club";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -14,8 +15,6 @@ import { BarChart3, Users, ChevronRight, Trophy, ClipboardList, Timer, TrendingU
 // Keep the hub artwork on the same origin as the application. The old external
 // CDN links can expire or reject requests in production, while Vite serves
 // everything in client/public from the site root.
-const LOGO_GREEN = "/images/logo-green.png";
-const LOGO_WHITE = "/images/logo-white.png";
 const BG_URL = "/images/background.jpg";
 
 export default function Hub() {
@@ -36,7 +35,7 @@ export default function Hub() {
         {/* Header with logos */}
         <div className="flex items-center gap-4 sm:gap-6 mb-2">
           <img
-            src={LOGO_WHITE}
+            src={teamLogo("white")}
             alt="Vita"
             className="w-14 h-14 sm:w-20 sm:h-20 object-contain drop-shadow-lg"
           />
@@ -45,17 +44,17 @@ export default function Hub() {
               className="text-2xl sm:text-4xl font-bold tracking-tight"
               style={{ fontFamily: "'Oswald', sans-serif" }}
             >
-              STÅLSTADENS
+              {club().hubTitle.toUpperCase()}
             </h1>
             <p
               className="text-xs sm:text-sm tracking-[0.3em] text-white/50 uppercase"
               style={{ fontFamily: "'Oswald', sans-serif" }}
             >
-              Sportförening
+              {club().hubSubtitle}
             </p>
           </div>
           <img
-            src={LOGO_GREEN}
+            src={teamLogo("green")}
             alt="Gröna"
             className="w-14 h-14 sm:w-20 sm:h-20 object-contain drop-shadow-lg"
           />

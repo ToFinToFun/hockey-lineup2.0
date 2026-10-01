@@ -7,6 +7,19 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## Ej släppt (på main) – steg 0 och 1 i docs/PLAN-lag-och-motstandare.md
+
+**Steg 0 – skyddsnät**
+- Kontrollbilder (test/golden): matchrapport, stjärnkort, nyhetsbild, alla hockeykortsstilar och alla Media-mallar ritas och jämförs med sparade fingeravtryck. Uppdatera avsiktliga ändringar med `UPDATE_GOLDEN=1`.
+- Test av hela flödet: uppställning → match från Score Tracker → matchhistorik (med plats) → statistik.
+
+**Steg 1 – klubbinställningar**
+- Klubbprofil (shared/clubProfiles/stalstadens.ts) med alla standardvärden: namn, kortnamn, fullständigt namn, startsidans rubrik, loggor och märke, de två interna lagen (namn, kortnamn, färg, logga), hashtags, hallar, laget.se-adress, appens adress och filnamn. Profil väljs med CLUB_PROFILE (standard stalstadens) – en ny förening får en egen profilfil.
+- Inställningar → Klubb: ändra värdena i appen (sparas i databasen, går före profilen; tomt = profilens värde).
+- Hårdkodade "Stålstadens"/"STÅLSTADENS SF", loggsökvägar, hallar, hashtags, laget.se-adressen, appens adress och filnamn läses nu från klubben – i bilder (rapport, kort, nyhet, Media, utmärkelser), startsidan, Lineup, Score Tracker, statistik, sidans titel och hemskärmsnamnet (manifest).
+- Kontrollbilderna är oförändrade: Stålstadens ser exakt ut som förut.
+- Kvar till senare steg: lagens namn/färger används överallt (steg 2), uppladdning av loggor.
+
 ## 2.45.1 – 2026-09-30
 
 - "Totalt" är samma val överallt för all statistik sedan starten (säsongen 2026/27): Statistik (förut "Alla"), Media → Statistik (förut "Alla"/"Alla matcher") och hockeykortens statistikruta (förut "Karriär"). Sparade kort med rubriken "Karriär" får "Totalt" automatiskt.

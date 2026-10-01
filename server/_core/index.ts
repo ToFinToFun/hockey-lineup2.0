@@ -15,6 +15,7 @@ import { getPlayerPhoto } from "../playerPhotos";
 import { getCardSource, getCardMask } from "../playerCards";
 import { startLiveProfileSchedule } from "../cardProfile";
 import { runOneTimeFixes } from "../oneTimeFixes";
+import { loadClub } from "../clubConfig";
 import { startAutoNewsSchedule } from "../autoNews";
 import { getMediaPhoto } from "../mediaPosts";
 import { appRouter } from "../routers";
@@ -170,6 +171,9 @@ async function startServer() {
   }
 
   const port = parseInt(process.env.PORT || "3000");
+
+  // Klubbens profil och inställningar innan något ritas eller hämtas från laget.se
+  await loadClub().catch((err) => console.error("[klubb] kunde inte läsa inställningarna:", err));
 
   server.listen(port, () => {
     // Profilkort som följer statistiken: kontroll efter start och sedan var sjätte timme

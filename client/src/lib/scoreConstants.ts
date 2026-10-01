@@ -1,9 +1,11 @@
+import { teamLogo } from "@shared/club";
 // Core artwork is served by this app so Score Tracker, statistics, cards, and
 // lineup views all use the same reliable assets in production.
 export const IMAGES = {
   hockeyBackground: "/images/background.jpg",
-  teamWhiteLogo: "/images/logo-white.png",
-  teamGreenLogo: "/images/logo-green.png",
+  /** Lagloggor från klubbens inställningar (teamLogo i @shared/club) */
+  get teamWhiteLogo() { return teamLogo("white"); },
+  get teamGreenLogo() { return teamLogo("green"); },
 } as const;
 
 // Goal event type

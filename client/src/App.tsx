@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/sonner";
+import { ClubProvider } from "./contexts/ClubContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
@@ -90,7 +91,9 @@ function App() {
       <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
           <Toaster />
-          <Router />
+          <ClubProvider>
+            <Router />
+          </ClubProvider>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

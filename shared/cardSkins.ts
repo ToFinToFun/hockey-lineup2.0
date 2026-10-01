@@ -1,6 +1,8 @@
+import { club } from "./club";
+
 /**
  * Stilar och lagmärken för hockeykorten. En ny stil = ett nytt objekt i
- * CARD_SKINS; ett nytt märke = ett nytt objekt i CARD_LOGOS.
+ * CARD_SKINS. Märkena kommer från klubbens inställningar (cardLogos).
  *
  *  - retro: matt, gammaldags samlarkort (pappersram, diagonala ränder, stjärnor,
  *    namnskylt och statistiktabell) – efter klubbens skisser
@@ -14,11 +16,19 @@ export interface CardLogo {
   shape: "diamond" | "round";
 }
 
-export const CARD_LOGOS: CardLogo[] = [
-  { id: "anvil", name: "Städet (est. 2012)", url: "/images/logo-anvil.png", shape: "diamond" },
-  { id: "green", name: "Stålstadens grön", url: "/images/logo-green.png", shape: "round" },
-  { id: "white", name: "Stålstadens vit", url: "/images/logo-white.png", shape: "round" },
-];
+/**
+ * Märkena som går att välja – från klubbens inställningar: klubbens extra
+ * märke (om profilen har ett, t.ex. städet) och de två lagens loggor.
+ * Id:na "anvil", "green" och "white" är det som sparas på korten.
+ */
+export function cardLogos(): CardLogo[] {
+  const c = club();
+  return [
+    ...(c.crest ? [{ id: "anvil", name: c.crest.name, url: c.crest.url, shape: "diamond" as const }] : []),
+    { id: "green", name: `${c.shortName} ${c.teams.green.name.toLowerCase()}`, url: c.teams.green.logo, shape: "round" },
+    { id: "white", name: `${c.shortName} ${c.teams.white.name.toLowerCase()}`, url: c.teams.white.logo, shape: "round" },
+  ];
+}
 
 export interface RetroColors {
   /** Ramens färg (det mörka fältet) */
@@ -111,7 +121,7 @@ export const CARD_SKINS: CardSkin[] = [
 ];
 
 export const skinById = (id: string | undefined) => CARD_SKINS.find((s) => s.id === id) ?? CARD_SKINS[0];
-export const logoById = (id: string | undefined) => CARD_LOGOS.find((l) => l.id === id) ?? null;
+export const logoById = (id: string | undefined) => cardLogos().find((l) => l.id === id) ?? null;
 
 /** Märket som används: kortets val, "auto" = stilens standard, "none" = inget. */
 export function resolveLogo(logo: string | undefined, skin: CardSkin): CardLogo | null {

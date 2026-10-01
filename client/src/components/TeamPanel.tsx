@@ -1,4 +1,5 @@
 // Hockey Lineup App – TeamPanel – v4 (section alignment with spacers)
+import { teamLogo, club, clubHeading } from "@shared/club";
 import { useMemo, useState } from "react";
 import { Plus, Minus } from "lucide-react";
 import { PlayerSlot } from "./PlayerSlot";
@@ -9,8 +10,6 @@ import { useForwardColor } from "@/hooks/useForwardColor";
 import { usePirSettings } from "@/hooks/usePirEnabled";
 import { calculateSlotIceTimes, generateIceTimeSummary } from "@/lib/iceTimePerSlot";
 
-const LOGO_GREEN = "/images/logo-green.png";
-const LOGO_WHITE = "/images/logo-white.png";
 
 interface TeamPanelProps {
   teamId: "team-a" | "team-b";
@@ -205,7 +204,7 @@ export function TeamPanel({
   onChangeName, onChangeNumber, onChangeTeamColor, onChangeCaptainRole, onChangeRegistered, onSyncToLaget, onDeletePlayer,
   onEmptySlotClick,
 }: TeamPanelProps) {
-  const logo = isWhite ? LOGO_WHITE : LOGO_GREEN;
+  const logo = isWhite ? teamLogo("white") : teamLogo("green");
   const accentColor = isWhite ? "text-slate-200" : "text-emerald-400";
   // Subtle top border accent for team identity
   const topBorderColor = isWhite

@@ -3,6 +3,7 @@
  * Två bilder i 4:5 – resultatet och målen – plus en färdig bildtext.
  * Dela öppnar telefonens delningsmeny (Instagram m.fl.), annars laddas bilderna ned.
  */
+import { teamLogo, club, clubHeading } from "@shared/club";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { starCandidates, autoStars, starLine, starStat, type StarCandidate } from "@/lib/starsOfGame";
@@ -39,8 +40,6 @@ export interface ReportMatch {
   report?: { stars?: string[]; sponsor?: string | null; showStats?: boolean[]; title?: string | null } | null;
 }
 
-const LOGO_WHITE = "/images/logo-white.png";
-const LOGO_GREEN = "/images/logo-green.png";
 const BACKGROUND = "/images/background.jpg";
 
 function dateLine(iso: string | null | undefined) {
@@ -96,7 +95,7 @@ export function buildReportData(
     // Bilden: bara namn och (valfritt) statistik – ingen position
     stars: stars.map((c, i) => ({ name: c.number ? `${c.name} #${c.number}` : c.name, stat: showStats[i] === false ? "" : starStat(c), gwg: showStats[i] !== false && c.gwg })),
     sponsor,
-    logoWhite: LOGO_WHITE, logoGreen: LOGO_GREEN, background: BACKGROUND,
+    logoWhite: teamLogo("white"), logoGreen: teamLogo("green"), background: BACKGROUND,
   };
 }
 

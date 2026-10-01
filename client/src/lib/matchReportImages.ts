@@ -4,6 +4,7 @@
  *  2. Målen: alla mål i tidsordning med ställning, målskytt och assist.
  *     Raderna anpassas efter antalet mål; många mål ger två kolumner.
  */
+import { clubHeading, club, teamLogo } from "@shared/club";
 import { roundRect } from "@/lib/canvas";
 import { canvasEnv } from "@shared/canvasEnv";
 
@@ -103,7 +104,7 @@ export function header(ctx: CanvasRenderingContext2D, title: string, dateLine: s
   ctx.fillStyle = "rgba(255,255,255,0.6)";
   ctx.font = `600 30px ${HEAD}`;
   ctx.letterSpacing = "10px";
-  ctx.fillText("STÅLSTADENS SF", IG_W / 2, 110);
+  ctx.fillText(clubHeading(), IG_W / 2, 110);
   ctx.fillStyle = "#ffffff";
   ctx.font = `700 64px ${HEAD}`;
   ctx.letterSpacing = "6px";

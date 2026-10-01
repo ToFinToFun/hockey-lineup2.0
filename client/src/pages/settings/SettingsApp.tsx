@@ -9,7 +9,8 @@
  */
 import { useEffect, useState } from "react";
 import { Link, useSearch, useLocation } from "wouter";
-import { ArrowLeft, Gauge, Handshake, CalendarRange, Link2, Info, Loader2, CheckCircle2, AlertTriangle, ExternalLink, Bell } from "lucide-react";
+import { ArrowLeft, Gauge, Handshake, CalendarRange, Link2, Info, Loader2, CheckCircle2, AlertTriangle, ExternalLink, Bell, Shield } from "lucide-react";
+import { ClubPanel } from "./ClubPanel";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { trpc } from "@/lib/trpc";
 import { PirPanel } from "./PirPanel";
@@ -23,6 +24,7 @@ const TABS = [
   { id: "perioder", label: "Perioder", icon: CalendarRange },
   { id: "laget", label: "laget.se", icon: Link2 },
   { id: "notiser", label: "Notiser", icon: Bell },
+  { id: "klubb", label: "Klubb", icon: Shield },
   { id: "om", label: "Om", icon: Info },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
@@ -48,7 +50,7 @@ export default function SettingsApp() {
           <h1 className="text-lg font-bold flex-1" style={{ fontFamily: "'Oswald', sans-serif" }}>Inställningar</h1>
         </div>
         {/* Flikar: ikon med kort text under – får plats på mobilen utan att brytas konstigt */}
-        <nav className="max-w-3xl mx-auto px-2 pb-2 grid grid-cols-6 gap-1">
+        <nav className="max-w-3xl mx-auto px-2 pb-2 grid grid-cols-7 gap-1">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => choose(id)} aria-current={tab === id ? "page" : undefined}
               className={`flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-lg min-w-0 transition-all ${
@@ -67,6 +69,7 @@ export default function SettingsApp() {
         {tab === "perioder" && <PeriodsPanel />}
         {tab === "laget" && <LagetPanel />}
         {tab === "notiser" && <NotificationsPanel />}
+        {tab === "klubb" && <ClubPanel />}
         {tab === "om" && <AboutPanel />}
       </main>
     </div>

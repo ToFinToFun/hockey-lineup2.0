@@ -3,6 +3,7 @@
 // Visar spelarlistan med sök, filter och stöd för tap-to-assign med slot-picker
 // 3-cell grid layout: name+number | badges | edit icon
 
+import { teamLogo } from "@shared/club";
 import { RosterSummary, type RosterCounts } from "./RosterSummary";
 import { AddPlayerModal } from "./AddPlayerModal";
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -635,7 +636,7 @@ export function MobileRosterDrawer({
               onClick={() => handleSelectTeam("team-a")}
               className="w-full py-3 rounded-xl text-sm font-bold uppercase tracking-wider bg-slate-300/10 border-2 border-slate-300/30 text-slate-200 hover:bg-slate-300/20 hover:border-slate-300/50 transition-all flex items-center justify-center gap-2"
             >
-              <img src="/images/logo-white.png" className="w-5 h-5" alt="" />
+              <img src={teamLogo("white")} className="w-5 h-5" alt="" />
               {teamAName}
               <ChevronRight className="w-4 h-4 opacity-50" />
             </button>
@@ -643,7 +644,7 @@ export function MobileRosterDrawer({
               onClick={() => handleSelectTeam("team-b")}
               className="w-full py-3 rounded-xl text-sm font-bold uppercase tracking-wider bg-emerald-500/15 border-2 border-emerald-400/30 text-emerald-300 hover:bg-emerald-500/25 hover:border-emerald-400/50 transition-all flex items-center justify-center gap-2"
             >
-              <img src="/images/logo-green.png" className="w-5 h-5" alt="" />
+              <img src={teamLogo("green")} className="w-5 h-5" alt="" />
               {teamBName}
               <ChevronRight className="w-4 h-4 opacity-50" />
             </button>

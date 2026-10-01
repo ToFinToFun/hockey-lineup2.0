@@ -8,6 +8,7 @@
  * Teman (standard, jul, nyår, påsk), valfri sponsor, bildtext med klubbens
  * hashtags. Inlägg sparas som utkast och kan öppnas och ändras igen.
  */
+import { club } from "@shared/club";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -300,7 +301,7 @@ export default function MediaApp() {
     return c.toDataURL("image/jpeg", 0.86).split(",")[1] ?? null;
   };
 
-  const fileName = () => `stalstadens-${titleFor().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "")}.jpg`;
+  const fileName = () => `${club().fileSlug}-${titleFor().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "")}.jpg`;
   const download = () => {
     if (!blob) return;
     const a = document.createElement("a");

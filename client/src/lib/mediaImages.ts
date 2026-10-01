@@ -1,12 +1,13 @@
 /**
  * Media – egna Instagram-bilder i samma grafiska profil som matchrapporten
- * (4:5, 1080×1350, mörk arena, Oswald-rubriker, "STÅLSTADENS SF" överst).
+ * (4:5, 1080×1350, mörk arena, Oswald-rubriker, clubHeading() överst).
  *
  * Mallar:
  *  - lineup: ett lags uppställning (Vita eller Gröna) med positioner och nummer
  *  - text:   rubrik, text och valfri info-rad, med arenan eller egen bild bakom
  * Teman (standard, jul, nyår, påsk) byter accentfärg och lägger till dekor.
  */
+import { clubHeading, club, teamLogo } from "@shared/club";
 import { IG_W, IG_H, HEAD, BODY, WHITE, GREEN, tryLoad, ensureFonts, fit, canvas, backdrop, presentedBy } from "@/lib/matchReportImages";
 import { roundRect } from "@/lib/canvas";
 import { POSITION_COLORS } from "@/lib/positionColors";
@@ -95,7 +96,8 @@ export interface StatsPostData extends MediaCommon {
 
 export type MediaPostData = LineupPostData | TextPostData | CardsPostData | StatsPostData;
 
-const LOGO = { white: "/images/logo-white.png", green: "/images/logo-green.png" };
+/** Lagens loggor från klubbens inställningar */
+const LOGO = { get white() { return teamLogo("white"); }, get green() { return teamLogo("green"); } };
 
 /** Bryt text i rader som ryms på bredden (exporteras för test). */
 export function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxW: number, maxLines: number): string[] {
@@ -221,7 +223,7 @@ function clubHeader(ctx: CanvasRenderingContext2D, dateLine: string, accent: str
   ctx.fillStyle = "rgba(255,255,255,0.6)";
   ctx.font = `600 30px ${HEAD}`;
   ctx.letterSpacing = "10px";
-  ctx.fillText("STÅLSTADENS SF", IG_W / 2, 110);
+  ctx.fillText(clubHeading(), IG_W / 2, 110);
   ctx.letterSpacing = "0px";
   if (dateLine) {
     ctx.font = `500 30px ${BODY}`;
@@ -537,7 +539,7 @@ function titleBlock(ctx: CanvasRenderingContext2D, title: string, subtitle: stri
   ctx.fillStyle = "rgba(255,255,255,0.6)";
   ctx.font = `600 26px ${HEAD}`;
   ctx.letterSpacing = "10px";
-  ctx.fillText("STÅLSTADENS SF", IG_W / 2, 92);
+  ctx.fillText(clubHeading(), IG_W / 2, 92);
   ctx.letterSpacing = "4px";
   ctx.fillStyle = "#ffffff";
   ctx.font = `700 76px ${HEAD}`;

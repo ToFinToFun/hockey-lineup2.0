@@ -1,6 +1,6 @@
 # Plan: klubbinställningar, lag som begrepp och matcher mot andra lag
 
-Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **plan – inget byggt än**.
+Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **steg 0 och 1 klara på main (ej driftsatta)**.
 
 ## Målbild
 
@@ -28,12 +28,13 @@ Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **plan – inget byggt än
 
 ## Steg
 
-### Steg 0 – Skyddsnät (ingen synlig ändring)
+### Steg 0 – Skyddsnät (ingen synlig ändring) ✅
 - Referensbilder och jämförelsetest för matchrapport (resultat, mål, stjärnkort), nyhetsbild, hockeykort (alla stilar) och Media (alla mallar).
 - Test som kör hela flödet: uppställning → match i Score Tracker → matchhistorik → statistik.
 - **Klart när:** testerna finns och är gröna på nuvarande kod.
 
-### Steg 1 – Klubbinställningar (liten synlig ändring: ny flik)
+### Steg 1 – Klubbinställningar (liten synlig ändring: ny flik) ✅
+- Gjort: klubbprofil i shared/clubProfiles (standardvärden per förening, väljs med CLUB_PROFILE) + Inställningar → Klubb. Kvar: uppladdning av loggor (görs i samband med steg 2).
 - Ny flik Inställningar → **Klubb**: klubbens namn, kortnamn, loggor (klubbens logga + en per internt lag), de interna lagens namn och färger (standard Vita/Gröna), hashtags, kända hallar, laget.se-lagets adress.
 - Alla hårdkodade "Stålstadens"/"STÅLSTADENS SF", loggsökvägar och lagnamn läses från inställningarna (idag ~47 ställen i 23 filer + loggor på ~24 ställen).
 - **Klart när:** referensbilderna är oförändrade och ändrat klubbnamn/logga slår igenom överallt.

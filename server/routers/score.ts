@@ -1,4 +1,6 @@
 import { normalizeGoalType } from "../playerHistory";
+import { appUrl } from "../clubConfig";
+import { club } from "../../shared/club";
 import { resolvePeriods, toMonthDay, type MonthDayPeriods } from "../../shared/periods";
 import { scheduleLiveProfileRefresh } from "../cardProfile";
 import { notifyLater, mailLayout } from "../notifications";
@@ -84,7 +86,8 @@ function saveRateLimited(ip: string): boolean {
 }
 
 const REPORT_TAGS_KEY = "report_hashtags";
-const DEFAULT_REPORT_TAGS = ["#StålstadensSF", "#Gubbhockey"];
+/** Standard-hashtags kommer från klubbens profil/inställningar */
+const defaultReportTags = () => club().hashtags;
 
 export const scoreRouter = router({
   /** App configuration (season/playoff dates) */
@@ -136,7 +139,7 @@ export const scoreRouter = router({
         const tags = raw ? (JSON.parse(raw) as string[]) : null;
         if (Array.isArray(tags)) return tags;
       } catch { /* standard */ }
-      return DEFAULT_REPORT_TAGS;
+      return defaultReportTags();
     }),
     set: adminProcedure
       .input(z.array(z.string().trim().min(2).max(60).regex(/^#[^\s#]+$/, "En hashtag börjar med # och har inga mellanslag")).max(20))
@@ -198,7 +201,7 @@ export const scoreRouter = router({
         if (reviewStatus === "pending") {
           const m = mailLayout("Match väntar på godkännande", [
             `<b>${input.name}</b> – Vita ${input.teamWhiteScore}–${input.teamGreenScore} Gröna – är sparad och väntar på att godkännas innan den räknas i statistiken.`,
-          ], { href: `${ENV.appUrl}/history`, label: "Öppna matchhistoriken" });
+          ], { href: `${appUrl()}/history`, label: "Öppna matchhistoriken" });
           notifyLater("matchPending", () => ({ subject: `Väntar på godkännande: ${input.name}`, ...m }));
         }
         return { success: true, reviewStatus };

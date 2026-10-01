@@ -13,9 +13,11 @@
 
 import axios, { type AxiosInstance, type AxiosResponse } from "axios";
 import * as cheerio from "cheerio";
+import { club } from "../shared/club";
 import { ENV } from "./_core/env";
 
-const TEAM_SLUG = "Stalstadens";
+/** Lagets adress på laget.se (från klubbens inställningar) */
+const teamSlug = () => club().laget.slug;
 const BASE_URL = "https://www.laget.se";
 const ADMIN_BASE_URL = "https://admin.laget.se";
 
@@ -354,15 +356,14 @@ export function extractEventDetailsFromEditPage(html: string): { location?: stri
 }
 
 /** Klubbens vanliga platser – hittas i sidans text om formulärfältet inte gick att läsa. */
-export const KNOWN_VENUES = ["Coop Arena C-Hallen", "Coop Arena", "Sunderby ishall", "Sunderby Ishall"];
-export function findKnownVenue(html: string): string | undefined {
+export function findKnownVenue(html: string, venues: string[] = club().venues): string | undefined {
   const text = html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ");
-  const m = text.match(/Coop Arena(?:\s*[-–]\s*|\s+)C-?\s?hallen|Coop Arena|Sunderby\s+ishall/i);
-  if (!m) return undefined;
-  const v = m[0].replace(/\s+/g, " ");
-  if (/^coop arena/i.test(v) && /c-?\s?hallen/i.test(v)) return "Coop Arena C-Hallen";
-  if (/^coop arena/i.test(v)) return "Coop Arena";
-  return "Sunderby ishall";
+  // Längsta namnet först ("Coop Arena C-Hallen" före "Coop Arena"); mellanslag och bindestreck får variera
+  for (const v of [...venues].sort((a, b) => b.length - a.length)) {
+    const pattern = v.split(/[\s\-–]+/).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("(?:\\s*[-–]\\s*|\\s+|-)");
+    if (new RegExp(pattern, "i").test(text)) return v;
+  }
+  return undefined;
 }
 
 /**
@@ -375,14 +376,14 @@ async function findNextEvent(
   followRedirects: ReturnType<typeof createClient>["followRedirects"]
 ): Promise<{ eventId: string; eventDate: string; eventTitle: string; eventTime?: string } | null> {
   try {
-    const cal = await followRedirects(await client.get(`${ADMIN_BASE_URL}/${TEAM_SLUG}/Calendar`));
+    const cal = await followRedirects(await client.get(`${ADMIN_BASE_URL}/${teamSlug()}/Calendar`));
     if (cal.status === 200 && typeof cal.data === "string") {
       const ev = findNextEventFromCalendar(cal.data);
       if (ev) return ev;
     }
   } catch { /* reserv nedan */ }
   try {
-    const pub = await followRedirects(await client.get(`${BASE_URL}/${TEAM_SLUG}`));
+    const pub = await followRedirects(await client.get(`${BASE_URL}/${teamSlug()}`));
     if (pub.status === 200 && typeof pub.data === "string") return findNextEventId(pub.data);
   } catch { /* inget */ }
   return null;
@@ -531,7 +532,7 @@ export async function updateAttendance(
 
     // Steg 3: Hämta redigeringssidan → hitta userId
     const editResp = await client.get(
-      `${ADMIN_BASE_URL}/${TEAM_SLUG}/Calendar/Edit/${eventId}`
+      `${ADMIN_BASE_URL}/${teamSlug()}/Calendar/Edit/${eventId}`
     );
     const editPage = await followRedirects(editResp);
     if (editPage.status !== 200) {
@@ -571,7 +572,7 @@ export async function updateAttendance(
 
     // Steg 4: GET EditAttendee → hämta record-ID
     const editAttendeeResp = await client.get(
-      `${ADMIN_BASE_URL}/${TEAM_SLUG}/Calendar/EditAttendee?eventId=${eventId}&userId=${userId}`,
+      `${ADMIN_BASE_URL}/${teamSlug()}/Calendar/EditAttendee?eventId=${eventId}&userId=${userId}`,
       { headers: { "X-Requested-With": "XMLHttpRequest" } }
     );
     const editAttendeePage = await followRedirects(editAttendeeResp);
@@ -614,7 +615,7 @@ export async function updateAttendance(
 
     // Steg 5: POST SaveAttendeeInfo
     const saveResp = await client.post(
-      `${ADMIN_BASE_URL}/${TEAM_SLUG}/Calendar/SaveAttendeeInfo`,
+      `${ADMIN_BASE_URL}/${teamSlug()}/Calendar/SaveAttendeeInfo`,
       JSON.stringify(attendeeData),
       {
         headers: {
@@ -665,7 +666,7 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
         if (eventInfo) {
           // Hämta redigeringssidan för att få Deltar/Deltar ej
           const editResp = await client.get(
-            `${ADMIN_BASE_URL}/${TEAM_SLUG}/Calendar/Edit/${eventInfo.eventId}`
+            `${ADMIN_BASE_URL}/${teamSlug()}/Calendar/Edit/${eventInfo.eventId}`
           );
           const editPage = await followRedirects(editResp);
 
@@ -693,7 +694,7 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
     }
 
     // Steg 3: Fallback – hämta via publika startsidan + RSVP modal
-    let resp = await client.get(`${BASE_URL}/${TEAM_SLUG}`);
+    let resp = await client.get(`${BASE_URL}/${teamSlug()}`);
     resp = await followRedirects(resp);
 
     const fallbackEventInfo = findNextEventId(resp.data);
@@ -710,7 +711,7 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
 
     const eid = fallbackEventInfo || eventInfo!;
 
-    const rsvpUrl = `${BASE_URL}/Common/Rsvp/ModalContent?pk=${eid.eventId}&site=${TEAM_SLUG}`;
+    const rsvpUrl = `${BASE_URL}/Common/Rsvp/ModalContent?pk=${eid.eventId}&site=${teamSlug()}`;
     resp = await client.get(rsvpUrl);
     resp = await followRedirects(resp);
 
@@ -881,7 +882,7 @@ export async function publishNews(input: PublishNewsInput): Promise<PublishNewsR
 
     let existing: ReturnType<typeof parseNewsForm> | null = null;
     if (input.id) {
-      const page = await followRedirects(await client.get(`${ADMIN_BASE_URL}/${TEAM_SLUG}/NewsManagement/Update/${input.id}`));
+      const page = await followRedirects(await client.get(`${ADMIN_BASE_URL}/${teamSlug()}/NewsManagement/Update/${input.id}`));
       if (page.status !== 200 || typeof page.data !== "string" || !page.data.includes("createNewsForm")) {
         return { success: false, error: "Den tidigare nyheten finns inte längre på laget.se. Avmarkera Uppdatera och publicera som ny." };
       }
@@ -897,8 +898,8 @@ export async function publishNews(input: PublishNewsInput): Promise<PublishNewsR
       }
     }
 
-    const resp = await client.post(`${ADMIN_BASE_URL}/${TEAM_SLUG}/NewsManagement/Add`, form, {
-      headers: { Origin: ADMIN_BASE_URL, Referer: `${ADMIN_BASE_URL}/${TEAM_SLUG}/NewsManagement/Add` },
+    const resp = await client.post(`${ADMIN_BASE_URL}/${teamSlug()}/NewsManagement/Add`, form, {
+      headers: { Origin: ADMIN_BASE_URL, Referer: `${ADMIN_BASE_URL}/${teamSlug()}/NewsManagement/Add` },
       timeout: 60_000,
     });
 
@@ -910,13 +911,13 @@ export async function publishNews(input: PublishNewsInput): Promise<PublishNewsR
     // Nyhetslistan: vid uppdatering är id:t känt, annars den nyaste med samma rubrik
     let id = input.id;
     if (!id) {
-      const list = await followRedirects(await client.get(`${ADMIN_BASE_URL}/${TEAM_SLUG}/NewsManagement`));
+      const list = await followRedirects(await client.get(`${ADMIN_BASE_URL}/${teamSlug()}/NewsManagement`));
       const items = typeof list.data === "string" ? parseNewsList(list.data) : [];
       const match = items.filter((n) => n.title === input.title.replace(/\s+/g, " ").trim()).sort((a, b) => b.id - a.id)[0];
       if (!match) return { success: false, error: "Nyheten skickades men hittades inte i listan på laget.se. Kontrollera under Nyheter." };
       id = match.id;
     }
-    return { success: true, id, url: `${BASE_URL}/${TEAM_SLUG}/News/${id}` };
+    return { success: true, id, url: `${BASE_URL}/${teamSlug()}/News/${id}` };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return { success: false, error: msg.startsWith("NO_CREDENTIALS") ? msg : `Kunde inte nå laget.se: ${msg}` };
@@ -932,7 +933,7 @@ export async function newsExists(newsId: number): Promise<boolean | null> {
   try {
     const loggedIn = await login(client, followRedirects);
     if (!loggedIn) return null;
-    const list = await followRedirects(await client.get(`${ADMIN_BASE_URL}/${TEAM_SLUG}/NewsManagement`));
+    const list = await followRedirects(await client.get(`${ADMIN_BASE_URL}/${teamSlug()}/NewsManagement`));
     if (list.status !== 200 || typeof list.data !== "string") return null;
     const items = parseNewsList(list.data);
     if (items.length === 0) return null; // tom lista = kan inte avgöra säkert
@@ -948,7 +949,7 @@ export async function deleteNews(newsId: number): Promise<{ success: boolean; er
     const loggedIn = await login(client, followRedirects);
     if (!loggedIn) return { success: false, error: "LOGIN_FAILED: Kunde inte logga in på laget.se." };
     const resp = await followRedirects(
-      await client.get(`${ADMIN_BASE_URL}/${TEAM_SLUG}/NewsManagement/Delete/${newsId}/1`)
+      await client.get(`${ADMIN_BASE_URL}/${teamSlug()}/NewsManagement/Delete/${newsId}/1`)
     );
     if (resp.status !== 200) {
       // Ofta för att nyheten redan är borttagen på laget.se
@@ -963,7 +964,7 @@ export async function deleteNews(newsId: number): Promise<{ success: boolean; er
 }
 
 /** Adress till nyhetsadministrationen på laget.se. */
-export const NEWS_ADMIN_URL = `${ADMIN_BASE_URL}/${TEAM_SLUG}/NewsManagement`;
+export const NEWS_ADMIN_URL = `${ADMIN_BASE_URL}/${teamSlug()}/NewsManagement`;
 
 /** Inloggade kontots namn ur en laget.se-sida ("user":{"is_loggedin":true,"name":"…"}). Exporteras för test. */
 export function extractAccountName(html: string): string | null {
@@ -985,7 +986,7 @@ export async function fetchAccountName(): Promise<string | null> {
   const { client, followRedirects } = createClient();
   try {
     if (!(await login(client, followRedirects))) return null;
-    const page = await followRedirects(await client.get(`${BASE_URL}/${TEAM_SLUG}`));
+    const page = await followRedirects(await client.get(`${BASE_URL}/${teamSlug()}`));
     const name = typeof page.data === "string" ? extractAccountName(page.data) : null;
     accountNameCache = { username, name, at: Date.now() };
     return name;

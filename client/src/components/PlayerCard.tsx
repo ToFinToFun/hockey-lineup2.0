@@ -2,6 +2,7 @@
 // Flat design: no colored row backgrounds, just name + number + badges
 // PortalDropdown edit panel preserved with all functionality
 
+import { teamLogo, club, clubHeading } from "@shared/club";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { X, Trash2 } from "lucide-react";
@@ -13,8 +14,6 @@ import { PlayerPhoto } from "./PlayerPhoto";
 import { useForwardColor } from "@/hooks/useForwardColor";
 import { usePirSettings } from "@/hooks/usePirEnabled";
 
-const LOGO_GREEN = "/images/logo-green.png";
-const LOGO_WHITE = "/images/logo-white.png";
 
 interface PlayerCardProps {
   /** Kortet ligger inne i en plats i uppställningen – ingen egen ruta runt. */

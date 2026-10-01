@@ -12,7 +12,8 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { ArrowLeft, Upload, Download, Share2, Save, UserSquare2, Wand2, Loader2, Trash2, Search, Check, Scissors } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { CARD_SKINS, CARD_LOGOS } from "@shared/cardSkins";
+import { CARD_SKINS, cardLogos } from "@shared/cardSkins";
+import { club } from "@shared/club";
 import { renderCard, photoSourceRect, DEFAULT_SETTINGS, CARD_W, type CardSettings, type CardCell } from "@shared/cardRender";
 import { prepareSourcePhoto } from "@/lib/cardPhoto";
 import { computeMask } from "@/lib/cutout";
@@ -445,7 +446,7 @@ export default function CardsApp() {
           <label className="block text-[11px] text-white/50">Lagmärke
             <select value={settings.logo ?? "auto"} onChange={(e) => update({ logo: e.target.value, showLogo: undefined })} className={input}>
               <option value="auto" className="text-black">Stilens standard</option>
-              {CARD_LOGOS.map((l) => <option key={l.id} value={l.id} className="text-black">{l.name}</option>)}
+              {cardLogos().map((l) => <option key={l.id} value={l.id} className="text-black">{l.name}</option>)}
               <option value="none" className="text-black">Inget</option>
             </select>
           </label>
@@ -484,7 +485,7 @@ export default function CardsApp() {
             </label>
           </div>
           <label className="block text-[11px] text-white/50">Rad under namnet (retro)
-            <input value={settings.subtitle ?? ""} onChange={(e) => update({ subtitle: e.target.value })} maxLength={30} placeholder="Stålstadens SF" className={input} />
+            <input value={settings.subtitle ?? club().name} onChange={(e) => update({ subtitle: e.target.value })} maxLength={30} placeholder={club().name} className={input} />
           </label>
 
           <div className="space-y-2">

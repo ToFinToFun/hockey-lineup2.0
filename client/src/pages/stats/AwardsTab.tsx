@@ -1,6 +1,7 @@
 /**
  * AwardsTab – Season awards with beautiful cards and export
  */
+import { clubHeading, club, teamLogo } from "@shared/club";
 import { useState, useRef, useCallback } from "react";
 import { Award, Download, Share2, Trophy, ChevronDown, ChevronUp } from "lucide-react";
 import { IMAGES } from "@/lib/scoreConstants";
@@ -211,7 +212,7 @@ function ExportPanel({
     ctx.fillStyle = "#ECEDEE";
     ctx.font = "bold 48px 'Oswald', sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("STÅLSTADENS SF", w / 2, 80);
+    ctx.fillText(clubHeading(), w / 2, 80);
 
     ctx.fillStyle = "#0a7ea4";
     ctx.font = "bold 28px sans-serif";
@@ -280,11 +281,11 @@ function ExportPanel({
     ctx.textAlign = "center";
     ctx.fillStyle = "#687076";
     ctx.font = "12px sans-serif";
-    ctx.fillText("app.stalstadens.se", w / 2, h - 30);
+    ctx.fillText(club().appUrl.replace(/^https?:\/\//, ""), w / 2, h - 30);
 
     // Download
     const link = document.createElement("a");
-    link.download = `stalstadens-utmarkelser-${periodLabel.toLowerCase()}.png`;
+    link.download = `${club().fileSlug}-utmarkelser-${periodLabel.toLowerCase()}.png`;
     link.href = canvas.toDataURL("image/png");
     link.click();
 

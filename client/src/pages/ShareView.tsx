@@ -1,6 +1,7 @@
 // ShareView – Skrivskyddad vy av en sparad uppställning (SQL/tRPC-version)
 // Design: Industrial Ice Arena – mörk, polerad, läsbar
 
+import { teamLogo, club, clubHeading } from "@shared/club";
 import { useParams, Link } from "wouter";
 import { positionRowColors, CAPTAIN_COLORS } from "@/lib/positionColors";
 import { trpc } from "@/lib/trpc";
@@ -10,10 +11,6 @@ import { Clock, Users } from "lucide-react";
 
 const BG_URL =
   "/images/background.jpg";
-const LOGO_GREEN =
-  "/images/logo-green.png";
-const LOGO_WHITE =
-  "/images/logo-white.png";
 
 const TEAM_A_SLOTS = createTeamSlots("team-a", MAX_TEAM_CONFIG);
 const TEAM_B_SLOTS = createTeamSlots("team-b", MAX_TEAM_CONFIG);
@@ -277,14 +274,14 @@ export default function ShareView() {
                   teamName={savedLineup.teamAName}
                   slots={TEAM_A_SLOTS}
                   lineup={teamALineup}
-                  logo={LOGO_WHITE}
+                  logo={teamLogo("white")}
                   accentColor="text-slate-200"
                 />
                 <TeamPanelView
                   teamName={savedLineup.teamBName}
                   slots={TEAM_B_SLOTS}
                   lineup={teamBLineup}
-                  logo={LOGO_GREEN}
+                  logo={teamLogo("green")}
                   accentColor="text-emerald-400"
                 />
               </div>

@@ -2,7 +2,8 @@ import express, { type Express } from "express";
 import fs from "fs";
 import { type Server } from "http";
 import path from "path";
-import { applyAppHead } from "./html";
+import { applyAppHead, applyClubNames } from "./html";
+import { club, profileById } from "../../shared/club";
 
 /** Endast utveckling. Vite och dess konfiguration laddas dynamiskt så att de
  *  inte följer med i produktionsbygget (vite är ett dev-beroende). */
@@ -65,6 +66,14 @@ export function serveStatic(app: Express) {
     "/assets",
     express.static(path.join(distPath, "assets"), { immutable: true, maxAge: "1y" })
   );
+  // Manifesten med klubbens namn (hemskärmsnamnet)
+  app.get(["/manifest.json", "/score-manifest.json"], (req, res, next) => {
+    const file = path.join(distPath, req.path);
+    if (!fs.existsSync(file)) return next();
+    res.set({ "Content-Type": "application/manifest+json; charset=utf-8", "Cache-Control": "no-cache" })
+      .end(applyClubNames(fs.readFileSync(file, "utf-8"), profileById(process.env.CLUB_PROFILE), club()));
+  });
+
   // Service workern och manifesten måste alltid hämtas färska.
   app.use(
     express.static(distPath, {
@@ -77,13 +86,13 @@ export function serveStatic(app: Express) {
     })
   );
 
-  // Alla sidor: index.html med rätt manifest/ikon för den del som öppnas.
+  // Alla sidor: index.html med rätt manifest/ikon för den del som öppnas och klubbens namn.
   let indexHtml: string | null = null;
   app.use((req, res) => {
     indexHtml ??= fs.readFileSync(path.resolve(distPath, "index.html"), "utf-8");
     res
       .status(200)
       .set({ "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" })
-      .end(applyAppHead(indexHtml, req.originalUrl));
+      .end(applyClubNames(applyAppHead(indexHtml, req.originalUrl), profileById(process.env.CLUB_PROFILE), club()));
   });
 }

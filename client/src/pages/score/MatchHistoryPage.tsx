@@ -1,3 +1,4 @@
+import { club } from "@shared/club";
 import { trpc } from "@/lib/trpc";
 import { IMAGES } from "@/lib/scoreConstants";
 import { useSponsors, logoForName } from "@/lib/sponsors";
@@ -1109,9 +1110,9 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
             {/* Plats (från laget.se när matchen sparades – går att ändra) */}
             <div>
               <label className="text-[#9BA1A6] text-xs font-medium block mb-1">Plats</label>
-              <input value={editLocation} onChange={(e) => setEditLocation(e.target.value)} maxLength={120} placeholder="T.ex. Coop Arena C-Hallen"
+              <input value={editLocation} onChange={(e) => setEditLocation(e.target.value)} maxLength={120} placeholder={club().venues[0] ? `T.ex. ${club().venues[0]}` : "Hall"}
                 list="known-venues" className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-[#ECEDEE] text-sm" />
-              <datalist id="known-venues"><option value="Coop Arena C-Hallen" /><option value="Sunderby ishall" /></datalist>
+              <datalist id="known-venues">{club().venues.map((v) => <option key={v} value={v} />)}</datalist>
             </div>
 
             {/* Scores - auto-calculated from goal history */}
