@@ -284,3 +284,14 @@ export const mediaPosts = mysqlTable("media_posts", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
+
+// ─── Klubbens loggor (uppladdade – går före klubbprofilens filer) ─────────────
+
+export const clubAssets = mysqlTable("club_assets", {
+  /** "club", "white", "green" eller "crest" */
+  key: varchar("key", { length: 20 }).primaryKey(),
+  /** Bilden som base64 (PNG eller JPEG) */
+  image: mediumtext("image").notNull(),
+  mime: varchar("mime", { length: 30 }).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});

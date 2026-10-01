@@ -276,14 +276,14 @@ export default function OverviewTab({ stats, pirData, onPlayerClick }: OverviewT
           color="#F59E0B"
         />
         <StatCard
-          label="Vita vinster"
+          label={`${teamGenitive("white")} vinster`}
           value={stats.whiteWins}
           sub={stats.totalMatches ? `${Math.round((stats.whiteWins / stats.totalMatches) * 100)}%` : ""}
           icon={Trophy}
           color="#FFFFFF"
         />
         <StatCard
-          label="Gröna vinster"
+          label={`${teamGenitive("green")} vinster`}
           value={stats.greenWins}
           sub={stats.totalMatches ? `${Math.round((stats.greenWins / stats.totalMatches) * 100)}%` : ""}
           icon={Trophy}
@@ -476,7 +476,7 @@ export default function OverviewTab({ stats, pirData, onPlayerClick }: OverviewT
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {stats.biggestWinWhite && (
               <div className="bg-[#0a0a0a] rounded-lg p-3 border border-[#2a2a2a]">
-                <p className="text-[#687076] text-[10px] uppercase tracking-wider">Största vita vinst</p>
+                <p className="text-[#687076] text-[10px] uppercase tracking-wider">{teamGenitive("white")} största vinst</p>
                 <p className="text-white font-bold text-sm mt-1">
                   {stats.biggestWinWhite.whiteScore}-{stats.biggestWinWhite.greenScore}
                 </p>
@@ -485,7 +485,7 @@ export default function OverviewTab({ stats, pirData, onPlayerClick }: OverviewT
             )}
             {stats.biggestWinGreen && (
               <div className="bg-[#0a0a0a] rounded-lg p-3 border border-[#2a2a2a]">
-                <p className="text-[#687076] text-[10px] uppercase tracking-wider">Största gröna vinst</p>
+                <p className="text-[#687076] text-[10px] uppercase tracking-wider">{teamGenitive("green")} största vinst</p>
                 <p className="text-emerald-400 font-bold text-sm mt-1">
                   {stats.biggestWinGreen.whiteScore}-{stats.biggestWinGreen.greenScore}
                 </p>

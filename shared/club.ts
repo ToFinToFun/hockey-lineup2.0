@@ -39,6 +39,8 @@ export interface ClubProfile {
   crest?: { name: string; url: string };
   /** De två interna lagen (internmatcher). Nycklarna white/green är lagring, namnen är det som visas. */
   teams: { white: ClubTeamProfile; green: ClubTeamProfile };
+  /** Hemmalag i nyhetsbilden per veckodag (0 = söndag); andra dagar slumpas */
+  homeTeamByWeekday: Partial<Record<number, "white" | "green">>;
   /** Standard-hashtags för matchrapport och Media */
   hashtags: string[];
   /** Klubbens vanliga hallar (förslag och tolkning av laget.se) */

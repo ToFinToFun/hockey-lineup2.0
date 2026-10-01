@@ -21,6 +21,8 @@ export const stalstadens: ClubProfile = {
     white: { name: "Vita", singular: "Vit", shortName: "VIT", color: "#e2e8f0", accent: "#e2e8f0", logo: "/images/logo-white.png" },
     green: { name: "Gröna", singular: "Grön", shortName: "GRÖ", color: "#56c653", accent: "#34d399", logo: "/images/logo-green.png" },
   },
+  // Tisdag Gröna hemma, torsdag Vita hemma
+  homeTeamByWeekday: { 2: "green", 4: "white" },
   hashtags: ["#StålstadensSF", "#Gubbhockey"],
   venues: ["Coop Arena C-Hallen", "Coop Arena", "Sunderby ishall"],
   laget: { slug: "Stalstadens" },

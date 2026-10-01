@@ -28,7 +28,7 @@ export function MatchResultsBar({ dark = true }: { dark?: boolean }) {
       <div
         className="flex-1 min-w-0 flex items-center justify-center gap-[3px]"
         role="img"
-        aria-label={`Senaste ${list.length} matcherna: Vita ${whiteWins} vinster, Gröna ${greenWins}, oavgjort ${draws}`}
+        aria-label={`Senaste ${list.length} matcherna: ${teamName("white")} ${whiteWins} vinster, ${teamName("green")} ${greenWins}, oavgjort ${draws}`}
       >
         {Array.from({ length: empty }, (_, i) => (
           <span key={`e${i}`} className={`h-2.5 flex-1 max-w-[10px] min-w-[4px] rounded-[2px] border ${dark ? "border-white/15" : "border-gray-300"}`} title="Ej spelad" />
@@ -36,7 +36,7 @@ export function MatchResultsBar({ dark = true }: { dark?: boolean }) {
         {list.map((r, i) => (
           <span
             key={i}
-            title={`${fmt(r.date)}: Vita ${r.white}–${r.green} Gröna`}
+            title={`${fmt(r.date)}: ${teamName("white")} ${r.white}–${r.green} ${teamName("green")}`}
             className={`h-2.5 flex-1 max-w-[10px] min-w-[4px] rounded-[2px] ${
               r.winner === "V" ? (dark ? "bg-slate-100" : "bg-white border border-gray-400")
               : r.winner === "G" ? "bg-emerald-500"

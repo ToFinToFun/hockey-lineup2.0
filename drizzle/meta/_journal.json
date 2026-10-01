@@ -127,6 +127,13 @@
       "when": 1790761321094,
       "tag": "0017_match_location",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1790832858421,
+      "tag": "0018_club_assets",
+      "breakpoints": true
     }
   ]
 }

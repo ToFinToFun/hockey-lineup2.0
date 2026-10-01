@@ -1,11 +1,11 @@
 /**
  * Inställningar → Klubb: klubbens namn, de interna lagen, hallar, hashtags och
  * laget.se-adress. Tomt fält = profilens standardvärde (visas som förslag).
- * Loggor kommer från klubbprofilen (uppladdning kommer i ett senare steg).
+ * Loggor: profilens filer, eller uppladdade (PNG med genomskinlighet går bra).
  */
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, RotateCcw } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import type { ClubOverrides } from "@shared/club";
 
@@ -38,9 +38,56 @@ const toOverrides = (f: Form): ClubOverrides => {
   };
 };
 
+/** Läs en bild, förminska till max 512 px och behåll genomskinlighet (PNG). */
+async function prepareLogo(file: File): Promise<string> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("Bilden kunde inte läsas")); i.src = url; });
+    const scale = Math.min(1, 512 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.naturalWidth * scale);
+    c.height = Math.round(img.naturalHeight * scale);
+    c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL("image/png").split(",")[1] ?? "";
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function LogoRow({ k, label, src, uploaded }: { k: "club" | "white" | "green" | "crest"; label: string; src?: string; uploaded: boolean }) {
+  const utils = trpc.useUtils();
+  const done = () => { void utils.club.get.invalidate(); void utils.club.logos.invalidate(); };
+  const set = trpc.club.setLogo.useMutation({ onSuccess: () => { toast.success(`${label}: ny logga sparad`); done(); }, onError: (e) => toast.error("Kunde inte spara loggan", { description: e.message }) });
+  const reset = trpc.club.resetLogo.useMutation({ onSuccess: () => { toast.success(`${label}: profilens logga igen`); done(); } });
+  return (
+    <div className="flex items-center gap-3 rounded-lg bg-white/[0.03] border border-white/10 px-3 py-2">
+      <div className="w-10 h-10 rounded-md bg-black/40 flex items-center justify-center shrink-0">
+        {src ? <img src={src} alt="" className="max-w-full max-h-full object-contain" /> : <span className="text-[10px] text-white/30">–</span>}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-white/80">{label}</p>
+        <p className="text-[10px] text-white/35">{uploaded ? "Uppladdad" : "Från klubbprofilen"}</p>
+      </div>
+      <label className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-[11px] cursor-pointer">
+        {set.isPending ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />} Byt
+        <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={async (e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (!f) return;
+          try { set.mutate({ key: k, base64: await prepareLogo(f) }); } catch (err) { toast.error((err as Error).message); }
+        }} />
+      </label>
+      {uploaded && (
+        <button onClick={() => reset.mutate({ key: k })} title="Tillbaka till profilens logga" className="p-1.5 rounded-lg text-white/50 hover:text-white"><RotateCcw size={13} /></button>
+      )}
+    </div>
+  );
+}
+
 export function ClubPanel() {
   const utils = trpc.useUtils();
   const q = trpc.club.get.useQuery();
+  const logos = trpc.club.logos.useQuery();
   const save = trpc.club.set.useMutation({
     onSuccess: () => { toast.success("Klubbens inställningar sparade"); void utils.club.get.invalidate(); },
     onError: (e) => toast.error("Kunde inte spara", { description: e.message }),
@@ -92,10 +139,19 @@ export function ClubPanel() {
         {field("Startsidans underrad", "hubSubtitle", c.hubSubtitle, 40)}
       </div>
 
+      <p className="text-[11px] text-white/50 pt-1">Loggor</p>
+      <div className="space-y-1.5">
+        <LogoRow k="club" label="Klubbens logga" src={c.logo} uploaded={!!logos.data?.club} />
+        <LogoRow k="white" label={`Lag: ${c.teams.white.name}`} src={c.teams.white.logo} uploaded={!!logos.data?.white} />
+        <LogoRow k="green" label={`Lag: ${c.teams.green.name}`} src={c.teams.green.logo} uploaded={!!logos.data?.green} />
+        <LogoRow k="crest" label="Märke för hockeykorten" src={c.crest?.url} uploaded={!!logos.data?.crest} />
+      </div>
+      <p className="text-[10px] text-white/35">PNG med genomskinlig bakgrund blir snyggast. Bilden förminskas till max 512 px.</p>
+
       <p className="text-[11px] text-white/50 pt-1">Interna lag (internmatcher)</p>
       {team("white", "Lag 1")}
       {team("green", "Lag 2")}
-      <p className="text-[10px] text-white/35">Lagens namn och färger börjar användas överallt i nästa steg; loggorna kommer från klubbprofilen tills vidare.</p>
+      <p className="text-[10px] text-white/35">Lagens namn och färger används överallt i appen och bilderna. Färgen används i matchrapport, Media och nyhetsbilden.</p>
 
       <label className="block text-[11px] text-white/50">Hallar (en per rad – förslag och tolkning av platsen från laget.se)
         <textarea value={f.venues} onChange={(e) => set({ venues: e.target.value })} rows={3} placeholder={c.venues.join("\n")} className={input} />

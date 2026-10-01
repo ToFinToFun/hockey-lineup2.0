@@ -7,6 +7,7 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { setCanvasEnv } from "../shared/canvasEnv";
+import { getClubAsset } from "./clubAssets";
 
 type Napi = typeof import("@napi-rs/canvas");
 let napi: Napi | null = null;
@@ -37,6 +38,11 @@ async function init(): Promise<Napi | null> {
       createCanvas: (w, h) => napi!.createCanvas(w, h) as unknown as HTMLCanvasElement,
       loadImage: async (src) => {
         if (src.startsWith("data:")) return (await napi!.loadImage(Buffer.from(src.split(",")[1] ?? "", "base64"))) as unknown as HTMLImageElement;
+        if (src.startsWith("/api/club/logo/")) {
+          const asset = await getClubAsset(src.slice("/api/club/logo/".length).split("?")[0]);
+          if (!asset) throw new Error(`Saknar logga ${src}`);
+          return (await napi!.loadImage(asset.image)) as unknown as HTMLImageElement;
+        }
         const file = src.startsWith("/") ? path.join(pub, src) : src;
         return (await napi!.loadImage(file)) as unknown as HTMLImageElement;
       },

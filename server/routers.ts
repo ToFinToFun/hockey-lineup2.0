@@ -11,7 +11,8 @@ import { setPlayerPhoto, deletePlayerPhoto, MAX_PHOTO_BASE64 } from "./playerPho
 import { listCards, cardStats, saveCard, deleteCard, MAX_CARD_SOURCE_BASE64 } from "./playerCards";
 import { refreshLiveProfile } from "./cardProfile";
 import { club } from "../shared/club";
-import { getClubOverrides, saveClubOverrides } from "./clubConfig";
+import { getClubOverrides, saveClubOverrides, loadClub } from "./clubConfig";
+import { CLUB_ASSET_KEYS, MAX_CLUB_ASSET_BASE64, setClubAsset, deleteClubAsset, listClubAssets } from "./clubAssets";
 import { listMediaPosts, mediaPhotoIds, saveMediaPost, deleteMediaPost, MAX_MEDIA_PHOTO_BASE64 } from "./mediaPosts";
 import { listSponsors, createSponsor, updateSponsor, deleteSponsor, moveSponsor, recordSponsorNews } from "./sponsorsDb";
 import { scoreRouter } from "./routers/score";
@@ -392,6 +393,22 @@ export const appRouter = router({
         }).optional(),
       }))
       .mutation(async ({ input }) => ({ club: await saveClubOverrides(input) })),
+    /** Ladda upp en logga (PNG/JPEG, base64) – ersätter profilens fil. */
+    setLogo: adminProcedure
+      .input(z.object({ key: z.enum(CLUB_ASSET_KEYS), base64: z.string().max(MAX_CLUB_ASSET_BASE64, "Bilden är för stor").regex(/^[A-Za-z0-9+/=]+$/) }))
+      .mutation(async ({ input }) => {
+        await setClubAsset(input.key, input.base64);
+        return { club: await loadClub() };
+      }),
+    /** Ta bort uppladdad logga – profilens fil gäller igen. */
+    resetLogo: adminProcedure
+      .input(z.object({ key: z.enum(CLUB_ASSET_KEYS) }))
+      .mutation(async ({ input }) => {
+        await deleteClubAsset(input.key);
+        return { club: await loadClub() };
+      }),
+    /** Vilka loggor som är uppladdade */
+    logos: adminProcedure.query(() => listClubAssets()),
   }),
 
   // ─── Media: egna Instagram-inlägg ──────────────────────────────────────────

@@ -1,6 +1,6 @@
 # Plan: klubbinställningar, lag som begrepp och matcher mot andra lag
 
-Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **steg 0 och 1 klara på main (ej driftsatta)**.
+Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **steg 0–2 klara på main (ej driftsatta)**.
 
 ## Målbild
 
@@ -34,12 +34,13 @@ Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **steg 0 och 1 klara på m
 - **Klart när:** testerna finns och är gröna på nuvarande kod.
 
 ### Steg 1 – Klubbinställningar (liten synlig ändring: ny flik) ✅
-- Gjort: klubbprofil i shared/clubProfiles (standardvärden per förening, väljs med CLUB_PROFILE) + Inställningar → Klubb. Kvar: uppladdning av loggor (görs i samband med steg 2).
+- Gjort: klubbprofil i shared/clubProfiles (standardvärden per förening, väljs med CLUB_PROFILE) + Inställningar → Klubb.
 - Ny flik Inställningar → **Klubb**: klubbens namn, kortnamn, loggor (klubbens logga + en per internt lag), de interna lagens namn och färger (standard Vita/Gröna), hashtags, kända hallar, laget.se-lagets adress.
 - Alla hårdkodade "Stålstadens"/"STÅLSTADENS SF", loggsökvägar och lagnamn läses från inställningarna (idag ~47 ställen i 23 filer + loggor på ~24 ställen).
 - **Klart när:** referensbilderna är oförändrade och ändrat klubbnamn/logga slår igenom överallt.
 
-### Steg 2 – Lag som begrepp (ingen synlig ändring)
+### Steg 2 – Lag som begrepp (ingen synlig ändring) ✅
+- Gjort: shared/teams (namn, färg, logga, regel för lag A/B), lagnamn och färger överallt, uppladdning av loggor, hemmalag per veckodag i profilen. Lagringen white/green och team-a/team-b är oförändrad.
 - Varje sida i en match beskrivs som ett **lag**: namn, kortnamn, färg, logga och typ (internt lag / vår klubb / motståndare).
 - Befintlig lagring (white/green, team-a/team-b) behålls – ett översättningslager gör om dem till lag. Inga befintliga data ändras.
 - Ritkod (rapport, nyhet, kort, Media), Lineup, Score Tracker och statistik byts över till lag-begreppet (~100 ställen), del för del.

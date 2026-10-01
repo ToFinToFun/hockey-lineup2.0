@@ -1235,13 +1235,13 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                   onClick={() => addGoal("white")}
                   className="flex-1 flex items-center justify-center gap-1 bg-white/5 border border-white/10 text-white/70 py-2 rounded-xl text-xs font-medium hover:bg-white/10 transition-colors"
                 >
-                  <Plus size={12} /> Vita mål
+                  <Plus size={12} /> {teamName("white")} mål
                 </button>
                 <button
                   onClick={() => addGoal("green")}
                   className="flex-1 flex items-center justify-center gap-1 bg-[#56c653]/5 border border-[#56c653]/20 text-[#56c653]/70 py-2 rounded-xl text-xs font-medium hover:bg-[#56c653]/10 transition-colors"
                 >
-                  <Plus size={12} /> Gröna mål
+                  <Plus size={12} /> {teamName("green")} mål
                 </button>
               </div>
             </div>

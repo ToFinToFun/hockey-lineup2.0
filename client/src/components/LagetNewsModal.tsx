@@ -2,7 +2,7 @@
 // Publicera direkt på laget.se (servern loggar in med föreningens konto),
 // eller spara bilden och kopiera texten för att lägga in den manuellt.
 
-import { teamAccent } from "@shared/teams";
+import { teamAccent, teamName } from "@shared/teams";
 import { club } from "@shared/club";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { X, Download, Copy, Loader2, Send, ExternalLink, CheckCircle2, AlertTriangle } from "lucide-react";
@@ -67,6 +67,13 @@ function weekdayLine(isoDate: string | undefined): string {
   const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date();
   const wd = d.toLocaleDateString("sv-SE", { weekday: "long" });
   return `${wd.charAt(0).toUpperCase()}${wd.slice(1)} ${shortDate(isoDate)}`;
+}
+
+/** "tisdag Gröna, torsdag Vita" av klubbens inställning */
+function homeRuleText(): string {
+  const days = ["söndag", "måndag", "tisdag", "onsdag", "torsdag", "fredag", "lördag"];
+  const rule = Object.entries(club().homeTeamByWeekday).map(([d, t]) => `${days[+d]} ${teamName(t as "white" | "green")}`);
+  return rule.length ? rule.join(", ") : "slumpas alla dagar";
 }
 
 export function LagetNewsModal(props: LagetNewsModalProps) {
@@ -404,7 +411,7 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
                   </button>
                 ))}
               </div>
-              <p className="text-white/35 text-[10px] mt-1">Hemmalaget står till vänster i matchbilden. Standard: tisdag Gröna, torsdag Vita, andra dagar slumpas.</p>
+              <p className="text-white/35 text-[10px] mt-1">Hemmalaget står till vänster i matchbilden. Standard: {homeRuleText()}, andra dagar slumpas.</p>
             </div>
 
             <div>

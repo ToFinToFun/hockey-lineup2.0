@@ -7,6 +7,7 @@
  * Båda lagens halvor får samma höjd (det största lagets), så bandet
  * hamnar i mitten oavsett antal spelare.
  */
+import { club } from "@shared/club";
 import { groupSlots, type Slot } from "@/lib/lineup";
 import type { Player } from "@/lib/players";
 
@@ -41,15 +42,16 @@ export function buildNewsBody(sponsor: string | undefined, lineupText: string, b
 }
 
 /**
- * Standard för hemmalaget utifrån matchdagen: tisdag = Gröna (lag B) hemma,
- * torsdag = Vita (lag A) hemma, andra dagar slumpas. Går alltid att ändra.
+ * Standard för hemmalaget utifrån matchdagen enligt klubbens inställning
+ * (Stålstadens: tisdag Gröna = lag B, torsdag Vita = lag A), andra dagar slumpas.
+ * Går alltid att ändra i rutan.
  */
 export function defaultHomeForDate(isoDate: string | undefined, random: () => number = Math.random): TeamKey {
   const m = isoDate?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (m) {
     const day = new Date(+m[1], +m[2] - 1, +m[3]).getDay(); // 0 = söndag
-    if (day === 2) return "b";
-    if (day === 4) return "a";
+    const home = club().homeTeamByWeekday[day];
+    if (home) return home === "white" ? "a" : "b";
   }
   return random() < 0.5 ? "a" : "b";
 }

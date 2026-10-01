@@ -16,6 +16,7 @@ import { getCardSource, getCardMask } from "../playerCards";
 import { startLiveProfileSchedule } from "../cardProfile";
 import { runOneTimeFixes } from "../oneTimeFixes";
 import { loadClub } from "../clubConfig";
+import { getClubAsset } from "../clubAssets";
 import { startAutoNewsSchedule } from "../autoNews";
 import { getMediaPhoto } from "../mediaPosts";
 import { appRouter } from "../routers";
@@ -130,6 +131,21 @@ async function startServer() {
       res.setHeader("ETag", etag);
       if (req.headers["if-none-match"] === etag) return res.status(304).end();
       res.type("image/png").send(m.image);
+    } catch {
+      res.status(500).end();
+    }
+  });
+
+  // Klubbens uppladdade loggor – öppna för alla (visas på startsidan, delningslänkar, bilder)
+  app.get("/api/club/logo/:key", async (req, res) => {
+    try {
+      const a = await getClubAsset(String(req.params.key).slice(0, 20));
+      if (!a) return res.status(404).end();
+      const etag = `"c${a.updatedAt.getTime()}"`;
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      res.setHeader("ETag", etag);
+      if (req.headers["if-none-match"] === etag) return res.status(304).end();
+      res.type(a.mime).send(a.image);
     } catch {
       res.status(500).end();
     }

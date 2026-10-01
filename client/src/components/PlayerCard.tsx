@@ -745,17 +745,17 @@ export function TeamColorIndicator({ teamColor, compact, mostPlayedTeam }: { tea
     : "w-[20px] h-[18px] rounded-[5px] shrink-0";
 
   if (teamColor === "green") {
-    return <div title="Tillhör Gröna" className={`${cls} ${letter} bg-emerald-400 border border-emerald-300/60 text-emerald-950`}>G</div>;
+    return <div title={`Tillhör ${teamName("green")}`} className={`${cls} ${letter} bg-emerald-400 border border-emerald-300/60 text-emerald-950`}>{teamSingular("green").charAt(0).toUpperCase()}</div>;
   }
   if (teamColor === "white") {
-    return <div title="Tillhör Vita" className={`${cls} ${letter} bg-white border border-white/60 text-slate-900`}>V</div>;
+    return <div title={`Tillhör ${teamName("white")}`} className={`${cls} ${letter} bg-white border border-white/60 text-slate-900`}>{teamSingular("white").charAt(0).toUpperCase()}</div>;
   }
 
   // Waivers: alltid ett grått W. Har spelaren oftast spelat i ett lag syns det
   // som en tunn färgad kant (och i texten vid hovring) – samma symbol överallt.
   // Oftast i ett lag: W och kant i lagets färg (vit/grön), annars grått
   const tone = mostPlayedTeam === "green" ? "border-emerald-400 text-emerald-400" : mostPlayedTeam === "white" ? "border-white text-white" : "border-white/20 text-white/45";
-  const hintText = mostPlayedTeam === "green" ? " – oftast Gröna" : mostPlayedTeam === "white" ? " – oftast Vita" : "";
+  const hintText = mostPlayedTeam === "green" ? ` – oftast ${teamName("green")}` : mostPlayedTeam === "white" ? ` – oftast ${teamName("white")}` : "";
   return <div title={`Waivers – inget lag${hintText}`} className={`${cls} ${letter} border bg-white/5 ${tone}`}>W</div>;
 }
 

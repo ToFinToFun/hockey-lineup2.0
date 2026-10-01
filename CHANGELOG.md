@@ -18,7 +18,14 @@ Versionen höjs i `package.json` vid varje deploy till `production`, och commite
 - Inställningar → Klubb: ändra värdena i appen (sparas i databasen, går före profilen; tomt = profilens värde).
 - Hårdkodade "Stålstadens"/"STÅLSTADENS SF", loggsökvägar, hallar, hashtags, laget.se-adressen, appens adress och filnamn läses nu från klubben – i bilder (rapport, kort, nyhet, Media, utmärkelser), startsidan, Lineup, Score Tracker, statistik, sidans titel och hemskärmsnamnet (manifest).
 - Kontrollbilderna är oförändrade: Stålstadens ser exakt ut som förut.
-- Kvar till senare steg: lagens namn/färger används överallt (steg 2), uppladdning av loggor.
+
+**Steg 2 – lagen som begrepp (ingen synlig ändring för Stålstadens)**
+- 2a: En gemensam regel för vilket uppställningslag som är vilket (shared/teams) ersätter ~15 kontroller av "vit" i lagnamnet i statistik, PIR, historik, Score Tracker, stjärnor och Media. Standardnamnen för nya uppställningar kommer från klubben.
+- 2b: Lagnamnen i hela gränssnittet från klubben (namn, singular "Vit"/"Grön", genitiv "Vitas", versaler).
+- 2c: Lagens färger i bilderna från klubben (färg för matchrapport/Media, accent för nyhetsbilden).
+- 2d: Loggor kan laddas upp under Inställningar → Klubb (klubbens logga, lagens loggor, kortens märke) och går före profilens filer; servern ritar med dem (profilkort, automatisk nyhet). Återställ ger profilens logga igen.
+- Hemmalaget i nyhetsbilden per veckodag är en klubbinställning (Stålstadens: tisdag Gröna, torsdag Vita).
+- Kontrollbilderna är oförändrade; provat i webbläsaren med en påhittad klubb (Röda/Blå) på alla sidor utan fel.
 
 ## 2.45.1 – 2026-09-30
 

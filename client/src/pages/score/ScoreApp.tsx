@@ -5,6 +5,7 @@
  * Uses tRPC to fetch lineup data instead of Firebase
  */
 
+import { teamName } from "@shared/teams";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import MatchPage from "./MatchPage";
 import LineupPage from "./LineupPage";
@@ -256,12 +257,12 @@ export default function ScoreApp() {
 /** Kort hjälp för Score Tracker, med versionsnumret. */
 function ScoreHelp({ onClose }: { onClose: () => void }) {
   const items: Array<[string, string]> = [
-    ["Mål", "Tryck + under Vita eller Gröna när det blir mål. Senaste målet hamnar överst med klockslag och sponsor."],
+    ["Mål", `Tryck + under ${teamName("white")} eller ${teamName("green")} när det blir mål. Senaste målet hamnar överst med klockslag och sponsor.`],
     ["Målskytt och assist", "Tryck på målet i listan och välj spelare. Slå på Straff om det var en straff. Det går även att fylla i efteråt."],
     ["Ångra ett mål", "Tryck på minus under lagets siffra – då tas lagets senaste mål bort. Återställ börjar om hela matchen."],
     ["Sluttid", "Ställ in klockslaget – då hörs en slutsignal när tiden är slut."],
     ["Skärm på", "Håller skärmen tänd under matchen. Blir knappen gul: tryck var som helst på skärmen så aktiveras den igen."],
-    ["Ljud", "Pling för Vita, tut för Gröna och ett horn vid slutsignal. Hörs även i ljudlöst läge på iPhone."],
+    ["Ljud", `Pling för ${teamName("white")}, tut för ${teamName("green")} och ett horn vid slutsignal. Hörs även i ljudlöst läge på iPhone.`],
     ["Avsluta", "Sparar matchen. Utan nät sparas den på telefonen och laddas upp automatiskt när nätet är tillbaka."],
     ["Lineup", "Visar dagens lag. Dra ned eller tryck Uppdatera för att hämta senaste versionen."],
   ];

@@ -462,7 +462,7 @@ export default function TeamsTab({ teamData, stats, dateFilter }: TeamsTabProps)
         <div className="flex items-center justify-center gap-8">
           <div className="text-center">
             <p className="text-white text-3xl font-bold">{w.wins}</p>
-            <p className="text-[#687076] text-[10px] uppercase">Vita vinster</p>
+            <p className="text-[#687076] text-[10px] uppercase">{teamGenitive("white")} vinster</p>
           </div>
           <div className="text-center">
             <p className="text-[#687076] text-xl font-bold">{teamData.draws}</p>
@@ -470,7 +470,7 @@ export default function TeamsTab({ teamData, stats, dateFilter }: TeamsTabProps)
           </div>
           <div className="text-center">
             <p className="text-emerald-400 text-3xl font-bold">{g.wins}</p>
-            <p className="text-[#687076] text-[10px] uppercase">Gröna vinster</p>
+            <p className="text-[#687076] text-[10px] uppercase">{teamGenitive("green")} vinster</p>
           </div>
         </div>
 
