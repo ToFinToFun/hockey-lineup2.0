@@ -4,6 +4,7 @@ import { appUrl } from "../clubConfig";
 import { club } from "../../shared/club";
 import { resolvePeriods, toMonthDay, type MonthDayPeriods } from "../../shared/periods";
 import { scheduleLiveProfileRefresh } from "../cardProfile";
+import { unlockLineup } from "../lineupLock";
 import { notifyLater, mailLayout } from "../notifications";
 import { ENV } from "../_core/env";
 import { TRPCError } from "@trpc/server";
@@ -199,6 +200,7 @@ export const scoreRouter = router({
           lineup: input.lineup ?? null,
         });
         scheduleLiveProfileRefresh(); // profilkort med statistik ritas om i bakgrunden
+        await unlockLineup().catch(() => undefined); // matchen avslutad – laget låses upp
         if (reviewStatus === "pending") {
           const m = mailLayout("Match väntar på godkännande", [
             `<b>${input.name}</b> – Vita ${input.teamWhiteScore}–${input.teamGreenScore} Gröna – är sparad och väntar på att godkännas innan den räknas i statistiken.`,

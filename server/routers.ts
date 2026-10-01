@@ -27,6 +27,7 @@ import { getRegistryMap, getRegistryVersion } from "./playersDb";
 import { getLineupSnapshot, applyLineupPatch, getLineupChangedAt } from "./lineupSync";
 import { readLastPublished, writeLastPublished, type PublishedNews } from "./newsState";
 import { getAutoNewsConfig, setAutoNewsConfig, getAutoNewsStatus } from "./autoNews";
+import { getActiveLock, lockLineup, unlockLineup, differsFromLock } from "./lineupLock";
 import { NOTIFICATION_TYPES, getRecipients, setRecipients, smtpConfigured, sendTestMail, notifyLater, mailLayout, type NotificationType } from "./notifications";
 import type { LineupOp } from "../shared/lineupDoc";
 import {
@@ -269,6 +270,8 @@ export const appRouter = router({
           publishAt: input.publishAt,
         });
         if (!result.success) return { success: false as const, error: result.error };
+        // Laget låses för Score Tracker och statistiken (publicerat = det som gäller)
+        await lockLineup(input.title).catch((e) => console.error("[lås] kunde inte låsa laget:", e));
 
         const published: PublishedNews = {
           id: result.id, url: result.url, title: input.title, eventDate: input.eventDate,
@@ -684,6 +687,28 @@ export const appRouter = router({
           playedAt: d.toISOString(),
         };
       });
+    }),
+
+    /**
+     * Laget för Score Tracker: det låsta (efter publicerad nyhet) om spärren är
+     * aktiv, annars det aktuella.
+     */
+    scoreState: lineupProcedure.query(async () => {
+      const lock = await getActiveLock();
+      const { doc } = await getLineupSnapshot();
+      return { ...(lock ? lock.doc : doc), locked: !!lock, lockedAt: lock?.lockedAt ?? null, lockExpiresAt: lock?.expiresAt ?? null };
+    }),
+    /** Spärrens läge för Lineup: låst, när, och om Lineup ändrats sedan dess. */
+    lockStatus: lineupProcedure.query(async () => {
+      const lock = await getActiveLock();
+      if (!lock) return { locked: false as const };
+      const { doc } = await getLineupSnapshot();
+      return { locked: true as const, lockedAt: lock.lockedAt, expiresAt: lock.expiresAt, newsTitle: lock.newsTitle, changed: differsFromLock(doc, lock) };
+    }),
+    /** Lås upp: Score Tracker använder Lineup som den ser ut nu. */
+    unlock: lineupProcedure.mutation(async () => {
+      await unlockLineup();
+      return { success: true };
     }),
 
     /** När uppställningen senast ändrades (visas som "Ändrad torsdag 18:43"). */

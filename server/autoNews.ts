@@ -19,6 +19,7 @@ import { fetchAttendance, publishNews, newsExists } from "./lagetSe";
 import { getLineupSnapshot } from "./lineupSync";
 import { listSponsors, recordSponsorNews } from "./sponsorsDb";
 import { readLastPublished, writeLastPublished } from "./newsState";
+import { lockLineup } from "./lineupLock";
 import { notify, mailLayout } from "./notifications";
 import { serverCanvas } from "./serverCanvas";
 import { ENV } from "./_core/env";
@@ -211,6 +212,7 @@ export async function autoNewsTick(now = new Date()): Promise<void> {
         showPublisher: false, publishAt: d && t ? { date: d, hour: t.slice(0, 2), minute: t.slice(3, 5) } : undefined,
       });
       if (res.success) {
+        await lockLineup(news.title).catch(() => undefined); // laget låses för Score Tracker
         await setStatus(ev.date, `Uppdaterade den tidsinställda nyheten ${shortDate(ev.date)} med aktuell uppställning.`, true);
         const m = mailLayout("Tidsinställd nyhet uppdaterad", [`"${news.title}" har fått aktuell uppställning och går ut ${sameDay.publishAt}.`], { href: res.url, label: "Visa nyheten" });
         await notify("autoNewsPublished", { subject: `Uppdaterad: ${news.title}`, ...m });
@@ -229,6 +231,7 @@ export async function autoNewsTick(now = new Date()): Promise<void> {
         title: news.title, body: news.body, image: news.image, imageName: "dagens-lag.jpg", imageType: "image/jpeg", showPublisher: false,
       });
       if (res.success) {
+        await lockLineup(news.title).catch(() => undefined); // laget låses för Score Tracker
         await writeLastPublished({ id: res.id, url: res.url, title: news.title, eventDate: ev.date, publishedAt: new Date().toISOString(), publishAt: null });
         if (news.sponsorId) await recordSponsorNews(news.sponsorId);
         await setStatus(ev.date, `Publicerade dagens lag ${shortDate(ev.date)} (${news.registeredPlaced} anmälda).`, true);

@@ -25,10 +25,11 @@ export default function ScoreApp() {
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 500);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
 
-  // Fetch lineup state via tRPC instead of Firebase
-  const { data: liveLineup, isLoading: liveLoading, refetch } = trpc.lineup.getState.useQuery(undefined, {
+  // Laget: det låsta efter publicerad nyhet, annars det aktuella i Lineup
+  const { data: liveLineup, isLoading: liveLoading, refetch } = trpc.lineup.scoreState.useQuery(undefined, {
     retry: 1,
     refetchOnWindowFocus: true,
+    refetchInterval: 60_000, // fångar att spärren släppts
   });
 
   // Live: hämta om uppställningen när den ändras i Lineup.
@@ -180,6 +181,13 @@ export default function ScoreApp() {
               <UploadCloud size={12} className={flushingNow ? "animate-pulse" : ""} />
               {flushingNow ? "Skickar…" : "Skicka nu"}
             </button>
+          </div>
+        )}
+
+        {/* Låst lag efter publicering */}
+        {liveLineup && "locked" in liveLineup && liveLineup.locked && (
+          <div className="shrink-0 bg-sky-500/10 border-b border-sky-400/20 px-4 py-1.5 text-[11px] text-sky-200 text-center">
+            🔒 Laget är låst sedan det publicerades{liveLineup.lockedAt ? ` ${new Date(liveLineup.lockedAt).toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}` : ""} – senare ändringar i Lineup används inte här.
           </div>
         )}
 

@@ -37,6 +37,11 @@ Versionen höjs i `package.json` vid varje deploy till `production`, och commite
 - 4a: Uppställningen har en matchtyp (intern / mot motståndare, sparas i lineup_state.matchSetup). Motståndarens spelare (id "opp-…") hamnar aldrig i vår trupp eller vårt spelarregister och räknas inte i vår statistik.
 - 4b: Med flaggan på (styrelsen) finns raden Internmatch / Mot motståndare överst i Lineup: välj lag, vårt lags namn (standard klubbens namn) och logga (klubben, Vita eller Gröna). Vårt lag är lag A; lag B blir motståndarens panel där varje plats väljs bland lagets sparade spelare (rätt position först) eller en ny spelare läggs till direkt. Auto är avstängd mot motståndare. Byte tillbaka till internmatch tömmer motståndarens platser och ger lagen standardnamnen.
 - 4c: Delningslänk till motståndaren (Inställningar → Motståndare → laget → Dela länk): laget fyller utan inloggning i namn, kortnamn, färg, logga och spelare och gör sin uppställning på /lag/<länk>. Val "Visa vårt lag". Länken gäller 7 dagar och kan stängas. Uppställningen sparas på laget och fylls i automatiskt när laget väljs i Lineup; är laget redan valt syns deras ändringar direkt.
+## 2.45.2 – 2026-10-01
+
+- Låsta lag efter publicering: när dagens lag publicerats som nyhet på laget.se (manuellt, tidsinställt eller automatiskt) låses uppställningen. Score Tracker – och därmed statistiken – använder det publicerade laget även om någon ändrar i Lineup efteråt (Score Tracker visar "🔒 Laget är låst sedan det publicerades …").
+- Lineup fungerar som vanligt; ändras laget efter publiceringen visas ett besked i botten: "Lagen är låsta sedan publiceringen … Tryck för att låsa upp".
+- Spärren släpps automatiskt efter 12 timmar eller när matchen sparas i Score Tracker (godkänd eller ej).
 
 ## 2.45.1 – 2026-09-30
 

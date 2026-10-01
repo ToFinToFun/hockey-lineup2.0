@@ -437,6 +437,13 @@ export default function Home() {
     },
   });
 
+  // Spärr efter publicering: kontrolleras när uppställningen synkats och varje minut
+  const lockStatus = trpc.lineup.lockStatus.useQuery(undefined, { refetchInterval: 60_000, refetchOnWindowFocus: true });
+  const unlockLineup = trpc.lineup.unlock.useMutation({ onSuccess: () => { void lockStatus.refetch(); toast.success("Laget är upplåst – Score Tracker använder nuvarande uppställning"); } });
+  useEffect(() => {
+    if (sync.lastSyncAt) void lockStatus.refetch();
+  }, [sync.lastSyncAt]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // "Ändrad torsdag 18:43" – hämtas om när uppställningen synkats och varje minut
   const lastChanged = trpc.lineup.lastChanged.useQuery(undefined, { refetchInterval: 60_000, refetchOnWindowFocus: true });
   useEffect(() => {
@@ -2338,6 +2345,20 @@ export default function Home() {
         />
       )}
 
+
+      {/* Låst lag efter publicering: Lineup har ändrats sedan dess */}
+      {lockStatus.data?.locked && lockStatus.data.changed && (
+        <button
+          onClick={() => {
+            if (!confirm("Låsa upp laget? Score Tracker och statistiken använder då uppställningen som den ser ut nu i stället för den publicerade.")) return;
+            unlockLineup.mutate();
+          }}
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[99998] max-w-[92vw] glass-panel-strong text-white text-xs px-4 py-2 rounded-2xl shadow-lg border border-sky-400/40 text-center"
+        >
+          🔒 Lagen är låsta sedan publiceringen {new Date(lockStatus.data.lockedAt).toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" })} – ändringarna används inte i Score Tracker eller statistiken.{" "}
+          <span className="underline text-sky-300">Tryck för att låsa upp</span>
+        </button>
+      )}
 
       {/* Remote change toast */}
       {remoteChangeToast && (
