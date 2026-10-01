@@ -7,6 +7,7 @@
 import { clubHeading, club, teamLogo } from "@shared/club";
 import { roundRect } from "@/lib/canvas";
 import { canvasEnv } from "@shared/canvasEnv";
+import { teamColor } from "@shared/teams";
 
 const loadImage = (src: string) => canvasEnv().loadImage(src);
 
@@ -45,9 +46,9 @@ export interface ReportData {
 
 export const HEAD = "'Oswald', sans-serif";
 export const BODY = "'Inter', sans-serif";
-export const WHITE = "#e2e8f0";
-/** Klubbgrön: samma nyans som Grönas logga (#337931), ljusare för mörk bakgrund */
-export const GREEN = "#56c653";
+/** Lagens färger från klubbens inställningar */
+export const WHITE_KEY = "white" as const;
+export const GREEN_KEY = "green" as const;
 
 export async function tryLoad(src: string | null | undefined) {
   if (!src) return null;
@@ -186,15 +187,15 @@ export async function renderResultImage(d: ReportData): Promise<HTMLCanvasElemen
   const cy = 480;
   const logoR = 118;
   const logoX = 175;
-  logo(ctx, lw, logoX, cy, logoR, whiteWon ? WHITE : "rgba(226,232,240,0.35)");
-  logo(ctx, lg, IG_W - logoX, cy, logoR, greenWon ? GREEN : "rgba(86,198,83,0.35)");
+  logo(ctx, lw, logoX, cy, logoR, whiteWon ? teamColor("white") : "rgba(226,232,240,0.35)");
+  logo(ctx, lg, IG_W - logoX, cy, logoR, greenWon ? teamColor("green") : "rgba(86,198,83,0.35)");
 
   ctx.textAlign = "center";
   ctx.font = `700 44px ${HEAD}`;
   ctx.letterSpacing = "6px";
-  ctx.fillStyle = WHITE;
+  ctx.fillStyle = teamColor("white");
   ctx.fillText(d.whiteName.toUpperCase(), logoX, cy + logoR + 70);
-  ctx.fillStyle = GREEN;
+  ctx.fillStyle = teamColor("green");
   ctx.fillText(d.greenName.toUpperCase(), IG_W - logoX, cy + logoR + 70);
   ctx.letterSpacing = "0px";
 
@@ -213,7 +214,7 @@ export async function renderResultImage(d: ReportData): Promise<HTMLCanvasElemen
   ctx.textAlign = "right";
   ctx.fillText(String(d.whiteScore), IG_W / 2 - dashGap, cy + 4);
   ctx.textAlign = "left";
-  ctx.fillStyle = greenWon ? GREEN : "rgba(255,255,255,0.55)";
+  ctx.fillStyle = greenWon ? teamColor("green") : "rgba(255,255,255,0.55)";
   ctx.fillText(String(d.greenScore), IG_W / 2 + dashGap, cy + 4);
   ctx.textAlign = "center";
   ctx.fillStyle = "rgba(255,255,255,0.4)";
@@ -223,7 +224,7 @@ export async function renderResultImage(d: ReportData): Promise<HTMLCanvasElemen
 
   // Vinnare
   const verdict = whiteWon ? `${d.whiteName.toUpperCase()} VANN` : greenWon ? `${d.greenName.toUpperCase()} VANN` : "OAVGJORT";
-  const verdictColor = whiteWon ? WHITE : greenWon ? GREEN : "rgba(255,255,255,0.8)";
+  const verdictColor = whiteWon ? teamColor("white") : greenWon ? teamColor("green") : "rgba(255,255,255,0.8)";
   ctx.font = `700 40px ${HEAD}`;
   ctx.letterSpacing = "8px";
   const vw = ctx.measureText(verdict).width + 70;
@@ -330,7 +331,7 @@ export async function renderGoalsImage(d: ReportData): Promise<HTMLCanvasElement
     const x = margin + col * (colW + gap);
     const y = L.top + row * L.rowH;
     const h = L.rowH - Math.max(6, 12 * L.scale);
-    const color = goal.team === "white" ? WHITE : GREEN;
+    const color = goal.team === "white" ? teamColor("white") : teamColor("green");
     const s = L.scale;
 
     // Rad med lagfärg i kanten
@@ -358,7 +359,7 @@ export async function renderGoalsImage(d: ReportData): Promise<HTMLCanvasElement
     ctx.fillStyle = goal.team === "white" ? "#ffffff" : "rgba(255,255,255,0.6)";
     ctx.fillText(String(w), scoreX - 12 * s, mid);
     ctx.textAlign = "left";
-    ctx.fillStyle = goal.team === "green" ? GREEN : "rgba(255,255,255,0.6)";
+    ctx.fillStyle = goal.team === "green" ? teamColor("green") : "rgba(255,255,255,0.6)";
     ctx.fillText(String(g), scoreX + 12 * s, mid);
 
     // Målskytt och assist

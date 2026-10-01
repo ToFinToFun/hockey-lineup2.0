@@ -2,6 +2,7 @@
 // Publicera direkt på laget.se (servern loggar in med föreningens konto),
 // eller spara bilden och kopiera texten för att lägga in den manuellt.
 
+import { teamAccent } from "@shared/teams";
 import { club } from "@shared/club";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { X, Download, Copy, Loader2, Send, ExternalLink, CheckCircle2, AlertTriangle } from "lucide-react";
@@ -195,8 +196,8 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
     setRendering(true);
     const p = latestProps.current;
     renderNewsImage({
-      teamA: { name: p.teamAName, slots: p.teamASlots, lineup: p.teamALineup, logoUrl: p.logoWhite, accent: "#e2e8f0" },
-      teamB: { name: p.teamBName, slots: p.teamBSlots, lineup: p.teamBLineup, logoUrl: p.logoGreen, accent: "#34d399" },
+      teamA: { name: p.teamAName, slots: p.teamASlots, lineup: p.teamALineup, logoUrl: p.logoWhite, accent: teamAccent("white") },
+      teamB: { name: p.teamBName, slots: p.teamBSlots, lineup: p.teamBLineup, logoUrl: p.logoGreen, accent: teamAccent("green") },
       home,
       dateLine: weekdayLine(event?.date),
       placeLine,

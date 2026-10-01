@@ -11,6 +11,7 @@
  * spelare) till dem som valt de notiserna. Nyheten byggs på servern med samma
  * kod som rutan "Nyhet till laget.se" i Lineup.
  */
+import { teamAccent } from "../shared/teams";
 import { appUrl } from "./clubConfig";
 import { teamLogo } from "../shared/club";
 import { getConfigValue, setConfigValue } from "./scoreDb";
@@ -125,8 +126,8 @@ export async function buildNews(ev: { date: string; time?: string; location?: st
   const placeLine = [ev.location, ev.time].filter(Boolean).join(" ");
 
   const canvas = (await renderNewsImage({
-    teamA: { name: doc.teamAName, slots: createTeamSlots("team-a", teamAConfig), lineup: pick("team-a-"), logoUrl: teamLogo("white"), accent: "#e2e8f0" },
-    teamB: { name: doc.teamBName, slots: createTeamSlots("team-b", teamBConfig), lineup: pick("team-b-"), logoUrl: teamLogo("green"), accent: "#34d399" },
+    teamA: { name: doc.teamAName, slots: createTeamSlots("team-a", teamAConfig), lineup: pick("team-a-"), logoUrl: teamLogo("white"), accent: teamAccent("white") },
+    teamB: { name: doc.teamBName, slots: createTeamSlots("team-b", teamBConfig), lineup: pick("team-b-"), logoUrl: teamLogo("green"), accent: teamAccent("green") },
     home: defaultHomeForDate(ev.date),
     dateLine: weekdayLine(ev.date),
     placeLine,

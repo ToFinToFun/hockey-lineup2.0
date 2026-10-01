@@ -14,8 +14,10 @@ export interface ClubTeamProfile {
   singular: string;
   /** Kort namn för små ytor, t.ex. "VIT" */
   shortName: string;
-  /** Lagets färg (bilder, kort) */
+  /** Lagets färg i bilderna (matchrapport, Media) */
   color: string;
+  /** Ljusare accent (nyhetsbilden till laget.se) – standard samma som color */
+  accent: string;
   /** Lagets logga */
   logo: string;
 }
@@ -72,6 +74,8 @@ export function mergeClub(base: ClubProfile, o: ClubOverrides | null | undefined
     singular: o.teams?.[k]?.name && o.teams[k]!.name!.trim() ? pick(o.teams?.[k]?.singular, o.teams[k]!.name!.trim()) : pick(o.teams?.[k]?.singular, base.teams[k].singular),
     shortName: pick(o.teams?.[k]?.shortName, base.teams[k].shortName),
     color: pick(o.teams?.[k]?.color, base.teams[k].color),
+    // Ändras färgen i inställningarna används den även som accent
+    accent: o.teams?.[k]?.color ? o.teams[k]!.color! : base.teams[k].accent,
   });
   return {
     ...base,

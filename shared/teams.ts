@@ -24,6 +24,7 @@ export const teamSingular = (key: TeamKey) => club().teams[key].singular;
 /** Genitiv, t.ex. "Vitas"/"Grönas" */
 export const teamGenitive = (key: TeamKey) => { const n = teamName(key); return /[sxz]$/i.test(n) ? n : `${n}s`; };
 export const teamColor = (key: TeamKey) => club().teams[key].color;
+export const teamAccent = (key: TeamKey) => club().teams[key].accent;
 
 /** Standardnamnen i en ny uppställning (versaler, t.ex. "VITA" och "GRÖNA"). */
 export const defaultTeamNames = () => ({ teamAName: teamName("white", { upper: true }), teamBName: teamName("green", { upper: true }) });

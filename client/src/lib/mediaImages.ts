@@ -8,8 +8,9 @@
  * Teman (standard, jul, nyår, påsk) byter accentfärg och lägger till dekor.
  */
 import { clubHeading, club, teamLogo } from "@shared/club";
-import { IG_W, IG_H, HEAD, BODY, WHITE, GREEN, tryLoad, ensureFonts, fit, canvas, backdrop, presentedBy } from "@/lib/matchReportImages";
+import { IG_W, IG_H, HEAD, BODY, tryLoad, ensureFonts, fit, canvas, backdrop, presentedBy } from "@/lib/matchReportImages";
 import { roundRect } from "@/lib/canvas";
+import { teamColor } from "@shared/teams";
 import { POSITION_COLORS } from "@/lib/positionColors";
 
 /** Överlägg: diskret dekor ovanpå bilden (inga färgbyten). */
@@ -26,7 +27,8 @@ export const MEDIA_OVERLAYS: Array<{ id: MediaOverlay; name: string }> = [
 export function overlayFromTheme(theme: string | undefined): MediaOverlay {
   return theme === "jul" ? "snow" : theme === "nyar" ? "fireworks" : theme === "pask" ? "eggs" : "none";
 }
-const ACCENT = GREEN;
+/** Accentfärg: grönt lag (klubbens färg) */
+const accentColor = () => teamColor("green");
 
 /** Bakgrundsbilder (4:5, lätt mjukade så att innehållet syns) */
 export type MediaBackground = "arena" | "ute" | "omklad" | "rink" | "klubb" | "gym" | "stig" | "vinterskog";
@@ -318,7 +320,7 @@ async function renderLineup(d: LineupPostData): Promise<HTMLCanvasElement> {
   }
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = d.team === "green" ? GREEN : "#ffffff";
+  ctx.fillStyle = d.team === "green" ? teamColor("green") : "#ffffff";
   ctx.font = `700 64px ${HEAD}`;
   ctx.letterSpacing = "4px";
   ctx.fillText(fit(ctx, d.teamName.toUpperCase(), pw - 180), lx + lr * 2 + 26, ly + lr + 2);
@@ -431,7 +433,7 @@ async function renderLineup(d: LineupPostData): Promise<HTMLCanvasElement> {
 async function renderText(d: TextPostData): Promise<HTMLCanvasElement> {
   const [bg, sp] = await Promise.all([d.photo ? Promise.resolve(null) : tryLoad(bgUrl(d.background)), tryLoad(d.sponsor?.logo)]);
   const [c, ctx] = canvas();
-  const accent = ACCENT;
+  const accent = accentColor();
   if (d.photo) {
     // Egen bild täcker allt, mörkas mest nertill där texten står
     const p = d.photo;
@@ -551,7 +553,7 @@ function titleBlock(ctx: CanvasRenderingContext2D, title: string, subtitle: stri
     ctx.fillStyle = "rgba(255,255,255,0.7)";
     ctx.fillText(fit(ctx, sub, IG_W - 140), IG_W / 2, 224);
   }
-  ctx.fillStyle = ACCENT;
+  ctx.fillStyle = accentColor();
   ctx.fillRect(IG_W / 2 - 50, sub ? 248 : 206, 100, 4);
   return sub ? 280 : 240;
 }
@@ -637,7 +639,7 @@ async function renderStats(d: StatsPostData): Promise<HTMLCanvasElement> {
   ctx.textBaseline = "middle";
   ctx.font = `700 ${Math.round(22 * s)}px ${HEAD}`;
   ctx.letterSpacing = "4px";
-  ctx.fillStyle = ACCENT;
+  ctx.fillStyle = accentColor();
   ctx.textAlign = "right";
   if (d.valueLabel) ctx.fillText(d.valueLabel.toUpperCase(), px + pw - 36, py + 32);
   ctx.letterSpacing = "0px";
