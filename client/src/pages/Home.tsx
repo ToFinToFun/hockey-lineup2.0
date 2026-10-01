@@ -37,6 +37,7 @@ import { INTERNAL_SETUP, isOpponentPlayerId, type MatchSetup } from "@shared/mat
 import { useFeatures } from "@/contexts/ClubContext";
 import { MatchSetupBar, ourLogoUrl } from "@/components/opponent/MatchSetupBar";
 import { OpponentTeamPanel, toLineupPlayer } from "@/components/opponent/OpponentTeamPanel";
+import { getAltThreshold, setAltThreshold, secondaryFromStats } from "@/lib/altPosition";
 import { MatchResultsBar } from "@/components/MatchResultsBar";
 import { SlotHighlightContext } from "@/components/PlayerSlot";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -347,6 +348,11 @@ export default function Home() {
     record?: { season: PlayerRecord & { label: string }; total: PlayerRecord; form?: string };
   };
   const posHistoryRef = useRef<Record<string, PosEntry> | null>(null);
+  // Alternativ position: manuell (hybridspelare) och tröskel för historiken
+  const altPositionsQ = trpc.players.altPositions.useQuery(undefined, { staleTime: 60_000 });
+  const altPosRef = useRef<Record<string, string>>({});
+  const [altThreshold, setAltThresholdState] = useState(() => getAltThreshold());
+  const altThresholdRef = useRef(altThreshold);
   const pirMapRef = useRef<Record<string, PirEntry> | null>(null);
 
   const enrichPlayer = useCallback((p: Player): Player => {
@@ -361,6 +367,10 @@ export default function Home() {
         enriched.statsTotal = hist.record.total;
         enriched.statsForm = hist.record.form ?? "";
       }
+      // Andra positionen från historiken (om minst X % av matcherna)
+      const sec = secondaryFromStats(p.position, hist?.stats, altThresholdRef.current);
+      enriched.secondaryPosition = sec?.pos ?? null;
+      enriched.secondaryShare = sec?.share;
       if (hist?.mostPlayed) {
         enriched.mostPlayedPosition = hist.mostPlayed;
         if (hist.mostPlayedTeam === "green" || hist.mostPlayedTeam === "white") {
@@ -368,6 +378,8 @@ export default function Home() {
         }
       }
     }
+    // Manuell alternativ position (går före historiken)
+    enriched.altPosition = altPosRef.current[p.id] ?? null;
     const pirMap = pirMapRef.current;
     if (pirMap) {
       const pir = pirMap[p.id];
@@ -472,6 +484,14 @@ export default function Home() {
       setLineup((prev) => enrichLineup(prev));
     });
   }, [enrichPlayer, enrichLineup]);
+
+  // Alternativa positioner/tröskel ändrade: berika om det som visas (synkas inte)
+  useEffect(() => {
+    altPosRef.current = altPositionsQ.data ?? {};
+    altThresholdRef.current = altThreshold;
+    setAvailablePlayers((prev) => prev.map(enrichPlayer));
+    setLineup((prev) => enrichLineup(prev));
+  }, [altPositionsQ.data, altThreshold]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Varje ändring: spara lokalt (för start utan nät) och skicka till servern.
   useEffect(() => {
@@ -1687,6 +1707,24 @@ export default function Home() {
                             <BookmarkPlus className="w-4 h-4" />
                             <span>Sparade uppställningar</span>
                           </button>
+
+                          {/* Alternativ position i brickan: från hur stor andel av matcherna */}
+                          <label
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] ${isLineupDark ? 'text-white/60' : 'text-gray-600'}`}
+                            title="Brickan får två färger när spelaren spelat en annan position (MV/B/C/F) minst så här ofta – eller har en alternativ position i spelarkortet"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <span className="w-4 h-4 rounded-sm shrink-0" style={{ background: "linear-gradient(135deg, #3b82f6 0 52%, #8b5cf6 52% 100%)" }} />
+                            <span className="flex-1">Alt. position</span>
+                            <select
+                              value={altThreshold}
+                              onChange={(e) => { const v = Number(e.target.value); setAltThreshold(v); setAltThresholdState(v); }}
+                              className={`rounded px-1 py-0.5 text-[11px] ${isLineupDark ? 'bg-white/10 text-white' : 'bg-gray-100'}`}
+                            >
+                              <option value={0} className="text-black">Av</option>
+                              {[10, 15, 20, 25, 30, 40].map((v) => <option key={v} value={v} className="text-black">{v} %</option>)}
+                            </select>
+                          </label>
 
                           {/* Matchtid */}
                           <div className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] ${
