@@ -13,6 +13,7 @@
  * Självmål räknas inte som bevis (målet tillhör motståndarlaget).
  * Den sparade matchen ändras inte – bara det som statistiken räknar på.
  */
+import { isTeamAWhite } from "../shared/teams";
 type Slotted = { id?: string; name?: string; [k: string]: unknown };
 type LineupWrap = { teamAName?: string; lineup?: Record<string, Slotted>; [k: string]: unknown };
 type Goal = { team?: string; scorerId?: string; assistId?: string; other?: string; scorer?: string; assist?: string };
@@ -34,7 +35,7 @@ export function correctLineupFromGoals<T extends CorrectableMatch>(match: T): T 
   const goals = (match.goalHistory as Goal[] | null) ?? [];
   if (!wrap?.lineup || goals.length === 0) return match;
 
-  const teamAWhite = (wrap.teamAName ?? "VITA").toLowerCase().includes("vit");
+  const teamAWhite = isTeamAWhite(wrap.teamAName);
   const prefixFor = (team: string | undefined): "team-a" | "team-b" | null =>
     team === "white" ? (teamAWhite ? "team-a" : "team-b") : team === "green" ? (teamAWhite ? "team-b" : "team-a") : null;
 

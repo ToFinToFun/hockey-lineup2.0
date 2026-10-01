@@ -3,6 +3,7 @@
  * spelaren vinner). Allt räknas ur godkända matcher, samma underlag som
  * säsongshistoriken.
  */
+import { isTeamAWhite } from "../shared/teams";
 import type { MatchResult } from "../drizzle/schema";
 import type { MatchOutcome } from "./playerHistory";
 
@@ -100,7 +101,7 @@ export function playerProfile(matches: MatchResult[], playerId: string, names: M
     const mine = entries.find(([, p]) => p.id === playerId);
     if (!mine) continue;
 
-    const teamAWhite = (wrap.teamAName ?? "VITA").toLowerCase().includes("vit");
+    const teamAWhite = isTeamAWhite(wrap.teamAName);
     const [mySlot] = mine;
     const inA = mySlot.startsWith("team-a");
     const team: "white" | "green" = inA === teamAWhite ? "white" : "green";

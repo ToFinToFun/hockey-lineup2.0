@@ -8,6 +8,7 @@
  *     minst 70 %) – en gissning som styrelsen får bekräfta.
  * Inget ändras förrän förslagen godkänts.
  */
+import { teamName } from "../shared/teams";
 import { desc, eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { savedLineups, matchPlayers, matchResults } from "../drizzle/schema";
@@ -60,7 +61,7 @@ export async function teamSuggestions(): Promise<TeamSuggestion[]> {
     if (share < 0.7) continue;
     out.set(p.id, {
       playerId: p.id, name: p.name, teamColor: top, source: "matches",
-      detail: `Spelade i ${top === "white" ? "Vita" : "Gröna"} ${Math.max(white, green)} av ${rows.length} senaste matcher`,
+      detail: `Spelade i ${teamName(top)} ${Math.max(white, green)} av ${rows.length} senaste matcher`,
     });
   }
   return [...out.values()].sort((a, b) => a.name.localeCompare(b.name, "sv"));

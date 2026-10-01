@@ -1,3 +1,4 @@
+import { isTeamAWhite as teamAIsWhite, normalizeTeamKey } from "../../shared/teams";
 import { normalizeGoalType } from "../playerHistory";
 import { appUrl } from "../clubConfig";
 import { club } from "../../shared/club";
@@ -332,7 +333,7 @@ export const scoreRouter = router({
 
       const lineupEntries = lineup.lineup || {};
       const teamAName = (lineup.teamAName || "").toLowerCase();
-      const isTeamAWhite = teamAName.includes("vit");
+      const isTeamAWhite = teamAIsWhite(teamAName);
 
       const isWhiteWin = match.teamWhiteScore > match.teamGreenScore;
       const isGreenWin = match.teamGreenScore > match.teamWhiteScore;
@@ -483,7 +484,7 @@ export const scoreRouter = router({
 
       const lineupEntries = lineup.lineup || {};
       const teamAName = (lineup.teamAName || "").toLowerCase();
-      const isTeamAWhite = teamAName.includes("vit");
+      const isTeamAWhite = teamAIsWhite(teamAName);
 
       const isWhiteWin = match.teamWhiteScore > match.teamGreenScore;
       const isGreenWin = match.teamGreenScore > match.teamWhiteScore;

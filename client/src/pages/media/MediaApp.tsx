@@ -8,6 +8,7 @@
  * Teman (standard, jul, nyår, påsk), valfri sponsor, bildtext med klubbens
  * hashtags. Inlägg sparas som utkast och kan öppnas och ändras igen.
  */
+import { isTeamAWhite, teamName } from "@shared/teams";
 import { club } from "@shared/club";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
@@ -77,7 +78,7 @@ export function teamGroups(
   doc: { teamAName: string; teamBName: string; teamAConfig?: TeamConfig; teamBConfig?: TeamConfig; lineup: Record<string, Player> },
   team: "white" | "green"
 ): { name: string; groups: LineupGroup[] } {
-  const aWhite = (doc.teamAName ?? "VITA").toLowerCase().includes("vit");
+  const aWhite = isTeamAWhite(doc.teamAName);
   const useA = (team === "white") === aWhite;
   const prefix = useA ? "team-a" : "team-b";
   const slots = createTeamSlots(prefix, useA ? doc.teamAConfig : doc.teamBConfig);

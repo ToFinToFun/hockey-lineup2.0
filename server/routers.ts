@@ -1,3 +1,4 @@
+import { isTeamAWhite, defaultTeamNames } from "../shared/teams";
 import { TRPCError } from "@trpc/server";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, lineupProcedure, adminProcedure, router } from "./_core/trpc";
@@ -98,7 +99,7 @@ async function explainPir(playerKey: string): Promise<PirExplanation | null> {
   // Spelarens matcher (äldst först) och betyget direkt efter var och en – högst de 20 senaste
   const dateOf = (m: (typeof matches)[number]) => new Date((m.matchEndTime ?? m.matchStartTime ?? m.createdAt) as unknown as string);
   const sorted = [...matches].sort((a, b) => dateOf(a).getTime() - dateOf(b).getTime());
-  const aWhite = (m: (typeof matches)[number]) => (((m.lineup as { teamAName?: string } | null)?.teamAName) ?? "VITA").toLowerCase().includes("vit");
+  const aWhite = (m: (typeof matches)[number]) => isTeamAWhite((m.lineup as { teamAName?: string } | null)?.teamAName);
   const played = sorted.filter((m) => {
     const lu = (m.lineup as { lineup?: Record<string, { id?: string; name?: string }> } | null)?.lineup ?? {};
     return Object.values(lu).some((p) => (p?.id ?? p?.name) === playerKey);
@@ -539,8 +540,8 @@ export const appRouter = router({
           id: m.id,
           label: `Lagen ${d.getDate()}/${d.getMonth() + 1} – ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
           result: `${m.teamWhiteScore}–${m.teamGreenScore}`,
-          teamAName: wrap.teamAName ?? "VITA",
-          teamBName: wrap.teamBName ?? "GRÖNA",
+          teamAName: wrap.teamAName ?? defaultTeamNames().teamAName,
+          teamBName: wrap.teamBName ?? defaultTeamNames().teamBName,
           lineup: wrap.lineup,
           playedAt: d.toISOString(),
         };

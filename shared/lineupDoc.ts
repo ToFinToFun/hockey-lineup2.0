@@ -10,6 +10,7 @@
  * Invariant som applyOps alltid upprätthåller: varje spelare finns på exakt
  * ett ställe – antingen i truppen (players) eller på en plats (lineup).
  */
+import { defaultTeamNames } from "./teams";
 import { createTeamSlots, DEFAULT_TEAM_CONFIG, type TeamConfig } from "../client/src/lib/lineup";
 import type { Player } from "../client/src/lib/players";
 
@@ -47,8 +48,7 @@ export function emptyDoc(): LineupDoc {
   return {
     players: [],
     lineup: {},
-    teamAName: "VITA",
-    teamBName: "GRÖNA",
+    ...defaultTeamNames(),
     teamAConfig: { ...DEFAULT_TEAM_CONFIG },
     teamBConfig: { ...DEFAULT_TEAM_CONFIG },
     deletedPlayerIds: [],

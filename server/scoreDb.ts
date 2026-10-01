@@ -2,6 +2,7 @@
  * Databaslager för matcher (Score Tracker) och appinställningar.
  */
 
+import { isTeamAWhite, defaultTeamNames } from "../shared/teams";
 import { correctLineupFromGoals } from "./lineupCorrection";
 import { eq, inArray, desc } from "drizzle-orm";
 import { getDb, tableChecksum } from "./db";
@@ -134,7 +135,7 @@ function assemble(
     return {
       ...row,
       // Lag A är alltid Vita i sparade matcher (se matchPlayersFrom).
-      lineup: data.players.length ? { teamAName: "VITA", teamBName: "GRÖNA", lineup } : null,
+      lineup: data.players.length ? { ...defaultTeamNames(), lineup } : null,
       goalHistory,
     };
   });
@@ -157,10 +158,10 @@ async function loadAllMatches(): Promise<MatchResult[]> {
   return matchCache;
 }
 
-/** Deltagarrader från uppställningen (lag A = Vita om lag A heter något med "vit"). */
+/** Deltagarrader från uppställningen (vilket lag som är vilket: isTeamAWhite i shared/teams). */
 function matchPlayersFrom(matchId: number, lineup: MatchInput["lineup"], registry: Map<string, PlayerRow>) {
   if (!lineup?.lineup) return [];
-  const teamAWhite = (lineup.teamAName ?? "VITA").toLowerCase().includes("vit");
+  const teamAWhite = isTeamAWhite(lineup.teamAName);
   const seen = new Set<string>();
   const out: Array<typeof matchPlayers.$inferInsert> = [];
   for (const [slot, p] of Object.entries(lineup.lineup)) {

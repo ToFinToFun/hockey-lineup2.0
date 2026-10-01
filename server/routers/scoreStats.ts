@@ -1,3 +1,4 @@
+import { isTeamAWhite as teamAIsWhite, normalizeTeamKey } from "../../shared/teams";
 import { normalizeGoalType } from "../playerHistory";
 /**
  * Score Tracker statistics tRPC router.
@@ -47,8 +48,7 @@ function findGwgScorer(
   for (const goal of chronologicalGoals) {
     const goalTeam = goal.team?.toLowerCase();
     const isWinnerGoal =
-      (winningTeam === "white" && (goalTeam === "white" || goalTeam === "vita" || goalTeam === "vit")) ||
-      (winningTeam === "green" && (goalTeam === "green" || goalTeam === "gröna" || goalTeam === "grön"));
+      normalizeTeamKey(goalTeam) === winningTeam;
     if (isWinnerGoal) {
       if (winnerGoalCount === loserScore) {
         return goal.scorer || null;
@@ -124,7 +124,7 @@ export const scoreStatsRouter = router({
 
         const lineupEntries = lineup.lineup || {};
         const teamAName = (lineup.teamAName || "").toLowerCase();
-        const isTeamAWhite = teamAName.includes("vit");
+        const isTeamAWhite = teamAIsWhite(teamAName);
 
         // Find this player in the lineup
         let playerTeam: "white" | "green" | null = null;
@@ -386,7 +386,7 @@ export const scoreStatsRouter = router({
         if (!lineup) continue;
         const lineupEntries = lineup.lineup || {};
         const teamAName = (lineup.teamAName || "").toLowerCase();
-        const isTeamAWhite = teamAName.includes("vit");
+        const isTeamAWhite = teamAIsWhite(teamAName);
 
         let p1Team: "white" | "green" | null = null;
         let p2Team: "white" | "green" | null = null;
@@ -517,7 +517,7 @@ export const scoreStatsRouter = router({
       const lineup = match.lineup as any;
       const lineupEntries = lineup?.lineup || {};
       const teamAName = (lineup?.teamAName || "").toLowerCase();
-      const isTeamAWhite = teamAName.includes("vit");
+      const isTeamAWhite = teamAIsWhite(teamAName);
       const isWhiteWin = match.teamWhiteScore > match.teamGreenScore;
       const isGreenWin = match.teamGreenScore > match.teamWhiteScore;
       const isDraw = match.teamWhiteScore === match.teamGreenScore;
@@ -874,7 +874,7 @@ export const scoreStatsRouter = router({
       if (lineup) {
         const lineupEntries = lineup.lineup || {};
         const teamAName = (lineup.teamAName || "").toLowerCase();
-        const isTeamAWhite = teamAName.includes("vit");
+        const isTeamAWhite = teamAIsWhite(teamAName);
 
         for (const [slotId, p] of Object.entries(lineupEntries)) {
           if (!p || typeof p !== "object" || !(p as any).name) continue;
@@ -892,7 +892,7 @@ export const scoreStatsRouter = router({
       if (goals && Array.isArray(goals)) {
         for (const g of goals) {
           const gt = (g.team || "").toLowerCase();
-          const isWhiteGoal = gt === "white" || gt === "vita" || gt === "vit";
+          const isWhiteGoal = normalizeTeamKey(gt) === "white";
           if (isWhiteGoal) {
             whiteTotalPoints++;
             if (g.assist) whiteTotalPoints++;

@@ -22,6 +22,7 @@
  * 8. Run separate calculations for goalkeeper-only and outfield-only appearances
  */
 
+import { isTeamAWhite as teamAIsWhite, normalizeTeamKey } from "../shared/teams";
 import type { MatchResult } from "../drizzle/schema";
 
 // ─── Types ─────────────────────────────────────────────────────────
@@ -184,7 +185,7 @@ function extractMatchData(matches: MatchResult[]): MatchPlayerData[] {
 
     const lineupEntries = lineup.lineup as Record<string, any>;
     const teamAName = ((lineup.teamAName || "") as string).toLowerCase();
-    const isTeamAWhite = teamAName.includes("vit");
+    const isTeamAWhite = teamAIsWhite(teamAName);
 
     const whiteTeam: string[] = [];
     const greenTeam: string[] = [];

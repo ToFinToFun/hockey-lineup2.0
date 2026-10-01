@@ -6,6 +6,7 @@
  * fast ID (se playersDb.canonicalizeMatch), så historiken följer med vid namn-
  * och nummerbyte. En säsong räknas från 1 augusti till 31 juli.
  */
+import { isTeamAWhite } from "../shared/teams";
 import type { MatchResult } from "../drizzle/schema";
 
 export type PositionCode = "MV" | "B" | "C" | "LW" | "RW";
@@ -62,7 +63,7 @@ export function seasonHistory(matches: MatchResult[]): Map<string, SeasonLine[]>
     const wrap = m.lineup as { teamAName?: string; lineup?: Record<string, { id?: string }> } | null;
     if (!wrap?.lineup) continue;
     const season = seasonOf(matchDate(m));
-    const teamAWhite = (wrap.teamAName ?? "VITA").toLowerCase().includes("vit");
+    const teamAWhite = isTeamAWhite(wrap.teamAName);
     const seen = new Set<string>();
     for (const [slot, p] of Object.entries(wrap.lineup)) {
       if (!p?.id || seen.has(p.id)) continue;
@@ -119,7 +120,7 @@ export function recentForm(matches: MatchResult[], n = 10): RecentForm {
 
     const wrap = m.lineup as { teamAName?: string; lineup?: Record<string, { id?: string }> } | null;
     if (!wrap?.lineup) continue;
-    const teamAWhite = (wrap.teamAName ?? "VITA").toLowerCase().includes("vit");
+    const teamAWhite = isTeamAWhite(wrap.teamAName);
     const seen = new Set<string>();
     for (const [slot, p] of Object.entries(wrap.lineup)) {
       if (!p?.id || seen.has(p.id)) continue;

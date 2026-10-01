@@ -9,6 +9,7 @@ import { IMAGES, COLORS, STORAGE_KEY, type GoalEvent, type MatchState } from "@/
 import { useSponsors, pickLeastShown, logoForName } from "@/lib/sponsors";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { resolveMatchStart, matchName } from "@shared/matchTiming";
+import { isTeamAWhite as teamAIsWhite, teamName } from "@shared/teams";
 import { playGoalSound as playGoalSoundFx, playEndSignal, unlockAudio } from "@/lib/matchSounds";
 import { type AppState, createTeamSlots, MAX_TEAM_CONFIG } from "@/lib/lineup";
 import { type Player } from "@/lib/players";
@@ -375,7 +376,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
     const teamASlots = createTeamSlots("team-a", lineupState.teamAConfig ?? MAX_TEAM_CONFIG);
     const teamBSlots = createTeamSlots("team-b", lineupState.teamBConfig ?? MAX_TEAM_CONFIG);
     const teamAName = (lineupState.teamAName || "").toLowerCase();
-    const isTeamAWhite = teamAName.includes("vit");
+    const isTeamAWhite = teamAIsWhite(teamAName);
     const scoringSlots = goalTeam === "white" ? (isTeamAWhite ? teamASlots : teamBSlots) : (isTeamAWhite ? teamBSlots : teamASlots);
     const otherSlots = goalTeam === "white" ? (isTeamAWhite ? teamBSlots : teamASlots) : (isTeamAWhite ? teamASlots : teamBSlots);
 
@@ -416,7 +417,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
     const { scoring, other, unplaced } = getSortedPlayers(goal.team);
     const teamAName = lineupState.teamAName || "Lag A";
     const teamBName = lineupState.teamBName || "Lag B";
-    const isTeamAWhite = (teamAName).toLowerCase().includes("vit");
+    const isTeamAWhite = teamAIsWhite(teamAName);
     const scoringTeamName = goal.team === "white" ? (isTeamAWhite ? teamAName : teamBName) : (isTeamAWhite ? teamBName : teamAName);
     const otherTeamName = goal.team === "white" ? (isTeamAWhite ? teamBName : teamAName) : (isTeamAWhite ? teamAName : teamBName);
 

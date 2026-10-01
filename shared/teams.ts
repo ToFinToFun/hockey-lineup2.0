@@ -1,0 +1,48 @@
+/**
+ * De två interna lagen som begrepp (steg 2 i docs/PLAN-lag-och-motstandare.md).
+ *
+ * Lagringen är oförändrad: lagen heter "white" och "green" i databasen och
+ * uppställningen har team-a/team-b. Allt som visas (namn, kortnamn, färg,
+ * logga) och regeln för vilket uppställningslag som är vilket finns här, så
+ * att klubbens inställningar slår igenom överallt.
+ */
+import { club } from "./club";
+
+export type TeamKey = "white" | "green";
+export const TEAM_KEYS: TeamKey[] = ["white", "green"];
+
+/** Lagets namn: "Vita". upper: "VITA". */
+export function teamName(key: TeamKey, opts: { upper?: boolean } = {}): string {
+  const n = club().teams[key].name;
+  return opts.upper ? n.toUpperCase() : n;
+}
+
+/** Singular/kort form för etiketter, t.ex. "Vit"/"Grön" eller kortnamnet. */
+export const teamShortName = (key: TeamKey) => club().teams[key].shortName;
+export const teamColor = (key: TeamKey) => club().teams[key].color;
+
+/** Standardnamnen i en ny uppställning (versaler, t.ex. "VITA" och "GRÖNA"). */
+export const defaultTeamNames = () => ({ teamAName: teamName("white", { upper: true }), teamBName: teamName("green", { upper: true }) });
+
+/**
+ * Är uppställningens lag A det vita (white) laget? Avgörs av lag A:s namn:
+ * klubbens namn för white-laget eller "vit" → ja; green-lagets namn eller
+ * "grön" → nej. Okänt namn → nej (som tidigare: bara namn med "vit" räknades som vita).
+ */
+export function isTeamAWhite(teamAName: string | null | undefined): boolean {
+  const n = (teamAName ?? defaultTeamNames().teamAName).toLowerCase();
+  const white = club().teams.white.name.toLowerCase();
+  const green = club().teams.green.name.toLowerCase();
+  if (n.includes(white) || n.includes("vit")) return true;
+  if (n.includes(green) || n.includes("grön")) return false;
+  return false;
+}
+
+/** Normalisera ett lag från mål/inmatning ("white", "vita", "vit", klubbens namn …) till white/green, annars null. */
+export function normalizeTeamKey(raw: string | null | undefined): TeamKey | null {
+  const t = (raw ?? "").trim().toLowerCase();
+  if (!t) return null;
+  if (t === "white" || t === "vita" || t === "vit" || t === club().teams.white.name.toLowerCase()) return "white";
+  if (t === "green" || t === "gröna" || t === "grön" || t === club().teams.green.name.toLowerCase()) return "green";
+  return null;
+}

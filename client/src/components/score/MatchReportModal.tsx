@@ -3,6 +3,7 @@
  * Två bilder i 4:5 – resultatet och målen – plus en färdig bildtext.
  * Dela öppnar telefonens delningsmeny (Instagram m.fl.), annars laddas bilderna ned.
  */
+import { isTeamAWhite, teamName } from "@shared/teams";
 import { teamLogo, club, clubHeading } from "@shared/club";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
@@ -58,13 +59,13 @@ export function buildReportData(
   showLocation = true
 ): ReportData {
   const wrap = match.lineup ?? {};
-  const aWhite = (wrap.teamAName ?? "VITA").toLowerCase().includes("vit");
+  const aWhite = isTeamAWhite(wrap.teamAName);
   const cap = (s: string | undefined, fallback: string) => {
     const t = (s ?? "").trim();
     return t ? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() : fallback;
   };
-  const whiteName = cap(aWhite ? wrap.teamAName : wrap.teamBName, "Vita");
-  const greenName = cap(aWhite ? wrap.teamBName : wrap.teamAName, "Gröna");
+  const whiteName = cap(aWhite ? wrap.teamAName : wrap.teamBName, teamName("white"));
+  const greenName = cap(aWhite ? wrap.teamBName : wrap.teamAName, teamName("green"));
 
   const chrono = [...(match.goalHistory ?? [])].reverse();
   // Matchvinnande mål: vinnarlagets mål nummer (förlorarens mål + 1)

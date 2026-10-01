@@ -12,6 +12,7 @@
  * samma ordning för de som inte svarat och sist för de som inte kommer.
  * Utan vald plats (truppen): närvaro, sedan namn.
  */
+import { club } from "@shared/club";
 import type { Player } from "@/lib/players";
 
 const attendanceRank = (p: Player) => (p.isRegistered ? 0 : p.isDeclined ? 2 : 1);
@@ -49,7 +50,7 @@ export function sortRoster(
 /** Platsens lagfärg för sorteringen: lagnamnet avgör, annars lag A = vit. */
 export function slotTeamColor(teamName: string, teamId?: string): "white" | "green" {
   const n = teamName.toLowerCase();
-  if (n.includes("vit")) return "white";
-  if (n.includes("grön")) return "green";
+  if (n.includes(club().teams.white.name.toLowerCase()) || n.includes("vit")) return "white";
+  if (n.includes(club().teams.green.name.toLowerCase()) || n.includes("grön")) return "green";
   return teamId === "team-b" ? "green" : "white";
 }

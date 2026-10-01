@@ -9,6 +9,7 @@
  *    slump för samma match, så att valet inte hoppar runt.
  * Valet kan ändras för hand och sparas på matchen.
  */
+import { isTeamAWhite } from "@shared/teams";
 
 export interface StarGoal {
   team: "white" | "green";
@@ -65,7 +66,7 @@ export function starCandidates(match: {
   goalHistory: StarGoal[]; // nyast först
   lineup: LineupWrap;
 }): StarCandidate[] {
-  const aWhite = (match.lineup?.teamAName ?? "VITA").toLowerCase().includes("vit");
+  const aWhite = isTeamAWhite(match.lineup?.teamAName);
   const winner = match.teamWhiteScore > match.teamGreenScore ? "white" : match.teamGreenScore > match.teamWhiteScore ? "green" : null;
   const byKey = new Map<string, StarCandidate>();
   const nameToKey = new Map<string, string>();
