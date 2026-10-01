@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.45.2 – 2026-10-01
+
+- Låsta lag efter publicering: när dagens lag publicerats som nyhet på laget.se (manuellt, tidsinställt eller automatiskt) låses uppställningen. Score Tracker – och därmed statistiken – använder det publicerade laget även om någon ändrar i Lineup efteråt (Score Tracker visar "🔒 Laget är låst sedan det publicerades …").
+- Lineup fungerar som vanligt; ändras laget efter publiceringen visas ett besked i botten: "Lagen är låsta sedan publiceringen … Tryck för att låsa upp".
+- Spärren släpps automatiskt efter 12 timmar eller när matchen sparas i Score Tracker (godkänd eller ej).
+
 ## 2.45.1 – 2026-09-30
 
 - "Totalt" är samma val överallt för all statistik sedan starten (säsongen 2026/27): Statistik (förut "Alla"), Media → Statistik (förut "Alla"/"Alla matcher") och hockeykortens statistikruta (förut "Karriär"). Sparade kort med rubriken "Karriär" får "Totalt" automatiskt.
