@@ -8,7 +8,7 @@
  * Teman (standard, jul, nyår, påsk), valfri sponsor, bildtext med klubbens
  * hashtags. Inlägg sparas som utkast och kan öppnas och ändras igen.
  */
-import { isTeamAWhite, teamName } from "@shared/teams";
+import { defaultTeamNames, isTeamAWhite, teamGenitive, teamName, teamSingular } from "@shared/teams";
 import { club } from "@shared/club";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
@@ -57,7 +57,7 @@ const BASE: Omit<Settings, "kind"> = {
   dateLine: "", sponsorName: null, team: "green", title: "", teamName: "", groups: [], body: "", info: "", photoDim: 0.5,
 };
 const NEW: Record<Kind, Settings> = {
-  lineup: { ...BASE, kind: "lineup", title: "Dagens lag", teamName: "Gröna" },
+  lineup: { ...BASE, kind: "lineup", title: "Dagens lag", get teamName() { return teamName("green"); } },
   text: { ...BASE, kind: "text" },
   cards: { ...BASE, kind: "cards", title: "Veckans spelare" },
   stats: { ...BASE, kind: "stats", title: "Poängligan" },
@@ -95,7 +95,7 @@ export function teamGroups(
       .map(({ s, p }) => ({ pos: posOf(s.role), name: p.name, number: p.number || undefined, captain: p.captainRole ?? undefined })),
   }));
   const rawName = useA ? doc.teamAName : doc.teamBName;
-  const name = rawName ? rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase() : team === "white" ? "Vita" : "Gröna";
+  const name = rawName ? rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase() : teamName(team);
   return { name, groups: groups.filter((g) => g.players.length > 0) };
 }
 
@@ -443,8 +443,8 @@ export default function MediaApp() {
               <div>
                 <p className="text-[11px] text-white/50 mb-1.5">Lag</p>
                 <div className="flex flex-wrap gap-2 items-center">
-                  <button onClick={() => loadTeam("white")} className={chip(s.team === "white")}>Vita</button>
-                  <button onClick={() => loadTeam("green")} className={chip(s.team === "green")}>Gröna</button>
+                  <button onClick={() => loadTeam("white")} className={chip(s.team === "white")}>{teamName("white")}</button>
+                  <button onClick={() => loadTeam("green")} className={chip(s.team === "green")}>{teamName("green")}</button>
                   <button onClick={() => loadTeam(s.team, true)} className="flex items-center gap-1 text-[11px] text-sky-300/80 hover:text-sky-200 ml-auto"><RefreshCw size={12} /> Hämta aktuell uppställning</button>
                 </div>
                 <p className="text-[10px] text-white/35 mt-1">{s.groups.reduce((n, g) => n + g.players.length, 0)} spelare. Ett sparat inlägg behåller laget som det var – tryck Hämta för att uppdatera.</p>

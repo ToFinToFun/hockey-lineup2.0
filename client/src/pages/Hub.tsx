@@ -4,6 +4,7 @@
  * Links to Score Tracker (/score) and Lineup (/lineup)
  */
 
+import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { teamLogo, club, clubHeading } from "@shared/club";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -36,7 +37,7 @@ export default function Hub() {
         <div className="flex items-center gap-4 sm:gap-6 mb-2">
           <img
             src={teamLogo("white")}
-            alt="Vita"
+            alt={teamName("white")}
             className="w-14 h-14 sm:w-20 sm:h-20 object-contain drop-shadow-lg"
           />
           <div className="text-center">
@@ -55,7 +56,7 @@ export default function Hub() {
           </div>
           <img
             src={teamLogo("green")}
-            alt="Gröna"
+            alt={teamName("green")}
             className="w-14 h-14 sm:w-20 sm:h-20 object-contain drop-shadow-lg"
           />
         </div>

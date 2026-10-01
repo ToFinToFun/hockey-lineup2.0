@@ -1,6 +1,7 @@
 /**
  * OverviewTab – Dashboard with key stats, charts, and trends
  */
+import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { useMemo } from "react";
 import { Trophy, Target, TrendingUp, Flame, Activity, Users } from "lucide-react";
 
@@ -39,9 +40,9 @@ function WinDonut({ whiteWins, greenWins, draws }: { whiteWins: number; greenWin
   const circumference = 2 * Math.PI * radius;
 
   const segments = [
-    { value: whiteWins, color: "rgba(255,255,255,0.85)", label: "Vita" },
+    { value: whiteWins, color: "rgba(255,255,255,0.85)", label: teamName("white") },
     { value: draws, color: "rgba(155,161,166,0.5)", label: "Oavgjort" },
-    { value: greenWins, color: "rgba(34,197,94,0.85)", label: "Gröna" },
+    { value: greenWins, color: "rgba(34,197,94,0.85)", label: teamName("green") },
   ].filter((s) => s.value > 0);
 
   let offset = 0;
@@ -322,11 +323,11 @@ export default function OverviewTab({ stats, pirData, onPlayerClick }: OverviewT
           <div className="flex items-center gap-4 mt-3 justify-center">
             <div className="flex items-center gap-1">
               <div className="w-3 h-2 rounded-sm bg-white/60" />
-              <span className="text-[#687076] text-[10px]">Vita</span>
+              <span className="text-[#687076] text-[10px]">{teamName("white")}</span>
             </div>
             <div className="flex items-center gap-1">
               <div className="w-3 h-2 rounded-sm bg-emerald-500/60" />
-              <span className="text-[#687076] text-[10px]">Gröna</span>
+              <span className="text-[#687076] text-[10px]">{teamName("green")}</span>
             </div>
           </div>
         </div>

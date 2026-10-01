@@ -2,6 +2,7 @@
  * Data till Media-mallen Statistik: perioder (som i statistikmodulen) och
  * rader för topplistor, utmärkelser och rekord. PIR är medvetet inte med.
  */
+import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import type { StatsRow } from "@/lib/mediaImages";
 
 export type StatPeriod = "season" | "playoff" | "preseason" | "month" | "week" | "all";
@@ -72,8 +73,8 @@ export function statRows(cat: StatCategory, stats: SeasonStatsLike | undefined, 
     if (stats.playerRecordGoals) rows.push({ rank: "★", name: stats.playerRecordGoals.playerName, sub: `Flest mål i en match · ${date(stats.playerRecordGoals.matchName)}`, value: `${stats.playerRecordGoals.goals}G` });
     if (stats.playerRecordAssists) rows.push({ rank: "★", name: stats.playerRecordAssists.playerName, sub: `Flest assist i en match · ${date(stats.playerRecordAssists.matchName)}`, value: `${stats.playerRecordAssists.assists}A` });
     if (stats.highestScoringMatch) rows.push({ rank: "★", name: "Målrikaste matchen", sub: date(stats.highestScoringMatch.name), value: `${stats.highestScoringMatch.whiteScore}–${stats.highestScoringMatch.greenScore}` });
-    if (stats.biggestWinWhite) rows.push({ rank: "★", name: "Vitas största vinst", sub: date(stats.biggestWinWhite.name), value: `${stats.biggestWinWhite.whiteScore}–${stats.biggestWinWhite.greenScore}` });
-    if (stats.biggestWinGreen) rows.push({ rank: "★", name: "Grönas största vinst", sub: date(stats.biggestWinGreen.name), value: `${stats.biggestWinGreen.greenScore}–${stats.biggestWinGreen.whiteScore}` });
+    if (stats.biggestWinWhite) rows.push({ rank: "★", name: `${teamGenitive("white")} största vinst`, sub: date(stats.biggestWinWhite.name), value: `${stats.biggestWinWhite.whiteScore}–${stats.biggestWinWhite.greenScore}` });
+    if (stats.biggestWinGreen) rows.push({ rank: "★", name: `${teamGenitive("green")} största vinst`, sub: date(stats.biggestWinGreen.name), value: `${stats.biggestWinGreen.greenScore}–${stats.biggestWinGreen.whiteScore}` });
     return rows.slice(0, limit);
   }
   const key: Record<string, keyof Scorer> = { points: "points", goals: "goals", assists: "assists", gwg: "gwg", matches: "matches" };

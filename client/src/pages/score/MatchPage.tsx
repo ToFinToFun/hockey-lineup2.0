@@ -9,7 +9,7 @@ import { IMAGES, COLORS, STORAGE_KEY, type GoalEvent, type MatchState } from "@/
 import { useSponsors, pickLeastShown, logoForName } from "@/lib/sponsors";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { resolveMatchStart, matchName } from "@shared/matchTiming";
-import { isTeamAWhite as teamAIsWhite, teamName } from "@shared/teams";
+import { defaultTeamNames, isTeamAWhite as teamAIsWhite, teamGenitive, teamName, teamSingular } from "@shared/teams";
 import { playGoalSound as playGoalSoundFx, playEndSignal, unlockAudio } from "@/lib/matchSounds";
 import { type AppState, createTeamSlots, MAX_TEAM_CONFIG } from "@/lib/lineup";
 import { type Player } from "@/lib/players";
@@ -585,7 +585,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
           {/* Team White */}
           <div className="flex-1 bg-[#2a2a2a]/80 rounded-3xl p-4 border border-[#3a3a3a] backdrop-blur-sm">
             <div className="flex justify-center mb-2">
-              <img src={IMAGES.teamWhiteLogo} alt="Vita" className="w-20 h-20 object-contain" />
+              <img src={IMAGES.teamWhiteLogo} alt={teamName("white")} className="w-20 h-20 object-contain" />
             </div>
             <div className="text-5xl font-bold text-[#0a7ea4] text-center mb-3">{teamWhiteScore}</div>
             <div className="flex gap-2">
@@ -603,7 +603,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
           {/* Team Green */}
           <div className="flex-1 bg-[#2a2a2a]/80 rounded-3xl p-4 border border-[#3a3a3a] backdrop-blur-sm">
             <div className="flex justify-center mb-2">
-              <img src={IMAGES.teamGreenLogo} alt="Gröna" className="w-20 h-20 object-contain" />
+              <img src={IMAGES.teamGreenLogo} alt={teamName("green")} className="w-20 h-20 object-contain" />
             </div>
             <div className="text-5xl font-bold text-[#0a7ea4] text-center mb-3">{teamGreenScore}</div>
             <div className="flex gap-2">

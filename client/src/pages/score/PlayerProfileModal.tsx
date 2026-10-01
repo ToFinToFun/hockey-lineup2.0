@@ -1,3 +1,4 @@
+import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { POSITION_COLORS } from "@/lib/positionColors";
 import { trpc } from "@/lib/trpc";
 import { X, Trophy, Target, TrendingUp, Loader2, Users, Star, Flame, Shield, Activity, Crosshair } from "lucide-react";
@@ -67,11 +68,11 @@ export default function PlayerProfileModal({ playerName, onClose }: PlayerProfil
             <div className="grid grid-cols-4 gap-2">
               <div className="bg-[#2a2a2a] rounded-lg p-2 text-center border border-[#3a3a3a]">
                 <div className="text-white/70 text-sm font-bold">{profile.matchesWhite}</div>
-                <div className="text-[#687076] text-[9px] uppercase">Vita</div>
+                <div className="text-[#687076] text-[9px] uppercase">{teamName("white")}</div>
               </div>
               <div className="bg-[#2a2a2a] rounded-lg p-2 text-center border border-[#3a3a3a]">
                 <div className="text-[#22C55E]/70 text-sm font-bold">{profile.matchesGreen}</div>
-                <div className="text-[#687076] text-[9px] uppercase">Gröna</div>
+                <div className="text-[#687076] text-[9px] uppercase">{teamName("green")}</div>
               </div>
               <div className="bg-[#2a2a2a] rounded-lg p-2 text-center border border-[#3a3a3a]">
                 <div className="text-[#EF4444] text-sm font-bold">{profile.losses}</div>
@@ -139,7 +140,7 @@ export default function PlayerProfileModal({ playerName, onClose }: PlayerProfil
                               border: profile.bestMatch.team === 'white' ? '1px solid #687076' : 'none',
                             }}
                           />
-                          <span className="text-[#687076] text-[10px]">{profile.bestMatch.team === 'white' ? 'Vita' : 'Gröna'}</span>
+                          <span className="text-[#687076] text-[10px]">{profile.bestMatch.team === 'white' ? teamName("white") : teamName("green")}</span>
                         </div>
                         <span className="text-[#687076] text-[10px]">
                           {profile.bestMatch.whiteScore}-{profile.bestMatch.greenScore}
@@ -446,7 +447,7 @@ export default function PlayerProfileModal({ playerName, onClose }: PlayerProfil
                             {/* Team indicator */}
                             <div className="flex items-center gap-1">
                               <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: teamColor, border: match.team === 'white' ? '1px solid #687076' : 'none' }} />
-                              <span className="text-[#687076] text-[10px]">{match.team === 'white' ? 'Vita' : 'Gröna'}</span>
+                              <span className="text-[#687076] text-[10px]">{match.team === 'white' ? teamName("white") : teamName("green")}</span>
                             </div>
                             {/* Position badge */}
                             {match.position && (

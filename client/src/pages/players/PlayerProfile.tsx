@@ -2,6 +2,7 @@
  * Spelarprofil på spelarsidan: bild, form, sammanfattning, rekord, kemi
  * (kedjekamrater, lagkamrater, motståndare), matchlogg och jämförelse.
  */
+import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
@@ -96,7 +97,7 @@ export function PlayerProfileView({ player, all }: { player: Basic; all: Basic[]
           <p className="text-base font-bold truncate">{player.name}{player.number ? <span className="text-white/40 font-normal"> #{player.number}</span> : null}</p>
           <p className="text-[11px] text-white/45">
             {positionName(player.position)}
-            {player.teamColor ? ` · ${player.teamColor === "green" ? "Gröna" : "Vita"}` : ""}
+            {player.teamColor ? ` · ${teamName(player.teamColor === "green" ? "green" : "white")}` : ""}
           </p>
           {p.form ? (
             <div className="mt-2 space-y-1">
@@ -183,7 +184,7 @@ export function PlayerProfileView({ player, all }: { player: Basic; all: Basic[]
                   {log.map((e) => (
                     <tr key={e.matchId} className="border-t border-white/5">
                       <td className="py-1 tabular-nums">{shortDate(e.date)}</td>
-                      <td><span className={`inline-block w-2 h-2 rounded-full mr-1 ${e.team === "green" ? "bg-emerald-400" : "bg-white"}`} />{e.team === "green" ? "Gröna" : "Vita"}</td>
+                      <td><span className={`inline-block w-2 h-2 rounded-full mr-1 ${e.team === "green" ? "bg-emerald-400" : "bg-white"}`} />{teamName(e.team === "green" ? "green" : "white")}</td>
                       <td title={positionName(e.position)}>{e.position}</td>
                       <td className="text-right tabular-nums">
                         <span className={`inline-block w-4 text-center rounded-[3px] mr-1 text-[9px] font-black ${e.result === "V" ? "bg-emerald-500/80 text-emerald-950" : e.result === "F" ? "bg-red-500/75 text-red-950" : "bg-white/25"}`}>{e.result}</span>

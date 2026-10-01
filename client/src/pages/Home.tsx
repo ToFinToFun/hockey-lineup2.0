@@ -5,6 +5,7 @@
 // - localStorage som fallback om servern är offline
 // - Ångra-funktion (Ctrl+Z + knapp i header)
 // - In-app bekräftelsedialog för Rensa
+import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { teamLogo, club, clubHeading } from "@shared/club";
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
@@ -151,8 +152,8 @@ export default function Home() {
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>(
     local?.availablePlayers ?? initialPlayers
   );
-  const [teamAName, setTeamAName] = useState(local?.teamAName ?? "VITA");
-  const [teamBName, setTeamBName] = useState(local?.teamBName ?? "GRÖNA");
+  const [teamAName, setTeamAName] = useState(local?.teamAName ?? defaultTeamNames().teamAName);
+  const [teamBName, setTeamBName] = useState(local?.teamBName ?? defaultTeamNames().teamBName);
   const [lineup, setLineup] = useState<Record<string, Player>>(local?.lineup ?? {});
 
   // Ref som alltid pekar på senaste lineup-värdet (undviker stale closure)

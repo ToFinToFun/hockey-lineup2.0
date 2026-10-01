@@ -1,6 +1,7 @@
 // Mittenpanel med spelarlista – Glassmorphism v2
 // Visible glass border, frosted background, clean layout
 
+import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { RosterSummary, type RosterCounts } from "./RosterSummary";
 import { AddPlayerModal } from "./AddPlayerModal";
 import { useState, useCallback } from "react";
@@ -55,8 +56,8 @@ const positionFilters: { label: string; value: PosFilter }[] = [
 
 const teamFilters: { label: string; value: TeamFilter; color: TeamColor }[] = [
   { label: "Alla", value: "Alla", color: null },
-  { label: "Vita", value: "white", color: "white" },
-  { label: "Gröna", value: "green", color: "green" },
+  { label: teamName("white"), value: "white", color: "white" },
+  { label: teamName("green"), value: "green", color: "green" },
   { label: "Waivers", value: null, color: null },
 ];
 

@@ -10,6 +10,8 @@ import { stalstadens } from "./clubProfiles/stalstadens";
 export interface ClubTeamProfile {
   /** "Vita" */
   name: string;
+  /** Singular, t.ex. "Vit" (spelarens lag) */
+  singular: string;
   /** Kort namn för små ytor, t.ex. "VIT" */
   shortName: string;
   /** Lagets färg (bilder, kort) */
@@ -67,6 +69,7 @@ export function mergeClub(base: ClubProfile, o: ClubOverrides | null | undefined
   const team = (k: "white" | "green") => ({
     ...base.teams[k],
     name: pick(o.teams?.[k]?.name, base.teams[k].name),
+    singular: o.teams?.[k]?.name && o.teams[k]!.name!.trim() ? pick(o.teams?.[k]?.singular, o.teams[k]!.name!.trim()) : pick(o.teams?.[k]?.singular, base.teams[k].singular),
     shortName: pick(o.teams?.[k]?.shortName, base.teams[k].shortName),
     color: pick(o.teams?.[k]?.color, base.teams[k].color),
   });

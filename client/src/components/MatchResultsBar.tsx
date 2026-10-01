@@ -3,6 +3,7 @@
  * Vitt = Vita vann, grönt = Gröna vann, grått = oavgjort, tomt = ännu ej spelad
  * (fyller ut till 30 så att raden alltid ser likadan ut).
  */
+import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { trpc } from "@/lib/trpc";
 
 const SLOTS = 30;
@@ -23,7 +24,7 @@ export function MatchResultsBar({ dark = true }: { dark?: boolean }) {
     <div className="shrink-0 px-3 py-1 w-full flex justify-center">
     {/* Siffrorna ligger tätt intill raden, som en enhet (inte ute i kanterna) */}
     <div className="w-full flex items-center gap-1.5" style={{ maxWidth: SLOTS * 13 + 44 }}>
-      <span className={`text-[9px] font-bold tabular-nums shrink-0 ${dark ? "text-slate-200/80" : "text-gray-700"}`} title="Vitas vinster">{whiteWins}</span>
+      <span className={`text-[9px] font-bold tabular-nums shrink-0 ${dark ? "text-slate-200/80" : "text-gray-700"}`} title={`${teamGenitive("white")} vinster`}>{whiteWins}</span>
       <div
         className="flex-1 min-w-0 flex items-center justify-center gap-[3px]"
         role="img"
@@ -44,7 +45,7 @@ export function MatchResultsBar({ dark = true }: { dark?: boolean }) {
           />
         ))}
       </div>
-      <span className="text-[9px] font-bold tabular-nums shrink-0 text-emerald-400" title="Grönas vinster">{greenWins}</span>
+      <span className="text-[9px] font-bold tabular-nums shrink-0 text-emerald-400" title={`${teamGenitive("green")} vinster`}>{greenWins}</span>
     </div>
     </div>
   );

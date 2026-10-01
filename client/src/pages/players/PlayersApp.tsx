@@ -5,6 +5,7 @@
  * Score Tracker, och statistiken följer spelaren vid namn- eller nummerbyte.
  * Bulkredigering: exportera till Excel/CSV, ändra, importera med förhandsgranskning.
  */
+import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -23,7 +24,7 @@ type Filter = "active" | "inactive" | "nonmember" | "all";
 
 const POSITIONS = ["MV", "B", "C", "F", "IB"] as const;
 type PositionOrNone = (typeof POSITIONS)[number] | "";
-const teamLabel = (t: string | null) => (t === "white" ? "Vit" : t === "green" ? "Grön" : "");
+const teamLabel = (t: string | null) => (t === "white" ? teamSingular("white") : t === "green" ? teamSingular("green") : "");
 
 // ─── CSV ─────────────────────────────────────────────────────────────────────
 

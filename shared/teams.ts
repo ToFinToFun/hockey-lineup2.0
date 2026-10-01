@@ -17,8 +17,12 @@ export function teamName(key: TeamKey, opts: { upper?: boolean } = {}): string {
   return opts.upper ? n.toUpperCase() : n;
 }
 
-/** Singular/kort form för etiketter, t.ex. "Vit"/"Grön" eller kortnamnet. */
+/** Kortnamn, t.ex. "VIT" */
 export const teamShortName = (key: TeamKey) => club().teams[key].shortName;
+/** Singular för en spelares lag, t.ex. "Vit"/"Grön" */
+export const teamSingular = (key: TeamKey) => club().teams[key].singular;
+/** Genitiv, t.ex. "Vitas"/"Grönas" */
+export const teamGenitive = (key: TeamKey) => { const n = teamName(key); return /[sxz]$/i.test(n) ? n : `${n}s`; };
 export const teamColor = (key: TeamKey) => club().teams[key].color;
 
 /** Standardnamnen i en ny uppställning (versaler, t.ex. "VITA" och "GRÖNA"). */

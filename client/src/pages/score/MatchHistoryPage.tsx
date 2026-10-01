@@ -1,3 +1,4 @@
+import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { club } from "@shared/club";
 import { trpc } from "@/lib/trpc";
 import { IMAGES } from "@/lib/scoreConstants";
@@ -485,8 +486,8 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
             <div className="flex gap-1.5 flex-wrap">
               {([
                 { key: "all" as ResultFilter, label: "Alla" },
-                { key: "white" as ResultFilter, label: "Vita vann" },
-                { key: "green" as ResultFilter, label: "Gröna vann" },
+                { key: "white" as ResultFilter, label: `${teamName("white")} vann` },
+                { key: "green" as ResultFilter, label: `${teamName("green")} vann` },
                 { key: "draw" as ResultFilter, label: "Oavgjort" },
               ]).map(f => (
                 <button
@@ -635,14 +636,14 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                   {isDraw ? (
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#3a3a3a] text-[#9BA1A6] font-medium">OAVGJORT</span>
                   ) : isWhiteWin ? (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white font-medium">VITA VANN</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white font-medium">{teamName("white", { upper: true })} VANN</span>
                   ) : (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#56c653]/20 text-[#56c653] font-medium">GRÖNA VANN</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#56c653]/20 text-[#56c653] font-medium">{teamName("green", { upper: true })} VANN</span>
                   )}
                 </div>
                 <div className="flex items-center justify-center gap-6">
                   <div className="flex items-center gap-2">
-                    <img src={IMAGES.teamWhiteLogo} alt="Vita" className="w-8 h-8 object-contain" />
+                    <img src={IMAGES.teamWhiteLogo} alt={teamName("white")} className="w-8 h-8 object-contain" />
                     <span className={`text-2xl font-bold ${isWhiteWin ? 'text-white' : 'text-[#9BA1A6]'}`}>
                       {match.teamWhiteScore}
                     </span>
@@ -652,7 +653,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                     <span className={`text-2xl font-bold ${isGreenWin ? 'text-[#56c653]' : 'text-[#9BA1A6]'}`}>
                       {match.teamGreenScore}
                     </span>
-                    <img src={IMAGES.teamGreenLogo} alt="Gröna" className="w-8 h-8 object-contain" />
+                    <img src={IMAGES.teamGreenLogo} alt={teamName("green")} className="w-8 h-8 object-contain" />
                   </div>
                 </div>
                 {(() => {
@@ -703,15 +704,15 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
               {/* Score */}
               <div className="flex items-center justify-center gap-6 py-4">
                 <div className="flex flex-col items-center gap-1">
-                  <img src={IMAGES.teamWhiteLogo} alt="Vita" className="w-12 h-12 object-contain" />
+                  <img src={IMAGES.teamWhiteLogo} alt={teamName("white")} className="w-12 h-12 object-contain" />
                   <span className="text-3xl font-bold text-white">{selectedMatchData.teamWhiteScore}</span>
-                  <span className="text-[#9BA1A6] text-xs">VITA</span>
+                  <span className="text-[#9BA1A6] text-xs">{teamName("white", { upper: true })}</span>
                 </div>
                 <span className="text-[#687076] text-2xl">-</span>
                 <div className="flex flex-col items-center gap-1">
-                  <img src={IMAGES.teamGreenLogo} alt="Gröna" className="w-12 h-12 object-contain" />
+                  <img src={IMAGES.teamGreenLogo} alt={teamName("green")} className="w-12 h-12 object-contain" />
                   <span className="text-3xl font-bold text-[#56c653]">{selectedMatchData.teamGreenScore}</span>
-                  <span className="text-[#9BA1A6] text-xs">GRÖNA</span>
+                  <span className="text-[#9BA1A6] text-xs">{teamName("green", { upper: true })}</span>
                 </div>
               </div>
 
@@ -761,7 +762,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                             <span className="text-[#9BA1A6] text-xs w-8 shrink-0">{ws}-{gs}</span>
                             <div className="flex-1 min-w-0">
                               <span className={isGreen ? "text-[#56c653]" : "text-white"}>
-                                {goal.scorer || (isGreen ? "GRÖNA" : "VITA")}
+                                {goal.scorer || (isGreen ? teamName("green", { upper: true }) : teamName("white", { upper: true }))}
                               </span>
                               {goal.assist && (
                                 <span className="text-[#687076] text-xs ml-1">({goal.assist})</span>
@@ -1118,14 +1119,14 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
             {/* Scores - auto-calculated from goal history */}
             <div className="flex gap-4">
               <div className="flex-1">
-                <label className="text-[#9BA1A6] text-xs font-medium block mb-1 text-center">Vita</label>
+                <label className="text-[#9BA1A6] text-xs font-medium block mb-1 text-center">{teamName("white")}</label>
                 <div className="flex items-center justify-center">
                   <span className="text-2xl font-bold text-white">{editGoals.filter(g => g.team === 'white').length}</span>
                 </div>
               </div>
               <div className="text-[#687076] text-lg font-medium flex items-end justify-center pb-0.5">–</div>
               <div className="flex-1">
-                <label className="text-[#9BA1A6] text-xs font-medium block mb-1 text-center">Gröna</label>
+                <label className="text-[#9BA1A6] text-xs font-medium block mb-1 text-center">{teamName("green")}</label>
                 <div className="flex items-center justify-center">
                   <span className="text-2xl font-bold text-[#56c653]">{editGoals.filter(g => g.team === 'green').length}</span>
                 </div>
@@ -1171,7 +1172,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                           isGreen ? "bg-[#56c653]/20 text-[#56c653]" : "bg-white/10 text-white"
                         }`}>
-                          {isGreen ? "GRÖNA" : "VITA"}
+                          {isGreen ? teamName("green", { upper: true }) : teamName("white", { upper: true })}
                         </span>
                         <span className="text-[#687076] text-[10px] flex-1">Mål {idx + 1} · {runW}–{runG}{goal.timestamp && /\d{2}:\d{2}/.test(goal.timestamp) ? ` · ${goal.timestamp.match(/\d{2}:\d{2}/)![0]}` : ""}</span>
                         <button

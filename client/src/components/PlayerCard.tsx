@@ -2,6 +2,7 @@
 // Flat design: no colored row backgrounds, just name + number + badges
 // PortalDropdown edit panel preserved with all functionality
 
+import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { teamLogo, club, clubHeading } from "@shared/club";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -368,8 +369,8 @@ export function DraggablePlayerCard({
                 <div className="flex items-center gap-1.5 pt-1 border-t border-white/10">
                   <span className="text-white/40 text-[10px] w-6">Lag:</span>
                   {([
-                    { value: "white" as TeamColor, label: "Vita" },
-                    { value: "green" as TeamColor, label: "Gröna" },
+                    { value: "white" as TeamColor, label: teamName("white") },
+                    { value: "green" as TeamColor, label: teamName("green") },
                     { value: null, label: "Waivers" },
                   ] as { value: TeamColor; label: string }[]).map(({ value, label }) => (
                     <button

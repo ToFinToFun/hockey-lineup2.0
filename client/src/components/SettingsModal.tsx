@@ -3,6 +3,7 @@
  * Valen sparas på enheten (webbläsaren), så var och en väljer själv.
  * Öppnas via kugghjulsmenyn → "PIR".
  */
+import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import React from "react";
 import type { PirSettings } from "@/hooks/usePirEnabled";
 import { X, TrendingUp, BarChart3, ArrowUpDown, Target, Scale } from "lucide-react";
@@ -18,7 +19,7 @@ const TOGGLES: { key: keyof PirSettings; label: string; description: string; ico
   { key: "enabled", label: "PIR aktiverat", description: "Huvudbrytare för allt som visar PIR i Lineup.", icon: <TrendingUp className="w-3.5 h-3.5" />, color: "amber" },
   { key: "showRating", label: "Visa PIR-siffra", description: "Spelarens betyg på spelarkorten.", icon: <BarChart3 className="w-3.5 h-3.5" />, color: "sky" },
   { key: "showTrend", label: "Visa trendpil", description: "Om spelaren är i stigande eller fallande form.", icon: <ArrowUpDown className="w-3.5 h-3.5" />, color: "emerald" },
-  { key: "showTeamStrength", label: "Visa lagstyrka", description: "Total PIR och snitt under Vitas och Grönas rubrik.", icon: <Target className="w-3.5 h-3.5" />, color: "purple" },
+  { key: "showTeamStrength", label: "Visa lagstyrka", get description() { return `Total PIR och snitt under ${teamGenitive("white")} och ${teamGenitive("green")} rubrik.`; }, icon: <Target className="w-3.5 h-3.5" />, color: "purple" },
   { key: "showPrediction", label: "Visa matchprediktion", description: "Förväntad vinstchans överst (bara styrelsen).", icon: <Scale className="w-3.5 h-3.5" />, color: "rose" },
   { key: "useForBalance", label: "Använd för lagbalansering", description: "Auto fördelar efter PIR för jämna lag.", icon: <Scale className="w-3.5 h-3.5" />, color: "teal" },
 ];

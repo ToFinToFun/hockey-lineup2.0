@@ -18,8 +18,8 @@ export const stalstadens: ClubProfile = {
   logo: "/images/logo-green.png",
   crest: { name: "Städet (est. 2012)", url: "/images/logo-anvil.png" },
   teams: {
-    white: { name: "Vita", shortName: "VIT", color: "#e2e8f0", logo: "/images/logo-white.png" },
-    green: { name: "Gröna", shortName: "GRÖ", color: "#34d399", logo: "/images/logo-green.png" },
+    white: { name: "Vita", singular: "Vit", shortName: "VIT", color: "#e2e8f0", logo: "/images/logo-white.png" },
+    green: { name: "Gröna", singular: "Grön", shortName: "GRÖ", color: "#34d399", logo: "/images/logo-green.png" },
   },
   hashtags: ["#StålstadensSF", "#Gubbhockey"],
   venues: ["Coop Arena C-Hallen", "Coop Arena", "Sunderby ishall"],

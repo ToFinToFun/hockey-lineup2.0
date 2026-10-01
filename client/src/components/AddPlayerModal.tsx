@@ -2,6 +2,7 @@
  * Lägg till en spelare i truppen – samma ruta på mobil och desktop.
  * Spelaren hamnar i truppen och sparas i spelarregistret när uppställningen synkas.
  */
+import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { UserPlus, X } from "lucide-react";
@@ -61,8 +62,8 @@ export function AddPlayerModal({ onAdd, onClose }: { onAdd: (p: Player) => void;
             <p className="text-[11px] text-white/45 mb-1">Lag</p>
             <div className="flex gap-1.5">
               <button onClick={() => setTeamColor(null)} className={chip(teamColor === null)}>–</button>
-              <button onClick={() => setTeamColor("white")} className={chip(teamColor === "white")}>Vit</button>
-              <button onClick={() => setTeamColor("green")} className={chip(teamColor === "green")}>Grön</button>
+              <button onClick={() => setTeamColor("white")} className={chip(teamColor === "white")}>{teamSingular("white")}</button>
+              <button onClick={() => setTeamColor("green")} className={chip(teamColor === "green")}>{teamSingular("green")}</button>
             </div>
           </div>
           <div>

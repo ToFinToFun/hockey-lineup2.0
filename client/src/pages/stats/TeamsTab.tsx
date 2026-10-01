@@ -1,6 +1,7 @@
 /**
  * TeamsTab – Team comparison (Vita vs Gröna) with visual bars + Head-to-Head player comparison
  */
+import { defaultTeamNames, teamGenitive, teamName, teamSingular } from "@shared/teams";
 import { POSITION_COLORS } from "@/lib/positionColors";
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
@@ -292,8 +293,8 @@ function HeadToHeadSection({ dateFilter }: { dateFilter?: { from?: string; to?: 
                   <H2HStatBar label="Mål" val1={h2h.player1.goals} val2={h2h.player2.goals} />
                   <H2HStatBar label="Assist" val1={h2h.player1.assists} val2={h2h.player2.assists} />
                   <H2HStatBar label="Poäng" val1={h2h.player1.points} val2={h2h.player2.points} />
-                  <H2HStatBar label="Vita" val1={h2h.player1.matchesWhite} val2={h2h.player2.matchesWhite} />
-                  <H2HStatBar label="Gröna" val1={h2h.player1.matchesGreen} val2={h2h.player2.matchesGreen} />
+                  <H2HStatBar label={teamName("white")} val1={h2h.player1.matchesWhite} val2={h2h.player2.matchesWhite} />
+                  <H2HStatBar label={teamName("green")} val1={h2h.player1.matchesGreen} val2={h2h.player2.matchesGreen} />
                 </div>
 
                 {/* Shared match analysis */}
@@ -384,7 +385,7 @@ function TeamStatCard({
   const bgColor = isWhite ? "rgba(255,255,255,0.05)" : "rgba(34,197,94,0.05)";
   const borderColor = isWhite ? "rgba(255,255,255,0.1)" : "rgba(34,197,94,0.1)";
   const logo = isWhite ? IMAGES.teamWhiteLogo : IMAGES.teamGreenLogo;
-  const name = isWhite ? "Vita" : "Gröna";
+  const name = isWhite ? teamName("white") : teamName("green");
 
   return (
     <div
@@ -447,9 +448,9 @@ export default function TeamsTab({ teamData, stats, dateFilter }: TeamsTabProps)
       {/* Header */}
       <div className="text-center">
         <div className="flex items-center justify-center gap-4 mb-2">
-          <img src={IMAGES.teamWhiteLogo} alt="Vita" className="w-12 h-12 object-contain" />
+          <img src={IMAGES.teamWhiteLogo} alt={teamName("white")} className="w-12 h-12 object-contain" />
           <span className="text-[#687076] text-lg font-bold">VS</span>
-          <img src={IMAGES.teamGreenLogo} alt="Gröna" className="w-12 h-12 object-contain" />
+          <img src={IMAGES.teamGreenLogo} alt={teamName("green")} className="w-12 h-12 object-contain" />
         </div>
         <p className="text-[#687076] text-xs">
           {teamData.totalMatches} matcher, {teamData.draws} oavgjorda

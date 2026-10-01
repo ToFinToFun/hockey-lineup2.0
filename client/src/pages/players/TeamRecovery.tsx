@@ -2,6 +2,7 @@
  * Återställ lag: förslag för spelare som saknar lag (t.ex. efter att de
  * oavsiktligt blivit Waivers). Visas bara när det finns förslag.
  */
+import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, RotateCcw, X } from "lucide-react";
@@ -26,7 +27,7 @@ export function TeamRecovery() {
       </button>
       {logOpen && (
         <ul className="mt-1.5 space-y-0.5 text-white/75">
-          {restored.map((r) => <li key={r.id}>{r.name} → {r.team === "green" ? "Grön" : "Vit"}</li>)}
+          {restored.map((r) => <li key={r.id}>{r.name} → {teamSingular(r.team === "green" ? "green" : "white")}</li>)}
         </ul>
       )}
     </div>
@@ -70,7 +71,7 @@ export function TeamRecovery() {
                       <span className="block text-[10px] text-white/40 truncate">{s.detail}</span>
                     </span>
                     <span className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded ${s.teamColor === "green" ? "bg-emerald-500/20 text-emerald-300" : "bg-white/15 text-white"}`}>
-                      {s.teamColor === "green" ? "Grön" : "Vit"}
+                      {teamSingular(s.teamColor)}
                     </span>
                   </label>
                 </li>

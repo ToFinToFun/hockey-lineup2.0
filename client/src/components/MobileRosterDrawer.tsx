@@ -3,6 +3,7 @@
 // Visar spelarlistan med sök, filter och stöd för tap-to-assign med slot-picker
 // 3-cell grid layout: name+number | badges | edit icon
 
+import { teamName as clubTeamName } from "@shared/teams";
 import { teamLogo } from "@shared/club";
 import { RosterSummary, type RosterCounts } from "./RosterSummary";
 import { AddPlayerModal } from "./AddPlayerModal";
@@ -85,8 +86,8 @@ export function MobileRosterDrawer({
   onTapAssignToSlot,
   onAddDefensePair,
   onAddForwardLine,
-  teamAName = "Vita",
-  teamBName = "Gröna",
+  teamAName = clubTeamName("white"),
+  teamBName = clubTeamName("green"),
   teamASlots = [],
   teamBSlots = [],
   teamAConfig,
@@ -867,8 +868,8 @@ export function MobileRosterDrawer({
                   <span className="text-white/40 text-[10px] w-8 shrink-0">Lag:</span>
                   <div className="flex items-center gap-1.5">
                     {([
-                      { value: "white" as TeamColor, label: "Vita" },
-                      { value: "green" as TeamColor, label: "Gröna" },
+                      { value: "white" as TeamColor, label: clubTeamName("white") },
+                      { value: "green" as TeamColor, label: clubTeamName("green") },
                       { value: null, label: "Waivers" },
                     ] as { value: TeamColor; label: string }[]).map(({ value, label }) => (
                       <button
