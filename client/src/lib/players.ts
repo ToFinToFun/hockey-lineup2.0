@@ -61,6 +61,11 @@ export interface Player {
   isDeclined?: boolean;     // Avböjt dagens match ("Kommer inte")
   gamesPlayed?: number;     // Antal matcher spelade
   mostPlayedPosition?: string; // Vanligaste positionen baserat på matchhistorik
+  /** Manuell alternativ position (hybridspelare): MV/B/C/F */
+  altPosition?: string | null;
+  /** Alternativ position från matchhistoriken (≥ X % av matcherna) */
+  secondaryPosition?: string | null;
+  secondaryShare?: number;
   mostPlayedTeam?: "green" | "white"; // Vanligaste laget baserat på matchhistorik
   /** Player Impact Rating (Elo-like) — overall (all matches) */
   pir?: number;

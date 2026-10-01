@@ -62,7 +62,9 @@ export function emptyDoc(): LineupDoc {
  * synkas – annars skulle varje ny PIR-beräkning se ut som en ändring.
  */
 function isDerivedKey(key: string): boolean {
-  return key.startsWith("pir") || key.startsWith("stats") || key === "mostPlayedPosition" || key === "mostPlayedTeam" || key === "positionStats";
+  return key.startsWith("pir") || key.startsWith("stats") || key === "mostPlayedPosition" || key === "mostPlayedTeam" || key === "positionStats"
+    // Alternativ position: sparas separat (players.setAltPosition), räknas fram i Lineup
+    || key === "altPosition" || key === "secondaryPosition" || key === "secondaryShare";
 }
 
 /** Spelaren utan framräknade fält, med nycklarna i fast ordning (stabil jämförelse). */

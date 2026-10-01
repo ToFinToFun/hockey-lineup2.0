@@ -2,6 +2,9 @@
 // Flat design: no colored row backgrounds, just name + number + badges
 // PortalDropdown edit panel preserved with all functionality
 
+import { trpc } from "@/lib/trpc";
+import { posGroup } from "@/lib/altPosition";
+import { POSITION_COLORS } from "@/lib/positionColors";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { X, Trash2 } from "lucide-react";
@@ -85,6 +88,7 @@ export function DraggablePlayerCard({
 
   const pirSettings = usePirSettings();
   const pirEnabled = pirSettings.enabled;
+
 
   // Dual PIR: select the correct PIR based on slot context or player position.
   // When placed in a goalkeeper slot → use goalkeeper PIR (if available).
@@ -263,8 +267,17 @@ export function DraggablePlayerCard({
             </span>
           ) : null;
           const teamBadge = <TeamColorIndicator teamColor={player.teamColor ?? null} compact mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />;
+          // Alternativ position: manuell (hybrid) eller från historiken – andra färgen i brickan
+          const altPos = player.altPosition || player.secondaryPosition || null;
+          const showAlt = !!altPos && !!displayPosition && posGroup(displayPosition) !== null && posGroup(altPos) !== posGroup(displayPosition);
           const posBadge = (
-            <span className={`pos-badge pos-badge-sm ${displayPosition ? `pos-badge-${displayPosition.toLowerCase()}` : "bg-white/10 text-white/40"} shrink-0`} title={displayPosition ? positionName(displayPosition) : "Ingen position"}>
+            <span
+              className={`pos-badge pos-badge-sm ${displayPosition ? `pos-badge-${displayPosition.toLowerCase()}` : "bg-white/10 text-white/40"} shrink-0`}
+              style={showAlt ? { background: `linear-gradient(135deg, ${POSITION_COLORS[displayPosition!] ?? "#64748b"} 0 52%, ${POSITION_COLORS[altPos!] ?? "#64748b"} 52% 100%)` } : undefined}
+              title={displayPosition
+                ? `${positionName(displayPosition)}${showAlt ? ` · spelar även ${positionName(altPos!)}${player.altPosition ? " (hybrid)" : player.secondaryShare ? ` (${Math.round(player.secondaryShare * 100)} % av matcherna)` : ""}` : ""}`
+                : "Ingen position"}
+            >
               {displayPosition || "–"}
             </span>
           );
@@ -420,6 +433,8 @@ export function DraggablePlayerCard({
                   </span>
                 </div>
               )}
+              {/* Alternativ position (hybridspelare) – går före historiken i brickan och för Auto */}
+              {onChangePosition && <AltPositionRow player={player} badgeBg={fc.badgeBg} />}
               {/* Number + Captain role */}
               {(onChangeNumber || onChangeCaptainRole) && (
                 <div className="flex items-center gap-3 pt-1 border-t border-white/10">
@@ -789,5 +804,40 @@ export function PlayerCardOverlay({ player, isRemoving = false }: { player: Play
         {player.position}
       </span>
     </div>
+  );
+}
+
+/** Raden "Alt. pos" i spelarkortets redigering (egen komponent – hämtar och sparar via servern). */
+function AltPositionRow({ player, badgeBg }: { player: Player; badgeBg: string }) {
+  const trpcUtils = trpc.useUtils();
+  const setAltPosition = trpc.players.setAltPosition.useMutation({ onSuccess: () => void trpcUtils.players.altPositions.invalidate() });
+  const fc = { badgeBg };
+  return (
+
+                <div className="flex items-center gap-1 pt-1 border-t border-white/10 flex-wrap">
+                  <span className="text-white/40 text-[10px]" title="Hybridspelare: position spelaren också kan spela">Alt. pos:</span>
+                  {(["", "MV", "B", "C", "F"] as const).map((pos) => (
+                    <button
+                      key={pos || "none"}
+                      title={pos ? positionName(pos) : "Ingen alternativ position"}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAltPosition.mutate({ playerId: player.id, position: (pos || null) as never });
+                      }}
+                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded transition-all ${
+                        (player.altPosition ?? "") === pos
+                          ? pos ? `${getPositionBadgeColor(pos, fc.badgeBg)} ring-1 ring-white/30` : "bg-white/15 text-white ring-1 ring-white/30"
+                          : "bg-white/5 text-white/30 border border-white/10 hover:bg-white/10 hover:text-white/50"
+                      }`}
+                    >
+                      {pos || "–"}
+                    </button>
+                  ))}
+                  {!player.altPosition && player.secondaryPosition && (
+                    <span className="text-[9px] text-white/35 ml-1">Historik: {player.secondaryPosition} ({Math.round((player.secondaryShare ?? 0) * 100)} %)</span>
+                  )}
+                </div>
+              
   );
 }

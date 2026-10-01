@@ -69,6 +69,15 @@ function mostPlayedPosType(p: Player): PosType | null {
   }
 }
 
+/** Hur väl passar spelaren en tom plats av typen group? 0 = hybrid, 1 = historik, 2 = vanligaste position, 9 = inte alls. */
+function fitRank(p: Player, group: "C" | "F" | "B"): number {
+  const g = (x: string | null | undefined) => (x === "LW" || x === "RW" ? "F" : x);
+  if (g(p.altPosition) === group) return 0;
+  if (g(p.secondaryPosition) === group) return 1;
+  if (g(p.mostPlayedPosition) === group) return 2;
+  return 9;
+}
+
 /** Sort priority: C first, then A, then others */
 function captainSortKey(p: Player): number {
   if (p.captainRole === "C") return 0;
@@ -454,14 +463,21 @@ export function autoDistribute(
       .filter(t => !placed.has(t.player.id));
     if (doShuffle) allUnplaced = shuffleArray(allUnplaced);
 
+    // Bästa reserv för en tom plats: hybridspelare (manuell alt. position) först,
+    // sedan alternativ position från historiken, sist vanligaste position.
+    const bestFor = (group: "C" | "F" | "B") => {
+      const ranked = allUnplaced
+        .filter(t => !placed.has(t.player.id))
+        .map(t => ({ t, r: fitRank(t.player, group) }))
+        .filter(x => x.r < 9);
+      ranked.sort((a, b) => a.r - b.r); // stabil – behåller ordningen (och slumpen) inom samma nivå
+      return ranked[0]?.t;
+    };
+
     // Fill empty center slots with players whose mostPlayedPosition is C
     const emptyCenterSlots = centerSlots.filter(s => !lineup[s.id]);
     for (const slot of emptyCenterSlots) {
-      // First: look for unplaced players with mostPlayedPosition = C
-      const candidate = allUnplaced.find(t =>
-        !placed.has(t.player.id) &&
-        t.player.mostPlayedPosition === "C"
-      );
+      const candidate = bestFor("C");
       if (candidate) {
         lineup[slot.id] = candidate.player;
         placed.add(candidate.player.id);
@@ -471,12 +487,7 @@ export function autoDistribute(
     // Fill empty wing slots with players whose mostPlayedPosition is F/LW/RW
     const emptyWingSlots = wingSlots.filter(s => !lineup[s.id]);
     for (const slot of emptyWingSlots) {
-      const candidate = allUnplaced.find(t =>
-        !placed.has(t.player.id) &&
-        (t.player.mostPlayedPosition === "F" ||
-         t.player.mostPlayedPosition === "LW" ||
-         t.player.mostPlayedPosition === "RW")
-      );
+      const candidate = bestFor("F");
       if (candidate) {
         lineup[slot.id] = candidate.player;
         placed.add(candidate.player.id);
@@ -486,10 +497,7 @@ export function autoDistribute(
     // Fill empty defense slots with players whose mostPlayedPosition is B
     const emptyDefSlots = defSlots.filter(s => !lineup[s.id]);
     for (const slot of emptyDefSlots) {
-      const candidate = allUnplaced.find(t =>
-        !placed.has(t.player.id) &&
-        t.player.mostPlayedPosition === "B"
-      );
+      const candidate = bestFor("B");
       if (candidate) {
         lineup[slot.id] = candidate.player;
         placed.add(candidate.player.id);

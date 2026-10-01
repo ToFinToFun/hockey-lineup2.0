@@ -1,8 +1,9 @@
+import { getAltPositions, setAltPosition } from "../altPositions";
 import { getConfigValue } from "../scoreDb";
 import { teamSuggestions, applyTeams } from "../teamRecovery";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { adminProcedure, router } from "../_core/trpc";
+import { adminProcedure, lineupProcedure, router } from "../_core/trpc";
 import { seasonHistory, seasonOf } from "../playerHistory";
 import { playerProfile } from "../playerProfile";
 import { getAllMatchResults } from "../scoreDb";
@@ -225,4 +226,10 @@ export const playersRouter = router({
     const raw = await getConfigValue("fix_team_restore_20260930");
     return raw ? (JSON.parse(raw) as { at: string; matchName: string | null; restored: Array<{ id: string; name: string; team: string }> }) : null;
   }),
+
+  /** Manuella alternativa positioner (hybridspelare): spelar-id → MV/B/C/F */
+  altPositions: lineupProcedure.query(() => getAltPositions()),
+  setAltPosition: lineupProcedure
+    .input(z.object({ playerId: z.string().min(1).max(100), position: z.enum(["MV", "B", "C", "F"]).nullable() }))
+    .mutation(async ({ input }) => ({ altPositions: await setAltPosition(input.playerId, input.position) })),
 });

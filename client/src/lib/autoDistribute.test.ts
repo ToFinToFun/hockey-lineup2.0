@@ -334,3 +334,20 @@ describe("autoDistribute", () => {
     expect(teamOf(lineup, "new")).not.toBe(teamOf(lineup, "s1"));
   });
 });
+
+describe("alternativ position vid tomma platser", () => {
+  it("saknas backar väljs hybridspelare före den som historiskt spelat back, före övriga", () => {
+    // Inga backar alls – 1 målvakt per lag, 2 centrar, många forwards
+    const players: Player[] = [
+      makePlayer("g1", "MV"), makePlayer("g2", "MV"),
+      makePlayer("c1", "C"), makePlayer("c2", "C"),
+      ...Array.from({ length: 10 }, (_, i) => makePlayer(`f${i}`, "F")),
+      makePlayer("hyb", "F", { altPosition: "B" }),
+      makePlayer("hist", "F", { secondaryPosition: "B" }),
+    ];
+    const res = autoDistribute(players, {});
+    const defenders = Object.entries(res.lineup).filter(([k]) => k.includes("-def-")).map(([, p]) => p.id);
+    expect(defenders).toContain("hyb");
+    expect(defenders).toContain("hist");
+  });
+});
