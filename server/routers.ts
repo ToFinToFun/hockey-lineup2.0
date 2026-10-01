@@ -12,6 +12,8 @@ import { listCards, cardStats, saveCard, deleteCard, MAX_CARD_SOURCE_BASE64 } fr
 import { refreshLiveProfile } from "./cardProfile";
 import { club } from "../shared/club";
 import { getClubOverrides, saveClubOverrides, loadClub } from "./clubConfig";
+import { getFeatures, setFeatures } from "./features";
+import { listOpponents, getOpponent, saveOpponent, deleteOpponent, addOpponentPlayer, updateOpponentPlayer, deleteOpponentPlayer, MAX_OPPONENT_LOGO_BASE64 } from "./opponents";
 import { CLUB_ASSET_KEYS, MAX_CLUB_ASSET_BASE64, setClubAsset, deleteClubAsset, listClubAssets } from "./clubAssets";
 import { listMediaPosts, mediaPhotoIds, saveMediaPost, deleteMediaPost, MAX_MEDIA_PHOTO_BASE64 } from "./mediaPosts";
 import { listSponsors, createSponsor, updateSponsor, deleteSponsor, moveSponsor, recordSponsorNews } from "./sponsorsDb";
@@ -375,7 +377,11 @@ export const appRouter = router({
 
   club: router({
     /** Klubbens identitet – används av alla sidor och bilder (inga hemligheter). */
-    get: publicProcedure.query(async () => ({ club: club(), overrides: await getClubOverrides() })),
+    get: publicProcedure.query(async () => ({ club: club(), overrides: await getClubOverrides(), features: await getFeatures() })),
+    /** Slå på/av funktioner som är under uppbyggnad (beta). */
+    setFeatures: adminProcedure
+      .input(z.object({ opponents: z.boolean().optional() }))
+      .mutation(({ input }) => setFeatures(input)),
     set: adminProcedure
       .input(z.object({
         name: z.string().trim().max(60).optional(),
@@ -409,6 +415,49 @@ export const appRouter = router({
       }),
     /** Vilka loggor som är uppladdade */
     logos: adminProcedure.query(() => listClubAssets()),
+  }),
+
+  // ─── Motståndare (matcher mot andra lag) ───────────────────────────────────
+  // Loggan visas via GET /api/opponents/:id/logo (se server/_core/index.ts).
+
+  opponents: router({
+    list: adminProcedure
+      .input(z.object({ includeArchived: z.boolean().optional() }).optional())
+      .query(({ input }) => listOpponents(input?.includeArchived ?? false)),
+    get: adminProcedure.input(z.object({ id: z.number().int().positive() })).query(async ({ input }) => {
+      const o = await getOpponent(input.id);
+      if (!o) throw new TRPCError({ code: "NOT_FOUND", message: "Laget finns inte" });
+      return o;
+    }),
+    save: adminProcedure
+      .input(z.object({
+        id: z.number().int().positive().optional(),
+        name: z.string().trim().min(1, "Ange lagets namn").max(80),
+        shortName: z.string().trim().max(10).nullable().optional(),
+        color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+        archived: z.boolean().optional(),
+        logoBase64: z.string().max(MAX_OPPONENT_LOGO_BASE64, "Loggan är för stor").regex(/^[A-Za-z0-9+/=]+$/).nullable().optional(),
+      }))
+      .mutation(async ({ input }) => ({ id: await saveOpponent(input) })),
+    delete: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ input }) => {
+      await deleteOpponent(input.id);
+      return { success: true };
+    }),
+    addPlayer: adminProcedure
+      .input(z.object({ opponentId: z.number().int().positive(), name: z.string().trim().min(1).max(80), number: z.string().trim().max(4).nullable().optional(), position: z.enum(["MV", "B", "C", "F", ""]).nullable().optional() }))
+      .mutation(async ({ input }) => ({ id: await addOpponentPlayer(input.opponentId, { ...input, position: input.position || null }) })),
+    updatePlayer: adminProcedure
+      .input(z.object({ opponentId: z.number().int().positive(), id: z.number().int().positive(), name: z.string().trim().min(1).max(80).optional(), number: z.string().trim().max(4).nullable().optional(), position: z.enum(["MV", "B", "C", "F", ""]).nullable().optional(), active: z.boolean().optional() }))
+      .mutation(async ({ input }) => {
+        await updateOpponentPlayer(input.opponentId, input.id, { ...input, position: input.position === undefined ? undefined : input.position || null });
+        return { success: true };
+      }),
+    deletePlayer: adminProcedure
+      .input(z.object({ opponentId: z.number().int().positive(), id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        await deleteOpponentPlayer(input.opponentId, input.id);
+        return { success: true };
+      }),
   }),
 
   // ─── Media: egna Instagram-inlägg ──────────────────────────────────────────

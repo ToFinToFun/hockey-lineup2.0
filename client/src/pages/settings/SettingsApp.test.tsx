@@ -27,6 +27,7 @@ vi.mock("@/lib/trpc", () => {
         autoNews: { useQuery: () => q({ config: { enabled: false, minutesBefore: 45, minPlayers: 10 }, status: { at: "", eventDate: null, message: "Hoppade över 28/9 – bara 8 anmälda", ok: false } }) },
         setAutoNews: { useMutation: m },
       },
+      club: { get: { useQuery: () => q({ club: {}, overrides: {}, features: { opponents: false } }) } },
       notifications: {
         get: { useQuery: () => q({ smtpConfigured: false, from: null, types: [{ id: "matchPending", label: "Match väntar på godkännande" }], recipients: [] }) },
         set: { useMutation: m }, test: { useMutation: m },

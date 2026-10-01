@@ -9,7 +9,8 @@
  */
 import { useEffect, useState } from "react";
 import { Link, useSearch, useLocation } from "wouter";
-import { ArrowLeft, Gauge, Handshake, CalendarRange, Link2, Info, Loader2, CheckCircle2, AlertTriangle, ExternalLink, Bell, Shield } from "lucide-react";
+import { ArrowLeft, Gauge, Handshake, CalendarRange, Link2, Info, Loader2, CheckCircle2, AlertTriangle, ExternalLink, Bell, Shield, Swords } from "lucide-react";
+import { OpponentsPanel } from "./OpponentsPanel";
 import { ClubPanel } from "./ClubPanel";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { trpc } from "@/lib/trpc";
@@ -25,6 +26,7 @@ const TABS = [
   { id: "laget", label: "laget.se", icon: Link2 },
   { id: "notiser", label: "Notiser", icon: Bell },
   { id: "klubb", label: "Klubb", icon: Shield },
+  { id: "motstandare", label: "Motst.", icon: Swords },
   { id: "om", label: "Om", icon: Info },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
@@ -37,6 +39,9 @@ export default function SettingsApp() {
   useEffect(() => {
     if (fromUrl && TABS.some((t) => t.id === fromUrl) && fromUrl !== tab) setTab(fromUrl as TabId);
   }, [fromUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Motståndare (beta) syns bara när funktionen är påslagen under Klubb
+  const clubQ = trpc.club.get.useQuery(undefined, { staleTime: 60_000 });
+  const visibleTabs = TABS.filter((t) => t.id !== "motstandare" || clubQ.data?.features?.opponents);
   const choose = (id: TabId) => {
     setTab(id);
     navigate(`/installningar?flik=${id}`, { replace: true });
@@ -50,8 +55,8 @@ export default function SettingsApp() {
           <h1 className="text-lg font-bold flex-1" style={{ fontFamily: "'Oswald', sans-serif" }}>Inställningar</h1>
         </div>
         {/* Flikar: ikon med kort text under – får plats på mobilen utan att brytas konstigt */}
-        <nav className="max-w-3xl mx-auto px-2 pb-2 grid grid-cols-7 gap-1">
-          {TABS.map(({ id, label, icon: Icon }) => (
+        <nav className="max-w-3xl mx-auto px-2 pb-2 grid gap-1" style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}>
+          {visibleTabs.map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => choose(id)} aria-current={tab === id ? "page" : undefined}
               className={`flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-lg min-w-0 transition-all ${
                 tab === id ? "bg-[#0a7ea4] text-white" : "text-white/55 hover:text-white hover:bg-white/5"
@@ -70,6 +75,7 @@ export default function SettingsApp() {
         {tab === "laget" && <LagetPanel />}
         {tab === "notiser" && <NotificationsPanel />}
         {tab === "klubb" && <ClubPanel />}
+        {tab === "motstandare" && <OpponentsPanel />}
         {tab === "om" && <AboutPanel />}
       </main>
     </div>

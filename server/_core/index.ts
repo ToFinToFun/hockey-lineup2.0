@@ -17,6 +17,7 @@ import { startLiveProfileSchedule } from "../cardProfile";
 import { runOneTimeFixes } from "../oneTimeFixes";
 import { loadClub } from "../clubConfig";
 import { getClubAsset } from "../clubAssets";
+import { getOpponentLogo } from "../opponents";
 import { startAutoNewsSchedule } from "../autoNews";
 import { getMediaPhoto } from "../mediaPosts";
 import { appRouter } from "../routers";
@@ -145,6 +146,18 @@ async function startServer() {
       res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
       res.setHeader("ETag", etag);
       if (req.headers["if-none-match"] === etag) return res.status(304).end();
+      res.type(a.mime).send(a.image);
+    } catch {
+      res.status(500).end();
+    }
+  });
+
+  // Motståndarens logga – öppen (visas i uppställning, delningslänkar och bilder)
+  app.get("/api/opponents/:id/logo", async (req, res) => {
+    try {
+      const a = await getOpponentLogo(Number(req.params.id));
+      if (!a) return res.status(404).end();
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
       res.type(a.mime).send(a.image);
     } catch {
       res.status(500).end();

@@ -134,6 +134,13 @@
       "when": 1790832858421,
       "tag": "0018_club_assets",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "5",
+      "when": 1790834755578,
+      "tag": "0019_opponents",
+      "breakpoints": true
     }
   ]
 }

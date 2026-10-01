@@ -295,3 +295,31 @@ export const clubAssets = mysqlTable("club_assets", {
   mime: varchar("mime", { length: 30 }).notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
+
+// ─── Motståndare (matcher mot andra lag – steg 3 i docs/PLAN-lag-och-motstandare.md) ─
+
+export const opponents = mysqlTable("opponents", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 80 }).notNull(),
+  /** Kortnamn, t.ex. "KHC" */
+  shortName: varchar("shortName", { length: 10 }),
+  /** Lagfärg (#rrggbb) för bilder och Score Tracker */
+  color: varchar("color", { length: 7 }).notNull().default("#ef4444"),
+  /** Logga (PNG/JPEG base64) – valfri */
+  logo: mediumtext("logo"),
+  logoMime: varchar("logoMime", { length: 30 }),
+  archived: boolean("archived").notNull().default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const opponentPlayers = mysqlTable("opponent_players", {
+  id: int("id").autoincrement().primaryKey(),
+  opponentId: int("opponentId").notNull(),
+  name: varchar("name", { length: 80 }).notNull(),
+  number: varchar("number", { length: 4 }),
+  /** MV, B, C, F (samma koder som vårt register) */
+  position: varchar("position", { length: 4 }),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [index("opponent_players_opponent_idx").on(t.opponentId)]);

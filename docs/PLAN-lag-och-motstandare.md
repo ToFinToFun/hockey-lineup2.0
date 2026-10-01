@@ -1,6 +1,6 @@
 # Plan: klubbinställningar, lag som begrepp och matcher mot andra lag
 
-Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **steg 0–2 klara på main (ej driftsatta)**.
+Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **steg 0–3 klara på main (ej driftsatta)**.
 
 ## Målbild
 
@@ -46,7 +46,8 @@ Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **steg 0–2 klara på mai
 - Ritkod (rapport, nyhet, kort, Media), Lineup, Score Tracker och statistik byts över till lag-begreppet (~100 ställen), del för del.
 - **Klart när:** alla tester och referensbilder är oförändrade.
 
-### Steg 3 – Motståndarregister (bakom flagga)
+### Steg 3 – Motståndarregister (bakom flagga) ✅
+- Gjort: flaggan "Beta: matcher mot andra lag" (Inställningar → Klubb), fliken Motståndare, tabellerna opponents/opponent_players.
 - Nya tabeller: motståndare (namn, kortnamn, logga, färg) och deras spelare (namn, nummer, position).
 - Sida för att skapa/redigera motståndare och deras spelare.
 - **Klart när:** motståndare kan skapas, redigeras och tas bort; inget annat påverkas.

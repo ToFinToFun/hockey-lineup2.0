@@ -27,6 +27,12 @@ Versionen höjs i `package.json` vid varje deploy till `production`, och commite
 - Hemmalaget i nyhetsbilden per veckodag är en klubbinställning (Stålstadens: tisdag Gröna, torsdag Vita).
 - Kontrollbilderna är oförändrade; provat i webbläsaren med en påhittad klubb (Röda/Blå) på alla sidor utan fel.
 
+**Steg 3 – motståndarregister (beta, av som standard)**
+- Funktionsflagga "Beta: matcher mot andra lag" under Inställningar → Klubb (app_config "features").
+- Ny flik Inställningar → Motståndare (syns bara med flaggan på): skapa lag med namn, kortnamn, färg och logga; lägg till spelare med namn, nummer och position (Enter lägger till och hoppar tillbaka till namnet); ändra direkt i listan; arkivera eller ta bort lag.
+- Databasen: nya tabeller opponents och opponent_players (bara tillägg). Loggan visas via /api/opponents/:id/logo och kan ritas på servern.
+- Inget annat i appen påverkas än – uppställning, Score Tracker och bilder mot motståndare kommer i steg 4–6.
+
 ## 2.45.1 – 2026-09-30
 
 - "Totalt" är samma val överallt för all statistik sedan starten (säsongen 2026/27): Statistik (förut "Alla"), Media → Statistik (förut "Alla"/"Alla matcher") och hockeykortens statistikruta (förut "Karriär"). Sparade kort med rubriken "Karriär" får "Totalt" automatiskt.
