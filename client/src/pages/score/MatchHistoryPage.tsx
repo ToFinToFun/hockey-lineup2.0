@@ -1395,6 +1395,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
             createdAt: String(exportMatchData.createdAt),
             lineup: exportMatchData.lineup as ReportMatch["lineup"],
             location: (exportMatchData as { location?: string | null }).location ?? null,
+            opponentId: (exportMatchData as { opponentId?: number | null }).opponentId ?? null,
             report: (exportMatchData as { report?: ReportMatch["report"] }).report ?? null,
           }}
           onClose={() => {

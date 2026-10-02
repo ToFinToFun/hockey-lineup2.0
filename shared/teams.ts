@@ -53,3 +53,10 @@ export function normalizeTeamKey(raw: string | null | undefined): TeamKey | null
   if (t === "green" || t === "gröna" || t === "grön" || t === club().teams.green.name.toLowerCase()) return "green";
   return null;
 }
+
+/** Initialer för ett lag utan logga, t.ex. "Kalix HC" → "KHC", "Testlaget" → "TES". */
+export function teamInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length <= 1) return (words[0] ?? "?").slice(0, 3).toUpperCase();
+  return words.map((w) => (w.length <= 3 && w === w.toUpperCase() ? w : w[0])).join("").slice(0, 4).toUpperCase();
+}

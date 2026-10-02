@@ -8,6 +8,8 @@
  * Teman (standard, jul, nyår, påsk), valfri sponsor, bildtext med klubbens
  * hashtags. Inlägg sparas som utkast och kan öppnas och ändras igen.
  */
+import { matchSides } from "@/lib/matchSides";
+import type { MatchSetup } from "@shared/matchSetup";
 import { defaultTeamNames, isTeamAWhite, teamGenitive, teamName, teamSingular } from "@shared/teams";
 import { club } from "@shared/club";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -30,6 +32,9 @@ interface Settings {
   kind: Kind;
   overlay: MediaOverlay;
   background: MediaBackground;
+  /** Lagets uppställning mot motståndare: lagets logga och färg (annars klubbens) */
+  teamLogo?: string | null;
+  teamAccent?: string;
   /** Äldre sparade inlägg */
   theme?: string;
   subtitle: string;
@@ -95,7 +100,8 @@ export function teamGroups(
       .map(({ s, p }) => ({ pos: posOf(s.role), name: p.name, number: p.number || undefined, captain: p.captainRole ?? undefined })),
   }));
   const rawName = useA ? doc.teamAName : doc.teamBName;
-  const name = rawName ? rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase() : teamName(team);
+  const name = rawName && rawName.toUpperCase() === club().name.toUpperCase() ? club().name
+    : rawName ? rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase() : teamName(team);
   return { name, groups: groups.filter((g) => g.players.length > 0) };
 }
 
@@ -177,10 +183,17 @@ export default function MediaApp() {
   }, [cardsKey, s.kind, savedCards.data]); // eslint-disable-line react-hooks/exhaustive-deps
   const cardPlayers = (registry.data ?? []).filter((p) => savedCards.data?.some((c) => c.playerId === p.id)).sort((a, b) => a.name.localeCompare(b.name, "sv"));
 
+  // Matchtyp i Lineup: mot motståndare → lagens namn, loggor och färger
+  const setupNow = (lineupState.data as { setup?: MatchSetup } | undefined)?.setup;
+  const oppQ = trpc.opponents.get.useQuery({ id: setupNow?.opponentId ?? 0 }, { enabled: setupNow?.mode === "external" && !!setupNow.opponentId, staleTime: 60_000 });
+  const externalSides = () => (setupNow?.mode === "external" ? matchSides(setupNow, oppQ.data ?? null, (lineupState.data as { teamAName?: string } | undefined)?.teamAName) : null);
+
   const loadTeam = (team: "white" | "green", announce = false) => {
     if (!lineupState.data) return;
     const { name, groups } = teamGroups(lineupState.data as never, team);
-    update({ team, teamName: name, groups });
+    // Mot motståndare: vårt lags logga eller motståndarens logga och färg
+    const ext = externalSides();
+    update({ team, teamName: name, groups, teamLogo: ext ? ext[team].logo : undefined, teamAccent: ext ? ext[team].color : undefined });
     if (announce) toast.success(`${name}s uppställning hämtad`, { description: `${groups.reduce((n, g) => n + g.players.length, 0)} spelare` });
   };
 
@@ -214,7 +227,7 @@ export default function MediaApp() {
     const t = setTimeout(async () => {
       const common = { overlay: s.overlay, background: s.background, dateLine: s.dateLine, sponsor };
       const data: MediaPostData =
-        s.kind === "lineup" ? { ...common, kind: "lineup", team: s.team, teamName: s.teamName, title: s.title, groups: s.groups }
+        s.kind === "lineup" ? { ...common, kind: "lineup", team: s.team, teamName: s.teamName, title: s.title, groups: s.groups, ...(s.teamLogo !== undefined ? { logo: s.teamLogo, accent: s.teamAccent } : {}) }
         : s.kind === "cards" ? { ...common, kind: "cards", title: s.title, subtitle: s.subtitle, cards: cardCanvases }
         : s.kind === "stats" ? { ...common, kind: "stats", title: s.title, subtitle: s.subtitle || range.label, valueLabel: statCat.valueLabel, rows }
         : { ...common, kind: "text", title: s.title, body: s.body, info: s.info, photo, photoDim: s.photoDim };
@@ -443,8 +456,8 @@ export default function MediaApp() {
               <div>
                 <p className="text-[11px] text-white/50 mb-1.5">Lag</p>
                 <div className="flex flex-wrap gap-2 items-center">
-                  <button onClick={() => loadTeam("white")} className={chip(s.team === "white")}>{teamName("white")}</button>
-                  <button onClick={() => loadTeam("green")} className={chip(s.team === "green")}>{teamName("green")}</button>
+                  <button onClick={() => loadTeam("white")} className={chip(s.team === "white")}>{externalSides()?.white.name ?? teamName("white")}</button>
+                  <button onClick={() => loadTeam("green")} className={chip(s.team === "green")}>{externalSides()?.green.name ?? teamName("green")}</button>
                   <button onClick={() => loadTeam(s.team, true)} className="flex items-center gap-1 text-[11px] text-sky-300/80 hover:text-sky-200 ml-auto"><RefreshCw size={12} /> Hämta aktuell uppställning</button>
                 </div>
                 <p className="text-[10px] text-white/35 mt-1">{s.groups.reduce((n, g) => n + g.players.length, 0)} spelare. Ett sparat inlägg behåller laget som det var – tryck Hämta för att uppdatera.</p>

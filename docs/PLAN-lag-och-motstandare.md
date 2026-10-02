@@ -1,6 +1,6 @@
 # Plan: klubbinställningar, lag som begrepp och matcher mot andra lag
 
-Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **steg 0–5 klara på main (ej driftsatta)**.
+Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **steg 0–6 klara på main (ej driftsatta)**. Flaggan finns kvar tills Jerry provat.
 
 ## Målbild
 
@@ -64,7 +64,8 @@ Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **steg 0–5 klara på mai
 - Målskytt/assist väljs från respektive lag; motståndarnas mål knyts till deras spelare.
 - **Klart när:** en extern match kan spelas, sparas (även offline) och redigeras i matchhistoriken.
 
-### Steg 6 – Bilder och nyheter (flaggan tas bort)
+### Steg 6 – Bilder och nyheter ✅
+- Gjort: matchrapport, stjärnkort, nyhet (manuell/automatisk) och Media med motståndarens namn, logga (eller initialer) och färg. Flaggan ligger kvar tills det provats på riktigt.
 - Matchrapport, nyhet till laget.se, Media och stjärnkort visar motståndarens namn och logga.
 - **Klart när:** alla bilder fungerar för både interna och externa matcher; flaggan tas bort.
 

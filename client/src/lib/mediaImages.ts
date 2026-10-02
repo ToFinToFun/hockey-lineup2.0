@@ -10,7 +10,7 @@
 import { clubHeading, club, teamLogo } from "@shared/club";
 import { IG_W, IG_H, HEAD, BODY, tryLoad, ensureFonts, fit, canvas, backdrop, presentedBy } from "@/lib/matchReportImages";
 import { roundRect } from "@/lib/canvas";
-import { teamColor } from "@shared/teams";
+import { teamColor, teamInitials } from "@shared/teams";
 import { POSITION_COLORS } from "@/lib/positionColors";
 
 /** Överlägg: diskret dekor ovanpå bilden (inga färgbyten). */
@@ -65,6 +65,9 @@ export interface LineupPostData extends MediaCommon {
   teamName: string;
   title: string; // t.ex. "Dagens lag"
   groups: LineupGroup[];
+  /** Mot motståndare: lagets egen logga (null = ingen) och färg */
+  logo?: string | null;
+  accent?: string;
 }
 
 export interface TextPostData extends MediaCommon {
@@ -270,7 +273,7 @@ export function lineupHeights(groups: LineupGroup[], k: number) {
 }
 
 async function renderLineup(d: LineupPostData): Promise<HTMLCanvasElement> {
-  const [bg, logo, sp] = await Promise.all([tryLoad(bgUrl(d.background)), tryLoad(LOGO[d.team]), tryLoad(d.sponsor?.logo)]);
+  const [bg, logo, sp] = await Promise.all([tryLoad(bgUrl(d.background)), tryLoad(d.logo !== undefined ? d.logo : LOGO[d.team]), tryLoad(d.sponsor?.logo)]);
   const [c, ctx] = canvas();
   backdrop(ctx, bg, dimFor(d.background, 0.6));
   decorate(ctx, d.overlay);
@@ -317,10 +320,20 @@ async function renderLineup(d: LineupPostData): Promise<HTMLCanvasElement> {
     ctx.beginPath(); ctx.arc(lx + lr, ly + lr, lr, 0, Math.PI * 2); ctx.clip();
     ctx.drawImage(logo, lx, ly, lr * 2, lr * 2);
     ctx.restore();
+  } else if (d.logo === null && d.accent) {
+    // Motståndare utan logga: färgad cirkel med initialer
+    ctx.save();
+    ctx.beginPath(); ctx.arc(lx + lr, ly + lr, lr, 0, Math.PI * 2);
+    ctx.fillStyle = d.accent; ctx.fill();
+    const ini = teamInitials(d.teamName);
+    ctx.fillStyle = "#ffffff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = `700 ${Math.round(lr * (ini.length > 3 ? 0.62 : 0.78))}px ${HEAD}`;
+    ctx.fillText(ini, lx + lr, ly + lr + lr * 0.04);
+    ctx.restore();
   }
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = d.team === "green" ? teamColor("green") : "#ffffff";
+  ctx.fillStyle = d.accent ?? (d.team === "green" ? teamColor("green") : "#ffffff");
   ctx.font = `700 64px ${HEAD}`;
   ctx.letterSpacing = "4px";
   ctx.fillText(fit(ctx, d.teamName.toUpperCase(), pw - 180), lx + lr * 2 + 26, ly + lr + 2);

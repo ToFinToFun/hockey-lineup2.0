@@ -37,6 +37,8 @@ export interface ReportMatch {
   lineup?: { teamAName?: string; teamBName?: string; lineup?: Record<string, { id?: string; name?: string; number?: string }> } | null;
   /** Plats från träningen (sparas när matchen avslutas i Score Tracker) */
   location?: string | null;
+  /** Match mot ett annat lag (beta) */
+  opponentId?: number | null;
   /** Sparade val: stjärnor (nycklar) och sponsor */
   report?: { stars?: string[]; sponsor?: string | null; showStats?: boolean[]; title?: string | null } | null;
 }
@@ -56,7 +58,9 @@ export function buildReportData(
   sponsor: { name: string; logo: string | null } | null,
   showStats: boolean[] = [true, true, true],
   title?: string,
-  showLocation = true
+  showLocation = true,
+  /** Motståndaren i matcher mot andra lag */
+  opponent?: { name: string; color: string; logoUrl: string | null } | null
 ): ReportData {
   const wrap = match.lineup ?? {};
   const aWhite = isTeamAWhite(wrap.teamAName);
@@ -64,8 +68,11 @@ export function buildReportData(
     const t = (s ?? "").trim();
     return t ? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() : fallback;
   };
-  const whiteName = cap(aWhite ? wrap.teamAName : wrap.teamBName, teamName("white"));
-  const greenName = cap(aWhite ? wrap.teamBName : wrap.teamAName, teamName("green"));
+  const external = !!match.opponentId;
+  // Mot motståndare: vårt lag (klubbens namn om det är det) mot lagets namn som det skrivs
+  const ourName = (wrap.teamAName ?? "").trim().toUpperCase() === club().name.toUpperCase() ? club().name : cap(wrap.teamAName, club().name);
+  const whiteName = external ? ourName : cap(aWhite ? wrap.teamAName : wrap.teamBName, teamName("white"));
+  const greenName = external ? (opponent?.name ?? cap(wrap.teamBName, "Motståndare")) : cap(aWhite ? wrap.teamBName : wrap.teamAName, teamName("green"));
 
   const chrono = [...(match.goalHistory ?? [])].reverse();
   // Matchvinnande mål: vinnarlagets mål nummer (förlorarens mål + 1)
@@ -96,7 +103,10 @@ export function buildReportData(
     // Bilden: bara namn och (valfritt) statistik – ingen position
     stars: stars.map((c, i) => ({ name: c.number ? `${c.name} #${c.number}` : c.name, stat: showStats[i] === false ? "" : starStat(c), gwg: showStats[i] !== false && c.gwg })),
     sponsor,
-    logoWhite: teamLogo("white"), logoGreen: teamLogo("green"), background: BACKGROUND,
+    logoWhite: external ? club().logo : teamLogo("white"),
+    logoGreen: external ? (opponent?.logoUrl ?? null) : teamLogo("green"),
+    ...(external && opponent ? { colorGreen: opponent.color } : {}),
+    background: BACKGROUND,
   };
 }
 
@@ -199,7 +209,9 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
   const removeTag = (tag: string) => saveTags.mutate(tags.filter((t) => t !== tag));
 
   const [showLocation, setShowLocation] = useState(true);
-  const data = useMemo(() => buildReportData(match, stars, sponsor, showStats, titleDebounced, showLocation), [match, stars, sponsor?.name, sponsor?.logo, showStats, titleDebounced, showLocation]); // eslint-disable-line react-hooks/exhaustive-deps
+  const opponentsQ = trpc.opponents.list.useQuery({ includeArchived: true }, { enabled: !!match.opponentId, staleTime: 5 * 60_000 });
+  const opponent = match.opponentId ? opponentsQ.data?.find((o) => o.id === match.opponentId) ?? null : null;
+  const data = useMemo(() => buildReportData(match, stars, sponsor, showStats, titleDebounced, showLocation, opponent), [match, stars, sponsor?.name, sponsor?.logo, showStats, titleDebounced, showLocation, opponent]); // eslint-disable-line react-hooks/exhaustive-deps
   const autoCaption = useMemo(() => buildCaption(stars, sponsorName, tags, showStats), [stars, sponsorName, tags, showStats]);
   const [caption, setCaption] = useState(autoCaption);
   const [captionEdited, setCaptionEdited] = useState(false);
@@ -240,7 +252,7 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
         const photo = card ? await load(`/api/players/${encodeURIComponent(c.key)}/card-source?v=${v}`) : null;
         const mask = card && photo ? await load(`/api/players/${encodeURIComponent(c.key)}/card-mask?v=${v}`) : null;
         const won = whiteWon === null ? null : (c.team === "white") === whiteWon;
-        const settings = starCardSettings(card && photo ? (card.settings as Partial<CardSettings>) : null, c, (i + 1) as 1 | 2 | 3, matchLine, won);
+        const settings = starCardSettings(card && photo ? (card.settings as Partial<CardSettings>) : null, c, (i + 1) as 1 | 2 | 3, matchLine, won, !!match.opponentId);
         const canvas = await renderStarPost(settings, photo, mask, bg);
         const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.9));
         return blob ? { key: c.key, name: c.name, hasCard: !!(card && photo), blob, url: URL.createObjectURL(blob) } : null;

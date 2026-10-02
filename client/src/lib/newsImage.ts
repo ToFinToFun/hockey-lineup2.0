@@ -4,6 +4,7 @@
  * och C/A-märken. Matchbandet (lagloggor, datum, plats/tid, sponsor)
  * ligger exakt i bildens mitt, så det är det som syns i laget.se-flödet.
  */
+import { teamInitials } from "@shared/teams";
 import type { Player } from "@/lib/players";
 import type { Slot } from "@/lib/lineup";
 import { POSITION_COLORS, CAPTAIN_COLORS } from "@/lib/positionColors";
@@ -81,7 +82,7 @@ function drawCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, w: numb
   ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
 }
 
-function drawLogo(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null, cx: number, cy: number, r: number, fallback: string) {
+function drawLogo(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null, cx: number, cy: number, r: number, fallback: string, name?: string) {
   ctx.save();
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -92,6 +93,16 @@ function drawLogo(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null, c
   } else {
     ctx.fillStyle = fallback;
     ctx.fill();
+    // Lag utan logga (t.ex. motståndare): initialerna i cirkeln
+    if (name) {
+      const ini = teamInitials(name);
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `700 ${Math.round(r * (ini.length > 3 ? 0.62 : 0.78))}px 'Oswald', sans-serif`;
+      ctx.fillText(ini, cx, cy + r * 0.04);
+      ctx.textBaseline = "alphabetic";
+    }
   }
   ctx.restore();
   ctx.beginPath();
@@ -208,7 +219,7 @@ function drawTeamPanel(ctx: CanvasRenderingContext2D, team: NewsTeam, logo: HTML
   // Rubrik: logga + lagnamn
   const headerMid = y + L.PANEL_PAD + L.HEADER_H / 2;
   const logoR = 38;
-  drawLogo(ctx, logo, x + L.PANEL_PAD + logoR, headerMid, logoR, team.accent);
+  drawLogo(ctx, logo, x + L.PANEL_PAD + logoR, headerMid, logoR, team.accent, team.name);
   ctx.font = `700 48px ${FONT_HEAD}`;
   ctx.fillStyle = team.accent;
   ctx.letterSpacing = "6px";
@@ -266,8 +277,8 @@ function drawBand(
   const logoR = 92;
   const logoY = y + 262;
   const dx = 250;
-  drawLogo(ctx, left.logo, mid - dx, logoY, logoR, left.team.accent);
-  drawLogo(ctx, right.logo, mid + dx, logoY, logoR, right.team.accent);
+  drawLogo(ctx, left.logo, mid - dx, logoY, logoR, left.team.accent, left.team.name);
+  drawLogo(ctx, right.logo, mid + dx, logoY, logoR, right.team.accent, right.team.name);
 
   ctx.font = `700 64px ${FONT_HEAD}`;
   ctx.fillStyle = "rgba(255,255,255,0.55)";

@@ -46,6 +46,14 @@ Versionen höjs i `package.json` vid varje deploy till `production`, och commite
 - När matchen sparas lagras motståndarens uppställning på laget – nästa match mot dem är förifylld.
 - Prediktionen i Lineup döljs mot motståndare (PIR finns bara för våra spelare).
 
+**Steg 6 – bilder och nyheter mot motståndare (beta)**
+- Matchrapporten (resultat, mål, bildtext) visar vårt lag och motståndarens namn, logga och färg. Långa lagnamn krymps så att de ryms under loggan.
+- Lag utan logga får en färgad cirkel med initialerna (t.ex. "KHC") – i matchrapporten, nyhetsbilden och Media.
+- Stjärnkorten: vårt lags spelare får klubbens märke, motståndarens spelare inget märke.
+- Nyheten till laget.se (manuell och automatisk): vårt lags logga och motståndarens logga och färg i bilden.
+- Media → Lagets uppställning: knapparna visar vårt lags och motståndarens namn; bilden får lagets logga och färg.
+- Nya kontrollbilder för matcher mot motståndare; alla tidigare kontrollbilder är oförändrade.
+
 - Spelarkortet: "Alt" (alternativ position) ligger på samma rad som positionen, direkt efter positionsknapparna. Vad historiken säger visas när man håller över.
 
 ## 2.45.3 – 2026-10-01

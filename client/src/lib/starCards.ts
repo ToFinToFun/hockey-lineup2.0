@@ -6,6 +6,7 @@
  * Kortet (5:7) läggs på en 4:5-bild (1080×1350) så att Instagram inte beskär
  * det i en karusell tillsammans med resultat- och målbilderna.
  */
+import { club } from "@shared/club";
 import { renderCard, DEFAULT_SETTINGS, CARD_W, CARD_H, type CardSettings, type CardCell } from "@shared/cardRender";
 import type { StarCandidate } from "@/lib/starsOfGame";
 
@@ -33,7 +34,9 @@ export function starCardSettings(
   c: StarCandidate,
   rank: 1 | 2 | 3,
   matchLine: string,
-  won: boolean | null
+  won: boolean | null,
+  /** Match mot motståndare: vårt lag får klubbens märke, motståndarens spelare inget */
+  external = false
 ): CardSettings {
   const base: CardSettings = {
     ...DEFAULT_SETTINGS,
@@ -47,7 +50,7 @@ export function starCardSettings(
     ...base,
     skin: "retro-guld",
     // Märket för laget spelaren spelade för i matchen
-    logo: c.team === "green" ? "green" : "white",
+    logo: external ? (c.team === "white" ? (club().crest ? "anvil" : "green") : "") : c.team === "green" ? "green" : "white",
     starRank: rank,
     placeholderLogo: !saved,
     statsMode: "custom",

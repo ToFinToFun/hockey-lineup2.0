@@ -2337,8 +2337,9 @@ export default function Home() {
           teamALineup={teamALineup}
           teamBLineup={teamBLineup}
           lineupText={lineupStateToText({ teamAName, teamBName, teamAConfig, teamBConfig, lineup }, { bold: true })}
-          logoWhite={teamLogo("white")}
-          logoGreen={teamLogo("green")}
+          logoWhite={external ? ourLogoUrl(setup) : teamLogo("white")}
+          logoGreen={external ? (opponentQ.data?.logoUrl ?? "") : teamLogo("green")}
+          {...(external && opponentQ.data ? { accentGreen: opponentQ.data.color } : {})}
           bgUrl={BG_URL}
         />
       )}

@@ -11,6 +11,8 @@
  * spelare) till dem som valt de notiserna. Nyheten byggs på servern med samma
  * kod som rutan "Nyhet till laget.se" i Lineup.
  */
+import { getOpponent } from "./opponents";
+import { club } from "../shared/club";
 import { teamAccent } from "../shared/teams";
 import { appUrl } from "./clubConfig";
 import { teamLogo } from "../shared/club";
@@ -126,9 +128,17 @@ export async function buildNews(ev: { date: string; time?: string; location?: st
   const text = lineupStateToText({ teamAName: doc.teamAName, teamBName: doc.teamBName, teamAConfig, teamBConfig, lineup }, { bold: true });
   const placeLine = [ev.location, ev.time].filter(Boolean).join(" ");
 
+  // Mot motståndare: vårt lags och motståndarens logga och färg
+  const ext = doc.setup?.mode === "external" && doc.setup.opponentId ? await getOpponent(doc.setup.opponentId).catch(() => null) : null;
+  const c0 = club();
+  const ourLogo = doc.setup?.ourLogo === "white" ? c0.teams.white.logo : doc.setup?.ourLogo === "green" ? c0.teams.green.logo : c0.logo;
+  const logoA = ext ? ourLogo : teamLogo("white");
+  const logoB = ext ? (ext.logoUrl ?? "") : teamLogo("green");
+  const accentB = ext ? ext.color : teamAccent("green");
+
   const canvas = (await renderNewsImage({
-    teamA: { name: doc.teamAName, slots: createTeamSlots("team-a", teamAConfig), lineup: pick("team-a-"), logoUrl: teamLogo("white"), accent: teamAccent("white") },
-    teamB: { name: doc.teamBName, slots: createTeamSlots("team-b", teamBConfig), lineup: pick("team-b-"), logoUrl: teamLogo("green"), accent: teamAccent("green") },
+    teamA: { name: doc.teamAName, slots: createTeamSlots("team-a", teamAConfig), lineup: pick("team-a-"), logoUrl: logoA, accent: teamAccent("white") },
+    teamB: { name: doc.teamBName, slots: createTeamSlots("team-b", teamBConfig), lineup: pick("team-b-"), logoUrl: logoB, accent: accentB },
     home: defaultHomeForDate(ev.date),
     dateLine: weekdayLine(ev.date),
     placeLine,

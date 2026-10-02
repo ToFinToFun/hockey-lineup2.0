@@ -33,6 +33,9 @@ interface LagetNewsModalProps {
   lineupText: string;
   logoWhite: string;
   logoGreen: string;
+  /** Mot motståndare: lagens accentfärger (standard klubbens) */
+  accentWhite?: string;
+  accentGreen?: string;
   bgUrl: string;
 }
 
@@ -193,6 +196,8 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
     teamBLineup,
     logoWhite,
     logoGreen,
+    props.accentWhite,
+    props.accentGreen,
     bgUrl,
   ]);
 
@@ -203,8 +208,8 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
     setRendering(true);
     const p = latestProps.current;
     renderNewsImage({
-      teamA: { name: p.teamAName, slots: p.teamASlots, lineup: p.teamALineup, logoUrl: p.logoWhite, accent: teamAccent("white") },
-      teamB: { name: p.teamBName, slots: p.teamBSlots, lineup: p.teamBLineup, logoUrl: p.logoGreen, accent: teamAccent("green") },
+      teamA: { name: p.teamAName, slots: p.teamASlots, lineup: p.teamALineup, logoUrl: p.logoWhite, accent: p.accentWhite ?? teamAccent("white") },
+      teamB: { name: p.teamBName, slots: p.teamBSlots, lineup: p.teamBLineup, logoUrl: p.logoGreen, accent: p.accentGreen ?? teamAccent("green") },
       home,
       dateLine: weekdayLine(event?.date),
       placeLine,

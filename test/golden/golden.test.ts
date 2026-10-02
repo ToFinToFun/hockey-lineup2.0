@@ -96,6 +96,19 @@ beforeAll(async () => {
     { rank: "1", name: "Hampus Bergman", sub: "8+6 · 12 matcher", value: "14" }, { rank: "2", name: "Viktor Lindgren", sub: "5+7 · 11 matcher", value: "12" },
   ] } as never)) as unknown as Canvasish;
   images["media-kort"] = (await renderMediaPost({ ...common, kind: "cards", title: "Veckans spelare", subtitle: "Vecka 40", cards: [images["kort-retro-svart"], images["kort-retro-gron"]] } as never)) as unknown as Canvasish;
+
+  // Mot motståndare (steg 6): motståndaren utan logga (färgad cirkel) och med egen färg
+  images["rapport-extern"] = (await renderResultImage({ ...report, whiteName: "Stålstadens SF", greenName: "Kalix HC", logoWhite: "/images/logo-green.png", logoGreen: null, colorGreen: "#dc2626", whiteScore: 2, greenScore: 4 } as never)) as unknown as Canvasish;
+  images["rapport-mal-extern"] = (await renderGoalsImage({ ...report, whiteName: "Stålstadens SF", greenName: "Kalix HC", logoWhite: "/images/logo-green.png", logoGreen: null, colorGreen: "#dc2626" } as never)) as unknown as Canvasish;
+  images["nyhet-extern"] = (await renderNewsImage({
+    teamA: { name: "STÅLSTADENS SF", slots: createTeamSlots("team-a"), lineup: { "team-a-gk-1": p("1", "Linus Carbin", "1") }, logoUrl: "/images/logo-green.png", accent: "#e2e8f0" },
+    teamB: { name: "KALIX HC", slots: createTeamSlots("team-b"), lineup: { "team-b-gk-1": p("opp-1", "Bertil Berg", "1") }, logoUrl: "", accent: "#dc2626" },
+    home: "a", dateLine: "Torsdag 1/10", placeLine: "Coop Arena C-Hallen 20:00", sponsor: undefined, backgroundUrl: "/images/background.jpg",
+  } as never)) as unknown as Canvasish;
+  images["media-lag-extern"] = (await renderMediaPost({ ...common, kind: "lineup", team: "green", teamName: "Kalix HC", title: "Dagens lag", logo: null, accent: "#dc2626", groups: [
+    { label: "Målvakt", players: [P("MV", "Bertil Berg", "1")] },
+    { label: "1:a kedjan", players: [P("LW", "Anders Andersson", "9", "C")] },
+  ] } as never)) as unknown as Canvasish;
 }, 60_000);
 
 describe("kontrollbilder", () => {
