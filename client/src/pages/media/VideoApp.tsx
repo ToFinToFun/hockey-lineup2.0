@@ -16,7 +16,7 @@ import { useSponsors, pickLeastShown, type Sponsor } from "@/lib/sponsors";
 import { starCandidates, autoStars, type StarCandidate } from "@/lib/starsOfGame";
 import type { ReportMatch } from "@/components/score/MatchReportModal";
 import { renderCard, DEFAULT_SETTINGS as CARD_DEFAULTS, type CardSettings } from "@shared/cardRender";
-import { cellsFor, defaultStatsTitle } from "@shared/cardStats";
+import { cellsFor } from "@shared/cardStats";
 import { teamName } from "@shared/teams";
 import { club } from "@shared/club";
 import {
@@ -34,6 +34,8 @@ function matchDateLine(m: ReportMatch | undefined): string {
   return `${WEEKDAYS[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}${m?.location ? ` · ${m.location}` : ""}`;
 }
 const fmtMB = (b: number) => `${Math.round(b / 1024 / 1024)} MB`;
+/** Intro 1 + intro 2 + outro minus övergångarna (samma som server/video/videoFfmpeg.ts) */
+const ADDED_SECONDS = 1.6 + 2.8 + 2.6 - 3 * 0.4;
 
 /** Målen i tidsordning med ställningen efter varje mål (exporteras för test) */
 export function goalsWithScore(m: ReportMatch | undefined) {
@@ -50,6 +52,32 @@ export function starLine(c: StarCandidate): string {
   if (c.position === "MV" && c.goalsAgainst !== null) return c.goalsAgainst === 0 ? "Hållen nolla" : `${c.goalsAgainst} insläppta`;
   const parts = [c.goals ? `${c.goals} mål` : "", c.assists ? `${c.assists} assist` : ""].filter(Boolean);
   return parts.join(" · ") || "";
+}
+
+export type VideoStatsMode = "match" | "season" | "playoff" | "preseason" | "career";
+export const VIDEO_STATS_MODES: Array<{ id: VideoStatsMode; name: string }> = [
+  { id: "match", name: "Matchen" },
+  { id: "season", name: "Säsong" },
+  { id: "playoff", name: "Slutspel" },
+  { id: "preseason", name: "Försäsong" },
+  { id: "career", name: "Totalt" },
+];
+
+/**
+ * Spelarens siffror i en match (exporteras för test). Utespelare: mål, assist,
+ * poäng; målvakt: insläppta och nolla. Plus resultatet för hans lag och
+ * stjärnan om han blev matchens ★★★/★★/★.
+ */
+export function matchStatCells(c: StarCandidate, match: { teamWhiteScore: number; teamGreenScore: number }, starRankOf: number | null): { title: string; cells: Array<{ label: string; value: string }> } {
+  const own = c.team === "white" ? match.teamWhiteScore : match.teamGreenScore;
+  const opp = c.team === "white" ? match.teamGreenScore : match.teamWhiteScore;
+  const res = own > opp ? "V" : own < opp ? "F" : "O";
+  const cells = c.position === "MV" && c.goalsAgainst !== null
+    ? [{ label: "GA", value: String(c.goalsAgainst) }, { label: "NOLLA", value: c.goalsAgainst === 0 ? "JA" : "–" }]
+    : [{ label: "G", value: String(c.goals) }, { label: "A", value: String(c.assists) }, { label: "PTS", value: String(c.goals + c.assists) }];
+  cells.push({ label: "RES", value: res });
+  if (starRankOf) cells.push({ label: "STJÄRNA", value: "★".repeat(4 - starRankOf) });
+  return { title: "Matchen", cells };
 }
 
 export default function VideoApp() {
@@ -201,35 +229,60 @@ export default function VideoApp() {
   const sponsorOf = (name: string): Sponsor | undefined => sponsors.find((s) => s.name === name);
 
   // ─── Spelarens kort/foto och statistik ───
-  const [picture, setPicture] = useState<VideoGraphicsData["picture"]>(null);
-  const [stats, setStats] = useState<VideoGraphicsData["stats"]>(null);
+  // Statistiken (rutan och siffrorna på hockeykortet) följer samma val
+  const [statsMode, setStatsMode] = useState<VideoStatsMode>("season");
+  useEffect(() => { setStatsMode(match && kind !== "interview" ? "match" : "season"); }, [kind, match?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [playerStats, setPlayerStats] = useState<Awaited<ReturnType<typeof utils.client.cards.stats.query>> | undefined>(undefined);
   useEffect(() => {
     let cancelled = false;
-    setPicture(null); setStats(null);
-    if (!playerId) return;
+    setPlayerStats(undefined);
+    if (playerId) utils.client.cards.stats.query({ playerId }).then((st) => { if (!cancelled) setPlayerStats(st); }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [playerId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const matchCandidate = useMemo(() => {
+    if (!match || !player) return null;
+    const cands = starCandidates({ teamWhiteScore: match.teamWhiteScore, teamGreenScore: match.teamGreenScore, goalHistory: match.goalHistory, lineup: match.lineup });
+    return cands.find((c) => c.key === player.id) ?? cands.find((c) => c.name.trim().toLowerCase() === player.name.trim().toLowerCase()) ?? null;
+  }, [match, player]);
+  const stats: VideoGraphicsData["stats"] = useMemo(() => {
+    if (statsMode === "match") {
+      if (!match || !matchCandidate) return null;
+      const rank = stars.findIndex((c) => c.key === matchCandidate.key);
+      const r = matchStatCells(matchCandidate, match, rank >= 0 ? rank + 1 : null);
+      return { ...r, title: `Matchen ${matchDateLine(match).split(" · ")[0].toLowerCase()}` };
+    }
+    const r = cellsFor(statsMode, playerStats);
+    return r.cells.length ? r : null;
+  }, [statsMode, match, matchCandidate, stars, playerStats]);
+  const matchMissingPlayer = statsMode === "match" && !!player && !!match && !matchCandidate;
+
+  const [picture, setPicture] = useState<VideoGraphicsData["picture"]>(null);
+  const statsKey = JSON.stringify(stats);
+  useEffect(() => {
+    let cancelled = false;
+    if (!playerId) { setPicture(null); return; }
     const load = (src: string) => new Promise<HTMLImageElement | null>((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
     (async () => {
-      const st = await utils.client.cards.stats.query({ playerId }).catch(() => undefined);
-      const { title, cells } = cellsFor("season", st);
-      if (!cancelled && cells.length) setStats({ title, cells });
       const card = savedCards.data?.find((c) => c.playerId === playerId);
       if (card) {
         const v = new Date(card.updatedAt).getTime();
         const [photo, mask] = await Promise.all([load(`/api/players/${encodeURIComponent(playerId)}/card-source?v=${v}`), load(`/api/players/${encodeURIComponent(playerId)}/card-mask?v=${v}`)]);
         let settings: CardSettings = { ...CARD_DEFAULTS, ...(card.settings as Partial<CardSettings>) };
-        if (st && settings.statsMode !== "custom" && settings.statsMode !== "none") {
-          const c = cellsFor(settings.statsMode, st);
-          settings = { ...settings, cells: c.cells, statsTitle: defaultStatsTitle(settings.statsMode, st), form: st.form };
+        // Kortet visar samma statistik som valts för videon (kortet i registret ändras inte)
+        if (settings.statsMode !== "none") {
+          settings = stats
+            ? { ...settings, statsMode: "custom", cells: stats.cells, statsTitle: stats.title, form: playerStats?.form ?? settings.form }
+            : { ...settings, statsMode: "custom", cells: [], statsTitle: "" };
         }
         const canvas = await renderCard({ settings, photo, mask, scale: 0.9 });
         if (!cancelled) setPicture({ image: canvas, isCard: true });
         return;
       }
       const img = await load(`/api/players/${encodeURIComponent(playerId)}/photo`);
-      if (!cancelled && img) setPicture({ image: img, isCard: false });
+      if (!cancelled) setPicture(img ? { image: img, isCard: false } : null);
     })().catch(() => undefined);
     return () => { cancelled = true; };
-  }, [playerId, savedCards.data]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [playerId, savedCards.data, statsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const data: VideoGraphicsData = {
     format, kind, team: side, heading, headline, subline, dateLine,
@@ -388,6 +441,19 @@ export default function VideoApp() {
             )}
             {upProgress !== null && <div className="h-1 mt-1 rounded bg-white/10 overflow-hidden"><div className="h-full bg-emerald-400" style={{ width: `${upProgress * 100}%` }} /></div>}
             {limits && <p className="text-[10px] text-white/35 mt-1">Max {fmtMB(limits.maxBytes)} och {limits.maxClipSeconds} s (hela videon {limits.maxSeconds} s med intro och outro). Filma gärna i 1080p.</p>}
+            {upload && format === "reel" && upload.duration + ADDED_SECONDS > 60 && (
+              <p className="text-[10px] text-amber-300/80 mt-1">Videon blir {Math.round(upload.duration + ADDED_SECONDS)} s. Som Story delas den i flera bitar om 60 s – lägg upp den som Reel, eller korta klippet till högst {60 - Math.ceil(ADDED_SECONDS)} s.</p>
+            )}
+            <details className="mt-2 rounded-lg bg-white/[0.03] border border-white/10 px-3 py-2">
+              <summary className="text-[11px] text-white/60 cursor-pointer">Tips: hur långt ska klippet vara?</summary>
+              <div className="text-[11px] text-white/55 space-y-1.5 mt-2 leading-relaxed">
+                <p>Intro och outro lägger till ca {Math.round(ADDED_SECONDS)} s till klippet.</p>
+                <p><b className="text-white/75">Reel:</b> högst 3 min (verktyget stoppar vid {limits?.maxSeconds ?? 180} s totalt). Korta Reels får oftast mer räckvidd – bara det viktigaste.</p>
+                <p><b className="text-white/75">Story:</b> Instagram delar upp videor i bitar om 60 s. Håll hela videon under 60 s (klippet högst ca {60 - Math.ceil(ADDED_SECONDS)} s) så att intro, klipp och outro hamnar i samma bit.</p>
+                <p><b className="text-white/75">Flöde (4:5):</b> samma längder som Reel – videor i flödet visas även bland Reels.</p>
+                <p className="text-white/45">Riktmärken för klippet: mål 5–15 s (från uppspelet till firandet), matchens stjärna 10–30 s, resultat 10–20 s, intervju 20–60 s (en–två frågor). Längre intervjuer fungerar, men tittarna hoppar ofta av efter en minut.</p>
+              </div>
+            </details>
           </div>
 
           <div>
@@ -461,6 +527,18 @@ export default function VideoApp() {
             </div>
             {needsPlayer && player && !picture && show.intro.picture && <p className="text-[10px] text-white/35">{player.name} har inget hockeykort eller foto – titelkortet visas utan bild.</p>}
           </div>
+
+          {player && (
+            <div>
+              <p className="text-[11px] text-white/50 mb-1.5">Statistik (rutan och hockeykortet)</p>
+              <div className="flex flex-wrap gap-1.5">
+                {VIDEO_STATS_MODES.filter((m) => m.id !== "match" || match).map((m) => <button key={m.id} onClick={() => setStatsMode(m.id)} className={chip(statsMode === m.id)}>{m.name}</button>)}
+              </div>
+              {statsMode === "match" && <p className="text-[10px] text-white/35 mt-1">Mål, assist och poäng (målvakt: insläppta och nolla), lagets resultat och stjärnan om spelaren blev matchens ★★★/★★/★.</p>}
+              {matchMissingPlayer && <p className="text-[10px] text-amber-300/80 mt-1">{player.name} finns inte i uppställningen för den matchen.</p>}
+              {kind === "interview" && !match && <p className="text-[10px] text-white/35 mt-1">Välj en match ovan för att kunna visa matchens siffror.</p>}
+            </div>
+          )}
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">

@@ -20,3 +20,16 @@ describe("Media → Video", () => {
     expect(safeArea("reel")).toMatchObject({ top: 269, bottom: 1248 });
   });
 });
+
+import { matchStatCells } from "./VideoApp";
+describe("matchens statistik", () => {
+  const base = { key: "a", name: "A", number: "1", gwg: false, score: 0 };
+  it("utespelare med stjärna", () => {
+    const r = matchStatCells({ ...base, team: "green", position: "C", goals: 2, assists: 1, goalsAgainst: null }, { teamWhiteScore: 3, teamGreenScore: 5 }, 1);
+    expect(r.cells.map((c) => `${c.label}:${c.value}`)).toEqual(["G:2", "A:1", "PTS:3", "RES:V", "STJÄRNA:★★★"]);
+  });
+  it("målvakt utan stjärna", () => {
+    const r = matchStatCells({ ...base, team: "white", position: "MV", goals: 0, assists: 0, goalsAgainst: 0 }, { teamWhiteScore: 2, teamGreenScore: 0 }, null);
+    expect(r.cells.map((c) => `${c.label}:${c.value}`)).toEqual(["GA:0", "NOLLA:JA", "RES:V"]);
+  });
+});

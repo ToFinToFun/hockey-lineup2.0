@@ -7,6 +7,13 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.48.0 – 2026-10-02
+
+**Media → Video**
+- Val av statistik: Matchen, Säsong, Slutspel, Försäsong eller Totalt. Valet styr både statistikrutan och siffrorna på hockeykortet i videon (det sparade kortet ändras inte). Matchen är förvalt för mål, stjärnor och resultat, Säsong för intervju.
+- Matchen: mål, assist och poäng (målvakt: insläppta och nolla), lagets resultat (V/F/O) och stjärnan om spelaren blev matchens ★★★/★★/★. Varnar om spelaren inte finns i matchens uppställning.
+- Hjälptext om längder: Reel (max 3 min), Story (delas i bitar om 60 s) och flöde, samt riktmärken per kategori. Varning när en Reel/Story-video blir över 60 s.
+
 ## 2.47.1 – 2026-10-02
 
 - En sida som var öppen före en deploy laddas om automatiskt (en gång) när den försöker hämta kodfiler som inte finns kvar, i stället för att visa "An unexpected error occurred – Failed to fetch dynamically imported module".
