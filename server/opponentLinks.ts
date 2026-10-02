@@ -138,3 +138,9 @@ export async function afterLinkPlayerChange(opponentId: number) {
 
 /** Lagets sparade uppställning (för Lineup när laget väljs). */
 export const getStoredOpponentLineup = storedLineup;
+
+/** Spara lagets uppställning (t.ex. från en spelad match). */
+export async function setStoredOpponentLineup(opponentId: number, lineup: Record<string, number>) {
+  const db = await getDb();
+  if (db) await db.update(opponents).set({ lineup }).where(eq(opponents.id, opponentId));
+}

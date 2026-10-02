@@ -5,6 +5,7 @@
  * Spacing is tightened to maximize player name display on mobile
  */
 
+import { matchSides } from "@/lib/matchSides";
 import { useMemo } from "react";
 import { IMAGES } from "@/lib/scoreConstants";
 import { RefreshCw } from "lucide-react";
@@ -95,7 +96,10 @@ function TeamSection({ slots, lineup, title, headerColor }: {
 
 // ─── Team Panel ──────────────────────────────────────────────────────────────
 
-function TeamPanel({ teamName, slots, lineup, isWhite }: {
+function TeamPanel({ teamName, slots, lineup, isWhite, logoOverride, colorOverride }: {
+  /** Mot motståndare: lagets egen logga/färg (null = ingen logga) */
+  logoOverride?: string | null;
+  colorOverride?: string;
   teamName: string;
   slots: Slot[];
   lineup: Record<string, Player>;
@@ -105,15 +109,15 @@ function TeamPanel({ teamName, slots, lineup, isWhite }: {
   const defSlots = slots.filter(s => s.type === "defense");
   const fwdSlots = slots.filter(s => s.type === "forward");
   const placedCount = slots.filter(s => lineup[s.id]).length;
-  const logo = isWhite ? IMAGES.teamWhiteLogo : IMAGES.teamGreenLogo;
-  const accentColor = isWhite ? "#e2e8f0" : "#34d399";
-  const borderColor = isWhite ? "#e2e8f030" : "#34d39930";
+  const logo = logoOverride !== undefined ? logoOverride : isWhite ? IMAGES.teamWhiteLogo : IMAGES.teamGreenLogo;
+  const accentColor = colorOverride ?? (isWhite ? "#e2e8f0" : "#34d399");
+  const borderColor = `${accentColor}30`;
 
   return (
     <div className="rounded-xl border overflow-hidden" style={{ borderColor }}>
       {/* Team header */}
       <div className="flex items-center gap-2 px-2 py-2 border-b" style={{ borderBottomColor: borderColor }}>
-        <img src={logo} alt={teamName} className="w-8 h-8 object-contain shrink-0" />
+        {logo ? <img src={logo} alt={teamName} className="w-8 h-8 object-contain shrink-0" /> : <span className="w-8 h-8 rounded-full shrink-0 border border-white/20" style={{ background: accentColor }} />}
         <div className="min-w-0">
           <h3 className="text-xs font-bold" style={{ color: accentColor }}>{teamName}</h3>
           <span className="text-[9px] text-[#9BA1A6]">{placedCount} spelare</span>
@@ -145,6 +149,7 @@ function formatSyncTime(date: Date | null): string {
 }
 
 export default function LineupPage({ lineupState, loading, lastSyncTime, refreshing, onRefresh }: LineupPageProps) {
+  const sides = matchSides(lineupState?.setup, lineupState?.opponent, lineupState?.teamAName);
   const teamASlots = useMemo(() =>
     createTeamSlots("team-a", lineupState?.teamAConfig ?? MAX_TEAM_CONFIG),
     [lineupState?.teamAConfig]
@@ -212,6 +217,7 @@ export default function LineupPage({ lineupState, loading, lastSyncTime, refresh
               slots={teamASlots}
               lineup={teamALineup}
               isWhite={true}
+              {...(sides.external ? { logoOverride: sides.white.logo } : {})}
             />
           </div>
           <div className="flex-1 min-w-0">
@@ -220,6 +226,7 @@ export default function LineupPage({ lineupState, loading, lastSyncTime, refresh
               slots={teamBSlots}
               lineup={teamBLineup}
               isWhite={false}
+              {...(sides.external ? { logoOverride: sides.green.logo, colorOverride: sides.green.color } : {})}
             />
           </div>
         </div>

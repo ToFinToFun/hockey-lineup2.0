@@ -1,0 +1,1 @@
+ALTER TABLE `match_results` ADD `opponentId` int;

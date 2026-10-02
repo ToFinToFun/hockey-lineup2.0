@@ -1,6 +1,6 @@
 # Plan: klubbinställningar, lag som begrepp och matcher mot andra lag
 
-Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **steg 0–4 klara på main (ej driftsatta)**.
+Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **steg 0–5 klara på main (ej driftsatta)**.
 
 ## Målbild
 
@@ -58,7 +58,8 @@ Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **steg 0–4 klara på mai
 - Mot motståndare: vår sida från hela truppen med valbart namn/logga (standard klubben), motståndarens sparade spelare dras in på platserna, nya läggs till direkt och sparas i registret.
 - **Klart när:** en extern uppställning kan byggas, sparas och laddas igen; interna uppställningar fungerar som förut.
 
-### Steg 5 – Score Tracker och sparade matcher (bakom flagga)
+### Steg 5 – Score Tracker och sparade matcher (bakom flagga) ✅
+- Gjort: loggor/namn i Score Tracker och matchhistorik, match_results.opponentId, statistik/PIR bara internt, motståndarens uppställning sparas vid sparad match.
 - Matchen sparas som intern/extern, med motståndare och vårt lags namn/logga.
 - Målskytt/assist väljs från respektive lag; motståndarnas mål knyts till deras spelare.
 - **Klart när:** en extern match kan spelas, sparas (även offline) och redigeras i matchhistoriken.

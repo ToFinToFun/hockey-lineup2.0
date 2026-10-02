@@ -1,3 +1,4 @@
+import { matchSides, type SideInfo } from "@/lib/matchSides";
 import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { club } from "@shared/club";
 import { trpc } from "@/lib/trpc";
@@ -27,7 +28,25 @@ interface GoalEvent {
 type ResultFilter = "all" | "white" | "green" | "draw";
 
 
+/** Lagets logga – eller en rund färgplupp om motståndaren saknar logga. */
+function SideLogo({ side, size }: { side: SideInfo; size: number }) {
+  return side.logo
+    ? <img src={side.logo} alt={side.name} style={{ width: size, height: size }} className="object-contain" />
+    : <span style={{ width: size, height: size, background: side.color }} className="rounded-full border border-white/20 inline-block" title={side.name} />;
+}
+
 export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
+  // Matcher mot andra lag (beta): vårt lags och motståndarens namn och logga
+  const opponentsQ = trpc.opponents.list.useQuery({ includeArchived: true }, { staleTime: 5 * 60_000 });
+  const sidesOf = (match: { opponentId?: number | null; lineup?: unknown }) => {
+    const oppId = (match as { opponentId?: number | null }).opponentId;
+    const teamAName = (match.lineup as { teamAName?: string } | null)?.teamAName;
+    if (!oppId) return matchSides(null, null);
+    const o = opponentsQ.data?.find((x) => x.id === oppId);
+    const teamBName = (match.lineup as { teamBName?: string } | null)?.teamBName;
+    return matchSides({ mode: "external", opponentId: oppId, ourName: teamAName ?? null, ourLogo: "club" },
+      o ? { id: o.id, name: o.name, color: o.color, logoUrl: o.logoUrl } : { id: oppId, name: teamBName ?? "Motståndare", color: "#ef4444", logoUrl: null }, teamAName);
+  };
   const { sponsors } = useSponsors();
   const { data: matches, isLoading, refetch } = trpc.score.match.list.useQuery();
   const deleteMutation = trpc.score.match.delete.useMutation({
@@ -636,14 +655,14 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                   {isDraw ? (
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#3a3a3a] text-[#9BA1A6] font-medium">OAVGJORT</span>
                   ) : isWhiteWin ? (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white font-medium">{teamName("white", { upper: true })} VANN</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white font-medium">{sidesOf(match).white.name.toUpperCase()} VANN</span>
                   ) : (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#56c653]/20 text-[#56c653] font-medium">{teamName("green", { upper: true })} VANN</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#56c653]/20 text-[#56c653] font-medium">{sidesOf(match).green.name.toUpperCase()} VANN</span>
                   )}
                 </div>
                 <div className="flex items-center justify-center gap-6">
                   <div className="flex items-center gap-2">
-                    <img src={IMAGES.teamWhiteLogo} alt={teamName("white")} className="w-8 h-8 object-contain" />
+                    <SideLogo side={sidesOf(match).white} size={32} />
                     <span className={`text-2xl font-bold ${isWhiteWin ? 'text-white' : 'text-[#9BA1A6]'}`}>
                       {match.teamWhiteScore}
                     </span>
@@ -653,7 +672,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                     <span className={`text-2xl font-bold ${isGreenWin ? 'text-[#56c653]' : 'text-[#9BA1A6]'}`}>
                       {match.teamGreenScore}
                     </span>
-                    <img src={IMAGES.teamGreenLogo} alt={teamName("green")} className="w-8 h-8 object-contain" />
+                    <SideLogo side={sidesOf(match).green} size={32} />
                   </div>
                 </div>
                 {(() => {
@@ -704,15 +723,15 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
               {/* Score */}
               <div className="flex items-center justify-center gap-6 py-4">
                 <div className="flex flex-col items-center gap-1">
-                  <img src={IMAGES.teamWhiteLogo} alt={teamName("white")} className="w-12 h-12 object-contain" />
+                  <SideLogo side={sidesOf(selectedMatchData).white} size={48} />
                   <span className="text-3xl font-bold text-white">{selectedMatchData.teamWhiteScore}</span>
-                  <span className="text-[#9BA1A6] text-xs">{teamName("white", { upper: true })}</span>
+                  <span className="text-[#9BA1A6] text-xs">{sidesOf(selectedMatchData).white.name.toUpperCase()}</span>
                 </div>
                 <span className="text-[#687076] text-2xl">-</span>
                 <div className="flex flex-col items-center gap-1">
-                  <img src={IMAGES.teamGreenLogo} alt={teamName("green")} className="w-12 h-12 object-contain" />
+                  <SideLogo side={sidesOf(selectedMatchData).green} size={48} />
                   <span className="text-3xl font-bold text-[#56c653]">{selectedMatchData.teamGreenScore}</span>
-                  <span className="text-[#9BA1A6] text-xs">{teamName("green", { upper: true })}</span>
+                  <span className="text-[#9BA1A6] text-xs">{sidesOf(selectedMatchData).green.name.toUpperCase()}</span>
                 </div>
               </div>
 

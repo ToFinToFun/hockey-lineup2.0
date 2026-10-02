@@ -39,6 +39,13 @@ Versionen höjs i `package.json` vid varje deploy till `production`, och commite
 - 4c: Delningslänk till motståndaren (Inställningar → Motståndare → laget → Dela länk): laget fyller utan inloggning i namn, kortnamn, färg, logga och spelare och gör sin uppställning på /lag/<länk>. Val "Visa vårt lag". Länken gäller 7 dagar och kan stängas. Uppställningen sparas på laget och fylls i automatiskt när laget väljs i Lineup; är laget redan valt syns deras ändringar direkt.
 ## 2.45.4 – 2026-10-01
 
+**Steg 5 – Score Tracker och sparade matcher mot motståndare (beta)**
+- Score Tracker visar vårt lags logga och motståndarens logga (eller en färgplupp med kortnamn) både på matchsidan och i lagvyn.
+- Matchen sparas med motståndaren (ny kolumn match_results.opponentId). Matchhistoriken visar lagens namn och loggor och "KALIX HC VANN" m.m.
+- Statistik, PIR, utmärkelser, spelarprofiler och hockeykortens siffror räknar bara internmatcher (valet att ta med externa kommer i steg 7). Motståndarens spelare kommer aldrig in i vår statistik.
+- När matchen sparas lagras motståndarens uppställning på laget – nästa match mot dem är förifylld.
+- Prediktionen i Lineup döljs mot motståndare (PIR finns bara för våra spelare).
+
 - Spelarkortet: "Alt" (alternativ position) ligger på samma rad som positionen, direkt efter positionsknapparna. Vad historiken säger visas när man håller över.
 
 ## 2.45.3 – 2026-10-01

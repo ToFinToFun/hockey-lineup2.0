@@ -1898,7 +1898,7 @@ export default function Home() {
           </header>
 
           {/* Matchprediktion (experimentell, endast styrelsen) */}
-          {isAdmin && pirSettings.enabled && pirSettings.showPrediction && (
+          {isAdmin && pirSettings.enabled && pirSettings.showPrediction && !external && (
             <MatchPredictionBar lineup={lineup} teamAName={teamAName} teamBName={teamBName} dark={isLineupDark} />
           )}
 

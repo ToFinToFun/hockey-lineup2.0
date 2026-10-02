@@ -124,6 +124,8 @@ export default function ScoreApp() {
       teamAConfig: lineupData.teamAConfig as AppState["teamAConfig"],
       teamBConfig: lineupData.teamBConfig as AppState["teamBConfig"],
       deletedPlayerIds: lineupData.deletedPlayerIds as string[] | undefined,
+      setup: (lineupData as { setup?: AppState["setup"] }).setup,
+      opponent: (lineupData as { opponent?: AppState["opponent"] }).opponent ?? null,
     };
   }, [lineupData]);
 

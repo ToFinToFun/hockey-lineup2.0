@@ -9,6 +9,7 @@ import { IMAGES, COLORS, STORAGE_KEY, type GoalEvent, type MatchState } from "@/
 import { useSponsors, pickLeastShown, logoForName } from "@/lib/sponsors";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { resolveMatchStart, matchName } from "@shared/matchTiming";
+import { matchSides, type SideInfo } from "@/lib/matchSides";
 import { defaultTeamNames, isTeamAWhite as teamAIsWhite, teamGenitive, teamName, teamSingular } from "@shared/teams";
 import { playGoalSound as playGoalSoundFx, playEndSignal, unlockAudio } from "@/lib/matchSounds";
 import { type AppState, createTeamSlots, MAX_TEAM_CONFIG } from "@/lib/lineup";
@@ -49,7 +50,15 @@ function PickPos({ pos }: { pos: string }) {
   return <span className={`pos-badge pos-badge-sm pos-badge-${cls} shrink-0`} title={name}>{pos}</span>;
 }
 
+/** Lagets logga – eller en rund färgplupp om motståndaren saknar logga. */
+function SideLogo({ side }: { side: SideInfo }) {
+  return side.logo
+    ? <img src={side.logo} alt={side.name} className="w-20 h-20 object-contain" />
+    : <span className="w-20 h-20 rounded-full border-2 border-white/20 flex items-center justify-center text-xl font-bold text-white" style={{ background: side.color }}>{side.name.slice(0, 3).toUpperCase()}</span>;
+}
+
 export default function MatchPage({ lineupState }: MatchPageProps) {
+  const sides = matchSides(lineupState?.setup, lineupState?.opponent, lineupState?.teamAName);
   // ─── State ─────────────────────────────────────────────────────
   const { sponsors } = useSponsors();
   const [teamWhiteScore, setTeamWhiteScore] = useState(0);
@@ -284,6 +293,8 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
       goalHistory: goalHistory,
       matchStartTime: start.toISOString(),
       location,
+      // Mot motståndare (beta): vilket lag vi mötte
+      ...(lineupState?.setup?.mode === "external" && lineupState.setup.opponentId ? { opponentId: lineupState.setup.opponentId } : {}),
       // Sluttiden sätts nu, så att en match som laddas upp senare (utan nät) får rätt tid
       matchEndTime: new Date().toISOString(),
       lineup: lineupState || undefined,
@@ -585,7 +596,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
           {/* Team White */}
           <div className="flex-1 bg-[#2a2a2a]/80 rounded-3xl p-4 border border-[#3a3a3a] backdrop-blur-sm">
             <div className="flex justify-center mb-2">
-              <img src={IMAGES.teamWhiteLogo} alt={teamName("white")} className="w-20 h-20 object-contain" />
+              <SideLogo side={sides.white} />
             </div>
             <div className="text-5xl font-bold text-[#0a7ea4] text-center mb-3">{teamWhiteScore}</div>
             <div className="flex gap-2">
@@ -603,7 +614,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
           {/* Team Green */}
           <div className="flex-1 bg-[#2a2a2a]/80 rounded-3xl p-4 border border-[#3a3a3a] backdrop-blur-sm">
             <div className="flex justify-center mb-2">
-              <img src={IMAGES.teamGreenLogo} alt={teamName("green")} className="w-20 h-20 object-contain" />
+              <SideLogo side={sides.green} />
             </div>
             <div className="text-5xl font-bold text-[#0a7ea4] text-center mb-3">{teamGreenScore}</div>
             <div className="flex gap-2">

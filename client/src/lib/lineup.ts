@@ -134,4 +134,7 @@ export interface AppState {
   deletedPlayerIds?: string[];
   teamAConfig?: TeamConfig;
   teamBConfig?: TeamConfig;
+  /** Mot motståndare (beta): matchtyp och motståndarlaget */
+  setup?: import("@shared/matchSetup").MatchSetup;
+  opponent?: { id: number; name: string; color: string; logoUrl: string | null; shortName?: string | null } | null;
 }

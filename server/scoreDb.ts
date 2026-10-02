@@ -42,6 +42,8 @@ export interface MatchInput {
   matchEndTime?: Date;
   /** Plats från träningen på laget.se */
   location?: string | null;
+  /** Match mot ett annat lag (opponents.id) */
+  opponentId?: number | null;
   createdAt?: Date;
   reviewStatus?: "pending" | "approved" | "rejected";
   reviewedAt?: Date | null;
@@ -225,6 +227,7 @@ export async function saveMatch(input: MatchInput): Promise<number> {
       teamGreenScore: input.teamGreenScore,
       matchStartTime: input.matchStartTime ?? null,
       location: input.location?.trim() || null,
+      opponentId: input.opponentId ?? null,
       matchEndTime: input.matchEndTime ?? new Date(),
       createdAt: input.createdAt,
       reviewStatus: input.reviewStatus ?? "pending",
@@ -276,10 +279,12 @@ const correctedCache = new WeakMap<object, unknown>();
 /**
  * Godkända matcher för statistik och PIR. Uppställningen rättas utifrån målen
  * (spelare som bytt lag i sista stund), se lineupCorrection.ts.
+ * Matcher mot andra lag räknas bara med om includeExternal (PIR aldrig).
  */
-export async function getAllMatchResults() {
+export async function getAllMatchResults(opts: { includeExternal?: boolean } = {}) {
   return (await loadAllMatches())
     .filter((m) => m.reviewStatus === "approved")
+    .filter((m) => opts.includeExternal || m.opponentId == null)
     .map((m) => {
       let c = correctedCache.get(m) as typeof m | undefined;
       if (!c) {

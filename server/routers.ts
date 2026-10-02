@@ -696,7 +696,13 @@ export const appRouter = router({
     scoreState: lineupProcedure.query(async () => {
       const lock = await getActiveLock();
       const { doc } = await getLineupSnapshot();
-      return { ...(lock ? lock.doc : doc), locked: !!lock, lockedAt: lock?.lockedAt ?? null, lockExpiresAt: lock?.expiresAt ?? null };
+      const state = lock ? lock.doc : doc;
+      // Mot motståndare: lagets namn, färg och logga till Score Tracker
+      const opp = state.setup?.mode === "external" && state.setup.opponentId ? await getOpponent(state.setup.opponentId).catch(() => null) : null;
+      return {
+        ...state, locked: !!lock, lockedAt: lock?.lockedAt ?? null, lockExpiresAt: lock?.expiresAt ?? null,
+        opponent: opp ? { id: opp.id, name: opp.name, shortName: opp.shortName, color: opp.color, logoUrl: opp.logoUrl } : null,
+      };
     }),
     /** Spärrens läge för Lineup: låst, när, och om Lineup ändrats sedan dess. */
     lockStatus: lineupProcedure.query(async () => {

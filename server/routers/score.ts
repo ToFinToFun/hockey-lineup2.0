@@ -5,6 +5,8 @@ import { club } from "../../shared/club";
 import { resolvePeriods, toMonthDay, type MonthDayPeriods } from "../../shared/periods";
 import { scheduleLiveProfileRefresh } from "../cardProfile";
 import { unlockLineup } from "../lineupLock";
+import { isOpponentPlayerId, opponentPlayerDbId } from "../../shared/matchSetup";
+import { setStoredOpponentLineup } from "../opponentLinks";
 import { notifyLater, mailLayout } from "../notifications";
 import { ENV } from "../_core/env";
 import { TRPCError } from "@trpc/server";
@@ -176,6 +178,8 @@ export const scoreRouter = router({
           matchStartTime: z.string().max(40).optional(),
           matchEndTime: z.string().max(40).optional(),
           location: z.string().trim().max(120).optional(),
+          /** Match mot ett annat lag (beta) */
+          opponentId: z.number().int().positive().optional(),
           createdAt: z.string().max(40).optional(),
           lineup: z.any().optional(),
         })
@@ -195,12 +199,22 @@ export const scoreRouter = router({
           goalHistory: input.goalHistory ?? null,
           matchStartTime: input.matchStartTime ? new Date(input.matchStartTime) : null,
           location: input.location || null,
+          opponentId: input.opponentId ?? null,
           matchEndTime: input.matchEndTime ? new Date(input.matchEndTime) : new Date(),
           createdAt: input.createdAt ? new Date(input.createdAt) : undefined,
           lineup: input.lineup ?? null,
         });
         scheduleLiveProfileRefresh(); // profilkort med statistik ritas om i bakgrunden
         await unlockLineup().catch(() => undefined); // matchen avslutad – laget låses upp
+        // Mot motståndare: lagets uppställning sparas på laget (förifyllt nästa gång)
+        if (input.opponentId && input.lineup && typeof input.lineup === "object") {
+          const slots = ((input.lineup as { lineup?: Record<string, { id?: string }> }).lineup) ?? {};
+          const stored: Record<string, number> = {};
+          for (const [slot, p] of Object.entries(slots)) {
+            if (slot.startsWith("team-b-") && p?.id && isOpponentPlayerId(p.id)) stored[slot] = opponentPlayerDbId(p.id);
+          }
+          if (Object.keys(stored).length) await setStoredOpponentLineup(input.opponentId, stored).catch(() => undefined);
+        }
         if (reviewStatus === "pending") {
           const m = mailLayout("Match väntar på godkännande", [
             `<b>${input.name}</b> – Vita ${input.teamWhiteScore}–${input.teamGreenScore} Gröna – är sparad och väntar på att godkännas innan den räknas i statistiken.`,
