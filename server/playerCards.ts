@@ -2,6 +2,7 @@
  * Hockeykort: sparat originalfoto och val per spelare (max ett), samt
  * statistiken som visas på kortet (säsong, karriär, form).
  */
+import { getCurrentPeriods } from "./periodsConfig";
 import { eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { playerCards } from "../drizzle/schema";
@@ -79,9 +80,14 @@ export async function deleteCard(playerId: string) {
   await db.delete(playerCards).where(eq(playerCards.playerId, playerId));
 }
 
-/** Statistiken för kortet: innevarande säsong (från 1 augusti), karriär och form. */
-export async function cardStats(playerId: string): Promise<CardStats> {
-  const p = playerProfile(await getAllMatchResults(), playerId);
+/** Statistiken för kortet: innevarande säsong (från 1 augusti), slutspel, försäsong, totalt och form. */
+export async function cardStats(playerId: string, opts: { includeExternal?: boolean } = {}): Promise<CardStats> {
+  const p = playerProfile(await getAllMatchResults({ includeExternal: opts.includeExternal }), playerId);
+  const periods = await getCurrentPeriods().catch(() => null);
+  const inRange = (from: string | undefined, to: string | undefined) => (e: { date: string }) => {
+    const d = new Date(e.date);
+    return !!from && !!to && d >= new Date(from) && d < new Date(to);
+  };
   const seasonNow = seasonOf(new Date());
   const line = (label: string, log: typeof p.matchLog): CardStatLine => {
     const goals = log.reduce((s, e) => s + e.goals, 0);
@@ -103,6 +109,8 @@ export async function cardStats(playerId: string): Promise<CardStats> {
   return {
     season: line(seasonNow, seasonLog),
     career: line("Totalt", p.matchLog),
+    playoff: line(`Slutspel ${seasonNow}`, p.matchLog.filter(inRange(periods?.playoffFrom, periods?.playoffTo))),
+    preseason: line(`Försäsong ${seasonNow}`, p.matchLog.filter(inRange(periods?.preseasonFrom, periods?.preseasonTo))),
     form: p.form,
     isGoalie: p.matchLog.length > 0 && gkShare >= p.matchLog.length / 2,
   };

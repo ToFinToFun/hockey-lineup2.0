@@ -346,8 +346,8 @@ export const appRouter = router({
   cards: router({
     list: adminProcedure.query(() => listCards()),
     stats: adminProcedure
-      .input(z.object({ playerId: z.string().min(1).max(64) }))
-      .query(({ input }) => cardStats(input.playerId)),
+      .input(z.object({ playerId: z.string().min(1).max(64), includeExternal: z.boolean().optional() }))
+      .query(({ input }) => cardStats(input.playerId, { includeExternal: input.includeExternal })),
     save: adminProcedure
       .input(z.object({
         playerId: z.string().min(1).max(64),

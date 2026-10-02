@@ -89,3 +89,16 @@ describe("specialkort", () => {
     expect(resolveLogo("auto", gold)?.id).toBe("anvil");
   });
 });
+
+describe("kortets perioder", () => {
+  it("Slutspel och Försäsong har egna rubriker och siffror (tomt om inga matcher)", () => {
+    const l = (o: Record<string, unknown> = {}) => ({ label: "2026/27", matches: 10, goals: 5, assists: 3, points: 8, wins: 6, winPct: 60, goalie: null, ...o });
+    const stats = { season: l(), career: l({ label: "Totalt" }), playoff: l({ label: "Slutspel 2026/27", matches: 2, goals: 1, assists: 1, points: 2 }), form: "", isGoalie: false };
+    const po = cellsFor("playoff", stats as never);
+    expect(po.title).toBe("Slutspel 2026/27");
+    expect(po.cells.find((c) => c.label === "PTS")?.value).toBe("2");
+    const pre = cellsFor("preseason", stats as never);
+    expect(pre.title).toBe("Försäsong 2026/27");
+    expect(pre.cells.find((c) => c.label === "GP")?.value).toBe("0");
+  });
+});

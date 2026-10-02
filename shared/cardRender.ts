@@ -58,7 +58,9 @@ export interface CardSettings {
   /** Raden under namnet (retro), t.ex. "Stålstadens SF" */
   /** Raden under namnet; saknas den används klubbens namn */
   subtitle?: string;
-  statsMode: "season" | "career" | "form" | "custom" | "none";
+  statsMode: "season" | "career" | "playoff" | "preseason" | "form" | "custom" | "none";
+  /** Ta med matcher mot andra lag i siffrorna (beta) */
+  includeExternal?: boolean;
   /** Stars of the Game-kort: 1 = första stjärnan (tre stjärnor i toppen), 2, 3 */
   starRank?: 1 | 2 | 3;
   /** Utan foto: visa klubbens märke stort i fotorutan i stället för "Ladda upp ett foto" */

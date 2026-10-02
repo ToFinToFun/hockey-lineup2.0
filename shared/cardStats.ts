@@ -19,6 +19,9 @@ export interface CardStatLine {
 export interface CardStats {
   season: CardStatLine;
   career: CardStatLine;
+  /** Slutspel och försäsong i det pågående hockeyåret (enligt Inställningar → Perioder) */
+  playoff?: CardStatLine;
+  preseason?: CardStatLine;
   form: string;
   isGoalie: boolean;
 }
@@ -35,6 +38,8 @@ export function currentSeasonLabel(now = new Date()): string {
 export function defaultStatsTitle(mode: CardSettings["statsMode"], stats?: Stats): string {
   if (mode === "season") return `Säsong ${stats?.season.label ?? currentSeasonLabel()}`;
   if (mode === "career") return "Totalt";
+  if (mode === "playoff") return `Slutspel ${stats?.season.label ?? currentSeasonLabel()}`;
+  if (mode === "preseason") return `Försäsong ${stats?.season.label ?? currentSeasonLabel()}`;
   if (mode === "form") return "Form";
   return "";
 }
@@ -44,8 +49,11 @@ export function cellsFor(mode: CardSettings["statsMode"], stats: Stats | undefin
   if (!stats || mode === "none" || mode === "custom" || mode === "form") {
     return { title: mode === "form" ? "Form" : "", cells: [] };
   }
-  const line = mode === "career" ? stats.career : stats.season;
-  const title = mode === "career" ? "Totalt" : `Säsong ${line.label}`;
+  const line = mode === "career" ? stats.career
+    : mode === "playoff" ? (stats.playoff ?? { ...stats.season, matches: 0, goals: 0, assists: 0, points: 0, wins: 0, winPct: 0, goalie: null })
+    : mode === "preseason" ? (stats.preseason ?? { ...stats.season, matches: 0, goals: 0, assists: 0, points: 0, wins: 0, winPct: 0, goalie: null })
+    : stats.season;
+  const title = defaultStatsTitle(mode, stats);
   if (stats.isGoalie && line.goalie) {
     return {
       title,

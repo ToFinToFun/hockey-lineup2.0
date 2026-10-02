@@ -7,6 +7,7 @@
  * spelare) så att kortet kan byggas om med ny statistik eller stil senare.
  * Fler kort kan skapas och laddas ned utan att sparas.
  */
+import { useFeatures } from "@/contexts/ClubContext";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -45,9 +46,10 @@ export default function CardsApp() {
 
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const stats = trpc.cards.stats.useQuery({ playerId: playerId ?? "" }, { enabled: !!playerId });
+  const features = useFeatures();
 
   const [settings, setSettings] = useState<CardSettings>({ ...DEFAULT_SETTINGS, statsTitle: defaultStatsTitle("season") });
+  const stats = trpc.cards.stats.useQuery({ playerId: playerId ?? "", ...(features.opponents && settings.includeExternal ? { includeExternal: true } : {}) }, { enabled: !!playerId });
   const [photo, setPhotoImg] = useState<HTMLImageElement | null>(null);
   const [newSource, setNewSource] = useState<string | null>(null); // uppladdat men inte sparat
   const [mask, setMask] = useState<HTMLImageElement | null>(null);
@@ -127,7 +129,7 @@ export default function CardsApp() {
       if (s.statsMode === "custom") return { ...s, form: stats.data!.form };
       const { title, cells } = cellsFor(s.statsMode, stats.data);
       // Egen rubrik står kvar; tom eller standardrubrik byts mot den aktuella
-      const isDefault = !s.statsTitle || /^Säsong \d{4}\/\d{2}$/.test(s.statsTitle) || s.statsTitle === "Karriär" || s.statsTitle === "Totalt" || s.statsTitle === "Form";
+      const isDefault = !s.statsTitle || /^(Säsong|Slutspel|Försäsong) \d{4}\/\d{2}$/.test(s.statsTitle) || s.statsTitle === "Karriär" || s.statsTitle === "Totalt" || s.statsTitle === "Form";
       return { ...s, cells, statsTitle: isDefault ? title : s.statsTitle, form: stats.data!.form };
     });
   }, [stats.data, settings.statsMode]);
@@ -491,10 +493,16 @@ export default function CardsApp() {
           <div className="space-y-2">
             <p className="text-[11px] text-white/50">Statistik</p>
             <div className="flex flex-wrap gap-1.5">
-              {([["season", "Säsong"], ["career", "Totalt"], ["form", "Form"], ["custom", "Egen"], ["none", "Ingen"]] as const).map(([k, l]) => (
+              {([["season", "Säsong"], ["playoff", "Slutspel"], ["preseason", "Försäsong"], ["career", "Totalt"], ["form", "Form"], ["custom", "Egen"], ["none", "Ingen"]] as const).map(([k, l]) => (
                 <button key={k} onClick={() => update({ statsMode: k, statsTitle: k === "custom" ? settings.statsTitle : defaultStatsTitle(k, stats.data) })}
                   className={`px-3 py-1 rounded-full text-xs border ${settings.statsMode === k ? "bg-white/15 border-white/40" : "border-white/10 text-white/55"}`}>{l}</button>
               ))}
+              {features.opponents && (
+                <button onClick={() => update({ includeExternal: !settings.includeExternal })} title="Ta med matcher mot andra lag i siffrorna"
+                  className={`px-3 py-1 rounded-full text-xs border ${settings.includeExternal ? "bg-sky-500/20 border-sky-400/50 text-sky-100" : "border-white/10 text-white/55"}`}>
+                  {settings.includeExternal ? "✓ " : ""}Inkl. externa
+                </button>
+              )}
             </div>
             {settings.statsMode !== "none" && settings.statsMode !== "form" && (
               <>
@@ -515,7 +523,7 @@ export default function CardsApp() {
                     </div>
                   ))}
                 </div>
-                <p className="text-[10px] text-white/35">Säsong och Totalt räknas fram och uppdateras automatiskt. Ändrar du ett värde blir rutan "Egen" och står kvar som du skrev.</p>
+                <p className="text-[10px] text-white/35">Säsong, Slutspel, Försäsong och Totalt räknas fram och uppdateras automatiskt. Ändrar du ett värde blir rutan "Egen" och står kvar som du skrev.</p>
               </>
             )}
           </div>

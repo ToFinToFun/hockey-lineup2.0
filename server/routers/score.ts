@@ -3,6 +3,7 @@ import { normalizeGoalType } from "../playerHistory";
 import { appUrl } from "../clubConfig";
 import { club } from "../../shared/club";
 import { resolvePeriods, toMonthDay, type MonthDayPeriods } from "../../shared/periods";
+import { getCurrentPeriods } from "../periodsConfig";
 import { scheduleLiveProfileRefresh } from "../cardProfile";
 import { unlockLineup } from "../lineupLock";
 import { isOpponentPlayerId, opponentPlayerDbId } from "../../shared/matchSetup";
@@ -100,18 +101,7 @@ export const scoreRouter = router({
      * Perioderna: månad-dag som återkommer varje år (recurring) och de konkreta
      * datumen för det pågående hockeyåret (som statistiken filtrerar på).
      */
-    getPeriods: adminProcedure.query(async () => {
-      const config = await getAllConfig();
-      const recurring: MonthDayPeriods = {
-        seasonFrom: toMonthDay(config["season_from"] ?? DEFAULT_SEASON_FROM),
-        seasonTo: toMonthDay(config["season_to"] ?? DEFAULT_SEASON_TO),
-        playoffFrom: toMonthDay(config["playoff_from"] ?? DEFAULT_PLAYOFF_FROM),
-        playoffTo: toMonthDay(config["playoff_to"] ?? DEFAULT_PLAYOFF_TO),
-        preseasonFrom: toMonthDay(config["preseason_from"] ?? DEFAULT_PRESEASON_FROM),
-        preseasonTo: toMonthDay(config["preseason_to"] ?? DEFAULT_PRESEASON_TO),
-      };
-      return { ...resolvePeriods(recurring), recurring };
-    }),
+    getPeriods: adminProcedure.query(() => getCurrentPeriods()),
     updatePeriods: adminProcedure
       .input(
         z.object({

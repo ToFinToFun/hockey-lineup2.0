@@ -26,7 +26,7 @@ export function settingsWithStats(saved: Partial<CardSettings>, stats: Awaited<R
   const s: CardSettings = { ...DEFAULT_SETTINGS, ...saved };
   if (s.statsMode === "custom" || s.statsMode === "none") return { ...s, form: stats.form };
   const { title, cells } = cellsFor(s.statsMode, stats);
-  const isDefault = !s.statsTitle || /^Säsong \d{4}\/\d{2}$/.test(s.statsTitle) || s.statsTitle === "Karriär" || s.statsTitle === "Totalt" || s.statsTitle === "Form";
+  const isDefault = !s.statsTitle || /^(Säsong|Slutspel|Försäsong) \d{4}\/\d{2}$/.test(s.statsTitle) || s.statsTitle === "Karriär" || s.statsTitle === "Totalt" || s.statsTitle === "Form";
   return { ...s, cells, statsTitle: isDefault ? title : s.statsTitle, form: stats.form };
 }
 
@@ -40,7 +40,7 @@ export async function refreshLiveProfile(playerId: string, force = false): Promi
   if (!napi) return false;
   const row = await getCardRow(playerId);
   if (!row || !row.liveProfile) return false;
-  const settings = settingsWithStats(row.settings as Partial<CardSettings>, await cardStats(playerId));
+  const settings = settingsWithStats(row.settings as Partial<CardSettings>, await cardStats(playerId, { includeExternal: !!(row.settings as Partial<CardSettings>)?.includeExternal }));
   const hash = fingerprint(settings);
   if (!force && row.renderedHash === hash) return false;
 
