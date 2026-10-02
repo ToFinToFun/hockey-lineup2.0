@@ -8,6 +8,7 @@
  * Teman (standard, jul, nyår, påsk), valfri sponsor, bildtext med klubbens
  * hashtags. Inlägg sparas som utkast och kan öppnas och ändras igen.
  */
+import { useFeatures } from "@/contexts/ClubContext";
 import { matchSides } from "@/lib/matchSides";
 import type { MatchSetup } from "@shared/matchSetup";
 import { defaultTeamNames, isTeamAWhite, teamGenitive, teamName, teamSingular } from "@shared/teams";
@@ -44,6 +45,8 @@ interface Settings {
   statCategory: StatCategory;
   statPeriod: StatPeriod;
   statLimit: number;
+  /** Ta med matcher mot andra lag (beta) */
+  statIncludeExternal?: boolean;
   dateLine: string;
   sponsorName: string | null;
   // lineup
@@ -146,7 +149,9 @@ export default function MediaApp() {
 
   // ─── Statistik ───
   const range = periodRange(s.statPeriod, periodsQ.data as never);
-  const rangeInput = range.from ? { from: range.from, to: range.to } : {};
+  const featuresM = useFeatures();
+  const extInput = featuresM.opponents && s.statIncludeExternal ? { includeExternal: true } : {};
+  const rangeInput = range.from ? { from: range.from, to: range.to, ...extInput } : { ...extInput };
   const statsQ = trpc.scoreStats.seasonStats.useQuery(rangeInput, { enabled: s.kind === "stats" && s.statCategory !== "awards" });
   const awardsQ = trpc.scoreStats.seasonAwards.useQuery(rangeInput, { enabled: s.kind === "stats" && s.statCategory === "awards" });
   const statCat = STAT_CATEGORIES.find((c) => c.id === s.statCategory)!;
@@ -442,6 +447,11 @@ export default function MediaApp() {
                   {STAT_PERIODS.map((p) => <button key={p.id} onClick={() => update({ statPeriod: p.id, subtitle: "" })} className={chip(s.statPeriod === p.id)}>{p.name}</button>)}
                 </div>
               </div>
+              {featuresM.opponents && (
+                <button onClick={() => update({ statIncludeExternal: !s.statIncludeExternal })} className={chip(!!s.statIncludeExternal)}>
+                  {s.statIncludeExternal ? "✓ " : ""}Inkl. externa matcher
+                </button>
+              )}
               <div className="flex items-center gap-2">
                 <p className="text-[11px] text-white/50">Antal</p>
                 {[3, 5, 10].map((n) => <button key={n} onClick={() => update({ statLimit: n })} className={chip(s.statLimit === n)}>Topp {n}</button>)}

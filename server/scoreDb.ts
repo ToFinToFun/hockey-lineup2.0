@@ -285,6 +285,8 @@ export async function getAllMatchResults(opts: { includeExternal?: boolean } = {
   return (await loadAllMatches())
     .filter((m) => m.reviewStatus === "approved")
     .filter((m) => opts.includeExternal || m.opponentId == null)
+    // Externa matcher: motståndarens mål (lag "green") räknas aldrig på någon av våra spelare
+    .map((m) => (m.opponentId == null ? m : withoutOpponentScorers(m)))
     .map((m) => {
       let c = correctedCache.get(m) as typeof m | undefined;
       if (!c) {
@@ -293,6 +295,30 @@ export async function getAllMatchResults(opts: { includeExternal?: boolean } = {
       }
       return c;
     });
+}
+
+/** Mot motståndare: målen kvar (resultat, matchvinnande mål) men utan motståndarens målskyttar/assist. */
+function withoutOpponentScorers<T extends { goalHistory: unknown; lineup?: unknown }>(m: T): T {
+  const goals = Array.isArray(m.goalHistory) ? (m.goalHistory as Array<Record<string, unknown>>) : [];
+  // Motståndarens spelare tas också bort ur uppställningen (bara våra spelare i profiler och kemi)
+  const wrap = m.lineup as { lineup?: Record<string, { id?: string }> } | null | undefined;
+  const lineup = wrap?.lineup
+    ? { ...wrap, lineup: Object.fromEntries(Object.entries(wrap.lineup).filter(([, p]) => !String(p?.id ?? "").startsWith("opp-"))) }
+    : wrap;
+  return {
+    ...m,
+    lineup,
+    goalHistory: goals.map((g) => {
+      const t = String(g.team ?? "").toLowerCase();
+      const theirs = t === "green" || t === "gröna" || t === "grön";
+      return theirs ? { ...g, scorer: "", assist: undefined, scorerId: undefined, assistId: undefined } : g;
+    }),
+  };
+}
+
+/** Godkända matcher mot andra lag, med motståndarens målskyttar kvar (för resultat mot varje lag). */
+export async function getExternalMatches() {
+  return (await loadAllMatches()).filter((m) => m.reviewStatus === "approved" && m.opponentId != null);
 }
 
 /** Alla matcher inklusive ej granskade och avvisade (för styrelsens historik). */

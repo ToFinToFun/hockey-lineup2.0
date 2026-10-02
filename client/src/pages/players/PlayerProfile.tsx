@@ -2,6 +2,7 @@
  * Spelarprofil på spelarsidan: bild, form, sammanfattning, rekord, kemi
  * (kedjekamrater, lagkamrater, motståndare), matchlogg och jämförelse.
  */
+import { useFeatures } from "@/contexts/ClubContext";
 import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
@@ -69,11 +70,15 @@ function bestWorst(list: Mate[], min: number, n: number) {
 }
 
 export function PlayerProfileView({ player, all }: { player: Basic; all: Basic[] }) {
-  const profile = trpc.players.profile.useQuery({ id: player.id });
+  // Matcher mot andra lag (beta): av som standard
+  const features = useFeatures();
+  const [includeExternal, setIncludeExternal] = useState(false);
+  const ext = features.opponents && includeExternal ? { includeExternal: true } : {};
+  const profile = trpc.players.profile.useQuery({ id: player.id, ...ext });
   const pir = trpc.pir.player.useQuery({ id: player.id });
   const [showAllMatches, setShowAllMatches] = useState(false);
   const [compareId, setCompareId] = useState("");
-  const compare = trpc.players.profile.useQuery({ id: compareId }, { enabled: !!compareId });
+  const compare = trpc.players.profile.useQuery({ id: compareId, ...ext }, { enabled: !!compareId });
   const comparePir = trpc.pir.player.useQuery({ id: compareId }, { enabled: !!compareId });
   const others = useMemo(() => all.filter((p) => p.id !== player.id).sort((a, b) => a.name.localeCompare(b.name, "sv")), [all, player.id]);
 
@@ -90,6 +95,12 @@ export function PlayerProfileView({ player, all }: { player: Basic; all: Basic[]
 
   return (
     <div className="space-y-3">
+      {features.opponents && (
+        <button onClick={() => setIncludeExternal((v) => !v)} title="Ta med matcher mot andra lag i siffrorna (PIR räknar bara internmatcher)"
+          className={`px-2.5 py-1 rounded-md text-[10px] font-medium border ${includeExternal ? "bg-sky-500/20 text-sky-200 border-sky-400/40" : "bg-white/5 text-white/45 border-white/10"}`}>
+          {includeExternal ? "✓ " : ""}Inkl. externa matcher
+        </button>
+      )}
       {/* Huvud: bild, namn, form */}
       <div className="flex gap-3 items-start">
         <PlayerPhoto playerId={player.id} width={72} />

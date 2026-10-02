@@ -54,6 +54,13 @@ Versionen höjs i `package.json` vid varje deploy till `production`, och commite
 - Media → Lagets uppställning: knapparna visar vårt lags och motståndarens namn; bilden får lagets logga och färg.
 - Nya kontrollbilder för matcher mot motståndare; alla tidigare kontrollbilder är oförändrade.
 
+**Steg 7 – statistik med matcher mot andra lag (beta)**
+- Valet "Inkl. externa matcher" (av som standard) i Statistik (Översikt/Spelare), spelarprofilen och Media → Statistik. Med valet på räknas våra spelares mål, assist och matcher även i matcher mot andra lag.
+- Motståndarens mål räknas aldrig på någon av våra spelare; motståndarens spelare kommer inte in i våra profiler eller i kemin.
+- Lagsiffror (Vitas/Grönas vinster, största vinster, målrikaste match), fliken Lag och PIR räknar alltid bara internmatcher.
+- Ny flik Statistik → Motståndare: totalt mot andra lag och per lag – V/O/F, mål och målskillnad, senaste mötet, våra poänggörare mot laget och deras målskyttar/assist mot oss.
+- Hockeykortens statistik räknar fortsatt bara internmatcher.
+
 - Spelarkortet: "Alt" (alternativ position) ligger på samma rad som positionen, direkt efter positionsknapparna. Vad historiken säger visas när man håller över.
 
 ## 2.45.3 – 2026-10-01

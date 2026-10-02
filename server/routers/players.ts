@@ -126,19 +126,19 @@ export const playersRouter = router({
 
   /** Matcher, positioner, lag, mål och assist per säsong för en spelare. */
   history: adminProcedure
-    .input(z.object({ id: z.string().min(1).max(64) }))
+    .input(z.object({ id: z.string().min(1).max(64), includeExternal: z.boolean().optional() }))
     .query(async ({ input }) => {
-      const all = seasonHistory(await getAllMatchResults());
+      const all = seasonHistory(await getAllMatchResults({ includeExternal: input.includeExternal }));
       return all.get(input.id) ?? [];
     }),
 
   /** Profil: matchlogg, form, rekord och kemi (kedjekamrater, lagkamrater, motståndare). */
   profile: adminProcedure
-    .input(z.object({ id: z.string().min(1).max(64) }))
+    .input(z.object({ id: z.string().min(1).max(64), includeExternal: z.boolean().optional() }))
     .query(async ({ input }) => {
       const players = await listPlayers();
       const names = new Map(players.map((p) => [p.id, p.name] as [string, string]));
-      return playerProfile(await getAllMatchResults(), input.id, names);
+      return playerProfile(await getAllMatchResults({ includeExternal: input.includeExternal }), input.id, names);
     }),
 
   /** Antal matcher per spelare för en säsong (standard: innevarande). */

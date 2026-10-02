@@ -1,6 +1,6 @@
 # Plan: klubbinställningar, lag som begrepp och matcher mot andra lag
 
-Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **steg 0–6 klara på main (ej driftsatta)**. Flaggan finns kvar tills Jerry provat.
+Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **steg 0–7 klara på main (ej driftsatta)**. Flaggan finns kvar tills Jerry provat.
 
 ## Målbild
 
@@ -69,7 +69,8 @@ Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **steg 0–6 klara på mai
 - Matchrapport, nyhet till laget.se, Media och stjärnkort visar motståndarens namn och logga.
 - **Klart när:** alla bilder fungerar för både interna och externa matcher; flaggan tas bort.
 
-### Steg 7 – Statistik
+### Steg 7 – Statistik ✅
+- Gjort: valet "Inkl. externa matcher" (Statistik, spelarprofil, Media), lagsiffror och PIR bara internt, fliken Motståndare. Hockeykorten räknar bara internmatcher (kan läggas till).
 - Val **Inkl. externa matcher** (av som standard) i Statistik, spelarprofil, hockeykort och Media.
 - Resultat mot varje motståndare (V/O/F, målskillnad, bästa målskytt mot dem) och motståndarspelarnas statistik mot oss.
 - PIR räknar bara interna matcher (uttryckligt filter).

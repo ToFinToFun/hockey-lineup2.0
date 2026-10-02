@@ -2,11 +2,13 @@
  * StatsApp – Main statistics module container
  * Provides tab navigation, period filtering, and admin controls
  */
+import { OpponentsTab } from "./OpponentsTab";
+import { useFeatures } from "@/contexts/ClubContext";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { IMAGES } from "@/lib/scoreConstants";
-import { ArrowLeft, BarChart3, Users, Shield, Loader2, X } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, Shield, Loader2, X, Swords } from "lucide-react";
 import OverviewTab from "./OverviewTab";
 import LeadersTab from "./LeadersTab";
 import AwardsTab from "./AwardsTab";
@@ -56,6 +58,7 @@ const TABS = [
   { id: "overview", label: "Översikt", icon: BarChart3 },
   { id: "players", label: "Spelare", icon: Users },
   { id: "teams", label: "Lag", icon: Shield },
+  { id: "opponents", label: "Motståndare", icon: Swords },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -104,10 +107,15 @@ export default function StatsApp() {
     return {};
   }, [periodPreset, periodConfig]);
 
+  // Matcher mot andra lag (beta): av som standard, kan slås på för spelarnas siffror
+  const features = useFeatures();
+  const [includeExternal, setIncludeExternal] = useState(false);
   const queryInput = useMemo(() => {
-    if (!dateFilter.from && !dateFilter.to) return undefined;
-    return { from: dateFilter.from, to: dateFilter.to };
-  }, [dateFilter]);
+    const ext = features.opponents && includeExternal ? { includeExternal: true } : {};
+    if (!dateFilter.from && !dateFilter.to) return Object.keys(ext).length ? ext : undefined;
+    return { from: dateFilter.from, to: dateFilter.to, ...ext };
+  }, [dateFilter, includeExternal, features.opponents]);
+  const visibleTabs = TABS.filter((t) => t.id !== "opponents" || features.opponents);
 
   // Data queries
   const { data: seasonStats, isLoading: loadingStats } = trpc.scoreStats.seasonStats.useQuery(queryInput ?? {});
@@ -162,7 +170,7 @@ export default function StatsApp() {
 
           {/* Tabs */}
           <div className="flex gap-1 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2">
-            {TABS.map((tab) => {
+            {visibleTabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
@@ -197,6 +205,17 @@ export default function StatsApp() {
                 {p.label}
               </button>
             ))}
+            {features.opponents && activeTab !== "opponents" && activeTab !== "teams" && (
+              <button
+                onClick={() => setIncludeExternal((v) => !v)}
+                title="Ta med matcher mot andra lag i spelarnas siffror (lagens siffror och PIR räknar alltid bara internmatcher)"
+                className={`ml-1 px-2.5 py-1 rounded-md text-[10px] font-medium whitespace-nowrap transition-all border ${
+                  includeExternal ? "bg-sky-500/20 text-sky-200 border-sky-400/40" : "bg-[#1a1a1a]/50 text-[#687076] border-white/10 hover:text-[#9BA1A6]"
+                }`}
+              >
+                {includeExternal ? "✓ " : ""}Inkl. externa matcher
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -226,7 +245,7 @@ export default function StatsApp() {
                   stats={seasonStats}
                   onPlayerClick={handlePlayerClick}
                   periodLabel={PERIOD_OPTIONS.find((p) => p.key === periodPreset)?.label ?? "Säsong"}
-                  dateFilter={queryInput}
+                  dateFilter={queryInput as { from?: string; to?: string } | undefined}
                 />
                 <PirRanking ratings={pirData} onPlayerClick={handlePlayerClick} />
                 <AwardsTab
@@ -237,11 +256,12 @@ export default function StatsApp() {
                 />
               </div>
             )}
+            {activeTab === "opponents" && <OpponentsTab dateFilter={dateFilter.from || dateFilter.to ? { from: dateFilter.from, to: dateFilter.to } : undefined} />}
             {activeTab === "teams" && (
               <TeamsTab
                 teamData={teamData}
                 stats={seasonStats}
-                dateFilter={queryInput}
+                dateFilter={queryInput as { from?: string; to?: string } | undefined}
               />
             )}
           </>

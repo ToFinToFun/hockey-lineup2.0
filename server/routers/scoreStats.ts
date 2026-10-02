@@ -1,4 +1,5 @@
 import { isTeamAWhite as teamAIsWhite, normalizeTeamKey } from "../../shared/teams";
+import { listOpponents } from "../opponents";
 import { normalizeGoalType } from "../playerHistory";
 /**
  * Score Tracker statistics tRPC router.
@@ -7,7 +8,7 @@ import { normalizeGoalType } from "../playerHistory";
  */
 
 import { adminProcedure, router } from "../_core/trpc";
-import { getAllMatchResults } from "../scoreDb";
+import { getAllMatchResults, getExternalMatches } from "../scoreDb";
 import { z } from "zod";
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -88,17 +89,62 @@ function getPlayerKey(p: any): string {
 }
 
 const dateRangeInput = z
-  .object({ from: z.string().optional(), to: z.string().optional() })
+  .object({ from: z.string().optional(), to: z.string().optional(), includeExternal: z.boolean().optional() })
   .optional();
 
 // ─── Score Stats Router ─────────────────────────────────────────────
 
 export const scoreStatsRouter = router({
+  /**
+   * Resultat mot varje motståndare (matcher mot andra lag): V/O/F, målskillnad,
+   * våra bästa poänggörare mot dem och deras målskyttar mot oss.
+   */
+  opponentRecords: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
+    const matches = filterMatchesByDate(await getExternalMatches(), input?.from, input?.to);
+    const opps = new Map((await listOpponents(true)).map((o) => [o.id, o]));
+    type Line = { name: string; goals: number; assists: number };
+    const add = (m: Map<string, Line>, name: string | undefined, kind: "goals" | "assists") => {
+      const n = (name ?? "").trim();
+      if (!n) return;
+      const l = m.get(n) ?? { name: n, goals: 0, assists: 0 };
+      l[kind]++;
+      m.set(n, l);
+    };
+    const byOpp = new Map<number, { matches: number; wins: number; draws: number; losses: number; goalsFor: number; goalsAgainst: number; last: { name: string; us: number; them: number } | null; ours: Map<string, Line>; theirs: Map<string, Line> }>();
+    for (const m of matches) {
+      const id = m.opponentId!;
+      const r = byOpp.get(id) ?? { matches: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, last: null, ours: new Map(), theirs: new Map() };
+      r.matches++;
+      r.goalsFor += m.teamWhiteScore;
+      r.goalsAgainst += m.teamGreenScore;
+      if (m.teamWhiteScore > m.teamGreenScore) r.wins++;
+      else if (m.teamWhiteScore < m.teamGreenScore) r.losses++;
+      else r.draws++;
+      if (!r.last) r.last = { name: m.name, us: m.teamWhiteScore, them: m.teamGreenScore };
+      for (const g of (Array.isArray(m.goalHistory) ? m.goalHistory : []) as Array<{ team?: string; scorer?: string; assist?: string }>) {
+        const theirs = normalizeTeamKey(g.team) === "green";
+        add(theirs ? r.theirs : r.ours, g.scorer, "goals");
+        add(theirs ? r.theirs : r.ours, g.assist, "assists");
+      }
+      byOpp.set(id, r);
+    }
+    const top = (m: Map<string, Line>) => [...m.values()].map((l) => ({ ...l, points: l.goals + l.assists }))
+      .sort((a, b) => b.points - a.points || b.goals - a.goals || a.name.localeCompare(b.name, "sv"));
+    return [...byOpp.entries()].map(([id, r]) => {
+      const o = opps.get(id);
+      return {
+        opponentId: id, name: o?.name ?? "Okänt lag", color: o?.color ?? "#ef4444", logoUrl: o?.logoUrl ?? null,
+        matches: r.matches, wins: r.wins, draws: r.draws, losses: r.losses, goalsFor: r.goalsFor, goalsAgainst: r.goalsAgainst,
+        last: r.last, ourScorers: top(r.ours).slice(0, 5), theirScorers: top(r.theirs),
+      };
+    }).sort((a, b) => b.matches - a.matches || a.name.localeCompare(b.name, "sv"));
+  }),
+
   /** Detailed player profile with per-match history */
   playerProfile: adminProcedure
-    .input(z.object({ name: z.string() }))
+    .input(z.object({ name: z.string(), includeExternal: z.boolean().optional() }))
     .query(async ({ input }) => {
-      const matches = await getAllMatchResults();
+      const matches = await getAllMatchResults({ includeExternal: input.includeExternal });
       const matchHistory: Array<{
         matchId: number;
         matchName: string;
@@ -479,7 +525,7 @@ export const scoreStatsRouter = router({
 
   /** Season Awards */
   seasonAwards: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
-    const allMatches = await getAllMatchResults();
+    const allMatches = await getAllMatchResults({ includeExternal: input?.includeExternal });
     const matches = filterMatchesByDate(allMatches, input?.from, input?.to);
 
     if (matches.length === 0) {
@@ -682,7 +728,7 @@ export const scoreStatsRouter = router({
 
   /** Aggregated season statistics */
   seasonStats: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
-    const allMatches = await getAllMatchResults();
+    const allMatches = await getAllMatchResults({ includeExternal: input?.includeExternal });
     const matches = filterMatchesByDate(allMatches, input?.from, input?.to);
     if (matches.length === 0) {
       return {
@@ -717,6 +763,8 @@ export const scoreStatsRouter = router({
     const monthlyPlayerStats: Record<string, Record<string, { goals: number; assists: number; gwg: number; matches: Set<number> }>> = {};
 
     for (const match of matches) {
+      // Lagsiffror (Vita/Gröna) bara för internmatcher – externa räknas bara för spelarna
+      if (match.opponentId == null) {
       totalGoalsWhite += match.teamWhiteScore;
       totalGoalsGreen += match.teamGreenScore;
 
@@ -736,6 +784,7 @@ export const scoreStatsRouter = router({
       const greenDiff = match.teamGreenScore - match.teamWhiteScore;
       if (greenDiff > 0 && (!biggestWinGreen || greenDiff > biggestWinGreen.diff)) {
         biggestWinGreen = { name: match.name, whiteScore: match.teamWhiteScore, greenScore: match.teamGreenScore, diff: greenDiff };
+      }
       }
 
       const goals = match.goalHistory as Array<{ team: string; scorer?: string; assist?: string; other?: string }> | null;
