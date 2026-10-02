@@ -7,6 +7,7 @@
  * spelare) så att kortet kan byggas om med ny statistik eller stil senare.
  * Fler kort kan skapas och laddas ned utan att sparas.
  */
+import { confirmPhotoConsent } from "@/lib/photoConsent";
 import { useFeatures } from "@/contexts/ClubContext";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -387,7 +388,7 @@ export default function CardsApp() {
           <p className="text-[10px] text-white/35 text-center">{photo ? "Dra för att flytta fotot, nyp med två fingrar (eller scrolla) för att zooma." : "Ladda upp ett foto för att börja."}</p>
           {loadedInfo && <p className="text-[10px] text-amber-200/80 text-center">{loadedInfo}</p>}
           <div className="grid grid-cols-3 gap-2">
-            <button onClick={() => fileRef.current?.click()} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 border border-white/10 text-sm">
+            <button onClick={() => { if (confirmPhotoConsent(settings.name || undefined)) fileRef.current?.click(); }} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 border border-white/10 text-sm">
               <Upload size={14} /> {photo ? "Byt" : "Foto"}
             </button>
             <button onClick={resetAuto} disabled={!photo} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 border border-white/10 text-sm disabled:opacity-40">

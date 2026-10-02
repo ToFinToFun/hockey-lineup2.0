@@ -2,6 +2,7 @@
  * Profilbild i spelarkortet. Hämtas först när kortet öppnas (komponenten
  * monteras bara då). Tryck för att ladda upp; bilden förminskas i telefonen till ett stående 3:4-porträtt.
  */
+import { confirmPhotoConsent } from "@/lib/photoConsent";
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Camera, Loader2, UserRound, X, Download, Upload, Trash2 } from "lucide-react";
@@ -73,7 +74,7 @@ export function PlayerPhoto({ playerId, width = 54, editable = true }: { playerI
           e.stopPropagation();
           // Finns en bild: visa den stor. Annars direkt till uppladdning.
           if (hasPhoto) setViewing(true);
-          else if (editable) fileRef.current?.click();
+          else if (editable && confirmPhotoConsent()) fileRef.current?.click();
         }}
         title={hasPhoto ? "Visa större" : editable ? "Lägg till bild" : undefined}
         className="group w-full h-full rounded-lg overflow-hidden border border-white/10 bg-white/[0.04] flex items-center justify-center"
@@ -109,7 +110,7 @@ export function PlayerPhoto({ playerId, width = 54, editable = true }: { playerI
               <Download className="w-4 h-4" /> Spara
             </button>
             {editable && (
-              <button onClick={() => { setViewing(false); fileRef.current?.click(); }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-200 text-sm">
+              <button onClick={() => { setViewing(false); if (confirmPhotoConsent()) fileRef.current?.click(); }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-200 text-sm">
                 <Upload className="w-4 h-4" /> Ladda upp ny
               </button>
             )}
