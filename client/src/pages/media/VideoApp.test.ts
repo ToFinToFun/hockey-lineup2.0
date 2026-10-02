@@ -33,3 +33,9 @@ describe("matchens statistik", () => {
     expect(r.cells.map((c) => `${c.label}:${c.value}`)).toEqual(["GA:0", "NOLLA:JA", "RES:V"]);
   });
 });
+
+describe("kategorin Spelare", () => {
+  it("visar kort, statistik och namnlist som standard", () => {
+    expect(defaultShow("player")).toMatchObject({ intro: { picture: true, stats: true }, overlay: { nameBar: true, score: false } });
+  });
+});

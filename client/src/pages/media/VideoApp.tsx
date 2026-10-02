@@ -18,6 +18,7 @@ import type { ReportMatch } from "@/components/score/MatchReportModal";
 import { renderCard, DEFAULT_SETTINGS as CARD_DEFAULTS, type CardSettings } from "@shared/cardRender";
 import { cellsFor } from "@shared/cardStats";
 import { teamName } from "@shared/teams";
+import { POSITION_LABELS, type Position } from "@/lib/players";
 import { club } from "@shared/club";
 import {
   VIDEO_KINDS, VIDEO_SIZE, defaultShow, renderVideoGraphics, hasOverlay,
@@ -155,7 +156,8 @@ export default function VideoApp() {
   const [format, setFormat] = useState<VideoFormat>("reel");
   const [kind, setKind] = useState<VideoKind>("goal");
   const [show, setShow] = useState<VideoShow>(defaultShow("goal"));
-  const [matchId, setMatchId] = useState<number | null>(null);
+  /** null = förval (senaste matchen för mål/stjärnor/resultat), "none" = ingen match */
+  const [matchId, setMatchId] = useState<number | "none" | null>(null);
   const [goalIdx, setGoalIdx] = useState<number | null>(null);
   const [starRank, setStarRank] = useState<1 | 2 | 3>(1);
   const [playerId, setPlayerId] = useState<string>("");
@@ -170,7 +172,14 @@ export default function VideoApp() {
   const [captionEdited, setCaptionEdited] = useState(false);
 
   const matches = useMemo(() => ((matchesQ.data ?? []) as unknown as Array<ReportMatch & { reviewStatus?: string }>).filter((m) => m.reviewStatus !== "rejected").slice(0, 20), [matchesQ.data]);
-  const match = matches.find((m) => m.id === matchId) ?? (kind === "free" || kind === "interview" ? undefined : matches[0]);
+  const matchBased = kind === "goal" || kind === "stars" || kind === "result";
+  const match = matchId === "none" ? undefined : matches.find((m) => m.id === matchId) ?? (matchBased ? matches[0] : undefined);
+  // Motståndare i matcher mot andra lag (vårt lag sparas som "white", motståndaren som "green")
+  const opponentsQ = trpc.opponents.list.useQuery({ includeArchived: true }, { staleTime: 5 * 60_000 });
+  const sideName = (t: Side) => {
+    if (!match?.opponentId) return teamName(t);
+    return t === "white" ? club().name : opponentsQ.data?.find((o) => o.id === match.opponentId)?.name ?? "Motståndare";
+  };
   const goals = useMemo(() => goalsWithScore(match), [match]);
   const goal = goals.find((g) => g.index === goalIdx) ?? goals[goals.length - 1];
   const stars = useMemo(() => {
@@ -188,8 +197,16 @@ export default function VideoApp() {
   useEffect(() => {
     setShow(defaultShow(kind));
     setDateLine(match ? matchDateLine(match) : matchDateLine(undefined));
-    const wn = teamName("white"), gn = teamName("green");
-    if (kind === "goal" && goal) {
+    const wn = sideName("white"), gn = sideName("green");
+    if (kind === "goal" && !match) {
+      setHeading("Mål"); setHeadline(""); setSubline("");
+    } else if (kind === "stars" && !match) {
+      setHeading(`Matchens ${"★".repeat(4 - starRank)}`); setHeadline(""); setSubline("");
+    } else if (kind === "result" && !match) {
+      setHeading("Slutresultat"); setHeadline(""); setSubline(""); setPlayerId("");
+    } else if (kind === "player") {
+      setHeading("Möt spelaren"); setHeadline(""); setSubline("");
+    } else if (kind === "goal" && goal) {
       setHeading("Mål"); setHeadline(goal.score); setSubline(goal.assist ? `Assist: ${goal.assist}` : "");
       setPlayerId(byName(goal.scorer)?.id ?? ""); setSide(goal.team);
     } else if (kind === "stars" && star) {
@@ -203,13 +220,14 @@ export default function VideoApp() {
     } else if (kind === "free") {
       setHeading(""); setHeadline(""); setSubline(""); setPlayerId("");
     }
-  }, [kind, match?.id, goal?.index, starRank, star?.key, registry.data]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [kind, match?.id, goal?.index, starRank, star?.key, registry.data, opponentsQ.data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pucken landar på spelarens lag när en spelare väljs
   const player = players.find((p) => p.id === playerId) ?? null;
   useEffect(() => {
-    if (kind === "interview" && player?.teamColor) setSide(player.teamColor as Side);
-  }, [playerId]); // eslint-disable-line react-hooks/exhaustive-deps
+    if ((kind === "interview" || kind === "player" || !match) && (player?.teamColor === "white" || player?.teamColor === "green")) setSide(player.teamColor);
+    if (kind === "player") setSubline(player ? POSITION_LABELS[player.position as Position] ?? "" : "");
+  }, [playerId, kind]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sponsorer: den som visats minst i Media (intro 2), sedan nästa (outro)
   const active = sponsors.filter((s) => s.active);
@@ -231,7 +249,7 @@ export default function VideoApp() {
   // ─── Spelarens kort/foto och statistik ───
   // Statistiken (rutan och siffrorna på hockeykortet) följer samma val
   const [statsMode, setStatsMode] = useState<VideoStatsMode>("season");
-  useEffect(() => { setStatsMode(match && kind !== "interview" ? "match" : "season"); }, [kind, match?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setStatsMode(match && kind !== "interview" && kind !== "player" ? "match" : "season"); }, [kind, match?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [playerStats, setPlayerStats] = useState<Awaited<ReturnType<typeof utils.client.cards.stats.query>> | undefined>(undefined);
   useEffect(() => {
     let cancelled = false;
@@ -338,6 +356,7 @@ export default function VideoApp() {
       : kind === "interview" ? `Intervju med ${p}`
       : kind === "stars" ? `${heading} – ${p}`
       : kind === "result" ? `${heading}: ${headline}`
+      : kind === "player" ? `${heading}: ${p}`
       : [heading, headline].filter(Boolean).join(" – ");
     return [first, subline, dateLine, introSponsor ? `Stolt sponsor: ${introSponsor}` : "", (tagsQ.data ?? []).join(" ")].filter(Boolean).join("\n\n");
   }, [kind, player, heading, headline, subline, dateLine, introSponsor, tagsQ.data]);
@@ -412,8 +431,7 @@ export default function VideoApp() {
     return <button key={`${part}.${String(key)}`} onClick={() => setShow((s) => ({ ...s, [part]: { ...s[part], [key]: !on } }))} className={chip(on)}>{on ? "✓ " : ""}{label}</button>;
   };
   const aspect = format === "reel" ? "aspect-[9/16]" : "aspect-[4/5]";
-  const needsMatch = kind === "goal" || kind === "stars" || kind === "result";
-  const needsPlayer = kind === "goal" || kind === "interview" || kind === "stars";
+  const needsPlayer = kind === "goal" || kind === "interview" || kind === "stars" || kind === "player";
 
   return (
     <div className="min-h-[100dvh] bg-[#0a0a0a] text-white">
@@ -471,24 +489,22 @@ export default function VideoApp() {
             </div>
           </div>
 
-          {(needsMatch || kind === "interview") && (
-            <label className="block text-[11px] text-white/50">Match{kind === "interview" ? " (valfri – för datumraden)" : ""}
-              <select value={match?.id ?? ""} onChange={(e) => setMatchId(Number(e.target.value) || null)} className={input}>
-                {!needsMatch && <option value="" className="text-black">Ingen match (dagens datum)</option>}
-                {matches.map((m) => <option key={m.id} value={m.id} className="text-black">{m.name}</option>)}
-              </select>
-            </label>
-          )}
-          {kind === "goal" && (
+          <label className="block text-[11px] text-white/50">Match
+            <select value={match?.id ?? "none"} onChange={(e) => setMatchId(e.target.value === "none" ? "none" : Number(e.target.value))} className={input}>
+              <option value="none" className="text-black">Ingen match – fyll i själv, säsongsstatistik</option>
+              {matches.map((m) => <option key={m.id} value={m.id} className="text-black">{m.name}</option>)}
+            </select>
+          </label>
+          {kind === "goal" && match && (
             <label className="block text-[11px] text-white/50">Mål
               <select value={goal?.index ?? ""} onChange={(e) => setGoalIdx(Number(e.target.value))} className={input}>
-                {goals.map((g) => <option key={g.index} value={g.index} className="text-black">{g.score} {g.scorer || "okänd"}{g.assist ? ` (${g.assist})` : ""} – {teamName(g.team)}</option>)}
+                {goals.map((g) => <option key={g.index} value={g.index} className="text-black">{g.score} {g.scorer || "okänd"}{g.assist ? ` (${g.assist})` : ""} – {sideName(g.team)}</option>)}
               </select>
             </label>
           )}
           {kind === "stars" && (
             <div className="flex gap-1.5">
-              {([1, 2, 3] as const).map((r) => <button key={r} onClick={() => setStarRank(r)} className={chip(starRank === r)}>{"★".repeat(4 - r)} {stars[r - 1]?.name ?? ""}</button>)}
+              {([1, 2, 3] as const).map((r) => <button key={r} onClick={() => setStarRank(r)} className={chip(starRank === r)}>{"★".repeat(4 - r)} {match ? stars[r - 1]?.name ?? "" : ""}</button>)}
             </div>
           )}
           {needsPlayer && (

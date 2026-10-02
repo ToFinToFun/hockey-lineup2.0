@@ -7,6 +7,13 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.49.0 – 2026-10-02
+
+**Media → Video**
+- "Ingen match" i alla kategorier: inget fylls i automatiskt, statistiken väljs bland Säsong/Slutspel/Försäsong/Totalt och datumraden blir dagens datum (redigerbar). Mål, stjärnor och resultat fungerar också utan match (t.ex. "Säsongens snyggaste mål").
+- Ny kategori Spelare: "Möt spelaren" med hockeykort/foto, position och säsongsstatistik – för presentationer och "Veckans spelare". Pucken landar på spelarens lag.
+- Matcher mot andra lag: resultatraden och mållistan visar klubbens och motståndarens namn i stället för Vita/Gröna.
+
 ## 2.48.0 – 2026-10-02
 
 **Media → Video**

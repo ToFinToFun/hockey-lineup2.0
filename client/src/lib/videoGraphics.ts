@@ -19,7 +19,7 @@ import { HEAD, BODY, tryLoad, ensureFonts, fit } from "@/lib/matchReportImages";
 import { roundRect } from "@/lib/canvas";
 
 export type VideoFormat = "reel" | "feed";
-export type VideoKind = "goal" | "interview" | "stars" | "result" | "free";
+export type VideoKind = "goal" | "interview" | "stars" | "result" | "player" | "free";
 export type Side = "green" | "white";
 
 export const VIDEO_KINDS: Array<{ id: VideoKind; name: string }> = [
@@ -27,6 +27,7 @@ export const VIDEO_KINDS: Array<{ id: VideoKind; name: string }> = [
   { id: "interview", name: "Intervju" },
   { id: "stars", name: "Matchens stjärnor" },
   { id: "result", name: "Resultat" },
+  { id: "player", name: "Spelare" },
   { id: "free", name: "Fri" },
 ];
 
@@ -51,9 +52,9 @@ export interface VideoShow {
 
 /** Standardval per kategori */
 export function defaultShow(kind: VideoKind): VideoShow {
-  const player = kind === "goal" || kind === "interview" || kind === "stars";
+  const player = kind === "goal" || kind === "interview" || kind === "stars" || kind === "player";
   return {
-    intro: { picture: player, stats: kind === "interview" || kind === "stars", dateLine: true, sponsor: true },
+    intro: { picture: player, stats: kind === "interview" || kind === "stars" || kind === "player", dateLine: true, sponsor: true },
     overlay: { nameBar: player, score: kind === "goal", stats: false, clubLogo: true, sponsorLogo: false },
     outro: { sponsor: true },
   };
