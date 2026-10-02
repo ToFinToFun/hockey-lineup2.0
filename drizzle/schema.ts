@@ -131,6 +131,8 @@ export const players = mysqlTable("players", {
   teamColor: varchar("teamColor", { length: 10 }),
   /** C | A | null */
   captainRole: varchar("captainRole", { length: 2 }),
+  /** Alternativ position (hybridspelare): MV, B, C eller F */
+  altPosition: varchar("altPosition", { length: 4 }),
   /** Finns i klubbens medlemsregister. Spelare som inte gör det flaggas men finns kvar. */
   isMember: boolean("isMember").default(true).notNull(),
   /** Aktiv = ingår i truppen i Lineup. Inaktiva finns kvar för historiken. */

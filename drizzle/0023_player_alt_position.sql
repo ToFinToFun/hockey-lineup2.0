@@ -1,0 +1,1 @@
+ALTER TABLE `players` ADD `altPosition` varchar(4);

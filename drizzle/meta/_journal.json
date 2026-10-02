@@ -162,6 +162,13 @@
       "when": 1790893487041,
       "tag": "0022_match_opponent",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "5",
+      "when": 1790940075034,
+      "tag": "0023_player_alt_position",
+      "breakpoints": true
     }
   ]
 }

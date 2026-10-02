@@ -16,7 +16,7 @@ import { positionName } from "@/lib/players";
 import { PlayerProfileView } from "./PlayerProfile";
 
 type Row = {
-  id: string; name: string; number: string; position: string; teamColor: string | null; captainRole: string | null;
+  id: string; name: string; number: string; position: string; teamColor: string | null; captainRole: string | null; altPosition?: string | null;
   isMember: boolean; active: boolean; lagetName: string | null; externalId: string | null;
   notes: string | null;
 };
@@ -296,7 +296,7 @@ export default function PlayersApp() {
 function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]; byId: Map<string, Row>; onClose: () => void; onSaved: () => void }) {
   const [f, setF] = useState({
     name: row?.name ?? "", number: row?.number ?? "", position: row?.position ?? "", teamColor: row?.teamColor ?? null,
-    captainRole: row?.captainRole ?? null, isMember: row?.isMember ?? true, active: row?.active ?? true,
+    captainRole: row?.captainRole ?? null, altPosition: row?.altPosition ?? null, isMember: row?.isMember ?? true, active: row?.active ?? true,
     lagetName: row?.lagetName ?? "", notes: row?.notes ?? "",
   });
   const [mergeInto, setMergeInto] = useState("");
@@ -308,6 +308,7 @@ function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]
   const payload = {
     name: f.name.trim(), number: f.number.trim(), position: ((POSITIONS as readonly string[]).includes(f.position) ? f.position : "") as PositionOrNone,
     teamColor: f.teamColor as "white" | "green" | null, captainRole: f.captainRole as "C" | "A" | null,
+    altPosition: (f.altPosition || null) as "MV" | "B" | "C" | "F" | null,
     isMember: f.isMember, active: f.active, lagetName: f.lagetName.trim() || null, notes: f.notes.trim() || null,
   };
   const save = () => (row ? update.mutate({ id: row.id, fields: payload }) : create.mutate(payload));
@@ -342,10 +343,11 @@ function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]
           <label className="col-span-3 text-xs text-white/50">Namn<input className={input} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
           <label className="text-xs text-white/50">Nr<input className={input} inputMode="numeric" value={f.number} onChange={(e) => setF({ ...f, number: e.target.value })} /></label>
         </div>
-        <div className="grid grid-cols-3 gap-2 text-xs text-white/50">
+        <div className="grid grid-cols-4 gap-2 text-xs text-white/50">
           <label>Position<select className={input} value={(POSITIONS as readonly string[]).includes(f.position) ? f.position : ""} onChange={(e) => setF({ ...f, position: e.target.value })}><option value="">– Ingen –</option>{POSITIONS.map((p) => <option key={p} value={p}>{p} – {positionName(p)}</option>)}</select></label>
           <label>Lag<select className={input} value={f.teamColor ?? ""} onChange={(e) => setF({ ...f, teamColor: e.target.value || null })}><option value="">–</option><option value="white">Vit</option><option value="green">Grön</option></select></label>
           <label>Roll<select className={input} value={f.captainRole ?? ""} onChange={(e) => setF({ ...f, captainRole: e.target.value || null })}><option value="">–</option><option value="C">C</option><option value="A">A</option></select></label>
+          <label title="Hybridspelare: position spelaren också kan spela (tvåfärgad bricka i Lineup, används av Auto)">Alt. pos<select className={input} value={f.altPosition ?? ""} onChange={(e) => setF({ ...f, altPosition: e.target.value || null })}><option value="">–</option>{(["MV", "B", "C", "F"] as const).map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
         </div>
         <div className="flex gap-4 text-sm">
           <label className="flex items-center gap-2"><input type="checkbox" checked={f.isMember} onChange={(e) => setF({ ...f, isMember: e.target.checked })} /> Medlem</label>

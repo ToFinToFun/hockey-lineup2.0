@@ -12,7 +12,7 @@ import { players, matchPlayers, matchGoals, type PlayerRow } from "../drizzle/sc
 
 export type RegistryPlayer = PlayerRow;
 
-export const PLAYER_FIELDS = ["name", "number", "position", "teamColor", "captainRole", "isMember", "active", "lagetName", "externalId", "notes"] as const;
+export const PLAYER_FIELDS = ["name", "number", "position", "teamColor", "captainRole", "altPosition", "isMember", "active", "lagetName", "externalId", "notes"] as const;
 export type PlayerFields = Partial<Pick<PlayerRow, (typeof PLAYER_FIELDS)[number]>>;
 
 export const labelOf = (p: { name: string; number?: string | null }) => (p.number ? `${p.name} #${p.number}` : p.name);
@@ -121,6 +121,7 @@ export async function createPlayers(rows: Array<PlayerFields & { id?: string; na
     position: row.position ?? "F",
     teamColor: row.teamColor ?? null,
     captainRole: row.captainRole ?? null,
+    altPosition: row.altPosition ?? null,
     isMember: row.isMember ?? true,
     active: row.active ?? true,
     lagetName: row.lagetName ?? null,

@@ -11,6 +11,7 @@ import { getDb } from "./db";
 import { matchPlayers, matchResults } from "../drizzle/schema";
 import { getConfigValue, setConfigValue } from "./scoreDb";
 import { listPlayers, updatePlayers } from "./playersDb";
+import { migrateAltPositionsFromConfig } from "./altPositions";
 
 const FLAG = "fix_team_restore_20260930";
 
@@ -38,6 +39,10 @@ export async function restoreTeamsFromMatch(dayStart: Date, dayEnd: Date): Promi
 }
 
 export async function runOneTimeFixes() {
+  // Alternativa positioner: från inställning till spelarregistret (gör inget om redan flyttat)
+  await migrateAltPositionsFromConfig()
+    .then((n) => { if (n) console.log(`[engångsrättning] ${n} alternativa positioner flyttade till spelarregistret`); })
+    .catch((err) => console.error("[engångsrättning] alternativa positioner:", err));
   try {
     if (await getConfigValue(FLAG)) return;
     // 29/9 kl 06 till 30/9 kl 06 (svensk tid) – träningen var 22:15

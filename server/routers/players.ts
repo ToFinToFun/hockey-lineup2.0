@@ -27,6 +27,8 @@ const fieldsSchema = z.object({
   position: positionSchema.optional(),
   teamColor: z.enum(["white", "green"]).nullable().optional(),
   captainRole: z.enum(["C", "A"]).nullable().optional(),
+  /** Alternativ position (hybridspelare) */
+  altPosition: z.enum(["MV", "B", "C", "F"]).nullable().optional(),
   isMember: z.boolean().optional(),
   active: z.boolean().optional(),
   lagetName: z.string().trim().max(150).nullable().optional(),
