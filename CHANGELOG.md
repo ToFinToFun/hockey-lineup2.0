@@ -7,7 +7,9 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
-## Ej släppt (på main) – steg 0 och 1 i docs/PLAN-lag-och-motstandare.md
+## 2.46.0 – 2026-10-02
+
+Klubbinställningar, lagen som begrepp och matcher mot andra lag (docs/PLAN-lag-och-motstandare.md, steg 0–7). För användarna ser allt ut som förut – det nya som syns är fliken Inställningar → Klubb. Matcher mot andra lag är beta och avstängt tills det slås på under Inställningar → Klubb.
 
 **Steg 0 – skyddsnät**
 - Kontrollbilder (test/golden): matchrapport, stjärnkort, nyhetsbild, alla hockeykortsstilar och alla Media-mallar ritas och jämförs med sparade fingeravtryck. Uppdatera avsiktliga ändringar med `UPDATE_GOLDEN=1`.
