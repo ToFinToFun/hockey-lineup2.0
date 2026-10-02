@@ -26,3 +26,18 @@ describe("matchens starttid och namn", () => {
     expect(elapsedMinutes(undefined, start)).toBeNull();
   });
 });
+
+import { eventLocationFor } from "./matchTiming";
+
+describe("platsen från laget.se på matchen", () => {
+  const ev = { eventDate: "2026-10-01", eventTime: "20:00", eventLocation: "Coop Arena C-Hallen" };
+  it("samma kväll (även när starttiden kom från första målet eller efter midnatt)", () => {
+    expect(eventLocationFor(ev, new Date(2026, 9, 1, 20, 12))).toBe("Coop Arena C-Hallen");
+    expect(eventLocationFor(ev, new Date(2026, 9, 2, 0, 30))).toBe("Coop Arena C-Hallen");
+  });
+  it("inte för en match en annan dag eller utan plats", () => {
+    expect(eventLocationFor(ev, new Date(2026, 9, 3, 20, 0))).toBeUndefined();
+    expect(eventLocationFor({ ...ev, eventLocation: "" }, new Date(2026, 9, 1, 20, 0))).toBeUndefined();
+    expect(eventLocationFor(null, new Date())).toBeUndefined();
+  });
+});

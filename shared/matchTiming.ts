@@ -34,6 +34,22 @@ export function resolveMatchStart(
   return { start: est, source: "estimate" };
 }
 
+/**
+ * Platsen från laget.se hör till matchen om evenemanget är samma dag som matchen
+ * (eller kvällen innan, för matcher som avslutas efter midnatt) – oavsett om
+ * starttiden togs från träningen, första målet eller uppskattades.
+ */
+export function eventLocationFor(
+  event: { eventDate?: string | null; eventTime?: string | null; eventLocation?: string | null } | null | undefined,
+  matchStart: Date
+): string | undefined {
+  const loc = event?.eventLocation?.trim();
+  if (!loc || !event?.eventDate) return undefined;
+  const ev = eventStartDate(event.eventDate, event.eventTime ?? "12:00");
+  if (!ev) return undefined;
+  return Math.abs(matchStart.getTime() - ev.getTime()) <= 12 * 3600_000 ? loc : undefined;
+}
+
 const WEEKDAYS = ["Söndag", "Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag"];
 const two = (n: number) => String(n).padStart(2, "0");
 

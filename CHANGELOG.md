@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.46.2 – 2026-10-02
+
+- Platsen sparas på matchen när laget.se har ett evenemang samma dag (inom 12 timmar från matchstarten) – inte bara när starttiden togs från träningen. Avsluta-rutan visar platsen även när starttiden kommer från första målet eller är uppskattad.
+
 ## 2.46.1 – 2026-10-02
 
 - Rättning: platsen för evenemanget lästes inte. På laget.se laddas fliken Aktivitetsinfo (med platsen, PlaceName) från en egen adress, /{lag}/Calendar/ManageEvent/{id}?siteType=Team – appen läste bara grundsidan Calendar/Edit/{id}, som innehåller deltagarlistan. Nu hämtas Aktivitetsinfo separat, både när evenemanget hittas i kalendern och via lagets startsida.
