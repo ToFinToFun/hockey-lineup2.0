@@ -48,6 +48,16 @@ export function totalDuration(clipDuration: number): number {
   return r(t.intro1 + t.intro2 + clipDuration + t.outro - 3 * t.xfade);
 }
 
+/** Hur mycket intro, intro 2 och outro lägger till (övergångarna borträknade) */
+export function addedDuration(): number {
+  return r(totalDuration(0));
+}
+
+/** Längsta klippet som ryms när hela videon får vara maxTotal sekunder (hela sekunder nedåt) */
+export function maxClipSeconds(maxTotal: number): number {
+  return Math.floor(maxTotal - addedDuration());
+}
+
 /** Var klippet börjar i den färdiga videon (för ljudet) */
 export function clipStart(): number {
   const t = VIDEO_TIMING;

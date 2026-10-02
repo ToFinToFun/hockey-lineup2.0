@@ -2,7 +2,9 @@
  * Media → Video på servern: uppladdning, kö och städning.
  *
  * - Klippet strömmas direkt till disk (aldrig hela filen i minnet).
- * - Spärrar: VIDEO_MAX_MB (standard 300 MB) och VIDEO_MAX_SECONDS (standard 180 s).
+ * - Spärrar: VIDEO_MAX_MB (standard 300 MB) och VIDEO_MAX_SECONDS (standard 180 s =
+ *   Instagrams maxlängd för Reels). Längden gäller hela videon, så klippet får vara
+ *   180 s minus intro och outro.
  * - En rendering i taget, så att VPS:en inte överbelastas.
  * - Allt raderas efter 24 h, och vid start (filerna ligger i containerns /tmp).
  *
@@ -17,11 +19,16 @@ import fsp from "fs/promises";
 import path from "path";
 import os from "os";
 import { readSession } from "../auth";
-import { buildFfmpegArgs, totalDuration, type VideoFormat } from "./videoFfmpeg";
+import { buildFfmpegArgs, maxClipSeconds, totalDuration, type VideoFormat } from "./videoFfmpeg";
 
 export const VIDEO_LIMITS = {
   maxBytes: Number(process.env.VIDEO_MAX_MB ?? 300) * 1024 * 1024,
+  /** Hela videons maxlängd, med intro och outro */
   maxSeconds: Number(process.env.VIDEO_MAX_SECONDS ?? 180),
+  /** Klippets maxlängd = hela videons minus intro och outro */
+  get maxClipSeconds() {
+    return maxClipSeconds(this.maxSeconds);
+  },
   /** Hur länge uppladdningar och färdiga filer sparas */
   keepMs: 24 * 60 * 60 * 1000,
   /** Grafiken skickas som PNG i JSON (base64) */
@@ -131,7 +138,7 @@ export function registerVideoRoutes(app: Express) {
   // Spärrarna, så att webbläsaren kan stoppa för stora filer innan uppladdningen
   app.get("/api/media/video/limits", async (req, res) => {
     if (!(await requireAdmin(req, res))) return;
-    res.json({ maxBytes: VIDEO_LIMITS.maxBytes, maxSeconds: VIDEO_LIMITS.maxSeconds });
+    res.json({ maxBytes: VIDEO_LIMITS.maxBytes, maxSeconds: VIDEO_LIMITS.maxSeconds, maxClipSeconds: VIDEO_LIMITS.maxClipSeconds });
   });
 
   // 1. Ladda upp klippet (rå kropp, strömmas till disk). Svarar med id och längd.
@@ -167,8 +174,9 @@ export function registerVideoRoutes(app: Express) {
       try {
         const p = await probe(file);
         if (!p.hasVideo || !(p.duration > 0)) return void fail(400, "Filen verkar inte vara en video");
-        if (p.duration > VIDEO_LIMITS.maxSeconds + 0.5) {
-          return void fail(413, `Klippet är ${Math.round(p.duration)} s – max ${VIDEO_LIMITS.maxSeconds} s. Korta det i telefonen först.`);
+        const maxClip = VIDEO_LIMITS.maxClipSeconds;
+        if (p.duration > maxClip + 0.5) {
+          return void fail(413, `Klippet är ${Math.round(p.duration)} s – max ${maxClip} s (${VIDEO_LIMITS.maxSeconds} s med intro och outro). Korta det i telefonen först.`);
         }
         res.json({ uploadId: id, duration: p.duration, width: p.width, height: p.height, hasAudio: p.hasAudio, bytes });
       } catch (err) {

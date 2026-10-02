@@ -3,7 +3,7 @@ import { spawnSync } from "child_process";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { buildFfmpegArgs, clipStart, totalDuration, VIDEO_TIMING } from "./videoFfmpeg";
+import { buildFfmpegArgs, clipStart, maxClipSeconds, totalDuration, VIDEO_TIMING } from "./videoFfmpeg";
 
 const base = { clip: "c.mp4", clipDuration: 10, clipHasAudio: true, intro1: "i1.png", intro2: "i2.png", overlay: "ov.png", outro: "o.png", output: "out.mp4" };
 
@@ -12,6 +12,12 @@ describe("videoFfmpeg", () => {
     const t = VIDEO_TIMING;
     expect(totalDuration(10)).toBeCloseTo(t.intro1 + t.intro2 + 10 + t.outro - 3 * t.xfade, 3);
     expect(clipStart()).toBeCloseTo(t.intro1 + t.intro2 - 2 * t.xfade, 3);
+  });
+
+  it("klippets maxlängd lämnar plats för intro och outro inom 180 s", () => {
+    const max = maxClipSeconds(180);
+    expect(max).toBe(174);
+    expect(totalDuration(max)).toBeLessThanOrEqual(180);
   });
 
   it("Reel är 1080×1920 och flödet 1080×1350", () => {
