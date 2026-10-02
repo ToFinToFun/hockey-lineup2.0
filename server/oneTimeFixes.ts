@@ -12,6 +12,7 @@ import { matchPlayers, matchResults } from "../drizzle/schema";
 import { getConfigValue, setConfigValue } from "./scoreDb";
 import { listPlayers, updatePlayers } from "./playersDb";
 import { migrateAltPositionsFromConfig } from "./altPositions";
+import { fixPirAdjustmentKeys } from "./pirAdjustmentsFix";
 
 const FLAG = "fix_team_restore_20260930";
 
@@ -43,6 +44,13 @@ export async function runOneTimeFixes() {
   await migrateAltPositionsFromConfig()
     .then((n) => { if (n) console.log(`[engångsrättning] ${n} alternativa positioner flyttade till spelarregistret`); })
     .catch((err) => console.error("[engångsrättning] alternativa positioner:", err));
+  // PIR-justeringar med spelarnamn i stället för id byts mot id (gör inget om allt redan är id)
+  await fixPirAdjustmentKeys()
+    .then(({ moved, unknown }) => {
+      if (moved) console.log(`[engångsrättning] ${moved} PIR-justeringar kopplade till spelar-id`);
+      if (unknown.length) console.warn(`[PIR] justeringar som inte hittar någon spelare: ${unknown.join(", ")}`);
+    })
+    .catch((err) => console.error("[engångsrättning] PIR-justeringar:", err));
   try {
     if (await getConfigValue(FLAG)) return;
     // 29/9 kl 06 till 30/9 kl 06 (svensk tid) – träningen var 22:15
