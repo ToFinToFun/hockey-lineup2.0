@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.49.1 – 2026-10-02
+
+- Media: knappen Video (Instagram) har samma utseende som de andra knapparna. Den gröna färgen fick den att se intryckt/vald ut fast den bara är en länk.
+
 ## 2.49.0 – 2026-10-02
 
 **Media → Video**
