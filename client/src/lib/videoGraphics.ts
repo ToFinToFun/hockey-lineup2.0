@@ -19,7 +19,7 @@ import { HEAD, BODY, tryLoad, ensureFonts, fit } from "@/lib/matchReportImages";
 import { roundRect } from "@/lib/canvas";
 
 export type VideoFormat = "reel" | "feed";
-export type VideoKind = "goal" | "interview" | "stars" | "result" | "player" | "free";
+export type VideoKind = "goal" | "interview" | "stars" | "result" | "player" | "prematch" | "free";
 export type Side = "green" | "white";
 
 export const VIDEO_KINDS: Array<{ id: VideoKind; name: string }> = [
@@ -28,6 +28,7 @@ export const VIDEO_KINDS: Array<{ id: VideoKind; name: string }> = [
   { id: "stars", name: "Matchens stjärnor" },
   { id: "result", name: "Resultat" },
   { id: "player", name: "Spelare" },
+  { id: "prematch", name: "Inför match" },
   { id: "free", name: "Fri" },
 ];
 
@@ -54,7 +55,7 @@ export interface VideoShow {
 export function defaultShow(kind: VideoKind): VideoShow {
   const player = kind === "goal" || kind === "interview" || kind === "stars" || kind === "player";
   return {
-    intro: { picture: player, stats: kind === "interview" || kind === "stars" || kind === "player", dateLine: true, sponsor: true },
+    intro: { picture: player, stats: kind === "interview" || kind === "stars" || kind === "player", dateLine: kind !== "prematch", sponsor: true },
     overlay: { nameBar: player, score: kind === "goal", stats: false, clubLogo: true, sponsorLogo: false },
     outro: { sponsor: true },
   };
@@ -81,6 +82,23 @@ export interface VideoGraphicsData {
   introSponsor: VideoSponsor | null;
   outroSponsor: VideoSponsor | null;
   show: VideoShow;
+  /** Lagets färg och logga när det inte är Vita/Gröna (matcher mot andra lag) */
+  style?: { color: string; logo: string | null } | null;
+  /** Två lag mot varandra i titelkortet (Inför match, Resultat) */
+  versus?: { left: VersusTeam; right: VersusTeam } | null;
+}
+
+export interface VersusTeam { name: string; logo: string | null; color: string }
+
+const accentOf = (d: VideoGraphicsData) => d.style?.color ?? teamColor(d.team);
+/** Lagets logga; ett motståndarlag utan logga får ingen (inte klubbens) */
+const logoOf = (d: VideoGraphicsData): string | null => (d.style ? d.style.logo : teamLogo(d.team) ?? club().logo);
+/** Mörk text på ljusa färger (t.ex. vitt lag), annars vit */
+export function textOn(hex: string): string {
+  const m = hex.replace("#", "").match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  if (!m) return "#fff";
+  const [r, g, b] = [m[1], m[2], m[3]].map((x) => parseInt(x, 16) / 255);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.6 ? "#111" : "#fff";
 }
 
 const loadImage = (src: string) => canvasEnv().loadImage(src);
@@ -99,7 +117,7 @@ function rgba(hex: string, a: number) {
 }
 
 /** Samma bakgrund som slutet av puckintrot: mörk arena med glöd i lagets färg */
-async function background(ctx: CanvasRenderingContext2D, format: VideoFormat, team: Side) {
+async function background(ctx: CanvasRenderingContext2D, format: VideoFormat, color: string) {
   const { w, h } = VIDEO_SIZE[format];
   ctx.fillStyle = "#0b1410";
   ctx.fillRect(0, 0, w, h);
@@ -112,8 +130,8 @@ async function background(ctx: CanvasRenderingContext2D, format: VideoFormat, te
   ctx.fillRect(0, 0, w, h);
   const cy = h * 0.47;
   const g = ctx.createRadialGradient(w / 2, cy, w * 0.18, w / 2, cy, w * 0.72);
-  g.addColorStop(0, rgba(teamColor(team), 0.45));
-  g.addColorStop(1, rgba(teamColor(team), 0));
+  g.addColorStop(0, rgba(color, 0.45));
+  g.addColorStop(1, rgba(color, 0));
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 }
@@ -169,6 +187,9 @@ function sponsorBlock(ctx: CanvasRenderingContext2D, label: string, sponsor: Vid
 }
 const sponsorBlockHeight = (logoH: number) => logoH * 1.45;
 
+/** "Luleå HF" → "LH" (om laget saknar logga) */
+export const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 3).map((w) => w[0]).join("").toUpperCase() || "?";
+
 const playerLabel = (p: { name: string; number: string }) => `${p.number ? `#${p.number} ` : ""}${p.name}`.toUpperCase();
 
 // ─── Intro 2 ────────────────────────────────────────────────────────────────
@@ -177,11 +198,11 @@ export async function renderIntro2(d: VideoGraphicsData): Promise<HTMLCanvasElem
   await ensureFonts();
   const [c, ctx] = newCanvas(d.format);
   const { w } = VIDEO_SIZE[d.format];
-  await background(ctx, d.format, d.team);
+  await background(ctx, d.format, accentOf(d));
   const sa = safeArea(d.format, "card");
   const cx = w / 2;
   const maxW = sa.right - sa.left;
-  const accent = teamColor(d.team);
+  const accent = accentOf(d);
   const sponsorImg = d.show.intro.sponsor && d.introSponsor?.logo ? await tryLoad(d.introSponsor.logo) : null;
 
   // Höjder: överdel (klubb + datum), rubrik, bild, namn, rubrikrad, underrad, statistik, sponsor
@@ -192,8 +213,9 @@ export async function renderIntro2(d: VideoGraphicsData): Promise<HTMLCanvasElem
   const nameH = d.player ? 64 : 0;
   const subH = d.subline ? 44 : 0;
   const statsH = d.show.intro.stats && d.stats?.cells.length ? 128 : 0;
+  const versusH = d.versus ? (reel ? 330 : 270) : 0;
   const sponsorH = d.show.intro.sponsor && d.introSponsor ? sponsorBlockHeight(reel ? 110 : 90) : 0;
-  const fixed = top.club + (d.show.intro.dateLine && d.dateLine ? top.date : 0) + 56 + headingH + headlineH + nameH + subH + statsH + sponsorH + 6 * 24;
+  const fixed = top.club + (d.show.intro.dateLine && d.dateLine ? top.date : 0) + 56 + headingH + headlineH + nameH + subH + statsH + sponsorH + (versusH ? versusH + 24 : 0) + 6 * 24;
   const avail = sa.bottom - sa.top;
   const picH = d.show.intro.picture && d.picture ? Math.max(0, Math.min(reel ? 560 : 400, avail - fixed)) : 0;
   const total = fixed + (picH ? picH + 24 : 0);
@@ -224,6 +246,36 @@ export async function renderIntro2(d: VideoGraphicsData): Promise<HTMLCanvasElem
   while (hs > 48 && ctx.measureText(d.heading.toUpperCase()).width > maxW) ctx.font = `700 ${(hs -= 4)}px ${HEAD}`;
   ctx.fillText(d.heading.toUpperCase(), cx, y + headingH * 0.92);
   y += headingH + 24;
+
+  if (versusH) {
+    // Loggorna mot varandra med lagnamnen under, "VS" i mitten
+    const v = d.versus!;
+    const logoS = versusH - 90;
+    const colW = maxW / 2 - 60;
+    const imgs = await Promise.all([v.left.logo ? tryLoad(v.left.logo) : null, v.right.logo ? tryLoad(v.right.logo) : null]);
+    [v.left, v.right].forEach((t, i) => {
+      const tx = i === 0 ? cx - maxW / 4 - 20 : cx + maxW / 4 + 20;
+      const img = imgs[i];
+      if (img) drawContain(ctx, img, tx, y + logoS / 2, Math.min(logoS, colW), logoS);
+      else {
+        ctx.fillStyle = t.color;
+        ctx.beginPath(); ctx.arc(tx, y + logoS / 2, logoS * 0.42, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = textOn(t.color);
+        ctx.font = `700 ${Math.round(logoS * 0.28)}px ${HEAD}`;
+        ctx.textAlign = "center";
+        ctx.fillText(initials(t.name), tx, y + logoS / 2 + logoS * 0.1);
+      }
+      ctx.fillStyle = "#fff";
+      ctx.textAlign = "center";
+      ctx.font = `600 34px ${HEAD}`;
+      ctx.fillText(fit(ctx, t.name.toUpperCase(), colW + 40), tx, y + logoS + 60);
+    });
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.font = `700 54px ${HEAD}`;
+    ctx.textAlign = "center";
+    ctx.fillText("VS", cx, y + logoS / 2 + 18);
+    y += versusH + 24;
+  }
 
   if (picH) {
     const p = d.picture!;
@@ -293,12 +345,12 @@ export async function renderOverlay(d: VideoGraphicsData): Promise<HTMLCanvasEle
   await ensureFonts();
   const [c, ctx] = newCanvas(d.format);
   const sa = safeArea(d.format);
-  const accent = teamColor(d.team);
+  const accent = accentOf(d);
   const o = d.show.overlay;
 
   // Klubbens/lagets logga uppe till vänster
   if (o.clubLogo) {
-    const img = await tryLoad(teamLogo(d.team) ?? club().logo);
+    const img = await (logoOf(d) ? tryLoad(logoOf(d)!) : Promise.resolve(null));
     if (img) {
       ctx.globalAlpha = 0.92;
       drawContain(ctx, img, sa.left + 60, sa.top + 60, 120, 120);
@@ -362,7 +414,7 @@ export async function renderOverlay(d: VideoGraphicsData): Promise<HTMLCanvasEle
       ctx.fillStyle = accent;
       roundRect(ctx, sa.left, by, numW, barH, 14);
       ctx.fill();
-      ctx.fillStyle = d.team === "white" ? "#111" : "#fff";
+      ctx.fillStyle = textOn(accent);
       ctx.font = `700 60px ${HEAD}`;
       ctx.textAlign = "center";
       ctx.fillText(d.player.number, sa.left + numW / 2, by + barH / 2 + 22);
@@ -394,12 +446,12 @@ export async function renderOutro(d: VideoGraphicsData): Promise<HTMLCanvasEleme
   await ensureFonts();
   const [c, ctx] = newCanvas(d.format);
   const { w } = VIDEO_SIZE[d.format];
-  await background(ctx, d.format, d.team);
+  await background(ctx, d.format, accentOf(d));
   const sa = safeArea(d.format, "card");
   const cx = w / 2;
   const maxW = sa.right - sa.left;
   const reel = d.format === "reel";
-  const logo = await tryLoad(teamLogo(d.team) ?? club().logo);
+  const logo = await (logoOf(d) ? tryLoad(logoOf(d)!) : Promise.resolve(null));
   const sp = d.show.outro.sponsor ? d.outroSponsor : null;
   const spImg = sp?.logo ? await tryLoad(sp.logo) : null;
 

@@ -17,12 +17,13 @@ import { starCandidates, autoStars, type StarCandidate } from "@/lib/starsOfGame
 import type { ReportMatch } from "@/components/score/MatchReportModal";
 import { renderCard, DEFAULT_SETTINGS as CARD_DEFAULTS, type CardSettings } from "@shared/cardRender";
 import { cellsFor } from "@shared/cardStats";
-import { teamName } from "@shared/teams";
+import { teamName, teamColor } from "@shared/teams";
 import { POSITION_LABELS, type Position } from "@/lib/players";
-import { club } from "@shared/club";
+import { club, teamLogo } from "@shared/club";
 import {
   VIDEO_KINDS, VIDEO_SIZE, defaultShow, renderVideoGraphics, hasOverlay,
-  type VideoFormat, type VideoKind, type Side, type VideoShow, type VideoGraphicsData,
+  initials, textOn,
+  type VideoFormat, type VideoKind, type Side, type VideoShow, type VideoGraphicsData, type VersusTeam,
 } from "@/lib/videoGraphics";
 
 interface Limits { maxBytes: number; maxSeconds: number; maxClipSeconds: number }
@@ -81,6 +82,34 @@ export function matchStatCells(c: StarCandidate, match: { teamWhiteScore: number
   return { title: "Matchen", cells };
 }
 
+/** Kommande evenemang från laget.se → "Lördag 17/10 15:00" (exporteras för test) */
+export function eventHeadline(ev: { eventDate?: string; eventTime?: string } | null | undefined): string {
+  const m = ev?.eventDate?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return "";
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  return `${WEEKDAYS[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}${ev?.eventTime ? ` ${ev.eventTime}` : ""}`;
+}
+
+/** Loggan som PNG (512 px) till puckintrot; saknas loggan ritas lagets initialer i lagets färg */
+async function logoDataUrl(t: VersusTeam): Promise<string> {
+  const c = document.createElement("canvas");
+  c.width = c.height = 512;
+  const ctx = c.getContext("2d")!;
+  const img = t.logo ? await new Promise<HTMLImageElement | null>((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = t.logo!; }) : null;
+  if (img) {
+    const k = Math.min(512 / img.width, 512 / img.height);
+    ctx.drawImage(img, (512 - img.width * k) / 2, (512 - img.height * k) / 2, img.width * k, img.height * k);
+  } else {
+    ctx.fillStyle = t.color;
+    ctx.beginPath(); ctx.arc(256, 256, 230, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = textOn(t.color);
+    ctx.font = "700 180px 'Oswald', sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(initials(t.name), 256, 262);
+  }
+  return c.toDataURL("image/png");
+}
+
 export default function VideoApp() {
   const utils = trpc.useUtils();
   const { sponsors } = useSponsors();
@@ -88,6 +117,7 @@ export default function VideoApp() {
   const savedCards = trpc.cards.list.useQuery(undefined, { staleTime: 60_000 });
   const matchesQ = trpc.score.match.list.useQuery(undefined, { staleTime: 60_000 });
   const tagsQ = trpc.score.reportTags.get.useQuery(undefined, { staleTime: 60_000 });
+  const eventQ = trpc.laget.attendance.useQuery(undefined, { staleTime: 10 * 60_000, retry: false, refetchOnWindowFocus: false });
 
   // ─── Klippet ───
   const [limits, setLimits] = useState<Limits | null>(null);
@@ -166,6 +196,11 @@ export default function VideoApp() {
   const [subline, setSubline] = useState("");
   const [dateLine, setDateLine] = useState("");
   const [side, setSide] = useState<Side>("green");
+  /** Spelare som inte finns i registret (t.ex. motståndarens målskytt) */
+  const [manualName, setManualName] = useState("");
+  const [manualNumber, setManualNumber] = useState("");
+  /** Inför match: motståndare (id) eller internmatch Vita–Gröna */
+  const [prematchOpp, setPrematchOpp] = useState<number | "internal">("internal");
   const [introSponsor, setIntroSponsor] = useState<string>("");
   const [outroSponsor, setOutroSponsor] = useState<string>("");
   const [caption, setCaption] = useState("");
@@ -173,13 +208,20 @@ export default function VideoApp() {
 
   const matches = useMemo(() => ((matchesQ.data ?? []) as unknown as Array<ReportMatch & { reviewStatus?: string }>).filter((m) => m.reviewStatus !== "rejected").slice(0, 20), [matchesQ.data]);
   const matchBased = kind === "goal" || kind === "stars" || kind === "result";
-  const match = matchId === "none" ? undefined : matches.find((m) => m.id === matchId) ?? (matchBased ? matches[0] : undefined);
+  const match = kind === "prematch" || matchId === "none" ? undefined : matches.find((m) => m.id === matchId) ?? (matchBased ? matches[0] : undefined);
   // Motståndare i matcher mot andra lag (vårt lag sparas som "white", motståndaren som "green")
   const opponentsQ = trpc.opponents.list.useQuery({ includeArchived: true }, { staleTime: 5 * 60_000 });
-  const sideName = (t: Side) => {
-    if (!match?.opponentId) return teamName(t);
-    return t === "white" ? club().name : opponentsQ.data?.find((o) => o.id === match.opponentId)?.name ?? "Motståndare";
+  const opponentId = match?.opponentId ?? (kind === "prematch" && prematchOpp !== "internal" ? prematchOpp : null);
+  const opponent = opponentId ? opponentsQ.data?.find((o) => o.id === opponentId) ?? null : null;
+  const external = !!opponentId;
+  /** Lagets namn, logga och färg: Vita/Gröna i internmatcher, annars klubben mot motståndaren */
+  const sideStyle = (t: Side): VersusTeam => {
+    if (!external) return { name: teamName(t), logo: teamLogo(t), color: teamColor(t) };
+    return t === "white"
+      ? { name: club().name, logo: club().logo, color: club().teams.green.color }
+      : { name: opponent?.name ?? "Motståndare", logo: opponent?.logoUrl ?? null, color: opponent?.color ?? "#ef4444" };
   };
+  const sideName = (t: Side) => sideStyle(t).name;
   const goals = useMemo(() => goalsWithScore(match), [match]);
   const goal = goals.find((g) => g.index === goalIdx) ?? goals[goals.length - 1];
   const stars = useMemo(() => {
@@ -197,7 +239,13 @@ export default function VideoApp() {
   useEffect(() => {
     setShow(defaultShow(kind));
     setDateLine(match ? matchDateLine(match) : matchDateLine(undefined));
-    const wn = sideName("white"), gn = sideName("green");
+    setManualName(""); setManualNumber("");
+    if (kind === "prematch") {
+      const ev = eventQ.data && !eventQ.data.noEvent ? eventQ.data : null;
+      setHeading("Matchdag"); setHeadline(eventHeadline(ev)); setSubline(ev?.eventLocation ?? ""); setPlayerId("");
+      setSide(external ? "white" : "green");
+      return;
+    }
     if (kind === "goal" && !match) {
       setHeading("Mål"); setHeadline(""); setSubline("");
     } else if (kind === "stars" && !match) {
@@ -208,24 +256,38 @@ export default function VideoApp() {
       setHeading("Möt spelaren"); setHeadline(""); setSubline("");
     } else if (kind === "goal" && goal) {
       setHeading("Mål"); setHeadline(goal.score); setSubline(goal.assist ? `Assist: ${goal.assist}` : "");
-      setPlayerId(byName(goal.scorer)?.id ?? ""); setSide(goal.team);
+      const reg = byName(goal.scorer);
+      setPlayerId(reg?.id ?? ""); setSide(goal.team);
+      if (!reg && goal.scorer) setManualName(goal.scorer);
     } else if (kind === "stars" && star) {
       setHeading(`Matchens ${"★".repeat(4 - starRank)}`); setHeadline(""); setSubline(starLine(star));
-      setPlayerId(star.key && players.some((p) => p.id === star.key) ? star.key : byName(star.name)?.id ?? ""); setSide(star.team);
+      const sid = star.key && players.some((p) => p.id === star.key) ? star.key : byName(star.name)?.id ?? "";
+      setPlayerId(sid); setSide(star.team);
+      if (!sid) { setManualName(star.name); setManualNumber(star.number); }
     } else if (kind === "result" && match) {
-      setHeading("Slutresultat"); setHeadline(`${wn} ${match.teamWhiteScore}–${match.teamGreenScore} ${gn}`); setSubline("");
+      // Lagen visas med loggor i titelkortet – raden blir bara siffrorna
+      setHeading("Slutresultat"); setHeadline(`${match.teamWhiteScore}–${match.teamGreenScore}`); setSubline("");
       setPlayerId(""); setSide(match.teamWhiteScore > match.teamGreenScore ? "white" : "green");
     } else if (kind === "interview") {
       setHeading("Intervju"); setHeadline(""); setSubline("");
     } else if (kind === "free") {
       setHeading(""); setHeadline(""); setSubline(""); setPlayerId("");
     }
-  }, [kind, match?.id, goal?.index, starRank, star?.key, registry.data, opponentsQ.data]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [kind, match?.id, goal?.index, starRank, star?.key, registry.data, opponentsQ.data, kind === "prematch" ? eventQ.data : null]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Inför match: hitta motståndaren i evenemangets titel på laget.se ("Match mot Luleå HF")
+  useEffect(() => {
+    if (kind !== "prematch" || prematchOpp !== "internal") return;
+    const title = (eventQ.data?.eventTitle ?? "").toLowerCase();
+    const hit = (opponentsQ.data ?? []).filter((o) => !o.archived).find((o) => title.includes(o.name.toLowerCase()) || (!!o.shortName && title.includes(o.shortName.toLowerCase())));
+    if (hit) { setPrematchOpp(hit.id); setSide("white"); }
+  }, [kind, eventQ.data, opponentsQ.data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pucken landar på spelarens lag när en spelare väljs
   const player = players.find((p) => p.id === playerId) ?? null;
   useEffect(() => {
-    if ((kind === "interview" || kind === "player" || !match) && (player?.teamColor === "white" || player?.teamColor === "green")) setSide(player.teamColor);
+    if (!external && (kind === "interview" || kind === "player" || !match) && (player?.teamColor === "white" || player?.teamColor === "green")) setSide(player.teamColor);
+    if (external && player) setSide("white");
     if (kind === "player") setSubline(player ? POSITION_LABELS[player.position as Position] ?? "" : "");
   }, [playerId, kind]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -304,7 +366,9 @@ export default function VideoApp() {
 
   const data: VideoGraphicsData = {
     format, kind, team: side, heading, headline, subline, dateLine,
-    player: player ? { name: player.name, number: player.number ?? "" } : null,
+    player: player ? { name: player.name, number: player.number ?? "" } : manualName.trim() ? { name: manualName.trim(), number: manualNumber.trim() } : null,
+    style: external ? { color: sideStyle(side).color, logo: sideStyle(side).logo } : null,
+    versus: kind === "prematch" || (kind === "result" && match) ? { left: sideStyle("white"), right: sideStyle("green") } : null,
     stats, picture,
     introSponsor: introSponsor ? { name: introSponsor, logo: sponsorOf(introSponsor)?.logo ?? null } : null,
     outroSponsor: outroSponsor ? { name: outroSponsor, logo: sponsorOf(outroSponsor)?.logo ?? null } : null,
@@ -357,9 +421,10 @@ export default function VideoApp() {
       : kind === "stars" ? `${heading} – ${p}`
       : kind === "result" ? `${heading}: ${headline}`
       : kind === "player" ? `${heading}: ${p}`
+      : kind === "prematch" ? `${heading}: ${sideName("white")} – ${sideName("green")}`
       : [heading, headline].filter(Boolean).join(" – ");
     return [first, subline, dateLine, introSponsor ? `Stolt sponsor: ${introSponsor}` : "", (tagsQ.data ?? []).join(" ")].filter(Boolean).join("\n\n");
-  }, [kind, player, heading, headline, subline, dateLine, introSponsor, tagsQ.data]);
+  }, [kind, player, heading, headline, subline, dateLine, introSponsor, tagsQ.data, external, opponent?.name]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (!captionEdited) setCaption(autoCaption); }, [autoCaption, captionEdited]);
   const [copied, setCopied] = useState(false);
   const copy = async () => { await navigator.clipboard.writeText(caption).catch(() => undefined); setCopied(true); setTimeout(() => setCopied(false), 1500); };
@@ -375,12 +440,17 @@ export default function VideoApp() {
       const png = (c: HTMLCanvasElement) => c.toDataURL("image/png");
       const sponsorIds = [sponsorOf(introSponsor), sponsorOf(outroSponsor)]
         .filter((s, i) => s && (i === 0 ? show.intro.sponsor : show.outro.sponsor)).map((s) => s!.id).filter((id) => id > 0);
+      // Mot andra lag: klubbens och motståndarens loggor på pucken
+      const other: Side = side === "white" ? "green" : "white";
+      const introLogos = external
+        ? { land: await logoDataUrl(sideStyle(side)), other: await logoDataUrl(sideStyle(other)), color: sideStyle(side).color }
+        : undefined;
       const res = await fetch("/api/media/video/render", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           uploadId: upload.id, format, introSide: side,
           intro2: png(graphics.intro2), outro: png(graphics.outro), overlay: graphics.overlay && hasOverlay(data) ? png(graphics.overlay) : null,
-          fileName: fileName(), sponsorIds,
+          fileName: fileName(), sponsorIds, introLogos,
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -489,12 +559,22 @@ export default function VideoApp() {
             </div>
           </div>
 
+          {kind === "prematch" ? (
+            <label className="block text-[11px] text-white/50">Motståndare
+              <select value={prematchOpp} onChange={(e) => { const v = e.target.value; setPrematchOpp(v === "internal" ? "internal" : Number(v)); setSide(v === "internal" ? "green" : "white"); }} className={input}>
+                <option value="internal" className="text-black">Internmatch ({teamName("white")}–{teamName("green")})</option>
+                {(opponentsQ.data ?? []).filter((o) => !o.archived).map((o) => <option key={o.id} value={o.id} className="text-black">{o.name}</option>)}
+              </select>
+              <span className="block text-[10px] text-white/35 mt-1">{eventQ.data && !eventQ.data.noEvent ? `Datum och hall från laget.se: ${eventQ.data.eventTitle ?? ""}` : "Inget kommande evenemang på laget.se – fyll i datum och hall själv."}</span>
+            </label>
+          ) : (
           <label className="block text-[11px] text-white/50">Match
             <select value={match?.id ?? "none"} onChange={(e) => setMatchId(e.target.value === "none" ? "none" : Number(e.target.value))} className={input}>
               <option value="none" className="text-black">Ingen match – fyll i själv, säsongsstatistik</option>
               {matches.map((m) => <option key={m.id} value={m.id} className="text-black">{m.name}</option>)}
             </select>
           </label>
+          )}
           {kind === "goal" && match && (
             <label className="block text-[11px] text-white/50">Mål
               <select value={goal?.index ?? ""} onChange={(e) => setGoalIdx(Number(e.target.value))} className={input}>
@@ -515,6 +595,12 @@ export default function VideoApp() {
               </select>
             </label>
           )}
+          {needsPlayer && !player && (
+            <div className="grid grid-cols-[1fr_5rem] gap-2">
+              <label className="block text-[11px] text-white/50">Eller namn (t.ex. motståndare)<input value={manualName} onChange={(e) => setManualName(e.target.value)} maxLength={40} className={input} /></label>
+              <label className="block text-[11px] text-white/50">Nummer<input value={manualNumber} onChange={(e) => setManualNumber(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))} inputMode="numeric" className={input} /></label>
+            </div>
+          )}
 
           <label className="block text-[11px] text-white/50">Rubrik<input value={heading} onChange={(e) => setHeading(e.target.value)} maxLength={30} placeholder="T.ex. Veckans räddning" className={input} /></label>
           <label className="block text-[11px] text-white/50">{kind === "goal" ? "Ställning" : kind === "result" ? "Resultat" : "Stor rad"}<input value={headline} onChange={(e) => setHeadline(e.target.value)} maxLength={40} className={input} /></label>
@@ -524,10 +610,11 @@ export default function VideoApp() {
           <div>
             <p className="text-[11px] text-white/50 mb-1.5">Pucken landar på</p>
             <div className="flex gap-1.5">
-              <button onClick={() => setSide("green")} className={chip(side === "green")}>{teamName("green")}</button>
-              <button onClick={() => setSide("white")} className={chip(side === "white")}>{teamName("white")}</button>
+              {(external ? (["white", "green"] as const) : (["green", "white"] as const)).map((t) => (
+                <button key={t} onClick={() => setSide(t)} className={chip(side === t)}>{sideName(t)}</button>
+              ))}
             </div>
-            <p className="text-[10px] text-white/35 mt-1">Styr också färgen och loggan i titelkortet, overlayn och outron.</p>
+            <p className="text-[10px] text-white/35 mt-1">Styr också färgen och loggan i titelkortet, overlayn och outron.{external ? " Pucken har klubbens logga på ena sidan och motståndarens på den andra." : ""}</p>
           </div>
 
           <div className="space-y-2">

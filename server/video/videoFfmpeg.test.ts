@@ -54,3 +54,16 @@ describe("videoFfmpeg", () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }, 120_000);
 });
+
+import { validCustom } from "./videoIntro";
+describe("egna loggor till introt", () => {
+  const png = "data:image/png;base64,iVBORw0KGgo=";
+  it("godtar PNG/JPEG-data och en färg", () => {
+    expect(validCustom({ land: png, other: png, color: "#c8102e" })).not.toBeNull();
+  });
+  it("avvisar annat", () => {
+    expect(validCustom({ land: "/api/x", other: png, color: "#c8102e" })).toBeNull();
+    expect(validCustom({ land: png, other: png, color: "red" })).toBeNull();
+    expect(validCustom(null)).toBeNull();
+  });
+});

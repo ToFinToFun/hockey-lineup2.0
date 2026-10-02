@@ -39,3 +39,17 @@ describe("kategorin Spelare", () => {
     expect(defaultShow("player")).toMatchObject({ intro: { picture: true, stats: true }, overlay: { nameBar: true, score: false } });
   });
 });
+
+import { eventHeadline } from "./VideoApp";
+import { textOn, initials } from "@/lib/videoGraphics";
+describe("Inför match och motståndare", () => {
+  it("datum och tid från laget.se", () => {
+    expect(eventHeadline({ eventDate: "2026-10-17", eventTime: "15:00" })).toBe("Lördag 17/10 15:00");
+    expect(eventHeadline(null)).toBe("");
+  });
+  it("text på lagfärgen och initialer", () => {
+    expect(textOn("#ffffff")).toBe("#111");
+    expect(textOn("#c8102e")).toBe("#fff");
+    expect(initials("Luleå HF")).toBe("LH");
+  });
+});

@@ -21,7 +21,7 @@ import os from "os";
 import { readSession } from "../auth";
 import { recordSponsorNews } from "../sponsorsDb";
 import { buildFfmpegArgs, maxClipSeconds, totalDuration, type VideoFormat } from "./videoFfmpeg";
-import { introClip } from "./videoIntro";
+import { introClip, validCustom } from "./videoIntro";
 import type { IntroSide } from "../../shared/videoIntro";
 
 export const VIDEO_LIMITS = {
@@ -195,10 +195,13 @@ export function registerVideoRoutes(app: Express) {
   //    (intro 2, overlay, outro) som PNG. Svarar med jobb-id.
   app.post("/api/media/video/render", express.json({ limit: VIDEO_LIMITS.maxGraphicsJson }), async (req, res) => {
     if (!(await requireAdmin(req, res))) return;
-    const b = req.body as { uploadId?: string; format?: string; introSide?: string; intro2?: string; overlay?: string | null; outro?: string; fileName?: string; sponsorIds?: number[] };
+    const b = req.body as { uploadId?: string; format?: string; introSide?: string; intro2?: string; overlay?: string | null; outro?: string; fileName?: string; sponsorIds?: number[]; introLogos?: unknown };
     if (!b.uploadId || !ID_RE.test(b.uploadId) || !fs.existsSync(uploadPath(b.uploadId))) return res.status(400).json({ error: "Klippet finns inte längre – ladda upp det igen" });
     const format: VideoFormat = b.format === "feed" ? "feed" : "reel";
     const introSide: IntroSide = b.introSide === "white" ? "white" : "green";
+    // Matcher mot andra lag: egna loggor på pucken
+    const introCustom = b.introLogos ? validCustom(b.introLogos) : null;
+    if (b.introLogos && !introCustom) return res.status(400).json({ error: "Loggorna till introt är ogiltiga" });
     const id = newId();
     const dir = jobDir(id);
     try {
@@ -228,7 +231,7 @@ export function registerVideoRoutes(app: Express) {
         job.duration = totalDuration(p.duration);
         const args = buildFfmpegArgs({
           format, clip: uploadPath(uploadId), clipDuration: p.duration, clipHasAudio: p.hasAudio,
-          intro1: await introClip(INTRO_DIR, format, introSide), intro2: path.join(dir, "intro2.png"),
+          intro1: await introClip(INTRO_DIR, format, introSide, introCustom), intro2: path.join(dir, "intro2.png"),
           overlay: hasOverlay ? path.join(dir, "overlay.png") : null,
           outro: path.join(dir, "outro.png"), output: path.join(dir, "out.mp4"),
         });

@@ -7,6 +7,14 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.50.0 – 2026-10-02
+
+**Media → Video: matcher mot andra lag**
+- Puckflippen har klubbens logga på ena sidan och motståndarens på den andra och landar på valt lag (klubben eller motståndaren). Glöd, titelkort, overlay och outro får det lagets färg och logga. Saknar motståndaren logga ritas lagets initialer i lagets färg.
+- Ny kategori Inför match ("Matchdag"): båda lagens loggor mot varandra, datum, tid och hall från nästa evenemang på laget.se. Motståndaren väljs i listan (eller internmatch Vita–Gröna) och förväljs om namnet står i evenemangets titel.
+- Resultat visar lagens loggor mot varandra och siffrorna under.
+- Spelare som inte finns i registret (t.ex. motståndarens målskytt) kan skrivas in med namn och nummer; fylls i automatiskt från målet eller stjärnan.
+
 ## 2.49.1 – 2026-10-02
 
 - Media: knappen Video (Instagram) har samma utseende som de andra knapparna. Den gröna färgen fick den att se intryckt/vald ut fast den bara är en länk.
