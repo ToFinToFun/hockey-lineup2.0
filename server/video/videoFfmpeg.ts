@@ -3,8 +3,9 @@
  *
  *   intro 1 (alltid samma) ─fade→ intro 2 (titelkort) ─fade→ klippet + overlay ─fade→ outro
  *
- * Grafiken (intro 1/2, overlay, outro) ritas som PNG i webbläsaren med samma kod
- * som Media-bilderna; servern sätter bara ihop den med klippet. Ren funktion –
+ * Intro 1 (puckflippen) är ett färdigt klipp från servern (videoIntro.ts). Intro 2,
+ * overlay och outro ritas som PNG i webbläsaren med samma kod som Media-bilderna;
+ * servern sätter bara ihop dem med klippet. Ren funktion –
  * inga filer läses här, så den kan testas utan ffmpeg.
  */
 
@@ -18,9 +19,11 @@ export const VIDEO_SIZES: Record<VideoFormat, { w: number; h: number }> = {
 
 export const VIDEO_FPS = 30;
 
+import { INTRO_SECONDS } from "../../shared/videoIntro";
+
 /** Längder i sekunder. Övergången (XFADE) äter av båda sidor. */
 export const VIDEO_TIMING = {
-  intro1: 1.2,
+  intro1: INTRO_SECONDS,
   intro2: 2.8,
   outro: 2.6,
   xfade: 0.4,
@@ -34,6 +37,7 @@ export interface FfmpegInputs {
   clipHasAudio: boolean;
   intro1: string;
   intro2: string;
+  /** Intro 1 är ett videoklipp (puckflippen) */
   /** Overlay ovanpå klippet (PNG med genomskinlighet), valfri */
   overlay: string | null;
   outro: string;
@@ -73,7 +77,7 @@ export function buildFfmpegArgs(i: FfmpegInputs): string[] {
   const args = [
     "-hide_banner", "-y", "-nostdin",
     // Stillbilderna läses en gång och förlängs med tpad (att avkoda PNG:n för varje bildruta är långsamt)
-    "-i", i.intro1, // 0
+    "-i", i.intro1, // 0 (klipp)
     "-i", i.intro2, // 1
     "-i", i.clip, // 2
     "-i", i.outro, // 3
@@ -83,8 +87,7 @@ export function buildFfmpegArgs(i: FfmpegInputs): string[] {
 
   const norm = `scale=${w}:${h}:force_original_aspect_ratio=decrease,pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${fps},format=yuv420p`;
   const f: string[] = [];
-  // Intro 1: zoomar in lätt från 104 % och tonar upp från svart
-  f.push(`[0:v]${still(t.intro1)},${norm},scale=iw*1.04:ih*1.04,zoompan=z='max(1.04-0.04*on/${Math.round(t.intro1 * fps)},1)':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=${w}x${h}:fps=${fps},fade=t=in:st=0:d=0.25,setsar=1,format=yuv420p[i1]`);
+  f.push(`[0:v]trim=duration=${t.intro1},setpts=PTS-STARTPTS,${norm}[i1]`);
   f.push(`[1:v]${still(t.intro2)},${norm}[i2]`);
   // Klippet: fyller rutan; om formatet inte stämmer fylls kanterna med en suddig kopia
   f.push(`[2:v]trim=duration=${dur},setpts=PTS-STARTPTS,fps=${fps},split[cbg][cfg]`);

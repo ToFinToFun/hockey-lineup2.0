@@ -20,6 +20,8 @@ import path from "path";
 import os from "os";
 import { readSession } from "../auth";
 import { buildFfmpegArgs, maxClipSeconds, totalDuration, type VideoFormat } from "./videoFfmpeg";
+import { introClip } from "./videoIntro";
+import type { IntroSide } from "../../shared/videoIntro";
 
 export const VIDEO_LIMITS = {
   maxBytes: Number(process.env.VIDEO_MAX_MB ?? 300) * 1024 * 1024,
@@ -40,6 +42,7 @@ const ID_RE = /^[a-f0-9]{24}$/;
 const newId = () => crypto.randomBytes(12).toString("hex");
 const uploadPath = (id: string) => path.join(DIR, `${id}.upload`);
 const jobDir = (id: string) => path.join(DIR, `job-${id}`);
+const INTRO_DIR = path.join(DIR, "intro");
 
 type JobStatus = "queued" | "rendering" | "done" | "failed";
 interface Job {
@@ -187,18 +190,19 @@ export function registerVideoRoutes(app: Express) {
     req.pipe(out);
   });
 
-  // 2. Starta renderingen: klippets id + grafiken som PNG. Svarar med jobb-id.
+  // 2. Starta renderingen: klippets id, vilken sida pucken landar på och grafiken
+  //    (intro 2, overlay, outro) som PNG. Svarar med jobb-id.
   app.post("/api/media/video/render", express.json({ limit: VIDEO_LIMITS.maxGraphicsJson }), async (req, res) => {
     if (!(await requireAdmin(req, res))) return;
-    const b = req.body as { uploadId?: string; format?: string; intro1?: string; intro2?: string; overlay?: string | null; outro?: string; fileName?: string };
+    const b = req.body as { uploadId?: string; format?: string; introSide?: string; intro2?: string; overlay?: string | null; outro?: string; fileName?: string };
     if (!b.uploadId || !ID_RE.test(b.uploadId) || !fs.existsSync(uploadPath(b.uploadId))) return res.status(400).json({ error: "Klippet finns inte längre – ladda upp det igen" });
     const format: VideoFormat = b.format === "feed" ? "feed" : "reel";
+    const introSide: IntroSide = b.introSide === "white" ? "white" : "green";
     const id = newId();
     const dir = jobDir(id);
     try {
       await fsp.mkdir(dir, { recursive: true });
       await Promise.all([
-        writePng(path.join(dir, "intro1.png"), b.intro1),
         writePng(path.join(dir, "intro2.png"), b.intro2),
         writePng(path.join(dir, "outro.png"), b.outro),
         b.overlay ? writePng(path.join(dir, "overlay.png"), b.overlay) : Promise.resolve(),
@@ -221,7 +225,7 @@ export function registerVideoRoutes(app: Express) {
         job.duration = totalDuration(p.duration);
         const args = buildFfmpegArgs({
           format, clip: uploadPath(uploadId), clipDuration: p.duration, clipHasAudio: p.hasAudio,
-          intro1: path.join(dir, "intro1.png"), intro2: path.join(dir, "intro2.png"),
+          intro1: await introClip(INTRO_DIR, format, introSide), intro2: path.join(dir, "intro2.png"),
           overlay: hasOverlay ? path.join(dir, "overlay.png") : null,
           outro: path.join(dir, "outro.png"), output: path.join(dir, "out.mp4"),
         });

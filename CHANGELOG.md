@@ -13,6 +13,7 @@ Versionen höjs i `package.json` vid varje deploy till `production`, och commite
 - ffmpeg i Docker-imagen. Servern sätter ihop intro 1 → intro 2 → klippet med overlay → outro, med mjuka övergångar, i Reel/Story (1080×1920) eller flöde (1080×1350). Klipp i fel format fylls ut med en suddig kopia av sig själv. Klipp utan ljud får ett tyst ljudspår.
 - Spärrar: max 300 MB per klipp och max 180 s för hela videon inklusive intro och outro (Instagrams gräns för Reels), dvs. klippet får vara högst 174 s. Miljövariablerna VIDEO_MAX_MB och VIDEO_MAX_SECONDS. Storleken kontrolleras under uppladdningen, längden med ffprobe direkt efter.
 - Uppladdningen strömmas till disk, en rendering i taget, allt raderas efter 24 h (och vid omstart). Bara styrelsen.
+- Intro 1 är en puck med lagens loggor på var sida som flippar 1,5 varv och landar på valt lag (glöd i lagets färg), 1,6 s. Ritas på servern med samma ritkod som övriga bilder (shared/videoIntro.ts), sparas per format och sida och ritas om automatiskt när en logga eller lagfärg byts.
 - Uppladdningar får ta 20 min (Nodes standard 5 min räcker inte på dålig täckning i hallen).
 
 ## 2.46.2 – 2026-10-02
