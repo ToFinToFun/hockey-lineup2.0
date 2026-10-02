@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.47.1 – 2026-10-02
+
+- En sida som var öppen före en deploy laddas om automatiskt (en gång) när den försöker hämta kodfiler som inte finns kvar, i stället för att visa "An unexpected error occurred – Failed to fetch dynamically imported module".
+
 ## 2.47.0 – 2026-10-02
 
 **Övrigt i den här versionen**

@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { AlertTriangle, RotateCcw } from "lucide-react";
 import { Component, ReactNode } from "react";
+import { isChunkLoadError, reloadForNewVersion } from "@/lib/chunkReload";
 
 interface Props {
   children: ReactNode;
@@ -21,8 +22,25 @@ class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
+  componentDidCatch(error: Error) {
+    // Ny version ute sedan sidan öppnades: ladda om i stället för att visa felet
+    if (isChunkLoadError(error)) reloadForNewVersion();
+  }
+
   render() {
     if (this.state.hasError) {
+      if (isChunkLoadError(this.state.error)) {
+        return (
+          <div className="flex items-center justify-center min-h-screen p-8 bg-background">
+            <div className="flex flex-col items-center gap-4 text-center">
+              <p className="text-sm text-muted-foreground">En ny version av appen finns – laddar om …</p>
+              <button onClick={() => window.location.reload()} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground">
+                <RotateCcw size={16} /> Ladda om
+              </button>
+            </div>
+          </div>
+        );
+      }
       return (
         <div className="flex items-center justify-center min-h-screen p-8 bg-background">
           <div className="flex flex-col items-center w-full max-w-2xl p-8">
