@@ -401,7 +401,6 @@ export const appRouter = router({
         hubSubtitle: z.string().trim().max(40).optional(),
         appUrl: z.string().trim().max(200).optional(),
         hashtags: z.array(z.string().trim().min(2).max(40)).max(12).optional(),
-        venues: z.array(z.string().trim().min(2).max(60)).max(12).optional(),
         laget: z.object({ slug: z.string().trim().max(60).regex(/^[A-Za-z0-9_-]*$/, "Bara bokstäver a–z, siffror, - och _").optional() }).optional(),
         teams: z.object({
           white: z.object({ name: z.string().trim().max(20).optional(), shortName: z.string().trim().max(6).optional(), color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional() }).optional(),

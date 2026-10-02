@@ -49,6 +49,12 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
   };
   const { sponsors } = useSponsors();
   const { data: matches, isLoading, refetch } = trpc.score.match.list.useQuery();
+  // Platser som redan finns på sparade matcher (förslag när platsen ändras) – inga inbyggda namn
+  const knownLocations = useMemo(() => {
+    const count = new Map<string, number>();
+    for (const m of (matches ?? []) as Array<{ location?: string | null }>) if (m.location) count.set(m.location, (count.get(m.location) ?? 0) + 1);
+    return [...count.entries()].sort((a, b) => b[1] - a[1]).map(([v]) => v);
+  }, [matches]);
   const deleteMutation = trpc.score.match.delete.useMutation({
     onSuccess: () => {
       refetch();
@@ -1130,9 +1136,9 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
             {/* Plats (från laget.se när matchen sparades – går att ändra) */}
             <div>
               <label className="text-[#9BA1A6] text-xs font-medium block mb-1">Plats</label>
-              <input value={editLocation} onChange={(e) => setEditLocation(e.target.value)} maxLength={120} placeholder={club().venues[0] ? `T.ex. ${club().venues[0]}` : "Hall"}
+              <input value={editLocation} onChange={(e) => setEditLocation(e.target.value)} maxLength={120} placeholder={knownLocations[0] ? `T.ex. ${knownLocations[0]}` : "Hall"}
                 list="known-venues" className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-[#ECEDEE] text-sm" />
-              <datalist id="known-venues">{club().venues.map((v) => <option key={v} value={v} />)}</datalist>
+              <datalist id="known-venues">{knownLocations.map((v) => <option key={v} value={v} />)}</datalist>
             </div>
 
             {/* Scores - auto-calculated from goal history */}

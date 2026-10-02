@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.46.1 – 2026-10-02
+
+- Rättning: platsen för evenemanget lästes inte. På laget.se laddas fliken Aktivitetsinfo (med platsen, PlaceName) från en egen adress, /{lag}/Calendar/ManageEvent/{id}?siteType=Team – appen läste bara grundsidan Calendar/Edit/{id}, som innehåller deltagarlistan. Nu hämtas Aktivitetsinfo separat, både när evenemanget hittas i kalendern och via lagets startsida.
+- Inga inbyggda hallnamn längre: reserven som letade efter "Coop Arena"/"Sunderby ishall" i sidans text och hallistan i klubbinställningarna är borttagna. Förslagen när platsen ändras i matchhistoriken kommer från platser som redan finns på sparade matcher.
+
 ## 2.46.0 – 2026-10-02
 
 Klubbinställningar, lagen som begrepp och matcher mot andra lag (docs/PLAN-lag-och-motstandare.md, steg 0–7). För användarna ser allt ut som förut – det nya som syns är fliken Inställningar → Klubb. Matcher mot andra lag är beta och avstängt tills det slås på under Inställningar → Klubb.

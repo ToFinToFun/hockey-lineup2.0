@@ -24,7 +24,6 @@ export const stalstadens: ClubProfile = {
   // Tisdag Gröna hemma, torsdag Vita hemma
   homeTeamByWeekday: { 2: "green", 4: "white" },
   hashtags: ["#StålstadensSF", "#Gubbhockey"],
-  venues: ["Coop Arena C-Hallen", "Coop Arena", "Sunderby ishall"],
   laget: { slug: "Stalstadens" },
   appUrl: "https://app.stalstadens.se",
   fileSlug: "stalstadens",

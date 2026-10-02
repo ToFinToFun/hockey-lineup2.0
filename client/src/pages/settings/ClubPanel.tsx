@@ -11,14 +11,14 @@ import type { ClubOverrides } from "@shared/club";
 
 type Form = {
   name: string; shortName: string; fullName: string; hubTitle: string; hubSubtitle: string; appUrl: string;
-  hashtags: string; venues: string; lagetSlug: string;
+  hashtags: string; lagetSlug: string;
   whiteName: string; whiteShort: string; whiteColor: string;
   greenName: string; greenShort: string; greenColor: string;
 };
 
 const toForm = (o: ClubOverrides): Form => ({
   name: o.name ?? "", shortName: o.shortName ?? "", fullName: o.fullName ?? "", hubTitle: o.hubTitle ?? "", hubSubtitle: o.hubSubtitle ?? "", appUrl: o.appUrl ?? "",
-  hashtags: (o.hashtags ?? []).join(" "), venues: (o.venues ?? []).join("\n"), lagetSlug: o.laget?.slug ?? "",
+  hashtags: (o.hashtags ?? []).join(" "), lagetSlug: o.laget?.slug ?? "",
   whiteName: o.teams?.white?.name ?? "", whiteShort: o.teams?.white?.shortName ?? "", whiteColor: o.teams?.white?.color ?? "",
   greenName: o.teams?.green?.name ?? "", greenShort: o.teams?.green?.shortName ?? "", greenColor: o.teams?.green?.color ?? "",
 });
@@ -29,7 +29,6 @@ const toOverrides = (f: Form): ClubOverrides => {
   return {
     name: t(f.name), shortName: t(f.shortName), fullName: t(f.fullName), hubTitle: t(f.hubTitle), hubSubtitle: t(f.hubSubtitle), appUrl: t(f.appUrl),
     hashtags: list(f.hashtags, /[\s,]+/).map((h) => (h.startsWith("#") ? h : `#${h}`)),
-    venues: list(f.venues, /\n|;/),
     laget: { slug: t(f.lagetSlug) },
     teams: {
       white: { name: t(f.whiteName), shortName: t(f.whiteShort), color: t(f.whiteColor) },
@@ -154,9 +153,6 @@ export function ClubPanel() {
       {team("green", "Lag 2")}
       <p className="text-[10px] text-white/35">Lagens namn och färger används överallt i appen och bilderna. Färgen används i matchrapport, Media och nyhetsbilden.</p>
 
-      <label className="block text-[11px] text-white/50">Hallar (en per rad – förslag och tolkning av platsen från laget.se)
-        <textarea value={f.venues} onChange={(e) => set({ venues: e.target.value })} rows={3} placeholder={c.venues.join("\n")} className={input} />
-      </label>
       <label className="block text-[11px] text-white/50">Standard-hashtags
         <input value={f.hashtags} onChange={(e) => set({ hashtags: e.target.value })} placeholder={c.hashtags.join(" ")} className={input} />
       </label>

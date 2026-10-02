@@ -325,6 +325,9 @@ function findNextEventId(html: string): {
 export function extractEventDetailsFromEditPage(html: string): { location?: string; time?: string } {
   const $ = cheerio.load(html);
   const result: { location?: string; time?: string } = {};
+  // laget.se: platsen heter PlaceName på fliken Aktivitetsinfo
+  const placeName = ($('input[name="PlaceName"]').attr("value") ?? "").trim();
+  if (placeName) result.location = placeName.replace(/\s+/g, " ");
 
   $("input, select, textarea").each((_, el) => {
     const $el = $(el);
@@ -350,20 +353,24 @@ export function extractEventDetailsFromEditPage(html: string): { location?: stri
     }
   });
 
-  // Reserv: klubbens kända hallar någonstans i sidans text
-  if (!result.location) result.location = findKnownVenue(html);
   return result;
 }
 
-/** Klubbens vanliga platser – hittas i sidans text om formulärfältet inte gick att läsa. */
-export function findKnownVenue(html: string, venues: string[] = club().venues): string | undefined {
-  const text = html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ");
-  // Längsta namnet först ("Coop Arena C-Hallen" före "Coop Arena"); mellanslag och bindestreck får variera
-  for (const v of [...venues].sort((a, b) => b.length - a.length)) {
-    const pattern = v.split(/[\s\-–]+/).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("(?:\\s*[-–]\\s*|\\s+|-)");
-    if (new RegExp(pattern, "i").test(text)) return v;
-  }
-  return undefined;
+/**
+ * Aktivitetsinfo för ett evenemang (plats, starttid). På laget.se laddas fliken
+ * via /{lag}/Calendar/ManageEvent/{id}?siteType=Team – grundsidan Calendar/Edit/{id}
+ * innehåller bara deltagarlistan. Fel ger tomt resultat (platsen är inte nödvändig).
+ */
+async function fetchEventDetails(
+  client: ReturnType<typeof createClient>["client"],
+  followRedirects: ReturnType<typeof createClient>["followRedirects"],
+  eventId: string
+): Promise<{ location?: string; time?: string }> {
+  try {
+    const resp = await followRedirects(await client.get(`${ADMIN_BASE_URL}/${teamSlug()}/Calendar/ManageEvent/${eventId}?siteType=Team`));
+    if (resp.status === 200 && typeof resp.data === "string") return extractEventDetailsFromEditPage(resp.data);
+  } catch { /* plats saknas – inget fel */ }
+  return {};
 }
 
 /**
@@ -670,10 +677,12 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
           );
           const editPage = await followRedirects(editResp);
 
+          // Plats och tid finns på fliken Aktivitetsinfo, som laget.se laddar från en egen adress
+          editDetails = await fetchEventDetails(client, followRedirects, eventInfo.eventId);
+
           if (editPage.status === 200 && typeof editPage.data === "string") {
             const { registered, declined } = extractAttendeesFromEditPage(editPage.data);
-            const details = extractEventDetailsFromEditPage(editPage.data);
-            editDetails = details;
+            const details = editDetails;
 
             if (registered.length > 0 || declined.length > 0) {
               return {
@@ -698,6 +707,11 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
     resp = await followRedirects(resp);
 
     const fallbackEventInfo = findNextEventId(resp.data);
+    // Plats och tid även när evenemanget hittades via startsidan
+    if (fallbackEventInfo && !editDetails.location) {
+      const d = await fetchEventDetails(client, followRedirects, fallbackEventInfo.eventId);
+      editDetails = { location: d.location ?? editDetails.location, time: editDetails.time ?? d.time };
+    }
     if (!fallbackEventInfo && !eventInfo) {
       return {
         eventTitle: "",

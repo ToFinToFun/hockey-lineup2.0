@@ -43,8 +43,6 @@ export interface ClubProfile {
   homeTeamByWeekday: Partial<Record<number, "white" | "green">>;
   /** Standard-hashtags för matchrapport och Media */
   hashtags: string[];
-  /** Klubbens vanliga hallar (förslag och tolkning av laget.se) */
-  venues: string[];
   /** laget.se: lagets adress (www.laget.se/<slug>) */
   laget: { slug: string };
   /** Appens adress (länkar i mejl m.m.) */
@@ -54,7 +52,7 @@ export interface ClubProfile {
 }
 
 /** Inställningar som kan ändras i appen (sparas i databasen). */
-export type ClubOverrides = Partial<Pick<ClubProfile, "name" | "shortName" | "fullName" | "hubTitle" | "hubSubtitle" | "hashtags" | "venues" | "appUrl">> & {
+export type ClubOverrides = Partial<Pick<ClubProfile, "name" | "shortName" | "fullName" | "hubTitle" | "hubSubtitle" | "hashtags" | "appUrl">> & {
   teams?: { white?: Partial<Omit<ClubTeamProfile, "logo">>; green?: Partial<Omit<ClubTeamProfile, "logo">> };
   laget?: Partial<ClubProfile["laget"]>;
 };
@@ -88,7 +86,6 @@ export function mergeClub(base: ClubProfile, o: ClubOverrides | null | undefined
     hubSubtitle: pick(o.hubSubtitle, base.hubSubtitle),
     appUrl: pick(o.appUrl, base.appUrl),
     hashtags: o.hashtags?.length ? o.hashtags : base.hashtags,
-    venues: o.venues?.length ? o.venues : base.venues,
     laget: { slug: pick(o.laget?.slug, base.laget.slug) },
     teams: { white: team("white"), green: team("green") },
   };
