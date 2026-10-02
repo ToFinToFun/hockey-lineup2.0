@@ -99,7 +99,14 @@ export interface StatsPostData extends MediaCommon {
   rows: StatsRow[];
 }
 
-export type MediaPostData = LineupPostData | TextPostData | CardsPostData | StatsPostData;
+/** Senaste resultat: matchrapportens resultatbild med Medias bakgrund och överlägg. */
+export interface ResultPostData extends MediaCommon {
+  kind: "result";
+  /** Matchrapportens data (ReportData) – bakgrunden byts mot Medias */
+  report: import("@/lib/matchReportImages").ReportData;
+}
+
+export type MediaPostData = LineupPostData | TextPostData | CardsPostData | StatsPostData | ResultPostData;
 
 /** Lagens loggor från klubbens inställningar */
 const LOGO = { get white() { return teamLogo("white"); }, get green() { return teamLogo("green"); } };
@@ -702,5 +709,11 @@ export async function renderMediaPost(d: MediaPostData): Promise<HTMLCanvasEleme
   if (d.kind === "lineup") return renderLineup(d);
   if (d.kind === "cards") return renderCards(d);
   if (d.kind === "stats") return renderStats(d);
+  if (d.kind === "result") {
+    const { renderResultImage } = await import("@/lib/matchReportImages");
+    const c = await renderResultImage({ ...d.report, background: bgUrl(d.background), sponsor: d.sponsor ?? d.report.sponsor });
+    decorate(c.getContext("2d")!, d.overlay);
+    return c;
+  }
   return renderText(d);
 }

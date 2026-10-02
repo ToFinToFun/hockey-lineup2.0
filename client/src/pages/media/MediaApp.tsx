@@ -8,6 +8,8 @@
  * Teman (standard, jul, nyår, påsk), valfri sponsor, bildtext med klubbens
  * hashtags. Inlägg sparas som utkast och kan öppnas och ändras igen.
  */
+import { buildReportData, type ReportMatch } from "@/components/score/MatchReportModal";
+import { starCandidates, autoStars, type StarCandidate } from "@/lib/starsOfGame";
 import { useFeatures } from "@/contexts/ClubContext";
 import { matchSides } from "@/lib/matchSides";
 import type { MatchSetup } from "@shared/matchSetup";
@@ -16,7 +18,7 @@ import { club } from "@shared/club";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
-import { ArrowLeft, Download, Share2, Copy, Check, Save, Plus, Trash2, Loader2, RefreshCw, Upload, X, Users, Type, CalendarDays, IdCard, BarChart3 } from "lucide-react";
+import { ArrowLeft, Download, Share2, Copy, Check, Save, Plus, Trash2, Loader2, RefreshCw, Upload, X, Users, Type, CalendarDays, IdCard, BarChart3, Trophy } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useSponsors, logoForName } from "@/lib/sponsors";
 import { createTeamSlots, groupSlots, type TeamConfig } from "@/lib/lineup";
@@ -27,7 +29,7 @@ import { renderCard, DEFAULT_SETTINGS as CARD_DEFAULTS, type CardSettings } from
 import { cellsFor, defaultStatsTitle } from "@shared/cardStats";
 import { STAT_CATEGORIES, STAT_PERIODS, periodRange, statRows, type StatCategory, type StatPeriod } from "./mediaStats";
 
-type Kind = "lineup" | "text" | "cards" | "stats";
+type Kind = "lineup" | "text" | "cards" | "stats" | "result";
 
 interface Settings {
   kind: Kind;
@@ -45,6 +47,8 @@ interface Settings {
   statCategory: StatCategory;
   statPeriod: StatPeriod;
   statLimit: number;
+  /** Senaste resultat: vilken match (standard den senaste) */
+  matchId?: number | null;
   /** Ta med matcher mot andra lag (beta) */
   statIncludeExternal?: boolean;
   dateLine: string;
@@ -69,6 +73,7 @@ const NEW: Record<Kind, Settings> = {
   text: { ...BASE, kind: "text" },
   cards: { ...BASE, kind: "cards", title: "Veckans spelare" },
   stats: { ...BASE, kind: "stats", title: "Poängligan" },
+  result: { ...BASE, kind: "result", title: "" },
 };
 
 const WEEKDAYS = ["Söndag", "Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag"];
@@ -147,6 +152,21 @@ export default function MediaApp() {
   const update = (patch: Partial<Settings>) => setS((prev) => ({ ...prev, ...patch }));
   const tags = tagsQuery.data ?? [];
 
+  // ─── Senaste resultat: matchrapportens resultatbild för en vald match ───
+  const matchesQ = trpc.score.match.list.useQuery(undefined, { enabled: s.kind === "result", staleTime: 60_000 });
+  const opponentsForResult = trpc.opponents.list.useQuery({ includeArchived: true }, { enabled: s.kind === "result", staleTime: 5 * 60_000 });
+  const resultMatches = useMemo(() => ((matchesQ.data ?? []) as unknown as ReportMatch[]).filter((m) => (m as { reviewStatus?: string }).reviewStatus !== "rejected").slice(0, 15), [matchesQ.data]);
+  const resultMatch = resultMatches.find((m) => m.id === s.matchId) ?? resultMatches[0];
+  const reportData = useMemo(() => {
+    if (!resultMatch) return null;
+    const cands = starCandidates({ teamWhiteScore: resultMatch.teamWhiteScore, teamGreenScore: resultMatch.teamGreenScore, goalHistory: resultMatch.goalHistory, lineup: resultMatch.lineup });
+    const saved = resultMatch.report?.stars?.filter((k) => cands.some((c) => c.key === k));
+    const keys = saved && saved.length === 3 ? saved : autoStars(cands, resultMatch.id);
+    const stars = keys.map((k) => cands.find((c) => c.key === k)).filter(Boolean) as StarCandidate[];
+    const opp = resultMatch.opponentId ? opponentsForResult.data?.find((o) => o.id === resultMatch.opponentId) ?? null : null;
+    return buildReportData(resultMatch, stars, null, resultMatch.report?.showStats ?? [true, true, true], s.title || resultMatch.report?.title || undefined, true, opp);
+  }, [resultMatch, opponentsForResult.data, s.title]);
+
   // ─── Statistik ───
   const range = periodRange(s.statPeriod, periodsQ.data as never);
   const featuresM = useFeatures();
@@ -216,12 +236,17 @@ export default function MediaApp() {
       const list = rows.map((r) => `${/^\d+$/.test(r.rank ?? "") ? `${r.rank}.` : r.rank ?? "•"} ${r.name}${r.sub && s.statCategory === "awards" ? ` – ${r.sub}` : ""} ${r.value}`).join("\n");
       return [`${s.title || statCat.title} – ${s.subtitle || range.label}`, list, s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tags.join(" ")].filter(Boolean).join("\n\n");
     }
+    if (s.kind === "result" && reportData) {
+      const head = `${reportData.whiteName} ${reportData.whiteScore}–${reportData.greenScore} ${reportData.greenName}`;
+      const stars = reportData.stars.map((st, i) => `${"⭐".repeat(3 - i)} ${st.name}${st.stat ? ` (${st.stat})` : ""}`).join("\n");
+      return [s.title || reportData.title || "Slutresultat", head, reportData.dateLine, stars, s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tags.join(" ")].filter(Boolean).join("\n\n");
+    }
     if (s.kind === "cards") {
       const names = s.cardPlayers.map((id) => registry.data?.find((p) => p.id === id)?.name).filter(Boolean).join(", ");
       return [s.title, s.subtitle, names, s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tags.join(" ")].filter(Boolean).join("\n\n");
     }
     return defaultCaption(s, tags);
-  }, [s, tags, rows, range.label, statCat.title, registry.data]);
+  }, [s, tags, rows, range.label, statCat.title, registry.data, reportData]);
   useEffect(() => { if (!captionEdited) setCaption(autoCaption); }, [autoCaption, captionEdited]);
 
   const sponsor = s.sponsorName ? { name: s.sponsorName, logo: logoForName(sponsors, s.sponsorName) } : null;
@@ -235,6 +260,7 @@ export default function MediaApp() {
         s.kind === "lineup" ? { ...common, kind: "lineup", team: s.team, teamName: s.teamName, title: s.title, groups: s.groups, ...(s.teamLogo !== undefined ? { logo: s.teamLogo, accent: s.teamAccent } : {}) }
         : s.kind === "cards" ? { ...common, kind: "cards", title: s.title, subtitle: s.subtitle, cards: cardCanvases }
         : s.kind === "stats" ? { ...common, kind: "stats", title: s.title, subtitle: s.subtitle || range.label, valueLabel: statCat.valueLabel, rows }
+        : s.kind === "result" ? (reportData ? { ...common, kind: "result", report: reportData } : { ...common, kind: "text", title: "Inga matcher än", body: "", info: "", photo: null, photoDim: 0.5 })
         : { ...common, kind: "text", title: s.title, body: s.body, info: s.info, photo, photoDim: s.photoDim };
       const c = await renderMediaPost(data);
       if (cancelled || !canvasRef.current) return;
@@ -244,7 +270,7 @@ export default function MediaApp() {
       c.toBlob((b) => { if (!cancelled) setBlob(b); }, "image/jpeg", 0.92);
     }, 120);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [s, photo, sponsor?.name, sponsor?.logo, cardCanvases, rows, range.label]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [s, photo, sponsor?.name, sponsor?.logo, cardCanvases, rows, range.label, reportData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startNew = (kind: Kind) => {
     setPostId(null);
@@ -256,6 +282,21 @@ export default function MediaApp() {
       const { name, groups } = teamGroups(lineupState.data as never, "green");
       setS({ ...NEW.lineup, dateLine: eventLine(event.data), teamName: name, groups });
     }
+  };
+
+  /** Nästa träning: textinlägg ifyllt från laget.se (dag, tid, plats och antal anmälda) */
+  const startNextTraining = () => {
+    startNew("text");
+    const ev = event.data;
+    if (!ev || ev.noEvent || !ev.eventDate) { toast("Inget kommande evenemang hittades på laget.se"); return; }
+    const n = ev.totalRegistered ?? ev.registeredNames?.length ?? 0;
+    setS((prev) => ({
+      ...prev,
+      title: ev.eventTitle || "Träning",
+      body: n > 0 ? `${n} anmälda – anmäl dig på laget.se` : "Anmäl dig på laget.se",
+      info: eventLine(ev),
+      dateLine: "",
+    }));
   };
 
   const open = async (p: NonNullable<typeof posts.data>[number]) => {
@@ -288,6 +329,7 @@ export default function MediaApp() {
   const titleFor = () =>
     s.kind === "lineup" ? `${s.title || "Dagens lag"} – ${s.teamName}${s.dateLine ? ` (${s.dateLine.split(" · ")[0]})` : ""}`
     : s.kind === "stats" ? `${s.title || statCat.title} – ${s.subtitle || range.label}`
+    : s.kind === "result" ? `Resultat – ${resultMatch?.name ?? ""}`
     : s.title || "Inlägg utan rubrik";
 
   const doSave = async (asNew: boolean) => {
@@ -369,6 +411,8 @@ export default function MediaApp() {
             <button onClick={() => startNew("text")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Type size={14} /> Text / egen bild</button>
             <button onClick={() => startNew("cards")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><IdCard size={14} /> Spelarkort</button>
             <button onClick={() => startNew("stats")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><BarChart3 size={14} /> Statistik</button>
+            <button onClick={() => startNew("result")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Trophy size={14} /> Senaste resultat</button>
+            <button onClick={startNextTraining} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><CalendarDays size={14} /> Nästa träning</button>
           </div>
           <div>
             <p className="text-[11px] text-white/45 mb-1.5">Sparade inlägg</p>
@@ -412,6 +456,17 @@ export default function MediaApp() {
 
         {/* Inställningar */}
         <section className="space-y-4">
+          {s.kind === "result" && (
+            <>
+              <label className="block text-[11px] text-white/50">Match
+                <select value={resultMatch?.id ?? ""} onChange={(e) => update({ matchId: Number(e.target.value) || null })} className={input}>
+                  {resultMatches.map((m) => <option key={m.id} value={m.id} className="text-black">{m.name}</option>)}
+                </select>
+              </label>
+              <label className="block text-[11px] text-white/50">Rubrik<input value={s.title} onChange={(e) => update({ title: e.target.value })} maxLength={40} placeholder={resultMatch?.report?.title || "Slutresultat"} className={input} /></label>
+              <p className="text-[10px] text-white/35">Samma resultatbild som matchrapporten (Stars of the Game från rapporten), med vald bakgrund och överlägg.</p>
+            </>
+          )}
           {s.kind === "cards" && (
             <>
               <label className="block text-[11px] text-white/50">Rubrik<input value={s.title} onChange={(e) => update({ title: e.target.value })} maxLength={40} className={input} /></label>
@@ -461,7 +516,7 @@ export default function MediaApp() {
               {(statsQ.isLoading || awardsQ.isLoading) && <p className="text-[11px] text-white/40 flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> Hämtar statistik …</p>}
             </>
           )}
-          {s.kind === "cards" || s.kind === "stats" ? null : s.kind === "lineup" ? (
+          {s.kind === "cards" || s.kind === "stats" || s.kind === "result" ? null : s.kind === "lineup" ? (
             <>
               <div>
                 <p className="text-[11px] text-white/50 mb-1.5">Lag</p>
@@ -501,12 +556,14 @@ export default function MediaApp() {
             </>
           )}
 
+          {s.kind !== "result" && (
           <label className="block text-[11px] text-white/50">Rad överst (datum/plats)
             <div className="flex gap-2">
               <input value={s.dateLine} onChange={(e) => update({ dateLine: e.target.value })} maxLength={60} className={input} />
               <button onClick={() => update({ dateLine: eventLine(event.data) })} title="Nästa träning från laget.se" className="shrink-0 px-2 rounded-lg bg-white/5 border border-white/10"><CalendarDays size={14} /></button>
             </div>
           </label>
+          )}
 
           {!(s.kind === "text" && photo) && (
             <div>
