@@ -7,6 +7,14 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## Ej släppt (main)
+
+**Media → Video, steg 1: renderingsmotorn (inget syns i appen än)**
+- ffmpeg i Docker-imagen. Servern sätter ihop intro 1 → intro 2 → klippet med overlay → outro, med mjuka övergångar, i Reel/Story (1080×1920) eller flöde (1080×1350). Klipp i fel format fylls ut med en suddig kopia av sig själv. Klipp utan ljud får ett tyst ljudspår.
+- Spärrar: max 300 MB och 180 s per klipp (miljövariablerna VIDEO_MAX_MB och VIDEO_MAX_SECONDS). Storleken kontrolleras under uppladdningen, längden med ffprobe direkt efter.
+- Uppladdningen strömmas till disk, en rendering i taget, allt raderas efter 24 h (och vid omstart). Bara styrelsen.
+- Uppladdningar får ta 20 min (Nodes standard 5 min räcker inte på dålig täckning i hallen).
+
 ## 2.46.2 – 2026-10-02
 
 - Platsen sparas på matchen när laget.se har ett evenemang samma dag (inom 12 timmar från matchstarten) – inte bara när starttiden togs från träningen. Avsluta-rutan visar platsen även när starttiden kommer från första målet eller är uppskattad.

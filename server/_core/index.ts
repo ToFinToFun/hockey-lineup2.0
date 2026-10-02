@@ -20,6 +20,7 @@ import { getClubAsset } from "../clubAssets";
 import { getOpponentLogo } from "../opponents";
 import { startAutoNewsSchedule } from "../autoNews";
 import { getMediaPhoto } from "../mediaPosts";
+import { registerVideoRoutes } from "../video/videoJobs";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -44,6 +45,8 @@ async function startServer() {
   // Bakom Traefik i Coolify: behövs för korrekt klient-IP och säkra cookies.
   app.set("trust proxy", 1);
   const server = createServer(app);
+  // Videouppladdning från ishallen kan ta tid på dålig täckning (Nodes standard är 5 min)
+  server.requestTimeout = 20 * 60 * 1000;
   // Säkerhetsheaders (endast produktion – Vites dev-server behöver inline-skript).
   if (process.env.NODE_ENV === "production") {
     app.use(
@@ -55,6 +58,8 @@ async function startServer() {
             scriptSrc: ["'self'", "'wasm-unsafe-eval'"],
             styleSrc: ["'self'", "'unsafe-inline'"],
             imgSrc: ["'self'", "data:", "blob:"],
+            // Media → Video: förhandsvisning av klipp och färdig video
+            mediaSrc: ["'self'", "blob:"],
             fontSrc: ["'self'", "data:"],
             connectSrc: ["'self'"],
             workerSrc: ["'self'"],
@@ -69,6 +74,8 @@ async function startServer() {
       })
     );
   }
+  // Media → Video före den vanliga JSON-tolkningen (egen storleksgräns för grafiken)
+  registerVideoRoutes(app);
   app.use(express.json({ limit: "8mb" })); // nyhetsbilden till laget.se skickas som base64
   app.use(express.urlencoded({ limit: "2mb", extended: true }));
 

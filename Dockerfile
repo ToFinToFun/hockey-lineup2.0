@@ -20,6 +20,11 @@ ENV NODE_ENV=production
 ENV TZ=Europe/Stockholm
 WORKDIR /app
 
+# ffmpeg för Media → Video (rendering av Instagram-videor)
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ffmpeg \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/drizzle ./drizzle
