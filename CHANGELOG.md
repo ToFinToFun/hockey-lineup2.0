@@ -7,7 +7,15 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
-## Ej släppt (main)
+## 2.47.0 – 2026-10-02
+
+**Övrigt i den här versionen**
+- Alternativ position i spelarregistret (players.altPosition, migrering 0023): flyttas från den tidigare inställningen vid start och visas som Alt. pos på spelarsidan.
+- Hockeykort: perioderna Slutspel och Försäsong samt valet Inkl. externa matcher.
+- Media: mallarna Senaste resultat och Nästa träning.
+- Statistik → Hallar: matcher, vinster per lag, mål per match och bästa poänggörare per hall.
+- PIR-justeringar som sparats med spelarnamn kopplas till spelar-ID vid start.
+- Ingen samtyckesfråga vid uppladdning av spelarfoto.
 
 **Media → Video (Instagram)** – ny sida under Media → Video (/media/video)
 - Välj klipp (laddas upp direkt medan resten fylls i), format (Reel/Story 9:16 eller flöde 4:5) och kategori: Mål, Intervju, Matchens stjärnor (en spelare per video), Resultat eller Fri.
