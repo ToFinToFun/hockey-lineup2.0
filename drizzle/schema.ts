@@ -237,6 +237,8 @@ export type SponsorRow = typeof sponsors.$inferSelect;
 export const sponsorNews = mysqlTable("sponsor_news", {
   id: int("id").autoincrement().primaryKey(),
   sponsorId: int("sponsorId").notNull(),
+  /** "lineup" = nyhet med laguppställning, "media" = video i Media */
+  kind: varchar("kind", { length: 16 }).default("lineup").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => [
   index("sponsor_news_sponsor_idx").on(t.sponsorId),

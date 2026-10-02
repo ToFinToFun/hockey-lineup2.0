@@ -19,6 +19,7 @@ import fsp from "fs/promises";
 import path from "path";
 import os from "os";
 import { readSession } from "../auth";
+import { recordSponsorNews } from "../sponsorsDb";
 import { buildFfmpegArgs, maxClipSeconds, totalDuration, type VideoFormat } from "./videoFfmpeg";
 import { introClip } from "./videoIntro";
 import type { IntroSide } from "../../shared/videoIntro";
@@ -194,7 +195,7 @@ export function registerVideoRoutes(app: Express) {
   //    (intro 2, overlay, outro) som PNG. Svarar med jobb-id.
   app.post("/api/media/video/render", express.json({ limit: VIDEO_LIMITS.maxGraphicsJson }), async (req, res) => {
     if (!(await requireAdmin(req, res))) return;
-    const b = req.body as { uploadId?: string; format?: string; introSide?: string; intro2?: string; overlay?: string | null; outro?: string; fileName?: string };
+    const b = req.body as { uploadId?: string; format?: string; introSide?: string; intro2?: string; overlay?: string | null; outro?: string; fileName?: string; sponsorIds?: number[] };
     if (!b.uploadId || !ID_RE.test(b.uploadId) || !fs.existsSync(uploadPath(b.uploadId))) return res.status(400).json({ error: "Klippet finns inte längre – ladda upp det igen" });
     const format: VideoFormat = b.format === "feed" ? "feed" : "reel";
     const introSide: IntroSide = b.introSide === "white" ? "white" : "green";
@@ -217,6 +218,8 @@ export function registerVideoRoutes(app: Express) {
     jobs.set(id, job);
     const uploadId = b.uploadId;
     const hasOverlay = !!b.overlay;
+    // Sponsorerna i intro 2 och outro räknas i mediaräknaren när videon är klar
+    const sponsorIds = (Array.isArray(b.sponsorIds) ? b.sponsorIds : []).filter((x) => Number.isInteger(x) && x > 0).slice(0, 2);
 
     queue.push(async () => {
       job.status = "rendering";
@@ -235,6 +238,7 @@ export function registerVideoRoutes(app: Express) {
         });
         job.progress = 1;
         job.status = "done";
+        for (const sid of sponsorIds) await recordSponsorNews(sid, "media").catch((err) => console.error("[video] sponsorräknare:", err));
       } catch (err) {
         console.error("[video] rendering misslyckades:", err);
         job.status = "failed";

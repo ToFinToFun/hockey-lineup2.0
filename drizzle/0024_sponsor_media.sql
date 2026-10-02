@@ -1,0 +1,1 @@
+ALTER TABLE `sponsor_news` ADD `kind` varchar(16) DEFAULT 'lineup' NOT NULL;

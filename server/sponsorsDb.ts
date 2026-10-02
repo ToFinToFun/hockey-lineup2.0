@@ -44,15 +44,19 @@ async function goalCounts(from: Date, to: Date): Promise<Map<string, number>> {
   return map;
 }
 
-/** Nyheter per sponsor-ID i intervallet [from, to). */
-async function newsCounts(from: Date, to: Date): Promise<Map<number, number>> {
+export type SponsorNewsKind = "lineup" | "media";
+
+/** Visningar per sponsor-ID och slag (laguppställning/media) i intervallet [from, to). */
+async function newsCounts(from: Date, to: Date): Promise<Record<SponsorNewsKind, Map<number, number>>> {
   const db = await requireDb();
   const rows = await db
-    .select({ sponsorId: sponsorNews.sponsorId, n: sql<number>`count(*)` })
+    .select({ sponsorId: sponsorNews.sponsorId, kind: sponsorNews.kind, n: sql<number>`count(*)` })
     .from(sponsorNews)
     .where(and(gte(sponsorNews.createdAt, from), lt(sponsorNews.createdAt, to)))
-    .groupBy(sponsorNews.sponsorId);
-  return new Map(rows.map((r) => [r.sponsorId, Number(r.n)]));
+    .groupBy(sponsorNews.sponsorId, sponsorNews.kind);
+  const out: Record<SponsorNewsKind, Map<number, number>> = { lineup: new Map(), media: new Map() };
+  for (const r of rows) (r.kind === "media" ? out.media : out.lineup).set(r.sponsorId, Number(r.n));
+  return out;
 }
 
 export interface SponsorList {
@@ -74,9 +78,10 @@ export async function listSponsors(now: Date = new Date()): Promise<SponsorList>
     newsCounts(prevStart, start),
   ]);
 
-  const counts = (row: SponsorRow, goals: Map<string, number>, news: Map<number, number>): SponsorCounts => ({
+  const counts = (row: SponsorRow, goals: Map<string, number>, news: Record<SponsorNewsKind, Map<number, number>>): SponsorCounts => ({
     matches: goals.get(norm(row.name)) ?? 0,
-    lineups: news.get(row.id) ?? 0,
+    lineups: news.lineup.get(row.id) ?? 0,
+    media: news.media.get(row.id) ?? 0,
   });
 
   return {
@@ -162,7 +167,7 @@ export async function moveSponsor(id: number, direction: "up" | "down") {
   });
 }
 
-export async function recordSponsorNews(sponsorId: number) {
+export async function recordSponsorNews(sponsorId: number, kind: SponsorNewsKind = "lineup") {
   const db = await requireDb();
-  await db.insert(sponsorNews).values({ sponsorId });
+  await db.insert(sponsorNews).values({ sponsorId, kind });
 }

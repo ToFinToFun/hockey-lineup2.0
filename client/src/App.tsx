@@ -18,6 +18,7 @@ const PlayersApp = lazy(() => import("./pages/players/PlayersApp"));
 const SponsorsApp = lazy(() => import("./pages/sponsors/SponsorsApp"));
 const SettingsApp = lazy(() => import("./pages/settings/SettingsApp"));
 const MediaApp = lazy(() => import("./pages/media/MediaApp"));
+const VideoApp = lazy(() => import("./pages/media/VideoApp"));
 import InviteRedeem from "./pages/InviteRedeem";
 import { RequireRole } from "./components/auth/RequireRole";
 import { lazy, Suspense, type ComponentType } from "react";
@@ -52,6 +53,7 @@ const PlayersPage = guard("admin", PlayersApp);
 const SponsorsPage = guard("admin", SponsorsApp);
 const SettingsPage = guard("admin", SettingsApp);
 const MediaPage = guard("admin", MediaApp);
+const VideoPage = guard("admin", VideoApp);
 
 function Router() {
   return (
@@ -87,6 +89,7 @@ function Router() {
       <Route path="/players" component={PlayersPage} />
       <Route path="/sponsorer" component={SponsorsPage} />
       <Route path="/installningar" component={SettingsPage} />
+      <Route path="/media/video" component={VideoPage} />
       <Route path="/media" component={MediaPage} />
 
       <Route path="/404" component={NotFound} />

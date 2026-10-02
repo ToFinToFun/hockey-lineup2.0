@@ -2,8 +2,8 @@
  * Sponsorer – gemensamt för server och klient.
  *
  * Säsongen för sponsorexponering börjar 1 juni (räknarna nollas då).
- * Två räknare per sponsor: mål i matcher (Score Tracker) och
- * laguppställningar (nyheten till laget.se). Vid val tas den sponsor som
+ * Tre räknare per sponsor: mål i matcher (Score Tracker),
+ * laguppställningar (nyheten till laget.se) och videor i Media. Vid val tas den sponsor som
  * visats minst i den aktuella räknaren; vid lika slumpas det.
  */
 
@@ -13,6 +13,8 @@ export const SPONSOR_SEASON_START_MONTH = 5;
 export interface SponsorCounts {
   matches: number;
   lineups: number;
+  /** Videor i Media (intro 2 och outro räknas var för sig) */
+  media: number;
 }
 
 export interface Sponsor {

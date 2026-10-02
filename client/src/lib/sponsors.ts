@@ -18,8 +18,8 @@ const FALLBACK: Sponsor[] = ["Polar", "lindstromstransport", "Kirunabilfrakt", "
   logo: null,
   active: true,
   sortOrder: i + 1,
-  counts: { matches: 0, lineups: 0 },
-  previous: { matches: 0, lineups: 0 },
+  counts: { matches: 0, lineups: 0, media: 0 },
+  previous: { matches: 0, lineups: 0, media: 0 },
 }));
 
 function readCache(): Sponsor[] | null {

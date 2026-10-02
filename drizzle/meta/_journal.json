@@ -169,6 +169,13 @@
       "when": 1790940075034,
       "tag": "0023_player_alt_position",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1790956615955,
+      "tag": "0024_sponsor_media",
+      "breakpoints": true
     }
   ]
 }

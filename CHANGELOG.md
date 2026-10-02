@@ -9,7 +9,16 @@ Versionen höjs i `package.json` vid varje deploy till `production`, och commite
 
 ## Ej släppt (main)
 
-**Media → Video, steg 1: renderingsmotorn (inget syns i appen än)**
+**Media → Video (Instagram)** – ny sida under Media → Video (/media/video)
+- Välj klipp (laddas upp direkt medan resten fylls i), format (Reel/Story 9:16 eller flöde 4:5) och kategori: Mål, Intervju, Matchens stjärnor (en spelare per video), Resultat eller Fri.
+- Mål, stjärnor och resultat fylls i från vald match (ställning efter målet, målskytt, assist, stjärnans siffror). Allt går att ändra: rubrik, stor rad, liten rad, datumrad och spelare.
+- Pucken landar på: Gröna/Vita – förvalt efter målets lag, stjärnans lag eller spelarens lag, alltid valbart. Styr även färg och logga i titelkort, overlay och outro.
+- Visa/dölj per del: intro 2 (kort/foto, statistik, datum, sponsor), klippet (namnlist, ställning, statistik, logga, sponsor) och outro (tack till sponsor). Hockeykortet används om spelaren har ett, annars fotot.
+- Sponsorer: "Stolt sponsor" i intro 2 och "Tack till" i outron väljs var för sig, förvalda efter vem som visats minst i Media (ny räknare, sponsor_news.kind = media, migrering 0024). Knappar för Minst visade och Slumpa. Räknaren ökar när videon är klar.
+- Förhandsvisning av intro 2, klippet med overlay (på en bildruta ur klippet) och outro. Overlayn hålls inom Instagrams säkra yta för Reels (14 % uppifrån, 35 % nerifrån, 6 % på sidorna); titelkorten går ner till 78 %.
+- Färdig video: spela upp, ladda ned eller dela (bildtexten kopieras först). Bildtext med hashtags fylls i automatiskt.
+
+**Media → Video, renderingsmotorn**
 - ffmpeg i Docker-imagen. Servern sätter ihop intro 1 → intro 2 → klippet med overlay → outro, med mjuka övergångar, i Reel/Story (1080×1920) eller flöde (1080×1350). Klipp i fel format fylls ut med en suddig kopia av sig själv. Klipp utan ljud får ett tyst ljudspår.
 - Spärrar: max 300 MB per klipp och max 180 s för hela videon inklusive intro och outro (Instagrams gräns för Reels), dvs. klippet får vara högst 174 s. Miljövariablerna VIDEO_MAX_MB och VIDEO_MAX_SECONDS. Storleken kontrolleras under uppladdningen, längden med ffprobe direkt efter.
 - Uppladdningen strömmas till disk, en rendering i taget, allt raderas efter 24 h (och vid omstart). Bara styrelsen.
