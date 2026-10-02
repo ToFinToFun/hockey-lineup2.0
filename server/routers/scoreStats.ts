@@ -96,6 +96,44 @@ const dateRangeInput = z
 
 export const scoreStatsRouter = router({
   /**
+   * Statistik per hall (platsen sparas per match): matcher, vinster per lag,
+   * mål per match och bästa poänggörare i hallen. Lagens vinster räknas bara för
+   * internmatcher; spelarnas siffror följer valet "Inkl. externa matcher".
+   */
+  venueStats: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
+    const matches = filterMatchesByDate(await getAllMatchResults({ includeExternal: input?.includeExternal }), input?.from, input?.to)
+      .filter((m) => !!m.location);
+    type Line = { name: string; goals: number; assists: number };
+    const halls = new Map<string, { matches: number; whiteWins: number; greenWins: number; draws: number; goals: number; scorers: Map<string, Line> }>();
+    for (const m of matches) {
+      const h = halls.get(m.location!) ?? { matches: 0, whiteWins: 0, greenWins: 0, draws: 0, goals: 0, scorers: new Map() };
+      h.matches++;
+      h.goals += m.teamWhiteScore + m.teamGreenScore;
+      if (m.opponentId == null) {
+        if (m.teamWhiteScore > m.teamGreenScore) h.whiteWins++;
+        else if (m.teamGreenScore > m.teamWhiteScore) h.greenWins++;
+        else h.draws++;
+      }
+      for (const g of (Array.isArray(m.goalHistory) ? m.goalHistory : []) as Array<{ scorer?: string; assist?: string }>) {
+        for (const [name, kind] of [[g.scorer, "goals"], [g.assist, "assists"]] as const) {
+          const n = (name ?? "").trim();
+          if (!n) continue;
+          const l = h.scorers.get(n) ?? { name: n, goals: 0, assists: 0 };
+          l[kind]++;
+          h.scorers.set(n, l);
+        }
+      }
+      halls.set(m.location!, h);
+    }
+    return [...halls.entries()].map(([venue, h]) => ({
+      venue, matches: h.matches, whiteWins: h.whiteWins, greenWins: h.greenWins, draws: h.draws,
+      goalsPerMatch: Math.round((h.goals / h.matches) * 10) / 10,
+      top: [...h.scorers.values()].map((l) => ({ ...l, points: l.goals + l.assists }))
+        .sort((a, b) => b.points - a.points || b.goals - a.goals || a.name.localeCompare(b.name, "sv")).slice(0, 5),
+    })).sort((a, b) => b.matches - a.matches);
+  }),
+
+  /**
    * Resultat mot varje motståndare (matcher mot andra lag): V/O/F, målskillnad,
    * våra bästa poänggörare mot dem och deras målskyttar mot oss.
    */

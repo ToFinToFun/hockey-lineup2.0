@@ -2,13 +2,14 @@
  * StatsApp – Main statistics module container
  * Provides tab navigation, period filtering, and admin controls
  */
+import { VenuesTab } from "./VenuesTab";
 import { OpponentsTab } from "./OpponentsTab";
 import { useFeatures } from "@/contexts/ClubContext";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { IMAGES } from "@/lib/scoreConstants";
-import { ArrowLeft, BarChart3, Users, Shield, Loader2, X, Swords } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, Shield, Loader2, X, Swords, MapPin } from "lucide-react";
 import OverviewTab from "./OverviewTab";
 import LeadersTab from "./LeadersTab";
 import AwardsTab from "./AwardsTab";
@@ -58,6 +59,7 @@ const TABS = [
   { id: "overview", label: "Översikt", icon: BarChart3 },
   { id: "players", label: "Spelare", icon: Users },
   { id: "teams", label: "Lag", icon: Shield },
+  { id: "venues", label: "Hallar", icon: MapPin },
   { id: "opponents", label: "Motståndare", icon: Swords },
 ] as const;
 
@@ -256,6 +258,7 @@ export default function StatsApp() {
                 />
               </div>
             )}
+            {activeTab === "venues" && <VenuesTab input={queryInput as { from?: string; to?: string; includeExternal?: boolean } | undefined} />}
             {activeTab === "opponents" && <OpponentsTab dateFilter={dateFilter.from || dateFilter.to ? { from: dateFilter.from, to: dateFilter.to } : undefined} />}
             {activeTab === "teams" && (
               <TeamsTab
