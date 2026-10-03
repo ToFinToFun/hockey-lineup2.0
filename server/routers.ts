@@ -495,8 +495,14 @@ export const appRouter = router({
         ourView: z.enum(["lineup", "players", "none"]).optional(),
         showOurTeam: z.boolean().optional(),
         days: z.number().int().min(1).max(60).default(7),
+        /** Matchdagen: länken gäller till ett dygn efter (i stället för days) */
+        matchDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
       }))
-      .mutation(({ input }) => createOpponentLink(input.opponentId, input.ourView ?? (input.showOurTeam ? "lineup" : "none"), input.days)),
+      .mutation(async ({ input }) => {
+        try {
+          return await createOpponentLink(input.opponentId, input.ourView ?? (input.showOurTeam ? "lineup" : "none"), { days: input.days, matchDate: input.matchDate });
+        } catch (e) { throw new TRPCError({ code: "BAD_REQUEST", message: (e as Error).message }); }
+      }),
     revokeLink: adminProcedure.input(z.object({ token: z.string().max(64) })).mutation(async ({ input }) => {
       await revokeOpponentLink(input.token);
       return { success: true };

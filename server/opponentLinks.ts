@@ -24,6 +24,8 @@ export interface OpponentLink {
   /** Äldre länkar: true = uppställningen. Nya länkar har ourView. */
   showOurTeam: boolean;
   ourView?: OurTeamView;
+  /** Matchdagen ("YYYY-MM-DD") – länken slutar gälla ett dygn efter */
+  matchDate?: string | null;
   createdAt: string;
   expiresAt: string;
 }
@@ -43,12 +45,25 @@ const writeLinks = (l: OpponentLink[]) => setConfigValue(KEY, JSON.stringify(l))
 
 export const ourViewOf = (l: Pick<OpponentLink, "showOurTeam" | "ourView">): OurTeamView => l.ourView ?? (l.showOurTeam ? "lineup" : "none");
 
-export async function createOpponentLink(opponentId: number, ourView: OurTeamView, days = 7): Promise<OpponentLink> {
+/**
+ * När länken slutar gälla: ett dygn efter matchdagen (vid midnatt efter dagen
+ * efter matchen), annars efter ett antal dagar. Exporteras för test.
+ */
+export function linkExpiry(opts: { matchDate?: string | null; days?: number }, now = new Date()): Date {
+  const m = opts.matchDate?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3] + 2, 0, 0, 0);
+  return new Date(now.getTime() + (opts.days ?? 7) * 86_400_000);
+}
+
+export async function createOpponentLink(opponentId: number, ourView: OurTeamView, opts: { days?: number; matchDate?: string | null } = {}): Promise<OpponentLink> {
+  const expires = linkExpiry(opts);
+  if (expires.getTime() <= Date.now()) throw new Error("Matchdagen har redan passerat");
   const link: OpponentLink = {
     token: randomBytes(18).toString("base64url"),
     opponentId, showOurTeam: ourView !== "none", ourView,
     createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + days * 86_400_000).toISOString(),
+    expiresAt: expires.toISOString(),
+    matchDate: opts.matchDate ?? null,
   };
   await writeLinks([...(await readLinks()), link]);
   return link;

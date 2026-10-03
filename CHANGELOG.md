@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.58.0 – 2026-10-03
+
+- Länk till motståndarlag: välj matchdag – länken slutar fungera ett dygn efter (vid midnatt efter dagen efter matchen). Förifylls när Lineup är inställd på matchen mot laget med egen dag. Utan matchdag gäller länken i 7 dagar som tidigare. Länklistan visar matchdag och sista giltiga dag.
+- Hjälptexten förklarar att lagets ändringar syns direkt när matchen är vald i Lineup, annars sparas på laget och fylls i när laget väljs – internmatcher kan köras emellan.
+
 ## 2.57.1 – 2026-10-03
 
 - Lineup: "Ändrad …" står i rubriken direkt efter klubbnamnet. Den uppdateras direkt när en spelare placeras, flyttas eller tas bort – här eller på en annan enhet – och servern frågas var 30:e sekund (tidigare varje minut).

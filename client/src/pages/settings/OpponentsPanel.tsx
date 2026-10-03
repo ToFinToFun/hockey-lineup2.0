@@ -21,9 +21,21 @@ function Logo({ url, color, size = 36 }: { url: string | null; color: string; si
 function ShareLinks({ opponentId, name }: { opponentId: number; name: string }) {
   const utils = trpc.useUtils();
   const links = trpc.opponents.links.useQuery({ opponentId });
-  const create = trpc.opponents.createLink.useMutation({ onSuccess: () => void utils.opponents.links.invalidate({ opponentId }) });
+  const create = trpc.opponents.createLink.useMutation({
+    onSuccess: () => void utils.opponents.links.invalidate({ opponentId }),
+    onError: (e) => toast.error("Kunde inte skapa länken", { description: e.message }),
+  });
   const revoke = trpc.opponents.revokeLink.useMutation({ onSuccess: () => void utils.opponents.links.invalidate({ opponentId }) });
   const [ourView, setOurView] = useState<"lineup" | "players" | "none">("none");
+  // Matchdagen: förifylls om Lineup är inställd på matchen mot laget med egen dag
+  const live = trpc.lineup.scoreState.useQuery(undefined, { staleTime: 60_000, retry: false });
+  const liveSetup = (live.data as { setup?: { mode?: string; opponentId?: number | null; date?: string | null } } | undefined)?.setup;
+  const [matchDate, setMatchDate] = useState("");
+  useEffect(() => {
+    if (!matchDate && liveSetup?.mode === "external" && liveSetup.opponentId === opponentId && liveSetup.date) setMatchDate(liveSetup.date);
+  }, [liveSetup?.date, liveSetup?.opponentId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const today = new Date();
+  const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   const url = (token: string) => `${window.location.origin}/lag/${token}`;
   const share = async (token: string) => {
     const u = url(token);
@@ -35,7 +47,12 @@ function ShareLinks({ opponentId, name }: { opponentId: number; name: string }) 
   return (
     <div className="rounded-xl border border-sky-400/25 bg-sky-500/5 p-3 space-y-2">
       <p className="text-xs font-semibold text-sky-200 flex items-center gap-1.5"><Link2 size={13} /> Dela länk till laget</p>
-      <p className="text-[11px] text-white/45">Laget kan själva fylla i namn, logga och spelare och göra sin uppställning – utan inloggning. Länken gäller i 7 dagar.</p>
+      <p className="text-[11px] text-white/45">Laget kan själva fylla i namn, logga och spelare och göra sin uppställning – utan inloggning. Ändringarna syns direkt i Lineup när matchen mot laget är vald; annars sparas de på laget och fylls i när laget väljs. Ni kan köra internmatcher emellan.</p>
+      <label className="block text-[11px] text-white/50">Matchdag
+        <input type="date" min={todayIso} value={matchDate} onChange={(e) => setMatchDate(e.target.value)}
+          className="mt-1 w-full rounded-lg bg-white/5 border border-white/10 text-white text-sm px-3 py-1.5" />
+        <span className="block text-[10px] text-white/35 mt-1">{matchDate ? "Länken slutar fungera ett dygn efter matchdagen." : "Utan matchdag gäller länken i 7 dagar."}</span>
+      </label>
       <div>
         <p className="text-[11px] text-white/50 mb-1">Vårt lag på deras sida</p>
         <div className="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label="Vårt lag på deras sida">
@@ -46,13 +63,13 @@ function ShareLinks({ opponentId, name }: { opponentId: number; name: string }) 
         </div>
         <p className="text-[10px] text-white/35 mt-1">{ourView === "lineup" ? "De ser våra spelare på sina platser (kedjor och backpar)." : ourView === "players" ? "De ser vilka som spelar, men inte på vilka platser." : "De ser inget av vårt lag."}</p>
       </div>
-      <button onClick={() => create.mutate({ opponentId, ourView, days: 7 })} disabled={create.isPending}
+      <button onClick={() => create.mutate({ opponentId, ourView, days: 7, matchDate: matchDate || null })} disabled={create.isPending}
         className="w-full py-2 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-100 text-sm font-semibold disabled:opacity-40">Skapa länk</button>
       {(links.data ?? []).map((l) => (
         <div key={l.token} className="flex items-center gap-2 rounded-lg bg-black/30 px-2 py-1.5">
           <span className="flex-1 min-w-0">
             <span className="block text-[11px] text-white/80 truncate">{url(l.token)}</span>
-            <span className="block text-[10px] text-white/40">{l.ourView === "lineup" ? "Ser vår uppställning" : l.ourView === "players" ? "Ser våra spelare" : "Ser inget av vårt lag"} · gäller till {new Date(l.expiresAt).toLocaleDateString("sv-SE", { day: "numeric", month: "numeric" })}</span>
+            <span className="block text-[10px] text-white/40">{l.ourView === "lineup" ? "Ser vår uppställning" : l.ourView === "players" ? "Ser våra spelare" : "Ser inget av vårt lag"} {l.matchDate ? ` · match ${new Date(l.matchDate + "T12:00").toLocaleDateString("sv-SE", { day: "numeric", month: "numeric" })}` : ""} · gäller till {new Date(new Date(l.expiresAt).getTime() - 60_000).toLocaleDateString("sv-SE", { day: "numeric", month: "numeric" })}</span>
           </span>
           <button onClick={() => { void navigator.clipboard.writeText(url(l.token)); toast.success("Länken kopierad"); }} aria-label="Kopiera" className="p-1.5 text-white/60 hover:text-white"><Copy size={13} /></button>
           <button onClick={() => void share(l.token)} aria-label="Dela" className="p-1.5 text-white/60 hover:text-white"><Share2 size={13} /></button>

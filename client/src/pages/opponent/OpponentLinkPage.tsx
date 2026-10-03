@@ -74,7 +74,7 @@ export default function OpponentLinkPage() {
         </div>
       </header>
       <main className="max-w-3xl mx-auto p-4 space-y-6">
-        <p className="text-xs text-white/50">Fyll i ert lag och er uppställning – med platser eller bara som en lista över vilka som spelar. Allt sparas direkt. Länken gäller till {new Date(d.expiresAt).toLocaleDateString("sv-SE", { day: "numeric", month: "numeric" })}.</p>
+        <p className="text-xs text-white/50">Fyll i ert lag och er uppställning – med platser eller bara som en lista över vilka som spelar. Allt sparas direkt. Länken gäller till {new Date(new Date(d.expiresAt).getTime() - 60_000).toLocaleDateString("sv-SE", { day: "numeric", month: "numeric" })}.</p>
 
         {/* Laget */}
         <section className="space-y-3">
