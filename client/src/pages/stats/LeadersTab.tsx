@@ -34,11 +34,12 @@ function Podium({
 }) {
   if (players.length === 0) return null;
 
-  const podiumOrder = [1, 0, 2]; // 2nd, 1st, 3rd
-  const heights = [88, 110, 68];
-  const colors = ["#C0C0C0", "#FFD700", "#CD7F32"];
-  const bgColors = ["rgba(192,192,192,0.08)", "rgba(255,215,0,0.08)", "rgba(205,127,50,0.08)"];
-  const borderColors = ["rgba(192,192,192,0.2)", "rgba(255,215,0,0.2)", "rgba(205,127,50,0.2)"];
+  const podiumOrder = [1, 0, 2]; // visas: 2:a, 1:a, 3:e
+  // Indexeras med placeringen (0 = etta): etta högst och i guld, tvåa silver, trea brons
+  const heights = [110, 88, 68];
+  const colors = ["#FFD700", "#C0C0C0", "#CD7F32"];
+  const bgColors = ["rgba(255,215,0,0.08)", "rgba(192,192,192,0.08)", "rgba(205,127,50,0.08)"];
+  const borderColors = ["rgba(255,215,0,0.2)", "rgba(192,192,192,0.2)", "rgba(205,127,50,0.2)"];
 
   return (
     <div className="flex items-end justify-center gap-2 sm:gap-4 mb-6 px-2">

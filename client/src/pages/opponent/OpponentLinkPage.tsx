@@ -38,6 +38,7 @@ export default function OpponentLinkPage() {
   const updatePlayer = trpc.opponentLink.updatePlayer.useMutation({ onSuccess: refresh, onError: onErr });
   const deletePlayer = trpc.opponentLink.deletePlayer.useMutation({ onSuccess: refresh, onError: onErr });
   const setSlot = trpc.opponentLink.setSlot.useMutation({ onSuccess: refresh, onError: onErr });
+  const setList = trpc.opponentLink.setList.useMutation({ onSuccess: refresh, onError: onErr });
   const [team, setTeam] = useState<{ name: string; shortName: string; color: string } | null>(null);
   const [np, setNp] = useState({ name: "", number: "", position: "" });
   useEffect(() => { if (q.data && !team) setTeam({ name: q.data.opponent.name, shortName: q.data.opponent.shortName ?? "", color: q.data.opponent.color }); }, [q.data, team]);
@@ -72,7 +73,7 @@ export default function OpponentLinkPage() {
         </div>
       </header>
       <main className="max-w-3xl mx-auto p-4 space-y-6">
-        <p className="text-xs text-white/50">Fyll i ert lag och er uppställning. Allt sparas direkt. Länken gäller till {new Date(d.expiresAt).toLocaleDateString("sv-SE", { day: "numeric", month: "numeric" })}.</p>
+        <p className="text-xs text-white/50">Fyll i ert lag och er uppställning – med platser eller bara som en lista över vilka som spelar. Allt sparas direkt. Länken gäller till {new Date(d.expiresAt).toLocaleDateString("sv-SE", { day: "numeric", month: "numeric" })}.</p>
 
         {/* Laget */}
         <section className="space-y-3">
@@ -130,6 +131,8 @@ export default function OpponentLinkPage() {
                 const r = await addPlayer.mutateAsync({ token, name: p.name, number: p.number || null, position: (p.position || null) as never });
                 return { id: r.id, name: p.name, number: p.number || null, position: p.position };
               }}
+              listIds={d.list ?? null}
+              onListChange={(ids) => setList.mutate({ token, ids })}
             />
             {d.ours && (
               <OpponentTeamPanel

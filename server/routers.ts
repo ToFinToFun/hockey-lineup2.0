@@ -13,7 +13,7 @@ import { refreshLiveProfile } from "./cardProfile";
 import { club } from "../shared/club";
 import { getClubOverrides, saveClubOverrides, loadClub } from "./clubConfig";
 import { getFeatures, setFeatures } from "./features";
-import { createOpponentLink, listOpponentLinks, revokeOpponentLink, resolveLink, linkView, setLinkSlot, afterLinkPlayerChange, getStoredOpponentLineup } from "./opponentLinks";
+import { createOpponentLink, listOpponentLinks, revokeOpponentLink, resolveLink, linkView, setLinkSlot, afterLinkPlayerChange, getStoredOpponentLineup, getStoredOpponentList, setStoredOpponentList, setLinkList } from "./opponentLinks";
 import { listOpponents, getOpponent, saveOpponent, deleteOpponent, addOpponentPlayer, updateOpponentPlayer, deleteOpponentPlayer, MAX_OPPONENT_LOGO_BASE64 } from "./opponents";
 import { CLUB_ASSET_KEYS, MAX_CLUB_ASSET_BASE64, setClubAsset, deleteClubAsset, listClubAssets } from "./clubAssets";
 import { listMediaPosts, mediaPhotoIds, saveMediaPost, deleteMediaPost, MAX_MEDIA_PHOTO_BASE64 } from "./mediaPosts";
@@ -481,6 +481,11 @@ export const appRouter = router({
       }),
     /** Lagets sparade uppställning (plats → spelar-id) – fylls i Lineup när laget väljs. */
     storedLineup: adminProcedure.input(z.object({ id: z.number().int().positive() })).query(({ input }) => getStoredOpponentLineup(input.id)),
+    /** Lagets sparade lista (utan platser) – null = platser */
+    storedList: adminProcedure.input(z.object({ id: z.number().int().positive() })).query(({ input }) => getStoredOpponentList(input.id)),
+    setStoredList: adminProcedure
+      .input(z.object({ id: z.number().int().positive(), ids: z.array(z.number().int().positive()).max(60).nullable() }))
+      .mutation(async ({ input }) => { await setStoredOpponentList(input.id, input.ids); return { success: true }; }),
     /** Delningslänkar till laget */
     links: adminProcedure.input(z.object({ opponentId: z.number().int().positive() })).query(({ input }) => listOpponentLinks(input.opponentId)),
     createLink: adminProcedure
@@ -527,6 +532,13 @@ export const appRouter = router({
         await afterLinkPlayerChange(link.opponentId);
         return { success: true };
       }),
+    /** Laget som lista (ids) eller platser (null) */
+    setList: publicProcedure
+      .input(z.object({ token: z.string().min(10).max(64), ids: z.array(z.number().int().positive()).max(60).nullable() }))
+      .mutation(async ({ input }) => {
+        try { await setLinkList(input.token, input.ids); } catch (e) { throw new TRPCError({ code: "BAD_REQUEST", message: (e as Error).message }); }
+        return { success: true };
+      }),
     deletePlayer: publicProcedure
       .input(z.object({ token: z.string().min(10).max(64), id: z.number().int().positive() }))
       .mutation(async ({ input }) => {
@@ -534,6 +546,7 @@ export const appRouter = router({
         // Tas ur uppställningen först (om spelaren står där)
         const view = await linkView(input.token);
         for (const [slot, pid] of Object.entries(view.lineup)) if (pid === input.id) await setLinkSlot(input.token, slot, null);
+        if (view.list?.includes(input.id)) await setLinkList(input.token, view.list.filter((x) => x !== input.id));
         await updateOpponentPlayer(link.opponentId, input.id, { active: false });
         await afterLinkPlayerChange(link.opponentId);
         return { success: true };

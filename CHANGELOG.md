@@ -7,6 +7,14 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.56.0 – 2026-10-03
+
+- Motståndarens länk: laget väljer själv Platser eller Lista (bocka i vilka som spelar). Listan sparas på laget (migrering 0025, opponents.lineupList) och syns direkt i Lineup när matchen mot laget är vald; annars används den när laget väljs nästa gång. Listan som görs i Lineup sparas också på laget.
+- Matchinställningen heter Intern och Extern (menyn visar INTERN/EXTERN).
+- Lineup: kugghjulet och de andra verktygen står längst till höger i rubriken igen.
+- "Ändrad …": saknas tidpunkten används senaste sparningen, så att etiketten alltid visas.
+- Statistik: pallen visade ettan i silver och lägre än tvåan (färg och höjd var kopplade till visningsordningen i stället för placeringen). Nu är ettan högst och i guld, tvåan silver och trean brons – i alla kategorier.
+
 ## 2.55.0 – 2026-10-03
 
 **Motståndaren som lista**

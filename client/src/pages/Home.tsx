@@ -744,8 +744,17 @@ export default function Home() {
       void Promise.all([
         opponentUtils.client.opponents.get.query({ id: oppId }),
         opponentUtils.client.opponents.storedLineup.query({ id: oppId }),
-      ]).then(([o, stored]) => {
+        opponentUtils.client.opponents.storedList.query({ id: oppId }).catch(() => null),
+      ]).then(([o, stored, storedList]) => {
         if (setupRef.current.opponentId !== oppId) return;
+        // Laget har en sparad lista (t.ex. ifylld via deras länk): visa som lista, inga platser
+        if (Array.isArray(storedList)) {
+          const active = new Set(o.players.filter((p) => p.active).map((p) => p.id));
+          const next = { ...setupRef.current, oppList: storedList.filter((id) => active.has(id)) };
+          setupRef.current = next;
+          setSetup(next);
+          return;
+        }
         const byId = new Map(o.players.filter((p) => p.active).map((p) => [p.id, p]));
         setLineup((prevL) => {
           const out = { ...prevL };
@@ -786,7 +795,10 @@ export default function Home() {
       setLineup((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => !k.startsWith("team-b-"))));
     }
     applySetup({ ...setupRef.current, oppList: ids });
-  }, [pushUndo, applySetup]);
+    // Sparas också på laget, så att listan finns kvar till nästa match och syns på deras länk
+    const oppId = setupRef.current.opponentId;
+    if (oppId) void opponentUtils.client.opponents.setStoredList.mutate({ id: oppId, ids }).catch(() => undefined);
+  }, [pushUndo, applySetup, opponentUtils]);
 
   const renderOpponentPanel = (compact: boolean) => (
     <OpponentTeamPanel
@@ -1645,11 +1657,11 @@ export default function Home() {
           {/* Header – compact toolbar matching mockup exactly */}
           <header className="shrink-0">
             <div className="glass-header px-3 py-1.5 sm:py-2">
-              <div className={`grid grid-cols-[auto_1fr_auto] sm:grid-cols-[1fr_auto_1fr] items-center gap-2 mx-auto ${!isMobile && !sideLayout ? "max-w-[940px]" : "max-w-[1400px]"}`}>
-              {/* Vänster: logga, namn (länk hem) och verktygen – mitten: senast ändrad */}
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0 justify-self-start">
+              <div className={`flex items-center gap-2 mx-auto ${!isMobile && !sideLayout ? "max-w-[940px]" : "max-w-[1400px]"}`}>
+              {/* Logga, namn (länk hem) till vänster – verktygen (hem, anslutning, meny) längst till höger */}
+              <div className="flex items-center justify-between gap-2 sm:gap-3 min-w-0 flex-1">
               {/* Left: Logo + title + event info */}
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                 <Link href="/">
                   <img src={club().logo} alt={club().name} className="w-6 h-6 sm:w-7 sm:h-7 object-contain shrink-0" />
                 </Link>
@@ -1894,7 +1906,7 @@ export default function Home() {
                           >
                             <Swords className="w-4 h-4" />
                             <span className="flex-1 text-left">Match</span>
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded ${setup.mode === 'external' ? 'bg-sky-500/20 text-sky-300' : isLineupDark ? 'bg-white/10 text-white/40' : 'bg-gray-200 text-gray-500'}`}>{setup.mode === 'external' ? 'MOT LAG' : 'INTERN'}</span>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded ${setup.mode === 'external' ? 'bg-sky-500/20 text-sky-300' : isLineupDark ? 'bg-white/10 text-white/40' : 'bg-gray-200 text-gray-500'}`}>{setup.mode === 'external' ? 'EXTERN' : 'INTERN'}</span>
                           </button>
                           {/* Auto-lag: gör om laget före match om det inte stämmer med anmälningarna */}
                           <button
@@ -1926,8 +1938,6 @@ export default function Home() {
                 </div>
               </div>
               {/* "Ändrad …" visas ovanför lagen (platsen i rubriken räcker inte med hallens namn) */}
-
-              <div aria-hidden />
               </div>
             </div>
           </header>

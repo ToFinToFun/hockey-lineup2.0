@@ -176,6 +176,13 @@
       "when": 1790956615955,
       "tag": "0024_sponsor_media",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1791031458408,
+      "tag": "0025_opponent_list",
+      "breakpoints": true
     }
   ]
 }

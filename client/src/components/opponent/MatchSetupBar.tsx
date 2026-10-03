@@ -1,5 +1,5 @@
 /**
- * Matchinställningar i Lineup (menyn → Match): internmatch eller mot ett annat
+ * Matchinställningar i Lineup (menyn → Match): Intern eller Extern (mot ett annat
  * lag, vilket lag vi möter, vårt lags namn och logga samt – för matcher mot
  * andra lag – egen dag, tid och plats när de inte följer laget.se (t.ex. bortamatch).
  */
@@ -62,8 +62,8 @@ export function MatchSetupModal({ open, onClose, setup, onChange }: {
         </div>
         <div className="px-5 py-5 space-y-4 text-xs text-white/70">
           <div className="flex gap-2">
-            <button onClick={() => setDraft({ ...draft, mode: "internal" })} className={chip(!external)}>Internmatch ({teamName("white")}–{teamName("green")})</button>
-            <button onClick={() => setDraft({ ...draft, mode: "external" })} className={chip(external)}>Mot annat lag</button>
+            <button onClick={() => setDraft({ ...draft, mode: "internal" })} className={chip(!external)}>Intern</button>
+            <button onClick={() => setDraft({ ...draft, mode: "external" })} className={chip(external)}>Extern</button>
           </div>
 
           {external && (

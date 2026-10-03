@@ -112,7 +112,8 @@ async function readStored(): Promise<{ stored: Stored; version: number; changedA
   const base = emptyDoc();
   return {
     version: row?.version ?? 0,
-    changedAt: row?.lineupChangedAt ?? null,
+    // Saknas tidpunkten (t.ex. inget placerats sedan kolumnen kom) används senaste sparningen
+    changedAt: row?.lineupChangedAt ?? row?.updatedAt ?? null,
     stored: {
       setup: normalizeSetup(row?.matchSetup as Partial<MatchSetup> | null),
       slots: (row?.slots as Stored["slots"]) ?? {},

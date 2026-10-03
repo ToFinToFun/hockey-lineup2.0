@@ -3,6 +3,7 @@
  * spelare och gör sin uppställning själv – utan inloggning. Valfritt om de
  * får se vårt lag. Länkarna sparas i app_config "opponent_links".
  */
+import type { LineupOp } from "../shared/lineupDoc";
 import { randomBytes } from "crypto";
 import { eq } from "drizzle-orm";
 import { getConfigValue, setConfigValue } from "./scoreDb";
@@ -94,8 +95,48 @@ export async function linkView(token: string) {
     opponent: { id: o.id, name: o.name, shortName: o.shortName, color: o.color, logoUrl: o.logoUrl, players: o.players.filter((p) => p.active) },
     config,
     lineup,
+    // Laget som lista (utan platser): den aktuella i Lineup om matchen är vald, annars lagets sparade
+    list: live ? (Array.isArray(live.setup.oppList) ? live.setup.oppList : null) : await storedList(link.opponentId),
     ours,
   };
+}
+
+async function storedList(opponentId: number): Promise<number[] | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const [r] = await db.select({ list: opponents.lineupList }).from(opponents).where(eq(opponents.id, opponentId)).limit(1);
+  return Array.isArray(r?.list) ? r!.list : null;
+}
+
+/** Lagets sparade lista (för Lineup när laget väljs). null = platser. */
+export const getStoredOpponentList = storedList;
+
+export async function setStoredOpponentList(opponentId: number, ids: number[] | null) {
+  const db = await getDb();
+  if (db) await db.update(opponents).set({ lineupList: ids }).where(eq(opponents.id, opponentId));
+}
+
+/**
+ * Laget som lista eller platser (via länken). Sparas på laget och – om Lineup
+ * är inställd på matchen mot laget – direkt i den aktuella uppställningen.
+ * Till lista: lagets platser töms.
+ */
+export async function setLinkList(token: string, ids: number[] | null) {
+  const link = await resolveLink(token);
+  const o = await getOpponent(link.opponentId);
+  if (!o) throw new Error("Laget finns inte längre");
+  const valid = new Set(o.players.filter((p) => p.active).map((p) => p.id));
+  const clean = ids === null ? null : [...new Set(ids)].filter((id) => valid.has(id)).slice(0, 60);
+  await setStoredOpponentList(link.opponentId, clean);
+  const live = await liveFor(link.opponentId);
+  if (live) {
+    const ops: LineupOp[] = [];
+    if (clean !== null && !Array.isArray(live.setup.oppList)) {
+      for (const k of Object.keys(live.lineup)) if (k.startsWith("team-b-")) ops.push({ t: "slot", slot: k, player: null });
+    }
+    ops.push({ t: "field", key: "setup", value: { ...live.setup, oppList: clean } });
+    await applyLineupPatch(`opplink-list-${token.slice(0, 6)}-${Date.now()}`, ops);
+  }
 }
 
 async function storedLineup(opponentId: number): Promise<Record<string, number>> {

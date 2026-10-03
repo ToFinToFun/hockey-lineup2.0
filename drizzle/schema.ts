@@ -319,6 +319,8 @@ export const opponents = mysqlTable("opponents", {
   archived: boolean("archived").notNull().default(false),
   /** Lagets egen uppställning (plats → opponent_players.id) – fylls i via länken eller i Lineup */
   lineup: json("lineup").$type<Record<string, number>>(),
+  /** Laget som lista utan platser (opponent_players.id) – null = platser */
+  lineupList: json("lineupList").$type<number[] | null>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
