@@ -92,6 +92,15 @@ export function autoNewsPhase(now: Date, start: Date, minutesBefore: number): "w
 
 // Evenemanget hämtas från laget.se högst var 20:e minut
 let eventCache: { at: number; date?: string; time?: string; location?: string } | null = null;
+/** laget.se:s nästa evenemang (utan matchens egna dag/tid) – cachas 20 min */
+export async function lagetEvent() {
+  if (!eventCache || Date.now() - eventCache.at > 20 * 60_000) {
+    const r = await fetchAttendance();
+    eventCache = { at: Date.now(), date: r.eventDate || undefined, time: r.eventTime, location: r.eventLocation };
+  }
+  return eventCache;
+}
+
 export async function nextEvent() {
   if (!eventCache || Date.now() - eventCache.at > 20 * 60_000) {
     const r = await fetchAttendance();

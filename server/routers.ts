@@ -31,12 +31,13 @@ import { getAutoLineupConfig, setAutoLineupConfig, getAutoLineupState } from "./
 import { getActiveLock, lockLineup, unlockLineup, differsFromLock, parsePublishAt } from "./lineupLock";
 import { scoreLineupView } from "./scoreLineupView";
 import { getLineupContext, saveLineupContext } from "./lineupContexts";
-import { opponentPlayerId } from "../shared/matchSetup";
+import { opponentPlayerId, isOpponentPlayerId, INTERNAL_SETUP } from "../shared/matchSetup";
+import type { Player } from "../client/src/lib/players";
 import { loadPirConfig, PIR_WEIGHTS_KEY, PIR_ADJUSTMENTS_KEY, PIR_THRESHOLDS_KEY } from "./pirConfig";
 import { DEFAULT_PIR_THRESHOLDS, PIR_THRESHOLD_LIMITS, sanitizeThresholds } from "../shared/pirThresholds";
 import { positionAndTeamHistory } from "./positionHistory";
-import { nextEvent, eventStart } from "./autoNews";
-import { withExternalEvent } from "./matchEvent";
+import { nextEvent, eventStart, lagetEvent } from "./autoNews";
+import { withExternalEvent, externalIsNext } from "./matchEvent";
 import { NOTIFICATION_TYPES, getRecipients, setRecipients, smtpConfigured, sendTestMail, notifyLater, mailLayout, type NotificationType } from "./notifications";
 import type { LineupOp } from "../shared/lineupDoc";
 import {
@@ -170,6 +171,30 @@ const logoSchema = z
   .string()
   .max(2_000_000, "Loggan är för stor")
   .regex(/^data:image\/png;base64,[A-Za-z0-9+/=]+$/, "Loggan måste vara en PNG");
+
+/**
+ * Score Tracker när nästa evenemang är en internmatch men Lineup står på en extern
+ * match längre fram: internmatchens sparade uppställning (Inställningar sparas när
+ * man växlar i Lineup), Vita mot Gröna.
+ */
+async function internalScoreState<T extends { players: Player[]; lineup: Record<string, Player> }>(doc: T): Promise<T> {
+  const ctx = await getLineupContext("internal");
+  const reg = await getRegistryMap();
+  const ours = new Map<string, Player>();
+  for (const p of [...doc.players, ...Object.values(doc.lineup)]) if (!isOpponentPlayerId(p.id)) ours.set(p.id, p);
+  const lineup: Record<string, Player> = {};
+  for (const [slot, id] of Object.entries(ctx?.slots ?? {})) {
+    const p = ours.get(id) ?? (() => { const r = reg.get(id); return r ? ({ id, name: r.name, number: r.number ?? "", position: r.position } as Player) : null; })();
+    if (p) lineup[slot] = p;
+  }
+  const placed = new Set(Object.values(lineup).map((p) => p.id));
+  const names = defaultTeamNames();
+  return {
+    ...doc, setup: INTERNAL_SETUP, lineup, players: [...ours.values()].filter((p) => !placed.has(p.id)),
+    teamAName: names.teamAName, teamBName: names.teamBName,
+    ...(ctx?.teamAConfig ? { teamAConfig: ctx.teamAConfig } : {}), ...(ctx?.teamBConfig ? { teamBConfig: ctx.teamBConfig } : {}),
+  };
+}
 
 export const appRouter = router({
   system: systemRouter,
@@ -750,17 +775,31 @@ export const appRouter = router({
       const lock = await getActiveLock();
       const { doc } = await getLineupSnapshot();
       let view: import("./scoreLineupView").ScoreLineupView | { mode: "staff" } = { mode: "staff" };
-      if (!ctx.session) {
+      // Styrelsen och Lineup-länkar ser alltid laget; andra (även delade modullänkar) enligt publiceringen
+      if (!ctx.session || ctx.session.role === "access") {
         const ev = await nextEvent().catch(() => null);
         view = scoreLineupView(lock, eventStart(ev?.date, ev?.time));
         if (view.mode === "scheduled" || view.mode === "hidden") {
-          // Inget lag att visa än: tomma lag, bara lagnamnen
+          // Inget lag att visa än: tomma lag – men motståndaren (namn, logga, spelare) så att mål kan registreras
+          const lag = await lagetEvent().catch(() => null);
+          const base = doc.setup?.mode === "external" && !externalIsNext(doc.setup, lag?.date) ? await internalScoreState(doc) : doc;
+          const o = base.setup?.mode === "external" && base.setup.opponentId ? await getOpponent(base.setup.opponentId).catch(() => null) : null;
           return {
-            ...doc, players: [], lineup: {}, locked: false, lockedAt: null, lockExpiresAt: null, opponent: null, view,
+            ...base, players: [], lineup: {}, locked: false, lockedAt: null, lockExpiresAt: null, view,
+            opponent: o ? {
+              id: o.id, name: o.name, shortName: o.shortName, color: o.color, logoUrl: o.logoUrl,
+              players: o.players.filter((p) => p.active).map((p) => ({ id: opponentPlayerId(p.id), name: p.name, number: p.number ?? "", position: p.position ?? "" })),
+            } : null,
           };
         }
       }
-      const state = lock ? lock.doc : doc;
+      let state = lock ? lock.doc : doc;
+      // Lineup kan vara inställd på en extern match längre fram (t.ex. om en månad) medan
+      // nästa evenemang är en internmatch: då gäller internmatchens sparade uppställning här
+      if (!lock && state.setup?.mode === "external") {
+        const lag = await lagetEvent().catch(() => null);
+        if (!externalIsNext(state.setup, lag?.date)) state = await internalScoreState(state);
+      }
       // Mot motståndare: lagets namn, färg och logga till Score Tracker
       const opp = state.setup?.mode === "external" && state.setup.opponentId ? await getOpponent(state.setup.opponentId).catch(() => null) : null;
       return {

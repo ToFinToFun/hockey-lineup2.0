@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.60.2 – 2026-10-03
+
+- Score Tracker utan inloggning: innan laget är publicerat skickades ingen motståndare med – därför saknades motståndarens logga och spelare vid mål. Nu följer motståndarens namn, färg, logga och sparade spelare alltid med; bara vår uppställning döljs tills den publiceras.
+- Lineup inställd på en extern match längre fram (egen dag efter laget.se:s nästa evenemang, t.ex. om en månad): laget.se:s evenemang gäller tills dess – för nyheten (även automatiska), Auto-lag, Score Tracker (75-minutersregeln) och matchens plats. Score Tracker visar då internmatchen (Vita–Gröna) med internmatchens sparade uppställning i stället för "Mot …". Samma dag eller utan egen dag gäller den externa matchen som förut.
+- Delade modullänkar ser Score Trackers uppställning som alla andra (efter publicering), inte som styrelsen.
+
 ## 2.60.1 – 2026-10-03
 
 - Startsidan: den som öppnat en delad länk ser länkens namn längst ner (i stället för "Styrelsen"), hur länge länken gäller ("tills vidare" eller sista dag) och Logga ut.
