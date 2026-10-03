@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.63.1 – 2026-10-03
+
+- /live tål många tittare: läget byggs högst var 2:a sekund och delas av alla (tidigare en full uppslagning – lag, motståndare i databasen, nästa evenemang – per tittare var 4:e sekund). Kommentarer, dolda kommentarer och nya mål syns direkt.
+- Live: spärrarna för kommentarer och hjärtan nollställs vid varje ny sändning, så att minnet inte växer över tid.
+
 ## 2.63.0 – 2026-10-03
 
 - Live som ingen avslutade sparas automatiskt i Matchhistorik när sändningen avslutas av sig själv: ställning, mål (skytt, assist, övrigt, sponsor), start, plats, uppställning, motståndare, tittare och hjärtan. Matchen markeras **EJ AVSLUTAD** (väntar) och avslutas med **Avsluta matchen** i matchhistoriken (godkänns då). Ingen sparning om matchen saknar mål.

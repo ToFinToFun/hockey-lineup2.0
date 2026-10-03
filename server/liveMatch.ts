@@ -205,7 +205,8 @@ export async function startLive(deviceId: string, takeover: boolean): Promise<{ 
     whiteScore: 0, greenScore: 0, goals: [], matchStartTime: null, endTime: null,
     hearts: { white: 0, green: 0 }, uniqueViewers: 0, salt: randomBytes(16).toString("hex"), viewerHashes: [],
   };
-  active.clear();
+  // Ny match: spärrarna börjar om (och minnet växer inte över tid)
+  active.clear(); lastComment.clear(); heartAt.clear();
   await persist(true);
   return { ok: true, session: session! };
 }

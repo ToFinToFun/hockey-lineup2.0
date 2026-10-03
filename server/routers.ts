@@ -203,6 +203,33 @@ async function internalScoreState<T extends { players: Player[]; lineup: Record<
 /** Score Trackers lag för den som inte är inloggad (sätts efter appRouter – undviker cirkulär typ) */
 let publicScoreState: (ctx: TrpcContext) => Promise<unknown> = async () => null;
 
+/** /live: läget (cachas 2 s i live.state) */
+async function buildLiveState(ctx: TrpcContext) {
+      const s = await currentSession();
+  const cfg = await getLiveConfig();
+  // Laget som i Score Tracker för den som inte är inloggad (publiceringsreglerna gäller)
+  const lineup = (await publicScoreState({ ...ctx, session: null })) as Record<string, unknown> & { players?: unknown };
+  const ev = await nextEvent().catch(() => null);
+  const phase = isLive(s) ? "live" : isAfter(s) ? "after" : "before";
+  const showSession = phase !== "before" && s;
+  return {
+    now: new Date().toISOString(),
+    phase,
+    event: ev ? { date: ev.date ?? null, time: ev.time ?? null, location: ev.location ?? null } : null,
+    lineup: { ...lineup, players: [] },
+    live: showSession ? {
+      id: s.id, startedAt: s.startedAt, updatedAt: s.updatedAt, endedAt: s.endedAt,
+      whiteScore: s.whiteScore, greenScore: s.greenScore, goals: s.goals, matchStartTime: s.matchStartTime, endTime: s.endTime,
+      hearts: s.hearts, uniqueViewers: s.viewerHashes?.length ?? s.uniqueViewers,
+    } : null,
+    watching: phase === "live" ? watchingNow() : 0,
+    laktaren: cfg.laktaren,
+    comments: cfg.laktaren && showSession ? await listComments(s.id) : [],
+  };
+    
+}
+let liveStateCache: { at: number; value: Awaited<ReturnType<typeof buildLiveState>> } | null = null;
+
 export const appRouter = router({
   system: systemRouter,
   auth: authRouter,
@@ -728,28 +755,14 @@ export const appRouter = router({
     state: publicProcedure.query(async ({ ctx }) => {
       const ip = String(ctx.req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() || ctx.req.ip || "";
       await touchViewer(ip, String(ctx.req.headers["user-agent"] ?? ""));
-      const s = await currentSession();
-      const cfg = await getLiveConfig();
-      // Laget som i Score Tracker för den som inte är inloggad (publiceringsreglerna gäller)
-      const lineup = (await publicScoreState({ ...ctx, session: null })) as Record<string, unknown> & { players?: unknown };
-      const ev = await nextEvent().catch(() => null);
-      const phase = isLive(s) ? "live" : isAfter(s) ? "after" : "before";
-      const showSession = phase !== "before" && s;
-      return {
-        now: new Date().toISOString(),
-        phase,
-        event: ev ? { date: ev.date ?? null, time: ev.time ?? null, location: ev.location ?? null } : null,
-        lineup: { ...lineup, players: [] },
-        live: showSession ? {
-          id: s.id, startedAt: s.startedAt, updatedAt: s.updatedAt, endedAt: s.endedAt,
-          whiteScore: s.whiteScore, greenScore: s.greenScore, goals: s.goals, matchStartTime: s.matchStartTime, endTime: s.endTime,
-          hearts: s.hearts, uniqueViewers: s.viewerHashes?.length ?? s.uniqueViewers,
-        } : null,
-        watching: phase === "live" ? watchingNow() : 0,
-        laktaren: cfg.laktaren,
-        comments: cfg.laktaren && showSession ? await listComments(s.id) : [],
-      };
+      // Samma svar till alla tittare: byggs högst var 2:a sekund (många tittare × var 4:e sekund)
+      if (!liveStateCache || Date.now() - liveStateCache.at > 2_000) {
+        liveStateCache = { at: Date.now(), value: await buildLiveState(ctx) };
+      }
+      const v = liveStateCache.value;
+      return { ...v, watching: v.phase === "live" ? watchingNow() : 0 };
     }),
+
     /** Startsidan: pågår en livesändning just nu? */
     isLive: publicProcedure.query(async () => ({ live: isLive(await currentSession()) })),
     heart: publicProcedure.input(z.object({ team: z.enum(["white", "green"]) })).mutation(async ({ ctx, input }) => {
@@ -770,6 +783,7 @@ export const appRouter = router({
           throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: msg });
         }
         const { viewer: _v, ...c } = r.comment;
+        liveStateCache = null;
         return c;
       }),
 
@@ -812,6 +826,7 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const { deviceId, ...data } = input;
         const ok = await pushLive(deviceId, data);
+        liveStateCache = null;
         if (!ok) throw new TRPCError({ code: "CONFLICT", message: "Den här enheten sänder inte längre" });
         return { ok };
       }),
@@ -828,7 +843,10 @@ export const appRouter = router({
       }
       return { ok };
     }),
-    hide: lineupProcedure.input(z.object({ id: z.string().max(20), hidden: z.boolean() })).mutation(async ({ input }) => ({ ok: await hideComment(input.id, input.hidden) })),
+    hide: lineupProcedure.input(z.object({ id: z.string().max(20), hidden: z.boolean() })).mutation(async ({ input }) => {
+      liveStateCache = null;
+      return { ok: await hideComment(input.id, input.hidden) };
+    }),
     getConfig: adminProcedure.query(() => getLiveConfig()),
     setConfig: adminProcedure.input(z.object({ laktaren: z.boolean() })).mutation(async ({ input }) => {
       await setLiveConfig(input);
