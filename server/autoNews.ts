@@ -13,7 +13,7 @@
  */
 import { getOpponent } from "./opponents";
 import { club } from "../shared/club";
-import { ourLogoFor } from "../shared/matchSetup";
+import { ourLogoFor, opponentPlayerId } from "../shared/matchSetup";
 import { teamAccent } from "../shared/teams";
 import { appUrl } from "./clubConfig";
 import { teamLogo } from "../shared/club";
@@ -29,7 +29,8 @@ import { ENV } from "./_core/env";
 import { pickLeastShown } from "../shared/sponsors";
 import { renderNewsImage } from "../client/src/lib/newsImage";
 import { buildNewsBody, defaultHomeForDate, formatNewsTitle, shortDate } from "../client/src/lib/lagetNews";
-import { lineupStateToText } from "../client/src/lib/lineupText";
+import { lineupStateToText, generateLineupText } from "../client/src/lib/lineupText";
+import { listAsSlots } from "../client/src/lib/opponentList";
 import { createTeamSlots, MAX_TEAM_CONFIG } from "../client/src/lib/lineup";
 import type { Player } from "../client/src/lib/players";
 
@@ -129,11 +130,20 @@ export async function buildNews(ev: { date: string; time?: string; location?: st
 
   const sponsors = (await listSponsors()).sponsors;
   const sponsor = pickLeastShown(sponsors, (s) => s.counts.lineups);
-  const text = lineupStateToText({ teamAName: doc.teamAName, teamBName: doc.teamBName, teamAConfig, teamBConfig, lineup }, { bold: true });
   const placeLine = [ev.location, ev.time].filter(Boolean).join(" ");
 
   // Mot motståndare: vårt lags och motståndarens logga och färg
   const ext = doc.setup?.mode === "external" && doc.setup.opponentId ? await getOpponent(doc.setup.opponentId).catch(() => null) : null;
+  // Motståndaren som lista (utan platser): spelarna som platser per position
+  const listIds = ext && Array.isArray(doc.setup?.oppList) ? new Set(doc.setup!.oppList) : null;
+  const oppList = ext && listIds
+    ? listAsSlots(ext.players.filter((p) => listIds.has(p.id)).map((p) => ({ id: opponentPlayerId(p.id), name: p.name, number: p.number ?? "", position: (p.position || "F") as Player["position"], isOpponent: true })))
+    : null;
+  const teamBSlots = oppList ? oppList.slots : createTeamSlots("team-b", teamBConfig);
+  const teamBLineup = oppList ? oppList.lineup : pick("team-b-");
+  const text = oppList
+    ? generateLineupText({ teamAName: doc.teamAName, teamBName: doc.teamBName } as never, createTeamSlots("team-a", teamAConfig), teamBSlots, pick("team-a-"), teamBLineup, { bold: true })
+    : lineupStateToText({ teamAName: doc.teamAName, teamBName: doc.teamBName, teamAConfig, teamBConfig, lineup }, { bold: true });
   const c0 = club();
   const ourLogo = ourLogoFor(doc.setup, c0);
   const logoA = ext ? ourLogo : teamLogo("white");
@@ -142,7 +152,7 @@ export async function buildNews(ev: { date: string; time?: string; location?: st
 
   const canvas = (await renderNewsImage({
     teamA: { name: doc.teamAName, slots: createTeamSlots("team-a", teamAConfig), lineup: pick("team-a-"), logoUrl: logoA, accent: teamAccent("white") },
-    teamB: { name: doc.teamBName, slots: createTeamSlots("team-b", teamBConfig), lineup: pick("team-b-"), logoUrl: logoB, accent: accentB },
+    teamB: { name: doc.teamBName, slots: teamBSlots, lineup: teamBLineup, logoUrl: logoB, accent: accentB },
     home: defaultHomeForDate(ev.date),
     dateLine: weekdayLine(ev.date),
     placeLine,

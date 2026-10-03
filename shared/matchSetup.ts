@@ -23,9 +23,14 @@ export interface MatchSetup {
   time?: string | null;
   /** Externa matcher: egen plats (t.ex. bortamatch) */
   location?: string | null;
+  /**
+   * Motståndaren som lista: vilka av lagets sparade spelare (opponent_players.id)
+   * som är med, utan platser. null/saknas = vanlig uppställning med platser.
+   */
+  oppList?: number[] | null;
 }
 
-export const INTERNAL_SETUP: MatchSetup = { mode: "internal", opponentId: null, ourName: null, ourLogo: "club", date: null, time: null, location: null };
+export const INTERNAL_SETUP: MatchSetup = { mode: "internal", opponentId: null, ourName: null, ourLogo: "club", date: null, time: null, location: null, oppList: null };
 
 /** Vårt lags logga mot andra lag */
 export function ourLogoFor(setup: Pick<MatchSetup, "ourLogo"> | null | undefined, c: { logo: string; crest?: { url: string }; teams: { white: { logo: string }; green: { logo: string } } }): string {
@@ -47,5 +52,6 @@ export function normalizeSetup(s: Partial<MatchSetup> | null | undefined): Match
   const date = typeof s.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s.date) ? s.date : null;
   const time = typeof s.time === "string" && /^\d{1,2}:\d{2}$/.test(s.time) ? s.time : null;
   const location = typeof s.location === "string" && s.location.trim() ? s.location.trim().slice(0, 100) : null;
-  return { mode: "external", opponentId: s.opponentId ?? null, ourName: s.ourName ?? null, ourLogo: s.ourLogo ?? "club", date, time, location };
+  const oppList = Array.isArray(s.oppList) ? [...new Set(s.oppList.filter((x) => Number.isInteger(x) && x > 0))].slice(0, 60) : null;
+  return { mode: "external", opponentId: s.opponentId ?? null, ourName: s.ourName ?? null, ourLogo: s.ourLogo ?? "club", date, time, location, oppList };
 }

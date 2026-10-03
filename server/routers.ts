@@ -70,6 +70,7 @@ const lineupOpSchema = z.union([
     date: z.string().max(10).nullable().optional(),
     time: z.string().max(5).nullable().optional(),
     location: z.string().max(100).nullable().optional(),
+    oppList: z.array(z.number().int().positive()).max(60).nullable().optional(),
   }) }),
 ]);
 

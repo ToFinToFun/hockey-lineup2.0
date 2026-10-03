@@ -7,6 +7,15 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.55.0 – 2026-10-03
+
+**Motståndaren som lista**
+- I Lineup kan motståndarlaget (match mot annat lag) visas som **Platser** (som tidigare) eller **Lista**. I listläget bockar man bara i vilka av lagets sparade spelare som är med – ingen position eller kedja. Nya spelare (namn, nummer, position) läggs till direkt i listan och sparas på laget.
+- Byte till Lista: de som stod på platser blir listan och platserna töms (går att ångra). Byte tillbaka: listan finns kvar, ingen placeras.
+- Nyheten (bild och text, även den automatiska) visar listan sorterad Målvakter, Backar, Forwards med nummer.
+- Score Tracker: vid motståndarens mål står de avbockade överst.
+- Motståndarens egen länk fyller fortfarande i platser.
+
 ## 2.54.1 – 2026-10-03
 
 - Lineup: "Ändrad …" står nu ovanför lagen (efter "Mot …" vid match mot annat lag) i stället för längst till höger i rubriken, där den klipptes av när hallens namn visas.

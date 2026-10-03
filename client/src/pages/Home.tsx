@@ -45,7 +45,7 @@ import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { MobileRosterDrawer } from "@/components/MobileRosterDrawer";
 import { LongPressTooltip } from "@/components/LongPressTooltip";
 import { trpc } from "@/lib/trpc";
-import { lineupStateToText, shareOrCopy } from "@/lib/lineupText";
+import { generateLineupText, lineupStateToText, shareOrCopy } from "@/lib/lineupText";
 import { useLineupDocSync } from "@/hooks/useLineupDocSync";
 import { useAuth } from "@/hooks/useAuth";
 import { MatchPredictionBar } from "@/components/MatchPredictionBar";
@@ -64,6 +64,7 @@ import { useSwipe } from "@/hooks/useSwipe";
 import { autoDistribute } from "@/lib/autoDistribute";
 import { RemoveDropZone } from "@/components/RemoveDropZone";
 import { PirSettingsProvider, loadPirSettings, savePirSettings, type PirSettings } from "@/hooks/usePirEnabled";
+import { listAsSlots } from "@/lib/opponentList";
 
 type MobileTab = "vita" | "trupp" | "grona";
 
@@ -771,6 +772,22 @@ export default function Home() {
     });
   }, [pushUndo]);
 
+  /** Motståndaren som lista: spelarna som "platser" per position (nyhet och text) */
+  const oppListTeam = useMemo(() => {
+    if (!external || !Array.isArray(setup.oppList) || !opponentQ.data) return null;
+    const ids = new Set(setup.oppList);
+    return listAsSlots(opponentQ.data.players.filter((p) => ids.has(p.id)).map((p) => toLineupPlayer(p)));
+  }, [external, setup.oppList, opponentQ.data]);
+
+  /** Motståndaren som lista (utan platser) eller med platser. Till lista: platserna i lag B töms. */
+  const setOppList = useCallback((ids: number[] | null) => {
+    if (ids !== null && !Array.isArray(setupRef.current.oppList)) {
+      pushUndo();
+      setLineup((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => !k.startsWith("team-b-"))));
+    }
+    applySetup({ ...setupRef.current, oppList: ids });
+  }, [pushUndo, applySetup]);
+
   const renderOpponentPanel = (compact: boolean) => (
     <OpponentTeamPanel
       teamName={teamBName || "Motståndare"}
@@ -786,6 +803,8 @@ export default function Home() {
         return { id: r.id, name: p.name, number: p.number || null, position: p.position };
       } : undefined}
       compact={compact}
+      listIds={setup.oppList ?? null}
+      onListChange={isAdmin ? setOppList : undefined}
     />
   );
 
@@ -2360,10 +2379,12 @@ export default function Home() {
           teamAName={teamAName}
           teamBName={teamBName}
           teamASlots={TEAM_A_SLOTS}
-          teamBSlots={TEAM_B_SLOTS}
+          teamBSlots={oppListTeam ? oppListTeam.slots : TEAM_B_SLOTS}
           teamALineup={teamALineup}
-          teamBLineup={teamBLineup}
-          lineupText={lineupStateToText({ teamAName, teamBName, teamAConfig, teamBConfig, lineup }, { bold: true })}
+          teamBLineup={oppListTeam ? oppListTeam.lineup : teamBLineup}
+          lineupText={oppListTeam
+            ? generateLineupText({ teamAName, teamBName } as never, TEAM_A_SLOTS, oppListTeam.slots, teamALineup, oppListTeam.lineup, { bold: true })
+            : lineupStateToText({ teamAName, teamBName, teamAConfig, teamBConfig, lineup }, { bold: true })}
           logoWhite={external ? ourLogoUrl(setup) : teamLogo("white")}
           logoGreen={external ? (opponentQ.data?.logoUrl ?? "") : teamLogo("green")}
           {...(external && opponentQ.data ? { accentGreen: opponentQ.data.color } : {})}

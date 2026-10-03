@@ -4,7 +4,7 @@
  * Mirrors the native app's Match tab
  */
 
-import { isOpponentPlayerId } from "@shared/matchSetup";
+import { isOpponentPlayerId, opponentPlayerId } from "@shared/matchSetup";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { IMAGES, COLORS, STORAGE_KEY, type GoalEvent, type MatchState } from "@/lib/scoreConstants";
 import { useSponsors, pickLeastShown, logoForName } from "@/lib/sponsors";
@@ -419,12 +419,16 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
     const pool: Player[] = lineupState.setup?.mode === "external" && goalTeam === "green"
       ? ((lineupState.opponent?.players ?? []) as unknown as Player[])
       : (lineupState.players || []).filter((p) => !isOpponentPlayerId(p.id));
+    // Motståndaren som lista (utan platser): de avbockade står överst som lagets spelare
+    const oppList = lineupState.setup?.mode === "external" && goalTeam === "green" && Array.isArray(lineupState.setup.oppList)
+      ? new Set(lineupState.setup.oppList.map((n) => opponentPlayerId(n))) : null;
+    const listed = oppList ? pool.filter((p) => oppList.has(p.id)).map((p) => ({ ...p, pickPos: fromRegistry(p.position) })) : [];
     const unplaced = pool
-      .filter(p => !placedIds.has(p.id))
+      .filter(p => !placedIds.has(p.id) && !oppList?.has(p.id))
       .map((p) => ({ ...p, pickPos: fromRegistry(p.position) }))
       .sort(byPos);
 
-    return { scoring: scoring.sort(byPos), other: other.sort(byPos), unplaced };
+    return { scoring: [...scoring, ...listed].sort(byPos), other: other.sort(byPos), unplaced };
   }, [lineupState]);
 
   const pickerData = useMemo(() => {
