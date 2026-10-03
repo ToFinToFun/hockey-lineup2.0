@@ -239,6 +239,18 @@ export const scoreRouter = router({
     }),
 
     /** Godkänn eller avvisa matcher. Bara godkända räknas i statistiken. */
+    /** Avsluta en match som sparades automatiskt från live ("ej avslutad"): godkänns och markeringen tas bort */
+    finish: moduleProcedure("matches")
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const m = (await getAllMatchesIncludingUnreviewed()).find((x) => x.id === input.id) as { report?: { live?: Record<string, unknown> } | null } | undefined;
+        if (!m) throw new TRPCError({ code: "NOT_FOUND", message: "Matchen finns inte" });
+        if (m.report?.live) await setMatchReport(input.id, { ...m.report, live: { ...m.report.live, unfinished: false } } as never);
+        await setMatchReviewStatus([input.id], "approved");
+        scheduleLiveProfileRefresh();
+        return { success: true };
+      }),
+
     review: moduleProcedure("matches")
       .input(
         z.object({

@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.63.0 – 2026-10-03
+
+- Live som ingen avslutade sparas automatiskt i Matchhistorik när sändningen avslutas av sig själv: ställning, mål (skytt, assist, övrigt, sponsor), start, plats, uppställning, motståndare, tittare och hjärtan. Matchen markeras **EJ AVSLUTAD** (väntar) och avslutas med **Avsluta matchen** i matchhistoriken (godkänns då). Ingen sparning om matchen saknar mål.
+- Telefonen som sände får en ruta om att matchen redan sparats (Nollställ här) och en varning om den ändå försöker spara samma match.
+
 ## 2.62.0 – 2026-10-03
 
 - Live avslutas av sig själv om ingen gör det: 30 min efter sluttiden, eller efter 90 min utan uppdatering (ingen sluttid satt). Då visas resultatet en halvtimme till, antalet unika tittare sparas och de anonyma koderna raderas.

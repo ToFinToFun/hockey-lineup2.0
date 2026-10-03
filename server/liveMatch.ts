@@ -28,6 +28,8 @@ export interface LiveSession {
   hearts: { white: number; green: number };
   /** Antal unika tittare (sparas med matchen) */
   uniqueViewers: number;
+  /** Avslutades automatiskt och sparades som "ej avslutad" i matchhistoriken */
+  autoSavedMatchId?: number | null;
   /** Bara under sändningen: matchens salt och anonyma koder (raderas vid slut) */
   salt?: string;
   viewerHashes?: string[];
@@ -74,9 +76,25 @@ async function load(): Promise<LiveSession | null> {
       session = null;
     }
   }
-  if (session && shouldAutoEnd(session)) await finish(session);
+  if (session && shouldAutoEnd(session)) {
+    await finish(session);
+    // Ingen avslutade: matchen sparas i matchhistoriken som "ej avslutad" (avslutas därifrån)
+    if (autoEndHandler) {
+      try {
+        session.autoSavedMatchId = await autoEndHandler(session);
+        await setConfigValue(KEY, JSON.stringify(session));
+      } catch (err) {
+        console.error("[live] kunde inte spara matchen automatiskt:", err);
+      }
+    }
+  }
   return session!;
 }
+
+type AutoEndHandler = (s: LiveSession) => Promise<number | null>;
+let autoEndHandler: AutoEndHandler | null = null;
+/** Sätts av routern: sparar matchen när en sändning avslutas automatiskt */
+export function setLiveAutoEndHandler(fn: AutoEndHandler) { autoEndHandler = fn; }
 
 /** Sluttiden ("HH:MM") som tidpunkt, räknat från matchens start */
 function endAt(s: LiveSession): number | null {

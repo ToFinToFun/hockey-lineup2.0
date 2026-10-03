@@ -30,9 +30,10 @@ import { getAutoNewsConfig, setAutoNewsConfig, getAutoNewsStatus } from "./autoN
 import { getAutoLineupConfig, setAutoLineupConfig, getAutoLineupState } from "./autoLineup";
 import { getActiveLock, lockLineup, unlockLineup, differsFromLock, parsePublishAt } from "./lineupLock";
 import { scoreLineupView } from "./scoreLineupView";
-import { getAllMatchesIncludingUnreviewed, setMatchReport } from "./scoreDb";
+import { getAllMatchesIncludingUnreviewed, setMatchReport, saveMatch } from "./scoreDb";
+import { matchName } from "../shared/matchTiming";
 import type { TrpcContext } from "./_core/context";
-import { currentSession, startLive, pushLive, endLive, touchViewer, watchingNow, sendHeart, postComment, listComments, hideComment, getLiveConfig, setLiveConfig, isLive, isAfter, viewerCode } from "./liveMatch";
+import { setLiveAutoEndHandler, currentSession, startLive, pushLive, endLive, touchViewer, watchingNow, sendHeart, postComment, listComments, hideComment, getLiveConfig, setLiveConfig, isLive, isAfter, viewerCode } from "./liveMatch";
 import { getLineupContext, saveLineupContext } from "./lineupContexts";
 import { opponentPlayerId, isOpponentPlayerId, INTERNAL_SETUP } from "../shared/matchSetup";
 import type { Player } from "../client/src/lib/players";
@@ -787,6 +788,8 @@ export const appRouter = router({
         laktaren: (await getLiveConfig()).laktaren,
         // Matchen som den sänds – hämtas av den som tar över (fortsätter där den andra slutade)
         match: live ? { whiteScore: s!.whiteScore, greenScore: s!.greenScore, goals: s!.goals, matchStartTime: s!.matchStartTime, endTime: s!.endTime, updatedAt: s!.updatedAt } : null,
+        // Senaste sändningen avslutades automatiskt och sparades i matchhistoriken
+        autoSaved: s && s.endedAt && s.autoSavedMatchId ? { sessionId: s.id, matchId: s.autoSavedMatchId } : null,
       };
     }),
     start: lineupProcedure.input(z.object({ deviceId: z.string().min(8).max(64), takeover: z.boolean().optional() })).mutation(async ({ input }) => {
@@ -1304,3 +1307,32 @@ export const appRouter = router({
 export type AppRouter = typeof appRouter;
 
 publicScoreState = (ctx) => appRouter.createCaller(ctx).lineup.scoreState();
+
+/**
+ * Live som ingen avslutade (server/liveMatch.ts avslutar 30 min efter sluttid
+ * eller efter 90 min utan uppdatering): matchen sparas i matchhistoriken som
+ * väntande och "ej avslutad", med uppställningen och livesiffrorna. Avslutas därifrån.
+ */
+setLiveAutoEndHandler(async (s) => {
+  if (s.goals.length === 0 && s.whiteScore === 0 && s.greenScore === 0) return null;
+  const lock = await getActiveLock().catch(() => null);
+  const { doc } = await getLineupSnapshot();
+  const state = lock ? lock.doc : doc;
+  const start = new Date(s.matchStartTime ?? s.startedAt);
+  const lag = await lagetEvent().catch(() => null);
+  const sameDay = lag?.date && lag.date === `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+  const id = await saveMatch({
+    reviewStatus: "pending", reviewedAt: null,
+    name: matchName(start, s.whiteScore, s.greenScore),
+    teamWhiteScore: s.whiteScore, teamGreenScore: s.greenScore,
+    goalHistory: s.goals as never,
+    matchStartTime: start,
+    location: sameDay ? lag?.location ?? null : null,
+    opponentId: state.setup?.mode === "external" ? state.setup.opponentId ?? null : null,
+    matchEndTime: new Date(s.updatedAt),
+    lineup: state as never,
+  });
+  await setMatchReport(id, { live: { viewers: s.uniqueViewers, hearts: s.hearts, unfinished: true } } as never);
+  await unlockLineup().catch(() => undefined);
+  return id;
+});

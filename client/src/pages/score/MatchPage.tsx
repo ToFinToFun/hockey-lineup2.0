@@ -280,7 +280,11 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
   useLivePush(liveMine, { whiteScore: teamWhiteScore, greenScore: teamGreenScore, goals: goalHistory, matchStartTime, endTime });
   const liveUtils = trpc.useUtils();
   const liveStart = trpc.live.start.useMutation({
-    onSuccess: () => { void liveUtils.live.status.invalidate(); toast.success("Live startad", { description: "Följ på /live" }); },
+    onSuccess: (r) => {
+      try { localStorage.setItem("live_session", r.id); } catch { /* */ }
+      void liveUtils.live.status.invalidate();
+      toast.success("Live startad", { description: "Följ på /live" });
+    },
     onError: (e) => toast.error(e.message),
   });
   const liveEnd = trpc.live.end.useMutation({ onSuccess: () => void liveUtils.live.status.invalidate() });
@@ -311,6 +315,10 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
     }
     setLiveTakenOver(false);
   };
+
+  // Sändningen från den här enheten avslutades automatiskt och matchen sparades i historiken
+  const autoSaved = liveStatus.data?.autoSaved ?? null;
+  const autoSavedHere = !!autoSaved && goalHistory.length > 0 && (() => { try { return localStorage.getItem("live_session") === autoSaved.sessionId; } catch { return false; } })();
 
   // Den här enheten sände men någon annan har tagit över: säg det tydligt och spara inte matchen dubbelt
   const [liveTakenOver, setLiveTakenOver] = useState(false);
@@ -344,6 +352,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
   const handleEndMatch = async () => {
     // Matchen sänds (och sparas) från en annan enhet – undvik två sparade matcher
     if (liveStatus.data?.live && !liveMine && !confirm("Matchen sänds live från en annan enhet och sparas där. Spara ändå här? Det blir då två matcher i historiken.")) return;
+    if (autoSavedHere && !confirm("Matchen sparades redan automatiskt i Matchhistorik (ej avslutad) när live avslutades. Avsluta den där i stället. Spara ändå här? Det blir då två matcher.")) return;
     setSavingMatch(true);
     const { start, source } = resolvedStart();
     // Platsen sparas när laget.se har ett evenemang samma dag (inom 12 h från matchstarten)
@@ -617,6 +626,13 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
     }}>
       {/* Fixed top section: buttons + scores */}
       <div className="shrink-0 flex flex-col gap-3 p-4 pb-2" style={{ backgroundColor: "rgba(0,0,0,0.55)" }}>
+        {autoSavedHere && (
+          <div className="rounded-lg bg-sky-500/15 border border-sky-400/40 px-2.5 py-2 text-[11px] text-sky-100 space-y-1.5">
+            <p><b>Matchen sparades automatiskt</b> i Matchhistorik som "ej avslutad" när live avslutades. Avsluta den där.</p>
+            <button onClick={() => { setTeamWhiteScore(0); setTeamGreenScore(0); setGoalHistory([]); setMatchStartTime(undefined); localStorage.removeItem(STORAGE_KEY); try { localStorage.removeItem("live_session"); } catch { /* */ } }}
+              className="px-2 py-1 rounded-md bg-white/15 text-white">Nollställ här</button>
+          </div>
+        )}
         {liveTakenOver && (
           <div className="rounded-lg bg-amber-500/15 border border-amber-400/40 px-2.5 py-2 text-[11px] text-amber-100 space-y-1.5">
             <p><b>Live har tagits över av en annan enhet.</b> Matchen fortsätter och sparas där.</p>

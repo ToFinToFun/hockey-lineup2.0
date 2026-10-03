@@ -39,6 +39,13 @@ function SideLogo({ side, size }: { side: SideInfo; size: number }) {
 export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
   // Ta bort kräver styrelsen (delade länkar får granska och ändra)
   const { isAdmin } = useAuth();
+  // Matcher som sparades automatiskt från live när ingen avslutade
+  const unfinished = (m: unknown) => !!(m as { report?: { live?: { unfinished?: boolean } } | null })?.report?.live?.unfinished;
+  const finishUtils = trpc.useUtils();
+  const finishMutation = trpc.score.match.finish.useMutation({
+    onSuccess: () => { void finishUtils.score.match.invalidate(); toast.success("Matchen är avslutad och godkänd"); },
+    onError: (e) => toast.error(e.message),
+  });
   // Matcher mot andra lag (beta): vårt lags och motståndarens namn och logga
   const opponentsQ = trpc.opponents.list.useQuery({ includeArchived: true }, { staleTime: 5 * 60_000 });
   const sidesOf = (match: { opponentId?: number | null; lineup?: unknown }) => {
@@ -654,7 +661,9 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                       </span>
                     )}
                     <span className="text-[#9BA1A6] text-xs font-medium">{match.name}</span>
-                    {match.reviewStatus === "pending" && (
+                    {unfinished(match) ? (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 font-medium">EJ AVSLUTAD</span>
+                    ) : match.reviewStatus === "pending" && (
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-medium">VÄNTAR</span>
                     )}
                     {match.reviewStatus === "rejected" && (
@@ -1003,8 +1012,18 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                 <Share2 size={14} /> Matchrapport för Instagram
               </button>
 
+              {/* Sparad automatiskt från live – ingen avslutade */}
+              {unfinished(selectedMatchData) && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-3 space-y-2">
+                  <p className="text-red-200 text-xs text-center">Ej avslutad – sparades automatiskt från live när ingen avslutade matchen. Kontrollera resultat och målskyttar och avsluta här.</p>
+                  <button onClick={() => finishMutation.mutate({ id: selectedMatchData.id })} disabled={finishMutation.isPending}
+                    className="w-full py-2.5 rounded-xl text-sm font-semibold bg-[#56c653]/20 border border-[#56c653]/40 text-[#56c653] disabled:opacity-50">
+                    Avsluta matchen
+                  </button>
+                </div>
+              )}
               {/* Granskning */}
-              {selectedMatchData.reviewStatus !== "approved" ? (
+              {unfinished(selectedMatchData) ? null : selectedMatchData.reviewStatus !== "approved" ? (
                 <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
                   <p className="text-amber-300 text-xs text-center">
                     {selectedMatchData.reviewStatus === "pending"

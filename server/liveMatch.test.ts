@@ -59,3 +59,19 @@ describe("ingen avslutar", () => {
     expect(L.shouldAutoEnd({ ...base, endTime: null }, new Date("2026-10-06T23:31:00").getTime())).toBe(true);
   });
 });
+
+describe("automatiskt avslutad sparas i historiken", () => {
+  it("anropar sparningen en gång och kommer ihåg matchens id", async () => {
+    const old = new Date(Date.now() - 3 * 3600_000).toISOString();
+    store.set("live_session", JSON.stringify({ id: "s1", deviceId: "d", startedAt: old, updatedAt: old, endedAt: null, whiteScore: 2, greenScore: 1, goals: [], matchStartTime: old, endTime: null, hearts: { white: 3, green: 1 }, uniqueViewers: 0, salt: "x", viewerHashes: ["a", "b"] }));
+    L.__resetLiveForTest();
+    const saved: number[] = [];
+    L.setLiveAutoEndHandler(async (s) => { saved.push(s.whiteScore); return 42; });
+    const s = await L.currentSession();
+    expect(s?.endedAt).toBeTruthy();
+    expect(s?.uniqueViewers).toBe(2);
+    expect(s?.autoSavedMatchId).toBe(42);
+    await L.currentSession();
+    expect(saved).toEqual([2]);
+  });
+});
