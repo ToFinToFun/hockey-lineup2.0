@@ -786,6 +786,7 @@ export const appRouter = router({
           const o = base.setup?.mode === "external" && base.setup.opponentId ? await getOpponent(base.setup.opponentId).catch(() => null) : null;
           return {
             ...base, players: [], lineup: {}, locked: false, lockedAt: null, lockExpiresAt: null, view,
+            ...(o ? { teamBName: o.name.toUpperCase() } : {}),
             opponent: o ? {
               id: o.id, name: o.name, shortName: o.shortName, color: o.color, logoUrl: o.logoUrl,
               players: o.players.filter((p) => p.active).map((p) => ({ id: opponentPlayerId(p.id), name: p.name, number: p.number ?? "", position: p.position ?? "" })),
@@ -804,6 +805,8 @@ export const appRouter = router({
       const opp = state.setup?.mode === "external" && state.setup.opponentId ? await getOpponent(state.setup.opponentId).catch(() => null) : null;
       return {
         ...state, locked: !!lock, lockedAt: lock?.lockedAt ?? null, lockExpiresAt: lock?.expiresAt ?? null,
+        // Mot annat lag: motståndarens namn från registret (uppställningens lagnamn kan vara "MOTSTÅNDARE")
+        ...(opp ? { teamBName: opp.name.toUpperCase() } : {}),
         opponent: opp ? {
           id: opp.id, name: opp.name, shortName: opp.shortName, color: opp.color, logoUrl: opp.logoUrl,
           // Lagets sparade spelare – går att välja som målskytt även om de inte står i uppställningen

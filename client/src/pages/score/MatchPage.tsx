@@ -5,7 +5,7 @@
  */
 
 import { isOpponentPlayerId, opponentPlayerId } from "@shared/matchSetup";
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, type CSSProperties } from "react";
 import { IMAGES, COLORS, STORAGE_KEY, type GoalEvent, type MatchState } from "@/lib/scoreConstants";
 import { useSponsors, pickLeastShown, logoForName } from "@/lib/sponsors";
 import { useWakeLock } from "@/hooks/useWakeLock";
@@ -60,6 +60,14 @@ function SideLogo({ side }: { side: SideInfo }) {
 
 export default function MatchPage({ lineupState }: MatchPageProps) {
   const sides = matchSides(lineupState?.setup, lineupState?.opponent, lineupState?.teamAName);
+  /** Rubrik i väljaren i lagets färg (mot annat lag: motståndarens färg) */
+  const sideHeaderStyle = (team: "white" | "green"): CSSProperties => {
+    if (!sides.external) return team === "white" ? { backgroundColor: "rgba(255,255,255,0.9)", color: "#1a1a1a" } : { backgroundColor: "rgba(51,121,49,0.85)", color: "#fff" };
+    const c = sides[team].color;
+    const m = c.replace("#", "").match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    const light = m ? (0.2126 * parseInt(m[1], 16) + 0.7152 * parseInt(m[2], 16) + 0.0722 * parseInt(m[3], 16)) / 255 > 0.6 : false;
+    return { backgroundColor: c, color: light ? "#1a1a1a" : "#fff" };
+  };
   // ─── State ─────────────────────────────────────────────────────
   const { sponsors } = useSponsors();
   const [teamWhiteScore, setTeamWhiteScore] = useState(0);
@@ -439,8 +447,10 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
     const teamAName = lineupState.teamAName || "Lag A";
     const teamBName = lineupState.teamBName || "Lag B";
     const isTeamAWhite = teamAIsWhite(teamAName);
-    const scoringTeamName = goal.team === "white" ? (isTeamAWhite ? teamAName : teamBName) : (isTeamAWhite ? teamBName : teamAName);
-    const otherTeamName = goal.team === "white" ? (isTeamAWhite ? teamBName : teamAName) : (isTeamAWhite ? teamAName : teamBName);
+    // Mot annat lag: lagens riktiga namn (motståndarens från registret, inte uppställningens lagnamn)
+    const otherSide = goal.team === "white" ? "green" : "white";
+    const scoringTeamName = sides.external ? sides[goal.team].name.toUpperCase() : goal.team === "white" ? (isTeamAWhite ? teamAName : teamBName) : (isTeamAWhite ? teamBName : teamAName);
+    const otherTeamName = sides.external ? sides[otherSide].name.toUpperCase() : goal.team === "white" ? (isTeamAWhite ? teamBName : teamAName) : (isTeamAWhite ? teamAName : teamBName);
 
     const search = playerPickerSearch.toLowerCase();
     const filter = (p: Player) => !search || p.name.toLowerCase().includes(search) || (p.number ?? "").includes(search);
@@ -861,9 +871,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
                 {pickerData.filteredScoring.length > 0 && (
                   <>
                     <div className="sticky top-0 z-10 px-4 py-2 rounded-t-lg font-semibold text-sm"
-                      style={pickerData.goalTeam === "white"
-                        ? { backgroundColor: "rgba(255,255,255,0.9)", color: "#1a1a1a" }
-                        : { backgroundColor: "rgba(51,121,49,0.85)", color: "#fff" }}>
+                      style={sideHeaderStyle(pickerData.goalTeam)}>
                       {pickerData.scoringTeamName} (uppställning)
                     </div>
                     {pickerData.filteredScoring.map(p => (
@@ -879,9 +887,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
                 {pickerData.filteredOther.length > 0 && (
                   <>
                     <div className="sticky top-0 z-10 px-4 py-2 font-semibold text-sm"
-                      style={pickerData.goalTeam === "white"
-                        ? { backgroundColor: "rgba(51,121,49,0.85)", color: "#fff" }
-                        : { backgroundColor: "rgba(255,255,255,0.9)", color: "#1a1a1a" }}>
+                      style={sideHeaderStyle(pickerData.goalTeam === "white" ? "green" : "white")}>
                       {pickerData.otherTeamName} (uppställning)
                     </div>
                     {pickerData.filteredOther.map(p => (

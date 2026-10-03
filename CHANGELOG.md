@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.60.3 – 2026-10-03
+
+- Score Tracker, välj målskytt vid match mot annat lag: rubrikerna visar lagens riktiga namn och färger (motståndarens namn och färg från registret, vårt lag i klubbens färg) i stället för "MOTSTÅNDARE" i grönt. Servern skickar också motståndarens namn som lagnamn, så att det stämmer även om uppställningen sparats med "Motståndare".
+
 ## 2.60.2 – 2026-10-03
 
 - Score Tracker utan inloggning: innan laget är publicerat skickades ingen motståndare med – därför saknades motståndarens logga och spelare vid mål. Nu följer motståndarens namn, färg, logga och sparade spelare alltid med; bara vår uppställning döljs tills den publiceras.
