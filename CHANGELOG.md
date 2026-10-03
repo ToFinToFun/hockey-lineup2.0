@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.57.1 – 2026-10-03
+
+- Lineup: "Ändrad …" står i rubriken direkt efter klubbnamnet. Den uppdateras direkt när en spelare placeras, flyttas eller tas bort – här eller på en annan enhet – och servern frågas var 30:e sekund (tidigare varje minut).
+
 ## 2.57.0 – 2026-10-03
 
 - Länk till motståndarlag: välj vad de ser av vårt lag – **Visa uppställning** (spelarna på sina platser), **Visa spelare** (bara vilka som spelar, utan platser; platserna skickas inte alls) eller **Dölj allt**. Länklistan visar valet. Äldre länkar fungerar som förut (visa = uppställning).

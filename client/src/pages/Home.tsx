@@ -462,11 +462,32 @@ export default function Home() {
   }, [sync.lastSyncAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // "Ändrad torsdag 18:43" – hämtas om när uppställningen synkats och varje minut
-  const lastChanged = trpc.lineup.lastChanged.useQuery(undefined, { refetchInterval: 60_000, refetchOnWindowFocus: true });
+  const lastChanged = trpc.lineup.lastChanged.useQuery(undefined, { refetchInterval: 30_000, refetchOnWindowFocus: true });
   useEffect(() => {
     if (sync.lastSyncAt) void lastChanged.refetch();
   }, [sync.lastSyncAt]); // eslint-disable-line react-hooks/exhaustive-deps
-  const lastChangedLabel = lastChanged.data?.changedAt ? formatChanged(new Date(lastChanged.data.changedAt)) : null;
+  // Uppdateras direkt när en spelare placeras, flyttas eller tas bort (här eller på en annan enhet),
+  // utan att vänta på servern; serverns tid gäller när den är senare
+  const lineupSignature = useMemo(() => Object.entries(lineup).map(([k, p]) => `${k}=${p.id}`).sort().join("|"), [lineup]);
+  const firstSignature = useRef<string | null>(null);
+  const [localChangedAt, setLocalChangedAt] = useState<Date | null>(null);
+  // Vid start laddas laget från servern: räkna inte det som en ändring (vänta tills första synken är klar)
+  const changeTracking = useRef(false);
+  useEffect(() => {
+    if (!sync.lastSyncAt || changeTracking.current) return;
+    const t = setTimeout(() => { changeTracking.current = true; }, 3000);
+    return () => clearTimeout(t);
+  }, [sync.lastSyncAt]);
+  useEffect(() => {
+    if (!changeTracking.current || firstSignature.current === null) { firstSignature.current = lineupSignature; return; }
+    if (lineupSignature !== firstSignature.current) { firstSignature.current = lineupSignature; setLocalChangedAt(new Date()); }
+  }, [lineupSignature]);
+  const serverChangedAt = lastChanged.data?.changedAt ? new Date(lastChanged.data.changedAt) : null;
+  const changedAt = serverChangedAt && localChangedAt ? (serverChangedAt > localChangedAt ? serverChangedAt : localChangedAt) : serverChangedAt ?? localChangedAt;
+  // Etiketten räknas om varje minut ("idag 15:05" blir "igår 15:05" vid midnatt)
+  const [, setTick] = useState(0);
+  useEffect(() => { const t = setInterval(() => setTick((n) => n + 1), 60_000); return () => clearInterval(t); }, []);
+  const lastChangedLabel = changedAt ? formatChanged(changedAt) : null;
   const sseConnected: boolean | null = sync.status === "live" ? true : sync.status === "connecting" ? null : false;
 
   // Hämta PIR-inställningar, positionshistorik och PIR-värden (bara för visning).
@@ -1666,12 +1687,23 @@ export default function Home() {
                   <img src={club().logo} alt={club().name} className="w-6 h-6 sm:w-7 sm:h-7 object-contain shrink-0" />
                 </Link>
                 <Link href="/" className="leading-tight min-w-0 block" title="Till startsidan">
-                  <h1
-                    className={`text-xs sm:text-sm font-black tracking-widest uppercase truncate ${isLineupDark ? 'text-white' : 'text-gray-900'}`}
-                    style={{ fontFamily: "'Oswald', sans-serif" }}
-                  >
-                    Stålstadens SF
-                  </h1>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <h1
+                      className={`text-xs sm:text-sm font-black tracking-widest uppercase truncate ${isLineupDark ? 'text-white' : 'text-gray-900'}`}
+                      style={{ fontFamily: "'Oswald', sans-serif" }}
+                    >
+                      Stålstadens SF
+                    </h1>
+                    {/* När uppställningen senast ändrades – direkt efter klubbnamnet */}
+                    {lastChangedLabel && (
+                      <span
+                        className={`shrink-0 text-[8px] sm:text-[10px] font-medium px-1.5 py-px rounded-full whitespace-nowrap ${isLineupDark ? 'text-white/55 bg-white/5' : 'text-gray-500 bg-gray-100'}`}
+                        title="Senast en spelare placerades, flyttades, togs ur laget eller lades till"
+                      >
+                        Ändrad {lastChangedLabel}
+                      </span>
+                    )}
+                  </div>
                   {eventInfo ? (
                     <p className={`flex items-center gap-1 text-[8px] sm:text-[9px] font-medium truncate ${isLineupDark ? 'text-sky-300/70' : 'text-sky-600'}`}>
                       <CalendarDays className="w-2.5 h-2.5 shrink-0" />
@@ -2058,21 +2090,9 @@ export default function Home() {
           )}
 
           <main className="px-2 md:px-3 pb-8 overflow-x-hidden max-w-[1400px] mx-auto w-full">
-            {/* Matchen (mot annat lag) och när uppställningen senast ändrades */}
-            {(setup.mode === "external" || lastChangedLabel) && (
-              <div className="mb-2 px-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                {setup.mode === "external" && (
-                  <span className="text-[11px] text-sky-200/80 min-w-0 truncate">{setupLabel(setup, opponentQ.data?.name)}</span>
-                )}
-                {lastChangedLabel && (
-                  <span
-                    className={`text-[10px] sm:text-[11px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${isLineupDark ? 'text-white/55 bg-white/5' : 'text-gray-500 bg-gray-100'}`}
-                    title="Senast en spelare placerades, flyttades, togs ur laget eller lades till"
-                  >
-                    Ändrad {lastChangedLabel}
-                  </span>
-                )}
-              </div>
+            {/* Matchen mot annat lag ("Ändrad …" står i rubriken efter klubbnamnet) */}
+            {setup.mode === "external" && (
+              <div className="mb-2 px-1 text-[11px] text-sky-200/80 truncate">{setupLabel(setup, opponentQ.data?.name)}</div>
             )}
             {/* Villkorlig rendering: ANTINGEN desktop ELLER mobil – aldrig båda */}
             {/* Detta eliminerar dubbla droppables som förvirrar dnd-kit */}
