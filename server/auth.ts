@@ -187,7 +187,7 @@ export async function redeemInvite(res: Response, token: string): Promise<{ expi
   }
 }
 
-export type Session = { role: Role; expiresAt: number; modules?: AccessModule[]; linkName?: string } | null;
+export type Session = { role: Role; expiresAt: number; modules?: AccessModule[]; linkName?: string; linkExpiresAt?: string | null } | null;
 
 const ACCESS_SESSION_SECONDS = 365 * 24 * 60 * 60;
 
@@ -226,7 +226,7 @@ export async function readSession(req: Request): Promise<Session> {
     }
     if (payload.role === "access") {
       const link = await getActiveAccessLink(payload.al);
-      if (link) return { role: "access", expiresAt: payload.exp * 1000, modules: link.modules, linkName: link.name };
+      if (link) return { role: "access", expiresAt: payload.exp * 1000, modules: link.modules, linkName: link.name, linkExpiresAt: link.expiresAt };
     }
     return null;
   } catch {

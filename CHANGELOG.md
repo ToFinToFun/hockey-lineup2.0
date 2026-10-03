@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.60.1 – 2026-10-03
+
+- Startsidan: den som öppnat en delad länk ser länkens namn längst ner (i stället för "Styrelsen"), hur länge länken gäller ("tills vidare" eller sista dag) och Logga ut.
+
 ## 2.60.0 – 2026-10-03
 
 **Inställningar i grupper**

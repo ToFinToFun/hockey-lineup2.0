@@ -45,6 +45,21 @@ export function AccessPanel() {
     );
   }
 
+  // Delad länk med moduler: länkens namn i stället för "Styrelsen"
+  if (auth.role === "access") {
+    return (
+      <div className="w-full max-w-md mt-6 rounded-2xl bg-[#141414] border border-[#2a2a2a] p-4 flex items-center justify-between gap-3">
+        <span className="min-w-0">
+          <span className="block text-xs font-semibold text-white/60 uppercase tracking-wider truncate">{auth.linkName ?? "Delad länk"}</span>
+          <span className="block text-[10px] text-white/35">Via länk · {auth.linkExpiresAt ? `gäller till och med ${new Date(new Date(auth.linkExpiresAt).getTime() - 60_000).toLocaleDateString("sv-SE", { day: "numeric", month: "numeric" })}` : "tills vidare"}</span>
+        </span>
+        <button onClick={() => logout.mutate()} className="flex items-center gap-1 text-xs text-white/40 hover:text-white shrink-0">
+          <LogOut size={12} /> Logga ut
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-md mt-6 rounded-2xl bg-[#141414] border border-[#2a2a2a] p-4 space-y-3">
       <div className="flex items-center justify-between">

@@ -19,6 +19,8 @@ export function useAuth() {
     hasModule: (...m: AccessModule[]) => isAdmin || (role === "access" && m.some((x) => modules.includes(x))),
     modules,
     linkName: me.data?.linkName ?? null,
+    /** Delad länk: sista giltighet (null = tills vidare) */
+    linkExpiresAt: me.data?.linkExpiresAt ?? null,
     expiresAt: me.data?.expiresAt ?? null,
     refetch: me.refetch,
   };

@@ -19,7 +19,7 @@ import { BarChart3, Users, ChevronRight, Trophy, ClipboardList, Timer, TrendingU
 const BG_URL = "/images/background.jpg";
 
 export default function Hub() {
-  const { isAdmin, canEditLineup, hasModule, role, linkName } = useAuth();
+  const { isAdmin, canEditLineup, hasModule } = useAuth();
   const pending = trpc.score.match.pendingCount.useQuery(undefined, { enabled: hasModule("matches") });
   const pendingCount = pending.data?.count ?? 0;
   return (
@@ -63,10 +63,6 @@ export default function Hub() {
 
         {/* Divider */}
         <div className="w-24 h-[2px] bg-gradient-to-r from-transparent via-[#0a7ea4] to-transparent my-6 sm:my-8" />
-
-        {role === "access" && (
-          <p className="mb-4 text-[11px] text-white/45">Öppnad via länk{linkName ? `: ${linkName}` : ""}</p>
-        )}
 
         {/* App cards */}
         <div className="w-full max-w-md space-y-4">
