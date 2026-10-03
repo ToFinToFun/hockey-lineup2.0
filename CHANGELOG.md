@@ -7,6 +7,16 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.52.0 – 2026-10-03
+
+**PIR (Inställningar → PIR)**
+- "Ta fram förslag" svarar alltid: utan analyserade matcher förklaras varför, fel visas, och ett nytt tryck räknar om (tidigare visades det sparade resultatet eller ingenting alls).
+- Ny ruta Gränser: betyg gäller efter (3), full säkerhet efter (10), nykomling i (10), träffsäkerhetens uppvärmning (5) och förslag kräver (6) matcher – med Spara och Återställ standard. Gäller beräkningen på servern och Lineup, prediktion och Auto i webbläsaren.
+- Vikter: Återställ standard.
+
+**Statistik**
+- Matchens stjärnor per spelare: ny kategori Stjärnor under Spelare (★★★, ★★, ★ och totalt; sorterat på 3/2/1 poäng) och fördelningen i spelarprofilen. Samma stjärnor som i matchrapporterna – sparade om de finns, annars de automatiska.
+
 ## 2.51.0 – 2026-10-03
 
 **Score Tracker: uppställningen för den som inte är inloggad**

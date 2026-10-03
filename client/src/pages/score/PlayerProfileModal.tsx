@@ -116,6 +116,23 @@ export default function PlayerProfileModal({ playerName, onClose }: PlayerProfil
               </div>
             </div>
 
+            {/* Matchens stjärnor: totalt och fördelning */}
+            {profile.stars && profile.stars.total > 0 && (
+              <div>
+                <h3 className="text-[#ECEDEE] font-bold text-xs mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                  <Star size={12} className="text-[#F59E0B]" /> Matchens stjärnor · {profile.stars.total}
+                </h3>
+                <div className="grid grid-cols-3 gap-2">
+                  {([["★★★", profile.stars.stars3], ["★★", profile.stars.stars2], ["★", profile.stars.stars1]] as const).map(([label, n]) => (
+                    <div key={label} className="bg-[#2a2a2a] rounded-xl p-3 text-center border border-[#3a3a3a]">
+                      <div className="text-[#ECEDEE] text-xl font-bold">{n}</div>
+                      <div className="text-[#F59E0B] text-[11px]">{label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Best Match */}
             {profile.bestMatch && (
               <div>

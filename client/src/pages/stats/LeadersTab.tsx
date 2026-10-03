@@ -3,7 +3,7 @@
  */
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
-import { Trophy, Target, Users, ChevronDown, ChevronUp, Crown, Medal, Crosshair } from "lucide-react";
+import { Trophy, Target, Users, ChevronDown, ChevronUp, Crown, Medal, Crosshair, Star } from "lucide-react";
 import { HockeyPuck, HockeyStick, HockeyGoalNet } from "@/components/score/HockeyIcons";
 
 interface LeadersTabProps {
@@ -13,7 +13,7 @@ interface LeadersTabProps {
   dateFilter?: { from?: string; to?: string };
 }
 
-type LeaderCategory = "points" | "goals" | "assists" | "gwg" | "matches";
+type LeaderCategory = "points" | "goals" | "assists" | "gwg" | "matches" | "stars";
 
 // ─── Goal Type Config ──────────────────────────────────────────────────────
 const goalTypeConfig: { type: string; label: string; color: string; icon: string }[] = [
@@ -265,6 +265,7 @@ export default function LeadersTab({ stats, onPlayerClick, periodLabel, dateFilt
   const { data: playerStats } = trpc.score.playerStats.useQuery(gkInput);
 
   const topScorers = stats?.topScorers ?? [];
+  const starLeaders = (stats as { starLeaders?: Array<{ name: string; number: string }> } | undefined)?.starLeaders ?? [];
 
   // Build different sorted lists
   const byPoints = useMemo(
@@ -362,6 +363,21 @@ export default function LeadersTab({ stats, onPlayerClick, periodLabel, dateFilt
         { key: "goals", label: "M", width: "w-8" },
         { key: "assists", label: "A", width: "w-8" },
         { key: "points", label: "P", width: "w-8" },
+      ],
+    },
+    {
+      // Matchens stjärnor: ★★★ = 3 poäng, ★★ = 2, ★ = 1 (samma som i matchrapporterna)
+      key: "stars",
+      label: "Stjärnor",
+      icon: Star,
+      data: starLeaders,
+      valueKey: "points",
+      valueLabel: "stjärnpoäng",
+      columns: [
+        { key: "stars3", label: "★★★", width: "w-10" },
+        { key: "stars2", label: "★★", width: "w-9" },
+        { key: "stars1", label: "★", width: "w-7" },
+        { key: "total", label: "Tot", width: "w-8" },
       ],
     },
   ];

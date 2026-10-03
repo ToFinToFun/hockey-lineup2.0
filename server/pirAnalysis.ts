@@ -14,6 +14,7 @@
  * vägen, med 40 matcher två tredjedelar. Då kan analysen hjälpa från början
  * utan att överreagera.
  */
+import { pirThresholds } from "../shared/pirThresholds";
 import type { MatchResult } from "../drizzle/schema";
 import {
   backtestPIR,
@@ -62,8 +63,8 @@ export function metricsFrom(points: BacktestPoint[]): PirMetrics {
   return { matches: points.length, hitRate: decided.length ? hits / decided.length : null, brier, coverage, calibration };
 }
 
-/** Minsta antal förutsagda matcher för att ta fram förslag. */
-export const MIN_MATCHES_FOR_SUGGESTION = 6;
+/** Minsta antal förutsagda matcher för att ta fram förslag (Inställningar → PIR, standard 6). */
+const minForSuggestion = () => pirThresholds().minMatchesForSuggestion;
 /** Hur mycket data som krävs för att lita halvvägs på det bästa fyndet. */
 const SHRINK_MATCHES = 20;
 /** Förbättring i Brier-poäng som krävs för att ett förslag ska räknas som bättre. */
@@ -128,14 +129,20 @@ export async function analyzePir(matches: MatchResult[], currentWeights: PirWeig
   const ratedMatches = countRatedMatches(matches);
 
   let suggestion: PirAnalysis["suggestion"] = null;
-  if (withSuggestion && current.matches > 0) {
-    const enoughData = current.matches >= MIN_MATCHES_FOR_SUGGESTION;
+  if (withSuggestion && current.matches === 0) {
+    // Inget att jämföra med – säg det i stället för att inte svara alls
+    suggestion = {
+      weights: currentWeights, metrics: current, recommended: false,
+      reason: `Inga matcher kunde analyseras ännu (${ratedMatches} godkända matcher med uppställning; de första ${pirThresholds().backtestWarmup} används som uppvärmning). Förslag kräver minst ${minForSuggestion()} analyserade matcher.`,
+    };
+  } else if (withSuggestion) {
+    const enoughData = current.matches >= minForSuggestion();
     if (!enoughData) {
       suggestion = {
         weights: currentWeights,
         metrics: current,
         recommended: false,
-        reason: `Behöver minst ${MIN_MATCHES_FOR_SUGGESTION} analyserade matcher (nu ${current.matches}).`,
+        reason: `Behöver minst ${minForSuggestion()} analyserade matcher (nu ${current.matches}).`,
       };
     } else {
       const found = await searchWeights(matches, currentWeights);

@@ -10,6 +10,7 @@ import { normalizeGoalType } from "../playerHistory";
 import { adminProcedure, router } from "../_core/trpc";
 import { getAllMatchResults, getExternalMatches } from "../scoreDb";
 import { z } from "zod";
+import { starCounts } from "../starStats";
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -399,8 +400,13 @@ export const scoreStatsRouter = router({
         }
       }
 
+      // Matchens stjärnor (namnet kan ha "#nr" på slutet)
+      const bareName = input.name.replace(/\s*#\d+\s*$/, "").trim().toLowerCase();
+      const myStars = starCounts(matches as never).find((x) => x.name.trim().toLowerCase() === bareName) ?? null;
+
       return {
         name: input.name,
+        stars: myStars ? { stars3: myStars.stars3, stars2: myStars.stars2, stars1: myStars.stars1, total: myStars.total } : { stars3: 0, stars2: 0, stars1: 0, total: 0 },
         matchesPlayed: matchHistory.length,
         matchesWhite,
         matchesGreen,
@@ -773,6 +779,7 @@ export const scoreStatsRouter = router({
         totalMatches: 0, whiteWins: 0, greenWins: 0, draws: 0,
         totalGoalsWhite: 0, totalGoalsGreen: 0,
         topScorers: [] as { name: string; goals: number; assists: number; gwg: number; points: number; team: string; matches: number }[],
+        starLeaders: [] as import("../starStats").StarCount[],
         recentForm: [] as { name: string; whiteScore: number; greenScore: number }[],
         biggestWinWhite: null as { name: string; whiteScore: number; greenScore: number } | null,
         biggestWinGreen: null as { name: string; whiteScore: number; greenScore: number } | null,
@@ -924,6 +931,8 @@ export const scoreStatsRouter = router({
     return {
       totalMatches: matches.length, whiteWins, greenWins, draws, totalGoalsWhite, totalGoalsGreen,
       topScorers, recentForm,
+      // Matchens stjärnor per spelare (samma som i matchrapporterna)
+      starLeaders: starCounts(matches as never),
       biggestWinWhite: biggestWinWhite ? { name: biggestWinWhite.name, whiteScore: biggestWinWhite.whiteScore, greenScore: biggestWinWhite.greenScore } : null,
       biggestWinGreen: biggestWinGreen ? { name: biggestWinGreen.name, whiteScore: biggestWinGreen.whiteScore, greenScore: biggestWinGreen.greenScore } : null,
       highestScoringMatch, playerRecordGoals, playerRecordAssists, playerRecordPoints,

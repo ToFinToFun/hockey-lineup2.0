@@ -6,12 +6,13 @@
  *   att en ny spelare man vet är stark kan viktas in direkt.
  */
 import type { Player } from "@/lib/players";
+import { pirThresholds } from "@shared/pirThresholds";
 
 export const PIR_DEFAULT = 1000;
-export const PIR_MIN_MATCHES = 3;
 
+/** Rollens betyg räknas efter så många matcher (Inställningar → PIR, standard 3) */
 export function hasPirHistory(p: Player): boolean {
-  return (p.pirMatchesPlayed ?? 0) >= PIR_MIN_MATCHES && p.pir != null;
+  return (p.pirMatchesPlayed ?? 0) >= pirThresholds().minMatchesShow && p.pir != null;
 }
 
 export function effectivePir(p: Player, asGoalkeeper: boolean): number {

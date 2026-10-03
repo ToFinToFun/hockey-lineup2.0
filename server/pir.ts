@@ -22,6 +22,7 @@
  * 8. Run separate calculations for goalkeeper-only and outfield-only appearances
  */
 
+import { pirThresholds } from "../shared/pirThresholds";
 import { isTeamAWhite as teamAIsWhite, normalizeTeamKey } from "../shared/teams";
 import type { MatchResult } from "../drizzle/schema";
 
@@ -131,14 +132,8 @@ const BASE_K = 32;
 /** K-factor multiplier for newcomers (first N matches) */
 const NEWCOMER_K_MULTIPLIER = 1.8;
 
-/** Number of matches before K-factor normalizes */
-const NEWCOMER_THRESHOLD = 10;
-
-/** Minimum matches for full confidence */
-const MIN_MATCHES_FULL_CONFIDENCE = 10;
-
-/** Minimum matches to show rating at all */
-const MIN_MATCHES_SHOW = 3;
+// Nykomlingsgräns, full säkerhet och visningsgräns kan ändras i Inställningar → PIR
+// (shared/pirThresholds.ts); standard 10, 10 och 3 matcher.
 
 /** Number of iterations for convergence */
 const ITERATIONS = 20;
@@ -308,9 +303,9 @@ function individualBonuses(m: MatchPlayerData, weights: PirWeights, avgGoalsPerT
  * Newcomers have higher K-factor for faster convergence.
  */
 function playerKFactor(matchesPlayed: number): number {
-  if (matchesPlayed < NEWCOMER_THRESHOLD) {
+  if (matchesPlayed < pirThresholds().newcomerMatches) {
     // Linear interpolation from NEWCOMER_K_MULTIPLIER down to 1.0
-    const progress = matchesPlayed / NEWCOMER_THRESHOLD;
+    const progress = matchesPlayed / pirThresholds().newcomerMatches;
     const multiplier = NEWCOMER_K_MULTIPLIER - (NEWCOMER_K_MULTIPLIER - 1) * progress;
     return BASE_K * multiplier;
   }
@@ -655,7 +650,7 @@ function calculatePIRFromData(matchData: MatchPlayerData[], options: PirOptions 
       : null;
 
     // Enhanced confidence: based on matches + recency
-    let confidence = Math.min(s.played / MIN_MATCHES_FULL_CONFIDENCE, 1);
+    let confidence = Math.min(s.played / pirThresholds().fullConfidence, 1);
     // Reduce confidence if player hasn't played recently
     if (daysSince != null && daysSince > INACTIVITY_THRESHOLD_DAYS) {
       confidence *= Math.max(0.3, 1 - (daysSince - INACTIVITY_THRESHOLD_DAYS) / 180);
@@ -669,12 +664,12 @@ function calculatePIRFromData(matchData: MatchPlayerData[], options: PirOptions 
     let goalkeeperTrendLabel: PIRResult["goalkeeperTrendLabel"] = null;
     let goalkeeperConfidence = 0;
 
-    if (rs.gkPlayed >= MIN_MATCHES_SHOW && gkOverallRatings && gkRecentRatings) {
+    if (rs.gkPlayed >= pirThresholds().minMatchesShow && gkOverallRatings && gkRecentRatings) {
       goalkeeperRating = Math.round(gkOverallRatings.get(p) ?? INITIAL_RATING);
       const gkRecent = Math.round(gkRecentRatings.get(p) ?? INITIAL_RATING);
       goalkeeperTrend = gkRecent - goalkeeperRating;
       goalkeeperTrendLabel = getTrendLabel(goalkeeperTrend);
-      goalkeeperConfidence = Math.min(rs.gkPlayed / MIN_MATCHES_FULL_CONFIDENCE, 1);
+      goalkeeperConfidence = Math.min(rs.gkPlayed / pirThresholds().fullConfidence, 1);
     }
 
     // Outfield role-specific PIR
@@ -683,12 +678,12 @@ function calculatePIRFromData(matchData: MatchPlayerData[], options: PirOptions 
     let outfieldTrendLabel: PIRResult["outfieldTrendLabel"] = null;
     let outfieldConfidence = 0;
 
-    if (rs.outPlayed >= MIN_MATCHES_SHOW && outOverallRatings && outRecentRatings) {
+    if (rs.outPlayed >= pirThresholds().minMatchesShow && outOverallRatings && outRecentRatings) {
       outfieldRating = Math.round(outOverallRatings.get(p) ?? INITIAL_RATING);
       const outRecent = Math.round(outRecentRatings.get(p) ?? INITIAL_RATING);
       outfieldTrend = outRecent - outfieldRating;
       outfieldTrendLabel = getTrendLabel(outfieldTrend);
-      outfieldConfidence = Math.min(rs.outPlayed / MIN_MATCHES_FULL_CONFIDENCE, 1);
+      outfieldConfidence = Math.min(rs.outPlayed / pirThresholds().fullConfidence, 1);
     }
 
     // Manuell justering från styrelsen läggs ovanpå (påverkar inte trenden).
@@ -790,7 +785,7 @@ export interface BacktestPoint {
 export async function backtestPIR(
   matches: MatchResult[],
   weights: PirWeights,
-  warmup = 5,
+  warmup = pirThresholds().backtestWarmup,
   yieldFn: () => Promise<void> = async () => {},
 ): Promise<BacktestPoint[]> {
   const data = extractMatchData(matches);
@@ -813,7 +808,7 @@ export async function backtestPIR(
       team.reduce((sum, p) => {
         const r = ratings.get(p);
         if (!r) return sum + INITIAL_RATING;
-        if (r.matchesPlayed < MIN_MATCHES_SHOW) return sum + INITIAL_RATING + r.adjustment;
+        if (r.matchesPlayed < pirThresholds().minMatchesShow) return sum + INITIAL_RATING + r.adjustment;
         known++;
         const role = m.playerRoles.get(p);
         const v = role === "goalkeeper" ? r.goalkeeperRating ?? r.rating : r.outfieldRating ?? r.rating;

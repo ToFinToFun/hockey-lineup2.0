@@ -21,7 +21,9 @@ const MediaApp = lazy(() => import("./pages/media/MediaApp"));
 const VideoApp = lazy(() => import("./pages/media/VideoApp"));
 import InviteRedeem from "./pages/InviteRedeem";
 import { RequireRole } from "./components/auth/RequireRole";
-import { lazy, Suspense, type ComponentType } from "react";
+import { lazy, Suspense, useEffect, type ComponentType } from "react";
+import { trpc } from "@/lib/trpc";
+import { setPirThresholds } from "@shared/pirThresholds";
 
 /** Skyddar en sida i gränssnittet. Servern kontrollerar alltid behörigheten själv. */
 const guard = (need: "admin" | "lineup", Page: ComponentType<any>) => (props: any) => (
@@ -98,6 +100,13 @@ function Router() {
   );
 }
 
+/** PIR-gränserna från servern (Inställningar → PIR), så att Lineup och prediktion räknar som servern */
+function PirThresholdSync() {
+  const q = trpc.pir.thresholds.useQuery(undefined, { staleTime: 10 * 60_000, retry: false, refetchOnWindowFocus: false });
+  useEffect(() => { if (q.data) setPirThresholds(q.data); }, [q.data]);
+  return null;
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -105,6 +114,7 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <ClubProvider>
+            <PirThresholdSync />
             <Router />
           </ClubProvider>
         </TooltipProvider>

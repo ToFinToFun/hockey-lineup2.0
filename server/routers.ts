@@ -30,7 +30,8 @@ import { getAutoNewsConfig, setAutoNewsConfig, getAutoNewsStatus } from "./autoN
 import { getAutoLineupConfig, setAutoLineupConfig, getAutoLineupState } from "./autoLineup";
 import { getActiveLock, lockLineup, unlockLineup, differsFromLock, parsePublishAt } from "./lineupLock";
 import { scoreLineupView } from "./scoreLineupView";
-import { loadPirConfig, PIR_WEIGHTS_KEY, PIR_ADJUSTMENTS_KEY } from "./pirConfig";
+import { loadPirConfig, PIR_WEIGHTS_KEY, PIR_ADJUSTMENTS_KEY, PIR_THRESHOLDS_KEY } from "./pirConfig";
+import { DEFAULT_PIR_THRESHOLDS, PIR_THRESHOLD_LIMITS, sanitizeThresholds } from "../shared/pirThresholds";
 import { positionAndTeamHistory } from "./positionHistory";
 import { nextEvent, eventStart } from "./autoNews";
 import { NOTIFICATION_TYPES, getRecipients, setRecipients, smtpConfigured, sendTestMail, notifyLater, mailLayout, type NotificationType } from "./notifications";
@@ -958,8 +959,25 @@ export const appRouter = router({
 
     getConfig: adminProcedure.query(async () => {
       const cfg = await loadPirConfig();
-      return { ...cfg, defaults: DEFAULT_PIR_WEIGHTS };
+      return { ...cfg, defaults: DEFAULT_PIR_WEIGHTS, thresholdDefaults: DEFAULT_PIR_THRESHOLDS, thresholdLimits: PIR_THRESHOLD_LIMITS };
     }),
+
+    /** Gränserna (för Lineup, prediktion och Auto i webbläsaren) – bara siffror, öppet. */
+    thresholds: publicProcedure.query(async () => (await loadPirConfig()).thresholds),
+
+    /** Ändra gränserna (styrelsen). Tomt objekt = standard. */
+    setThresholds: adminProcedure
+      .input(z.object({
+        minMatchesShow: z.number().int(), fullConfidence: z.number().int(), newcomerMatches: z.number().int(),
+        backtestWarmup: z.number().int(), minMatchesForSuggestion: z.number().int(),
+      }).partial())
+      .mutation(async ({ input }) => {
+        await setConfigValue(PIR_THRESHOLDS_KEY, JSON.stringify(sanitizeThresholds(input)));
+        await loadPirConfig();
+        pirConfigVersion++;
+        analysisCache = null;
+        return { success: true };
+      }),
 
     setWeights: adminProcedure
       .input(z.object({
@@ -990,9 +1008,9 @@ export const appRouter = router({
     analysis: adminProcedure
       .input(z.object({ withSuggestion: z.boolean().default(false) }).optional())
       .query(async ({ input }) => {
-        const { weights } = await loadPirConfig();
+        const { weights, thresholds } = await loadPirConfig();
         const withSuggestion = input?.withSuggestion ?? false;
-        const key = `${await refreshMatchCacheVersion()}:${JSON.stringify(weights)}:${withSuggestion}`;
+        const key = `${await refreshMatchCacheVersion()}:${JSON.stringify(weights)}:${JSON.stringify(thresholds)}:${withSuggestion}`;
         if (!analysisCache || analysisCache.key !== key) {
           analysisCache = { key, result: await analyzePir(await getAllMatchResults(), weights, withSuggestion) };
         }

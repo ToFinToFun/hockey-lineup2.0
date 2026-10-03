@@ -51,6 +51,7 @@ export function PirPanel() {
   const [wantSuggestion, setWantSuggestion] = useState(false);
   const suggestion = trpc.pir.analysis.useQuery({ withSuggestion: true }, { enabled: wantSuggestion, staleTime: 60_000 });
   const ratings = trpc.pir.getRatings.useQuery();
+  const th = config.data?.thresholds;
 
   const [weights, setWeights] = useState<Weights | null>(null);
   useEffect(() => {
@@ -96,7 +97,7 @@ export function PirPanel() {
         <ul className="text-xs text-white/60 space-y-1.5 list-disc pl-4">
           <li>Alla börjar på <b className="text-white/80">1000</b> (snittet). Betyget ändras efter varje godkänd match utifrån om laget vann, hur starkt det egna och motståndarlaget var, och spelarens egna mål, assist eller målvaktsinsats.</li>
           <li>Nyare matcher väger mer än gamla (halveringstid under Vikter). Utespelare och målvakter får separata betyg.</li>
-          <li>Ett betyg visas först efter <b className="text-white/80">3 matcher</b> i rollen; före det räknas spelaren som 1000 i prediktion och Auto.</li>
+          <li>Ett betyg visas först efter <b className="text-white/80">{th?.minMatchesShow ?? 3} matcher</b> i rollen; före det räknas spelaren som 1000 i prediktion och Auto.</li>
           <li>Formpilen jämför de senaste matcherna med betyget över tid.</li>
           <li>Har en spelare bytt lag i sista stund räknas hen till det lag målen gjordes för.</li>
         </ul>
@@ -151,7 +152,7 @@ export function PirPanel() {
           <Loader2 className="animate-spin text-white/40" />
         ) : !m || m.matches === 0 ? (
           <p className="text-white/50 text-sm">
-            För få matcher med uppställning ännu. Analysen kräver minst 6 godkända matcher.
+            För få matcher med uppställning ännu. Analysen hoppar över de första {th?.backtestWarmup ?? 5} matcherna (uppvärmning) och behöver matcher efter dem.
           </p>
         ) : (
           <>
@@ -214,14 +215,35 @@ export function PirPanel() {
             Spara vikter
           </button>
           <button
-            onClick={() => setWantSuggestion(true)}
+            onClick={() => {
+              // Andra trycket räknar om (annars visades bara det sparade resultatet)
+              if (wantSuggestion) void suggestion.refetch();
+              else setWantSuggestion(true);
+            }}
             disabled={suggestion.isFetching}
             className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white/80 text-sm flex items-center gap-2 disabled:opacity-50"
           >
             {suggestion.isFetching ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-            {suggestion.isFetching ? "Provar olika vikter …" : "Ta fram förslag"}
+            {suggestion.isFetching ? "Provar olika vikter … (kan ta en minut)" : "Ta fram förslag"}
+          </button>
+          <button
+            onClick={() => {
+              if (!config.data) return;
+              setWeights(config.data.defaults);
+              saveWeights.mutate(config.data.defaults);
+            }}
+            disabled={!config.data || saveWeights.isPending || JSON.stringify(config.data.weights) === JSON.stringify(config.data.defaults)}
+            className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white/60 text-sm disabled:opacity-40"
+          >
+            Återställ standard
           </button>
         </div>
+        {suggestion.isError && (
+          <p className="text-xs text-red-300">Kunde inte ta fram förslag: {suggestion.error.message}</p>
+        )}
+        {wantSuggestion && !suggestion.isFetching && suggestion.isSuccess && !suggestion.data?.suggestion && (
+          <p className="text-xs text-white/50">Inget förslag kunde tas fram.</p>
+        )}
 
         {s && (
           <div className={`rounded-xl p-3 border ${s.recommended ? "border-emerald-500/40 bg-emerald-500/5" : "border-white/10 bg-[#111]"}`}>
@@ -249,6 +271,8 @@ export function PirPanel() {
           </div>
         )}
       </Card>
+
+      <ThresholdsCard />
 
       {explainId && (
         <PirExplain
@@ -371,5 +395,60 @@ function PirHistoryChart({ history }: { history: Array<{ date: string; rating: n
       <text x={W - pad} y={H - 6} textAnchor="end" fontSize="10" fill="rgba(255,255,255,0.35)">{d(history[history.length - 1].date)}</text>
       <text x={x(history.length - 1)} y={y(vals[vals.length - 1]) - 8} textAnchor="end" fontSize="11" fontWeight="700" fill="#e2e8f0">{vals[vals.length - 1]}</text>
     </svg>
+  );
+}
+
+
+/** Gränser: när PIR börjar gälla och hur träffsäkerheten räknas. Standard = som tidigare. */
+const THRESHOLD_FIELDS: Array<{ key: "minMatchesShow" | "fullConfidence" | "newcomerMatches" | "backtestWarmup" | "minMatchesForSuggestion"; label: string; hint: string }> = [
+  { key: "minMatchesShow", label: "Betyg gäller efter", hint: "Matcher i rollen innan betyget visas och används i prediktion och Auto (före det: 1000)" },
+  { key: "fullConfidence", label: "Full säkerhet efter", hint: "Matcher innan betyget räknas som helt säkert" },
+  { key: "newcomerMatches", label: "Nykomling i", hint: "Matcher där betyget rör sig snabbare (0 = av)" },
+  { key: "backtestWarmup", label: "Träffsäkerhet: uppvärmning", hint: "De första matcherna förutsägs inte (för lite underlag)" },
+  { key: "minMatchesForSuggestion", label: "Förslag kräver", hint: "Analyserade matcher innan förslag på vikter ges" },
+];
+
+function ThresholdsCard() {
+  const utils = trpc.useUtils();
+  const config = trpc.pir.getConfig.useQuery();
+  const [values, setValues] = useState<Record<string, number> | null>(null);
+  useEffect(() => { if (config.data && !values) setValues({ ...config.data.thresholds }); }, [config.data, values]);
+  const save = trpc.pir.setThresholds.useMutation({
+    onSuccess: () => {
+      toast.success("Gränserna sparade – PIR räknas om");
+      void utils.pir.invalidate();
+      setValues(null);
+    },
+    onError: (e) => toast.error("Kunde inte spara", { description: e.message }),
+  });
+  if (!config.data || !values) return null;
+  const defaults = config.data.thresholdDefaults;
+  const limits = config.data.thresholdLimits;
+  const dirty = JSON.stringify(values) !== JSON.stringify(config.data.thresholds);
+  const isDefault = JSON.stringify(config.data.thresholds) === JSON.stringify(defaults);
+  return (
+    <Card icon={SlidersHorizontal} title="Gränser">
+      <p className="text-white/50 text-xs">När PIR börjar gälla och hur träffsäkerheten räknas. Standardvärdet står inom parentes.</p>
+      <div className="space-y-2">
+        {THRESHOLD_FIELDS.map((f) => (
+          <label key={f.key} className="flex items-center gap-3 bg-[#111] rounded-xl p-3">
+            <span className="flex-1 min-w-0">
+              <span className="block text-xs font-semibold text-white">{f.label} <span className="text-white/40 font-normal">({defaults[f.key]})</span></span>
+              <span className="block text-[10px] text-white/40">{f.hint}</span>
+            </span>
+            <input type="number" inputMode="numeric" min={limits[f.key][0]} max={limits[f.key][1]} value={values[f.key]}
+              onChange={(e) => setValues({ ...values, [f.key]: Number(e.target.value) })}
+              className="w-16 bg-[#1f1f1f] border border-white/10 rounded-lg px-2 py-1.5 text-white text-sm text-right" />
+            <span className="text-[10px] text-white/40 w-10">matcher</span>
+          </label>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <button disabled={!dirty || save.isPending} onClick={() => save.mutate(values)}
+          className="px-4 py-2 rounded-lg bg-[#0a7ea4] text-white text-sm font-semibold disabled:opacity-40">Spara gränser</button>
+        <button disabled={isDefault || save.isPending} onClick={() => save.mutate({ ...defaults })}
+          className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white/60 text-sm disabled:opacity-40">Återställ standard</button>
+      </div>
+    </Card>
   );
 }
