@@ -43,28 +43,41 @@ vi.mock("@/lib/trpc", () => {
   };
 });
 vi.mock("../sponsors/SponsorsApp", () => ({ SponsorsPanel: () => <p>Sponsorpanel</p> }));
-vi.mock("wouter", () => ({ Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>, useSearch: () => "", useLocation: () => ["/installningar", vi.fn()] }));
+let search = "";
+vi.mock("wouter", () => ({ Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>, useSearch: () => search, useLocation: () => ["/installningar", vi.fn()] }));
 
 import SettingsApp from "./SettingsApp";
 
 describe("Inställningar", () => {
-  it("visar PIR först, förklaring per spelare och övriga flikar", () => {
-    render(<SettingsApp />);
+  const show = (flik: string) => { search = flik ? `flik=${flik}` : ""; return render(<SettingsApp />); };
+  it("startsidan visar delarna i grupper", () => {
+    const r = show("");
+    for (const t of ["Klubb och lag", "Match och data", "Kopplingar", "Åtkomst", "Motståndare", "PIR", "laget.se", "Notiser", "Om"]) expect(screen.getAllByText(t).length).toBeGreaterThan(0);
+    r.unmount();
+  });
+  it("varje del öppnas via ?flik=", () => {
+    let r = show("pir");
     expect(screen.getByText("Så fungerar PIR")).toBeTruthy();
     fireEvent.click(screen.getByText("Kalle"));
     expect(screen.getByText(/Varför 1060/)).toBeTruthy();
     expect(screen.getAllByText("+30").length).toBe(2); // lagresultat och egna insatser
-    fireEvent.click(screen.getByText("Perioder"));
+    r.unmount();
+    r = show("perioder");
     expect(screen.getByText("Grundserien", { exact: false })).toBeTruthy();
-    fireEvent.click(screen.getByText("laget.se"));
+    r.unmount();
+    r = show("laget");
     expect(screen.getByText("Styrelsen")).toBeTruthy();
     expect(screen.getByText("Automatisk nyhet")).toBeTruthy();
     expect(screen.getByText(/bara 8 anmälda/)).toBeTruthy();
-    fireEvent.click(screen.getByText("Notiser"));
+    r.unmount();
+    r = show("notiser");
     expect(screen.getByText(/Utgående e-post är inte inställd/)).toBeTruthy();
-    fireEvent.click(screen.getByText("Om"));
+    r.unmount();
+    r = show("om");
     expect(screen.getByText(/v9\.9\.9/)).toBeTruthy();
-    fireEvent.click(screen.getByText("Sponsorer"));
+    r.unmount();
+    r = show("sponsorer");
     expect(screen.getByText("Sponsorpanel")).toBeTruthy();
+    r.unmount();
   });
 });

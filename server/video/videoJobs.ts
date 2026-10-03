@@ -18,7 +18,7 @@ import fs from "fs";
 import fsp from "fs/promises";
 import path from "path";
 import os from "os";
-import { readSession } from "../auth";
+import { readSession, hasModule } from "../auth";
 import { recordSponsorNews } from "../sponsorsDb";
 import { buildFfmpegArgs, maxClipSeconds, totalDuration, type VideoFormat } from "./videoFfmpeg";
 import { introClip, validCustom } from "./videoIntro";
@@ -62,7 +62,7 @@ let running = false;
 
 async function requireAdmin(req: Request, res: Response): Promise<boolean> {
   const s = await readSession(req);
-  if (s?.role !== "admin") {
+  if (!hasModule(s, "media")) {
     res.status(401).json({ error: "Bara styrelsen kan skapa videor" });
     return false;
   }

@@ -7,6 +7,17 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.60.0 – 2026-10-03
+
+**Inställningar i grupper**
+- Raden med flikar är ersatt av en startsida i grupper (Klubb och lag, Match och data, Kopplingar, Åtkomst, Om) med en kort beskrivning per del. Varje del öppnas som en egen sida med tillbaka-pil; ?flik= fungerar som förut.
+
+**Åtkomst: delade länkar med moduler**
+- Inställningar → Åtkomst: skapa en länk med namn, moduler och giltighet (datum eller tills vidare). Ändra namn, moduler och giltighet i efterhand – gäller direkt utan ny länk. Stäng länken när som helst. Visar antal öppningar och senast använd.
+- Moduler: Media (bilder, video, hashtaggar), Hockeykort, Statistik (läsa), Spelare (lägga till och ändra), Matchhistorik (granska och ändra) och Matchrapport för den senast sparade matchen (även ej godkänd) utan tillgång till övriga matcher.
+- Den som öppnar länken (/a/…) ser bara sina moduler på startsidan, plus Score Tracker som alltid är öppen. Servern kontrollerar varje anrop.
+- Kräver alltid styrelsen: ta bort matcher, slå ihop spelare, importera spelare, Lineup, inställningar och att skapa länkar. Knapparna för detta döljs för länkar.
+
 ## 2.59.0 – 2026-10-03
 
 **Uppställningen per match**

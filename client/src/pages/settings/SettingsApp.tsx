@@ -1,5 +1,6 @@
 /**
- * Inställningar (styrelsen): allt som styr appen på ett ställe.
+ * Inställningar (styrelsen): allt som styr appen på ett ställe. Startsidan visar
+ * delarna i grupper; ?flik= i adressen öppnar en del (länkar och tillbaka fungerar).
  *  - PIR: hur det fungerar, träffsäkerhet, förklaring per spelare, vikter och justeringar
  *  - Sponsorer: registret med loggor och räknare
  *  - Perioder: försäsong, säsong och slutspel för statistiken
@@ -9,7 +10,8 @@
  */
 import { useEffect, useState } from "react";
 import { Link, useSearch, useLocation } from "wouter";
-import { ArrowLeft, Gauge, Handshake, CalendarRange, Link2, Info, Loader2, CheckCircle2, AlertTriangle, ExternalLink, Bell, Shield, Swords } from "lucide-react";
+import { ArrowLeft, Gauge, Handshake, CalendarRange, Link2, Info, Loader2, CheckCircle2, AlertTriangle, ExternalLink, Bell, Shield, Swords, KeyRound, ChevronRight } from "lucide-react";
+import { AccessPanel } from "./AccessPanel";
 import { OpponentsPanel } from "./OpponentsPanel";
 import { ClubPanel } from "./ClubPanel";
 import { NotificationsPanel } from "./NotificationsPanel";
@@ -20,55 +22,76 @@ import { SponsorsPanel } from "../sponsors/SponsorsApp";
 import { DatabaseInfo } from "@/components/auth/DatabaseInfo";
 
 const TABS = [
-  { id: "pir", label: "PIR", icon: Gauge },
-  { id: "sponsorer", label: "Sponsorer", icon: Handshake },
-  { id: "perioder", label: "Perioder", icon: CalendarRange },
-  { id: "laget", label: "laget.se", icon: Link2 },
-  { id: "notiser", label: "Notiser", icon: Bell },
-  { id: "klubb", label: "Klubb", icon: Shield },
-  { id: "motstandare", label: "Motst.", icon: Swords },
-  { id: "om", label: "Om", icon: Info },
+  { id: "klubb", label: "Klubb", hint: "Namn, lag, färger och loggor", icon: Shield },
+  { id: "motstandare", label: "Motståndare", hint: "Lag vi möter, deras spelare och länkar", icon: Swords },
+  { id: "perioder", label: "Perioder", hint: "Försäsong, säsong och slutspel", icon: CalendarRange },
+  { id: "pir", label: "PIR", hint: "Player Impact Rating: vikter, gränser och träffsäkerhet", icon: Gauge },
+  { id: "sponsorer", label: "Sponsorer", hint: "Registret med loggor och räknare", icon: Handshake },
+  { id: "laget", label: "laget.se", hint: "Konto, anslutning och automatisk nyhet", icon: Link2 },
+  { id: "notiser", label: "Notiser", hint: "Vem som får vilka mejl", icon: Bell },
+  { id: "atkomst", label: "Åtkomst", hint: "Delade länkar till moduler (utan styrelselösenordet)", icon: KeyRound },
+  { id: "om", label: "Om", hint: "Version och databas", icon: Info },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
+
+/** Grupperna på startsidan */
+const GROUPS: Array<{ title: string; tabs: TabId[] }> = [
+  { title: "Klubb och lag", tabs: ["klubb", "motstandare", "perioder"] },
+  { title: "Match och data", tabs: ["pir", "sponsorer"] },
+  { title: "Kopplingar", tabs: ["laget", "notiser"] },
+  { title: "Åtkomst", tabs: ["atkomst"] },
+  { title: "", tabs: ["om"] },
+];
 
 export default function SettingsApp() {
   const search = useSearch();
   const [, navigate] = useLocation();
   const fromUrl = new URLSearchParams(search).get("flik");
-  const [tab, setTab] = useState<TabId>(TABS.some((t) => t.id === fromUrl) ? (fromUrl as TabId) : "pir");
-  useEffect(() => {
-    if (fromUrl && TABS.some((t) => t.id === fromUrl) && fromUrl !== tab) setTab(fromUrl as TabId);
-  }, [fromUrl]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Motståndare (beta) syns bara när funktionen är påslagen under Klubb
-  const clubQ = trpc.club.get.useQuery(undefined, { staleTime: 60_000 });
-  const visibleTabs = TABS.filter((t) => t.id !== "motstandare" || clubQ.data?.features?.opponents);
-  const choose = (id: TabId) => {
-    setTab(id);
-    navigate(`/installningar?flik=${id}`, { replace: true });
-  };
+  const tab: TabId | null = TABS.some((t) => t.id === fromUrl) ? (fromUrl as TabId) : null;
+  const current = TABS.find((t) => t.id === tab);
+  const open = (id: TabId) => navigate(`/installningar?flik=${id}`);
 
   return (
     <div className="min-h-[100dvh] bg-[#0a0a0a] text-white">
       <header className="sticky top-0 z-20 bg-[#0a0a0a]/95 backdrop-blur border-b border-white/5">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Link href="/" className="text-white/60 hover:text-white" aria-label="Tillbaka"><ArrowLeft size={20} /></Link>
-          <h1 className="text-lg font-bold flex-1" style={{ fontFamily: "'Oswald', sans-serif" }}>Inställningar</h1>
+          {tab ? (
+            <button onClick={() => navigate("/installningar")} className="text-white/60 hover:text-white" aria-label="Tillbaka till inställningar"><ArrowLeft size={20} /></button>
+          ) : (
+            <Link href="/" className="text-white/60 hover:text-white" aria-label="Tillbaka"><ArrowLeft size={20} /></Link>
+          )}
+          <h1 className="text-lg font-bold flex-1 truncate" style={{ fontFamily: "'Oswald', sans-serif" }}>
+            {current ? <><span className="text-white/45 font-normal">Inställningar · </span>{current.label}</> : "Inställningar"}
+          </h1>
         </div>
-        {/* Flikar: ikon med kort text under – får plats på mobilen utan att brytas konstigt */}
-        <nav className="max-w-3xl mx-auto px-2 pb-2 grid gap-1" style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}>
-          {visibleTabs.map(({ id, label, icon: Icon }) => (
-            <button key={id} onClick={() => choose(id)} aria-current={tab === id ? "page" : undefined}
-              className={`flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-lg min-w-0 transition-all ${
-                tab === id ? "bg-[#0a7ea4] text-white" : "text-white/55 hover:text-white hover:bg-white/5"
-              }`}>
-              <Icon size={16} />
-              <span className="text-[10px] leading-tight font-medium truncate max-w-full">{label}</span>
-            </button>
-          ))}
-        </nav>
       </header>
 
       <main className="max-w-3xl mx-auto p-4">
+        {!tab && (
+          <div className="space-y-5">
+            {GROUPS.map((g, gi) => (
+              <section key={gi}>
+                {g.title && <h2 className="text-[11px] font-semibold uppercase tracking-wider text-white/40 mb-1.5 px-1">{g.title}</h2>}
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] divide-y divide-white/5 overflow-hidden">
+                  {g.tabs.map((id) => {
+                    const t = TABS.find((x) => x.id === id)!;
+                    const Icon = t.icon;
+                    return (
+                      <button key={id} onClick={() => open(id)} className="w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-white/5">
+                        <Icon size={18} className="text-sky-300/80 shrink-0" />
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-sm font-semibold">{t.label}</span>
+                          <span className="block text-[11px] text-white/45 truncate">{t.hint}</span>
+                        </span>
+                        <ChevronRight size={16} className="text-white/25 shrink-0" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
         {tab === "pir" && <PirPanel />}
         {tab === "sponsorer" && <SponsorsPanel />}
         {tab === "perioder" && <PeriodsPanel />}
@@ -76,6 +99,7 @@ export default function SettingsApp() {
         {tab === "notiser" && <NotificationsPanel />}
         {tab === "klubb" && <ClubPanel />}
         {tab === "motstandare" && <OpponentsPanel />}
+        {tab === "atkomst" && <AccessPanel />}
         {tab === "om" && <AboutPanel />}
       </main>
     </div>

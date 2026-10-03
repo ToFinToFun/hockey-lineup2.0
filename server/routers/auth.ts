@@ -11,7 +11,10 @@ import {
   listActiveInvites,
   revokeInvite,
   startAdminSession,
+  accessLinkToken,
+  redeemAccessLink,
 } from "../auth";
+import { createAccessLink, listAccessLinks, updateAccessLink, revokeAccessLink } from "../accessLinks";
 
 export const authRouter = router({
   /** Vem är inloggad? null = ingen (bara score tracker). */
@@ -64,6 +67,34 @@ export const authRouter = router({
       await revokeInvite(input.id);
       return { success: true };
     }),
+
+  // ─── Delade länkar med moduler (Inställningar → Åtkomst) ───
+  /** Öppna en delad länk: ger en session med länkens moduler. */
+  redeemAccess: publicProcedure
+    .input(z.object({ token: z.string().min(10).max(2000) }))
+    .mutation(async ({ ctx, input }) => {
+      const r = await redeemAccessLink(ctx.res, input.token);
+      if (!r) throw new TRPCError({ code: "UNAUTHORIZED", message: "Länken är ogiltig, återkallad eller har gått ut" });
+      return r;
+    }),
+  accessLinks: adminProcedure.query(async () =>
+    Promise.all((await listAccessLinks()).map(async (l) => ({ ...l, token: await accessLinkToken(l.id) })))
+  ),
+  createAccessLink: adminProcedure
+    .input(z.object({ name: z.string().trim().min(1).max(60), modules: z.array(z.string()).min(1).max(10), validUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable() }))
+    .mutation(async ({ input }) => {
+      const l = await createAccessLink(input);
+      return { ...l, token: await accessLinkToken(l.id) };
+    }),
+  updateAccessLink: adminProcedure
+    .input(z.object({ id: z.string().max(40), name: z.string().trim().min(1).max(60).optional(), modules: z.array(z.string()).min(1).max(10).optional(), validUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional() }))
+    .mutation(async ({ input }) => {
+      try { return await updateAccessLink(input.id, input); } catch (e) { throw new TRPCError({ code: "NOT_FOUND", message: (e as Error).message }); }
+    }),
+  revokeAccessLink: adminProcedure.input(z.object({ id: z.string().max(40) })).mutation(async ({ input }) => {
+    await revokeAccessLink(input.id);
+    return { success: true };
+  }),
 
   /** Gör alla utskickade länkar (och sessioner från dem) ogiltiga. */
   revokeInvites: adminProcedure.mutation(async () => {

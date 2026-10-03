@@ -19,7 +19,7 @@ import { TRPCError } from "@trpc/server";
  * head-to-head, season awards, season stats, and team comparison.
  */
 
-import { publicProcedure, adminProcedure, router } from "../_core/trpc";
+import { publicProcedure, adminProcedure, router, moduleProcedure } from "../_core/trpc";
 import {
   saveMatch,
   getAllMatchResults,
@@ -102,7 +102,7 @@ export const scoreRouter = router({
      * Perioderna: månad-dag som återkommer varje år (recurring) och de konkreta
      * datumen för det pågående hockeyåret (som statistiken filtrerar på).
      */
-    getPeriods: adminProcedure.query(() => getCurrentPeriods()),
+    getPeriods: moduleProcedure("media", "cards", "stats", "players", "matches", "report").query(() => getCurrentPeriods()),
     updatePeriods: adminProcedure
       .input(
         z.object({
@@ -128,7 +128,7 @@ export const scoreRouter = router({
   /** Match CRUD */
   /** Hashtags som alltid läggs till i matchrapportens bildtext. */
   reportTags: router({
-    get: adminProcedure.query(async () => {
+    get: moduleProcedure("media", "report", "matches").query(async () => {
       const raw = await getConfigValue(REPORT_TAGS_KEY);
       try {
         const tags = raw ? (JSON.parse(raw) as string[]) : null;
@@ -136,7 +136,7 @@ export const scoreRouter = router({
       } catch { /* standard */ }
       return defaultReportTags();
     }),
-    set: adminProcedure
+    set: moduleProcedure("media", "report", "matches")
       .input(z.array(z.string().trim().min(2).max(60).regex(/^#[^\s#]+$/, "En hashtag börjar med # och har inga mellanslag")).max(20))
       .mutation(async ({ input }) => {
         await setConfigValue(REPORT_TAGS_KEY, JSON.stringify(input));
@@ -217,17 +217,22 @@ export const scoreRouter = router({
         return { success: true, reviewStatus };
       }),
 
-    list: adminProcedure.query(async () => {
+    list: moduleProcedure("matches", "media").query(async () => {
       return getAllMatchesIncludingUnreviewed();
     }),
 
+    /** Den senast sparade matchen (även ej godkänd, inte avvisad) – för Matchrapport via delad länk. */
+    latest: moduleProcedure("report", "matches", "media").query(async () => {
+      return (await getAllMatchesIncludingUnreviewed()).find((m) => m.reviewStatus !== "rejected") ?? null;
+    }),
+
     /** Antal matcher som väntar på granskning. */
-    pendingCount: adminProcedure.query(async () => {
+    pendingCount: moduleProcedure("matches").query(async () => {
       return { count: await countPendingMatches() };
     }),
 
     /** Godkänn eller avvisa matcher. Bara godkända räknas i statistiken. */
-    review: adminProcedure
+    review: moduleProcedure("matches")
       .input(
         z.object({
           ids: z.array(z.number().int()).min(1).max(500),
@@ -240,13 +245,13 @@ export const scoreRouter = router({
         return { success: true };
       }),
 
-    detail: adminProcedure
+    detail: moduleProcedure("matches")
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
         return getMatchResultById(input.id);
       }),
 
-    update: adminProcedure
+    update: moduleProcedure("matches")
       .input(
         z.object({
           id: z.number(),
@@ -287,7 +292,7 @@ export const scoreRouter = router({
       }),
 
     /** Matchrapportens val: Stars of the Game och "presenteras av". */
-    setReport: adminProcedure
+    setReport: moduleProcedure("matches", "report")
       .input(z.object({
         id: z.number(),
         report: z.object({
@@ -297,7 +302,13 @@ export const scoreRouter = router({
           title: z.string().trim().max(30).nullable().optional(),
         }).nullable(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        // Länk med bara Matchrapport: endast den senast sparade matchen
+        const s = ctx.session;
+        if (s.role === "access" && !s.modules?.includes("matches")) {
+          const latest = (await getAllMatchesIncludingUnreviewed()).find((m) => m.reviewStatus !== "rejected");
+          if (latest?.id !== input.id) throw new TRPCError({ code: "FORBIDDEN", message: "Bara den senaste matchen" });
+        }
         await setMatchReport(input.id, input.report);
         return { success: true };
       }),
@@ -320,7 +331,7 @@ export const scoreRouter = router({
   }),
 
   /** Per-player statistics across all matches - only players from lineups */
-  playerStats: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
+  playerStats: moduleProcedure("stats", "cards", "players").input(dateRangeInput).query(async ({ input }) => {
     const allMatches = await getAllMatchResults();
     const matches = filterMatchesByDate(allMatches, input?.from, input?.to);
     const playerMap: Record<
@@ -473,7 +484,7 @@ export const scoreRouter = router({
   }),
 
   /** Goalkeeper statistics */
-  goalkeeperStats: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
+  goalkeeperStats: moduleProcedure("stats", "cards", "players").input(dateRangeInput).query(async ({ input }) => {
     const allMatches = await getAllMatchResults();
     const matches = filterMatchesByDate(allMatches, input?.from, input?.to);
     const gkMap: Record<

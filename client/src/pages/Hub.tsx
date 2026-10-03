@@ -19,8 +19,8 @@ import { BarChart3, Users, ChevronRight, Trophy, ClipboardList, Timer, TrendingU
 const BG_URL = "/images/background.jpg";
 
 export default function Hub() {
-  const { isAdmin, canEditLineup } = useAuth();
-  const pending = trpc.score.match.pendingCount.useQuery(undefined, { enabled: isAdmin });
+  const { isAdmin, canEditLineup, hasModule, role, linkName } = useAuth();
+  const pending = trpc.score.match.pendingCount.useQuery(undefined, { enabled: hasModule("matches") });
   const pendingCount = pending.data?.count ?? 0;
   return (
     <div className="min-h-[100dvh] bg-[#0a0a0a] text-white relative overflow-hidden">
@@ -63,6 +63,10 @@ export default function Hub() {
 
         {/* Divider */}
         <div className="w-24 h-[2px] bg-gradient-to-r from-transparent via-[#0a7ea4] to-transparent my-6 sm:my-8" />
+
+        {role === "access" && (
+          <p className="mb-4 text-[11px] text-white/45">Öppnad via länk{linkName ? `: ${linkName}` : ""}</p>
+        )}
 
         {/* App cards */}
         <div className="w-full max-w-md space-y-4">
@@ -132,7 +136,7 @@ export default function Hub() {
           </Link>
           )}
           {/* Match History Card */}
-          {isAdmin && (
+          {hasModule("matches") && (
           <Link href="/history">
             <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] hover:border-orange-500/60 transition-all duration-300 cursor-pointer">
               {/* Accent line */}
@@ -172,7 +176,7 @@ export default function Hub() {
           </Link>
           )}
 
-          {isAdmin && (
+          {hasModule("players") && (
           <Link href="/players">
             <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] hover:border-sky-500/60 transition-all duration-300 cursor-pointer">
               <div className="p-5 sm:p-6 flex items-center gap-4">
@@ -191,7 +195,7 @@ export default function Hub() {
 
 
           {/* Stats Card */}
-          {isAdmin && (
+          {hasModule("stats") && (
           <Link href="/stats">
             <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] hover:border-amber-500/60 transition-all duration-300 cursor-pointer">
               {/* Accent line */}
@@ -225,7 +229,7 @@ export default function Hub() {
           )}
 
           {/* Hockey Cards */}
-          {isAdmin && (
+          {hasModule("cards") && (
           <Link href="/cards">
             <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] hover:border-purple-500/60 transition-all duration-300 cursor-pointer">
               {/* Accent line */}
@@ -258,8 +262,26 @@ export default function Hub() {
           </Link>
           )}
 
+          {/* Matchrapport för senaste matchen (delad länk utan Matchhistorik) */}
+          {hasModule("report") && !hasModule("matches") && (
+          <Link href="/rapport">
+            <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] hover:border-amber-400/60 transition-all duration-300 cursor-pointer">
+              <div className="p-5 sm:p-6 flex items-center gap-4">
+                <div className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center">
+                  <ImageIcon size={24} className="text-amber-300" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold tracking-tight">Matchrapport</h2>
+                  <p className="text-white/40 text-xs sm:text-sm mt-0.5">Rapport och Instagram-bilder för senaste matchen</p>
+                </div>
+                <ChevronRight size={20} className="text-white/20 group-hover:text-amber-300 transition-colors flex-shrink-0" />
+              </div>
+            </div>
+          </Link>
+          )}
+
           {/* Media */}
-          {isAdmin && (
+          {hasModule("media") && (
           <Link href="/media">
             <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] hover:border-fuchsia-400/60 transition-all duration-300 cursor-pointer">
               <div className="p-5 sm:p-6 flex items-center gap-4">

@@ -19,14 +19,17 @@ const SponsorsApp = lazy(() => import("./pages/sponsors/SponsorsApp"));
 const SettingsApp = lazy(() => import("./pages/settings/SettingsApp"));
 const MediaApp = lazy(() => import("./pages/media/MediaApp"));
 const VideoApp = lazy(() => import("./pages/media/VideoApp"));
+const ReportApp = lazy(() => import("./pages/report/ReportApp"));
+const AccessRedeem = lazy(() => import("./pages/AccessRedeem"));
 import InviteRedeem from "./pages/InviteRedeem";
 import { RequireRole } from "./components/auth/RequireRole";
 import { lazy, Suspense, useEffect, type ComponentType } from "react";
 import { trpc } from "@/lib/trpc";
 import { setPirThresholds } from "@shared/pirThresholds";
+import type { AccessModule } from "@shared/accessModules";
 
 /** Skyddar en sida i gränssnittet. Servern kontrollerar alltid behörigheten själv. */
-const guard = (need: "admin" | "lineup", Page: ComponentType<any>) => (props: any) => (
+const guard = (need: "admin" | "lineup" | AccessModule[], Page: ComponentType<any>) => (props: any) => (
   <RequireRole need={need}>
     <Suspense fallback={<div className="min-h-[100dvh] bg-[#0a0a0a]" />}>
       <Page {...props} />
@@ -48,14 +51,16 @@ const OpponentLinkRoute = (props: any) => (
   </Suspense>
 );
 const IceTimePage = guard("admin", IceTimeApp);
-const StatsPage = guard("admin", StatsApp);
-const CardsPage = guard("admin", CardsApp);
-const HistoryPage = guard("admin", HistoryApp);
-const PlayersPage = guard("admin", PlayersApp);
+// Delade länkar (Inställningar → Åtkomst) ger moduler utan styrelselösenordet
+const StatsPage = guard(["stats"], StatsApp);
+const CardsPage = guard(["cards"], CardsApp);
+const HistoryPage = guard(["matches"], HistoryApp);
+const PlayersPage = guard(["players"], PlayersApp);
+const ReportPage = guard(["report", "matches"], ReportApp);
 const SponsorsPage = guard("admin", SponsorsApp);
 const SettingsPage = guard("admin", SettingsApp);
-const MediaPage = guard("admin", MediaApp);
-const VideoPage = guard("admin", VideoApp);
+const MediaPage = guard(["media"], MediaApp);
+const VideoPage = guard(["media"], VideoApp);
 
 function Router() {
   return (
@@ -72,6 +77,9 @@ function Router() {
 
       {/* Tillfällig länk från styrelsen */}
       <Route path="/lank/:token" component={InviteRedeem} />
+      {/* Delad länk med moduler */}
+      <Route path="/a/:token">{(params) => <Suspense fallback={<div className="min-h-[100dvh] bg-[#0a0a0a]" />}><AccessRedeem token={params.token} /></Suspense>}</Route>
+      <Route path="/rapport" component={ReportPage} />
 
       {/* Score Tracker app – öppen för alla */}
       <Route path="/score" component={ScoreApp} />

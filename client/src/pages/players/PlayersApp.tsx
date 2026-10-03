@@ -11,6 +11,7 @@ import { Link } from "wouter";
 import { toast } from "sonner";
 import { ArrowLeft, Download, Upload, Plus, Search, Loader2, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/hooks/useAuth";
 import { positionName } from "@/lib/players";
 import { PlayerProfileView } from "./PlayerProfile";
 
@@ -139,6 +140,8 @@ const show = (field: string, v: unknown) =>
 // ─── Sida ────────────────────────────────────────────────────────────────────
 
 export default function PlayersApp() {
+  // Import och Slå ihop kräver styrelsen (delade länkar får lägga till och ändra)
+  const { isAdmin } = useAuth();
   const utils = trpc.useUtils();
   const list = trpc.players.list.useQuery();
   const [filter, setFilter] = useState<Filter>("active");
@@ -204,7 +207,7 @@ export default function PlayersApp() {
         <Link href="/" className="text-white/60 hover:text-white"><ArrowLeft size={20} /></Link>
         <h1 className="text-lg font-bold flex-1" style={{ fontFamily: "'Oswald', sans-serif" }}>Spelare</h1>
         <button onClick={exportCsv} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-white/5 border border-white/10"><Download size={14} /> Exportera</button>
-        <button onClick={() => fileRef.current?.click()} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-white/5 border border-white/10"><Upload size={14} /> Importera</button>
+        {isAdmin && <button onClick={() => fileRef.current?.click()} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-white/5 border border-white/10"><Upload size={14} /> Importera</button>}
         <input ref={fileRef} type="file" accept=".csv,text/csv,.txt" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); e.target.value = ""; }} />
       </header>
 
@@ -261,6 +264,7 @@ export default function PlayersApp() {
 // ─── Redigera ────────────────────────────────────────────────────────────────
 
 function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]; byId: Map<string, Row>; onClose: () => void; onSaved: () => void }) {
+  const { isAdmin } = useAuth();
   const [f, setF] = useState({
     name: row?.name ?? "", number: row?.number ?? "", position: row?.position ?? "", teamColor: row?.teamColor ?? null,
     captainRole: row?.captainRole ?? null, altPosition: row?.altPosition ?? null, isMember: row?.isMember ?? true, active: row?.active ?? true,
@@ -325,7 +329,7 @@ function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]
         <button onClick={save} disabled={!payload.name || update.isPending || create.isPending}
           className="w-full py-2.5 rounded-xl bg-[#0a7ea4] font-semibold disabled:opacity-40">Spara</button>
 
-        {row && (
+        {row && isAdmin && (
           <div className="border-t border-white/5 pt-3 space-y-2">
             <p className="text-xs text-white/50">Samma person registrerad två gånger? Slå ihop – matcher och mål flyttas till den valda spelaren och den här tas bort.</p>
             <div className="flex gap-2">

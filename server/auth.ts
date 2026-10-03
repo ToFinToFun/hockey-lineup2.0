@@ -4,6 +4,8 @@
  * - "admin":  styrelsen, loggar in med ADMIN_PASSWORD. Session i 30 dagar.
  * - "lineup": den som öppnat en tillfällig länk (skapad av admin). Får bygga
  *             uppställningar och synka laget.se tills länken går ut (24 h).
+ * - "access": delad länk med moduler (server/accessLinks.ts) – bara de valda
+ *             modulerna, aldrig Lineup eller inställningar.
  *
  * Sessionen är en signerad JWT i en httpOnly-cookie. Länkar är signerade
  * tokens med samma nyckel. "Återkalla alla länkar" höjer ett versionsnummer i
@@ -19,8 +21,10 @@ import { timingSafeEqual, createHash, randomUUID } from "crypto";
 import type { Request, Response } from "express";
 import { ENV } from "./_core/env";
 import { getConfigValue, setConfigValue } from "./scoreDb";
+import { getActiveAccessLink, markUsed } from "./accessLinks";
+import type { AccessModule } from "../shared/accessModules";
 
-export type Role = "admin" | "lineup";
+export type Role = "admin" | "lineup" | "access";
 
 const COOKIE_NAME = "stal_session";
 const ADMIN_SESSION_SECONDS = 30 * 24 * 60 * 60;
@@ -183,7 +187,32 @@ export async function redeemInvite(res: Response, token: string): Promise<{ expi
   }
 }
 
-export type Session = { role: Role; expiresAt: number } | null;
+export type Session = { role: Role; expiresAt: number; modules?: AccessModule[]; linkName?: string } | null;
+
+const ACCESS_SESSION_SECONDS = 365 * 24 * 60 * 60;
+
+/** Länk-token för en delad länk med moduler (giltigheten avgörs av länken, inte token) */
+export async function accessLinkToken(id: string): Promise<string> {
+  return sign({ typ: "access-link", al: id }, 10 * 365 * 24 * 60 * 60);
+}
+
+/** Byter en delad länk mot en session. Modulerna läses vid varje anrop (ändringar gäller direkt). */
+export async function redeemAccessLink(res: Response, token: string): Promise<{ name: string; modules: AccessModule[] } | null> {
+  try {
+    const { payload } = await jwtVerify(token, secretKey());
+    if (payload.typ !== "access-link") return null;
+    const link = await getActiveAccessLink(payload.al);
+    if (!link) return null;
+    const until = link.expiresAt ? Math.floor((new Date(link.expiresAt).getTime() - Date.now()) / 1000) : ACCESS_SESSION_SECONDS;
+    if (until <= 0) return null;
+    const session = await sign({ typ: "session", role: "access", al: link.id }, until);
+    setSessionCookie(res, session, until);
+    await markUsed(link.id).catch(() => undefined);
+    return { name: link.name, modules: link.modules };
+  } catch {
+    return null;
+  }
+}
 
 export async function readSession(req: Request): Promise<Session> {
   const raw = req.headers.cookie ? parseCookie(req.headers.cookie)[COOKIE_NAME] : undefined;
@@ -194,6 +223,10 @@ export async function readSession(req: Request): Promise<Session> {
     if (payload.role === "admin") return { role: "admin", expiresAt: payload.exp * 1000 };
     if (payload.role === "lineup" && payload.v === (await getInviteVersion()) && (await isInviteActive(payload.inv))) {
       return { role: "lineup", expiresAt: payload.exp * 1000 };
+    }
+    if (payload.role === "access") {
+      const link = await getActiveAccessLink(payload.al);
+      if (link) return { role: "access", expiresAt: payload.exp * 1000, modules: link.modules, linkName: link.name };
     }
     return null;
   } catch {
@@ -212,4 +245,10 @@ export function loginRateLimited(ip: string): boolean {
   }
   entry.count++;
   return entry.count > 10;
+}
+
+
+/** Styrelsen eller en delad länk med någon av modulerna (för REST-routerna) */
+export function hasModule(s: Session, ...modules: AccessModule[]): boolean {
+  return s?.role === "admin" || (s?.role === "access" && modules.some((m) => s.modules?.includes(m)));
 }

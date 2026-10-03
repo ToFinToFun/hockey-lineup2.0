@@ -1,7 +1,7 @@
 import { isTeamAWhite, defaultTeamNames } from "../shared/teams";
 import { TRPCError } from "@trpc/server";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, lineupProcedure, adminProcedure, router } from "./_core/trpc";
+import { publicProcedure, lineupProcedure, adminProcedure, moduleProcedure, lineupOrModuleProcedure, router } from "./_core/trpc";
 import { authRouter } from "./routers/auth";
 import { playersRouter } from "./routers/players";
 import { newsExists, fetchAttendance, updateAttendance, publishNews, deleteNews, fetchAccountName, NEWS_ADMIN_URL, type AttendingStatus } from "./lagetSe";
@@ -179,7 +179,7 @@ export const appRouter = router({
   scoreStats: scoreStatsRouter,
   laget: router({
     /** Hämta anmälningslistan från laget.se för dagens/nästa event */
-    attendance: lineupProcedure.query(async () => {
+    attendance: lineupOrModuleProcedure("media").query(async () => {
       // Mot andra lag kan matchen ha egen dag/tid/plats (Lineup → Match)
       return withExternalEvent(await fetchAttendance());
     }),
@@ -357,11 +357,11 @@ export const appRouter = router({
   // Originalfotot visas via GET /api/players/:id/card-source (se server/_core/index.ts).
 
   cards: router({
-    list: adminProcedure.query(() => listCards()),
-    stats: adminProcedure
+    list: moduleProcedure("media", "cards", "stats", "players", "matches", "report").query(() => listCards()),
+    stats: moduleProcedure("media", "cards", "stats", "players", "matches", "report")
       .input(z.object({ playerId: z.string().min(1).max(64), includeExternal: z.boolean().optional() }))
       .query(({ input }) => cardStats(input.playerId, { includeExternal: input.includeExternal })),
-    save: adminProcedure
+    save: moduleProcedure("cards")
       .input(z.object({
         playerId: z.string().min(1).max(64),
         settings: z.record(z.string(), z.unknown()),
@@ -388,7 +388,7 @@ export const appRouter = router({
         }
         return { success: true, profileUpdated };
       }),
-    delete: adminProcedure
+    delete: moduleProcedure("cards")
       .input(z.object({ playerId: z.string().min(1).max(64) }))
       .mutation(async ({ input }) => {
         await deleteCard(input.playerId);
@@ -443,10 +443,10 @@ export const appRouter = router({
   // Loggan visas via GET /api/opponents/:id/logo (se server/_core/index.ts).
 
   opponents: router({
-    list: adminProcedure
+    list: moduleProcedure("media", "cards", "stats", "players", "matches", "report")
       .input(z.object({ includeArchived: z.boolean().optional() }).optional())
       .query(({ input }) => listOpponents(input?.includeArchived ?? false)),
-    get: adminProcedure.input(z.object({ id: z.number().int().positive() })).query(async ({ input }) => {
+    get: moduleProcedure("media", "cards", "stats", "players", "matches", "report").input(z.object({ id: z.number().int().positive() })).query(async ({ input }) => {
       const o = await getOpponent(input.id);
       if (!o) throw new TRPCError({ code: "NOT_FOUND", message: "Laget finns inte" });
       return o;
@@ -587,11 +587,11 @@ export const appRouter = router({
   // Egen bild visas via GET /api/media/:id/photo (se server/_core/index.ts).
 
   media: router({
-    list: adminProcedure.query(async () => {
+    list: moduleProcedure("media").query(async () => {
       const [posts, withPhoto] = await Promise.all([listMediaPosts(), mediaPhotoIds()]);
       return posts.map((p) => ({ ...p, hasPhoto: withPhoto.has(p.id) }));
     }),
-    save: adminProcedure
+    save: moduleProcedure("media")
       .input(z.object({
         id: z.number().int().positive().optional(),
         type: z.enum(["lineup", "text", "cards", "stats", "result"]),
@@ -605,7 +605,7 @@ export const appRouter = router({
         if (JSON.stringify(input.settings).length > 60_000) throw new TRPCError({ code: "BAD_REQUEST", message: "För mycket data i inlägget" });
         return { id: await saveMediaPost(input) };
       }),
-    delete: adminProcedure
+    delete: moduleProcedure("media")
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ input }) => {
         await deleteMediaPost(input.id);
@@ -991,13 +991,13 @@ export const appRouter = router({
 
   pir: router({
     /** Get PIR ratings for all players (enhanced with trend, confidence, etc.) */
-    getRatings: lineupProcedure.query(async () => {
+    getRatings: lineupOrModuleProcedure("stats", "cards", "players").query(async () => {
       // Räknas bara om när matcherna eller inställningarna har ändrats.
       return getPirRatings();
     }),
 
     /** En spelares PIR med placering bland alla med betyg i samma roll (spelarprofilen). */
-    player: adminProcedure
+    player: moduleProcedure("players", "stats")
       .input(z.object({ id: z.string().min(1).max(64) }))
       .query(async ({ input }) => {
         const all = await getPirRatings();
@@ -1083,7 +1083,7 @@ export const appRouter = router({
 
   statsConfig: router({
     /** Get stats visibility settings */
-    getVisibility: adminProcedure.query(async () => {
+    getVisibility: moduleProcedure("media", "cards", "stats", "players", "matches", "report").query(async () => {
       const raw = await getConfigValue("stats_visibility");
       const defaults = {
         overview: true,

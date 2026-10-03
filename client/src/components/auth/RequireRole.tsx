@@ -4,7 +4,10 @@ import { Loader2, Lock, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { LoginForm } from "./LoginForm";
 
-type Need = "admin" | "lineup";
+import type { AccessModule } from "@shared/accessModules";
+
+/** "admin", "lineup" eller moduler (styrelsen eller en delad länk med någon av dem) */
+type Need = "admin" | "lineup" | AccessModule[];
 
 /**
  * Visar innehållet bara för rätt roll. Servern kontrollerar alltid behörigheten
@@ -12,7 +15,7 @@ type Need = "admin" | "lineup";
  */
 export function RequireRole({ need, children }: { need: Need; children: ReactNode }) {
   const auth = useAuth();
-  const allowed = need === "admin" ? auth.isAdmin : auth.canEditLineup;
+  const allowed = need === "admin" ? auth.isAdmin : need === "lineup" ? auth.canEditLineup : auth.hasModule(...need);
 
   if (auth.loading) {
     return (
@@ -35,7 +38,9 @@ export function RequireRole({ need, children }: { need: Need; children: ReactNod
         <p className="text-white/50 text-sm">
           {need === "lineup"
             ? "Den här delen är för styrelsen, eller för dig som fått en tillfällig länk."
-            : "Den här delen är bara för styrelsen."}
+            : Array.isArray(need)
+              ? auth.role === "access" ? "Din länk ger inte tillgång till den här delen." : "Den här delen är för styrelsen, eller för dig som fått en länk till den."
+              : "Den här delen är bara för styrelsen."}
         </p>
         <LoginForm />
         <Link href="/" className="inline-flex items-center gap-1 text-white/40 text-xs hover:text-white">

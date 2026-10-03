@@ -10,7 +10,7 @@ import express from "express";
 import helmet from "helmet";
 import { createServer } from "http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { readSession } from "../auth";
+import { readSession, hasModule } from "../auth";
 import { getPlayerPhoto } from "../playerPhotos";
 import { getCardSource, getCardMask } from "../playerCards";
 import { startLiveProfileSchedule } from "../cardProfile";
@@ -115,7 +115,7 @@ async function startServer() {
   app.get("/api/players/:id/card-source", async (req, res) => {
     try {
       const session = await readSession(req);
-      if (session?.role !== "admin") return res.status(401).end();
+      if (!hasModule(session, "cards", "media")) return res.status(401).end();
       const src = await getCardSource(String(req.params.id).slice(0, 64));
       if (!src) return res.status(404).end();
       const etag = `"${src.updatedAt.getTime()}"`;
@@ -132,7 +132,7 @@ async function startServer() {
   app.get("/api/players/:id/card-mask", async (req, res) => {
     try {
       const session = await readSession(req);
-      if (session?.role !== "admin") return res.status(401).end();
+      if (!hasModule(session, "cards", "media")) return res.status(401).end();
       const m = await getCardMask(String(req.params.id).slice(0, 64));
       if (!m) return res.status(404).end();
       const etag = `"m${m.updatedAt.getTime()}"`;
@@ -176,7 +176,7 @@ async function startServer() {
   app.get("/api/media/:id/photo", async (req, res) => {
     try {
       const session = await readSession(req);
-      if (session?.role !== "admin") return res.status(401).end();
+      if (!hasModule(session, "media")) return res.status(401).end();
       const p = await getMediaPhoto(Number(req.params.id));
       if (!p) return res.status(404).end();
       res.setHeader("Cache-Control", "private, no-cache");

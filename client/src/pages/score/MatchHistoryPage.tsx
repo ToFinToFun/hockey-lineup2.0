@@ -2,6 +2,7 @@ import { matchSides, type SideInfo } from "@/lib/matchSides";
 import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { club } from "@shared/club";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/hooks/useAuth";
 import { IMAGES } from "@/lib/scoreConstants";
 import { useSponsors, logoForName } from "@/lib/sponsors";
 import { POSITION_COLORS } from "@/lib/positionColors";
@@ -36,6 +37,8 @@ function SideLogo({ side, size }: { side: SideInfo; size: number }) {
 }
 
 export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
+  // Ta bort kräver styrelsen (delade länkar får granska och ändra)
+  const { isAdmin } = useAuth();
   // Matcher mot andra lag (beta): vårt lags och motståndarens namn och logga
   const opponentsQ = trpc.opponents.list.useQuery({ includeArchived: true }, { staleTime: 5 * 60_000 });
   const sidesOf = (match: { opponentId?: number | null; lineup?: unknown }) => {
@@ -464,7 +467,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
             {selectedIds.size === filteredMatches.length ? "Avmarkera alla" : "Välj alla"}
           </button>
           <div className="flex-1" />
-          {selectedIds.size > 0 && (
+          {selectedIds.size > 0 && isAdmin && (
             <button
               onClick={() => setBulkDeleteDialog(true)}
               className="flex items-center gap-1.5 bg-[#EF4444] text-white px-4 py-1.5 rounded-full text-sm font-medium hover:bg-[#DC2626] transition-colors"
@@ -1042,14 +1045,14 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                 >
                   <Pencil size={14} /> Redigera
                 </button>
-                <button
+                {isAdmin && <button
                   onClick={() => {
                     setPasswordDialog({ action: "delete", matchId: selectedMatchData.id });
                   }}
                   className="flex-1 flex items-center justify-center gap-2 bg-white/[0.04] border border-[#EF4444]/30 text-[#EF4444] py-2.5 rounded-xl text-sm font-medium hover:bg-[#EF4444]/10 transition-colors"
                 >
                   <Trash2 size={14} /> Ta bort
-                </button>
+                </button>}
               </div>
             </div>
           )}

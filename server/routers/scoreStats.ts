@@ -7,7 +7,7 @@ import { normalizeGoalType } from "../playerHistory";
  * playerProfile, headToHead, seasonAwards, seasonStats, teamComparison
  */
 
-import { adminProcedure, router } from "../_core/trpc";
+import { adminProcedure, router, moduleProcedure } from "../_core/trpc";
 import { getAllMatchResults, getExternalMatches } from "../scoreDb";
 import { z } from "zod";
 import { starCounts } from "../starStats";
@@ -101,7 +101,7 @@ export const scoreStatsRouter = router({
    * mål per match och bästa poänggörare i hallen. Lagens vinster räknas bara för
    * internmatcher; spelarnas siffror följer valet "Inkl. externa matcher".
    */
-  venueStats: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
+  venueStats: moduleProcedure("media", "cards", "stats", "players", "matches", "report").input(dateRangeInput).query(async ({ input }) => {
     const matches = filterMatchesByDate(await getAllMatchResults({ includeExternal: input?.includeExternal }), input?.from, input?.to)
       .filter((m) => !!m.location);
     type Line = { name: string; goals: number; assists: number };
@@ -138,7 +138,7 @@ export const scoreStatsRouter = router({
    * Resultat mot varje motståndare (matcher mot andra lag): V/O/F, målskillnad,
    * våra bästa poänggörare mot dem och deras målskyttar mot oss.
    */
-  opponentRecords: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
+  opponentRecords: moduleProcedure("media", "cards", "stats", "players", "matches", "report").input(dateRangeInput).query(async ({ input }) => {
     const matches = filterMatchesByDate(await getExternalMatches(), input?.from, input?.to);
     const opps = new Map((await listOpponents(true)).map((o) => [o.id, o]));
     type Line = { name: string; goals: number; assists: number };
@@ -180,7 +180,7 @@ export const scoreStatsRouter = router({
   }),
 
   /** Detailed player profile with per-match history */
-  playerProfile: adminProcedure
+  playerProfile: moduleProcedure("media", "cards", "stats", "players", "matches", "report")
     .input(z.object({ name: z.string(), includeExternal: z.boolean().optional() }))
     .query(async ({ input }) => {
       const matches = await getAllMatchResults({ includeExternal: input.includeExternal });
@@ -436,7 +436,7 @@ export const scoreStatsRouter = router({
     }),
 
   /** Head-to-head comparison between two players */
-  headToHead: adminProcedure
+  headToHead: moduleProcedure("media", "cards", "stats", "players", "matches", "report")
     .input(z.object({
       player1: z.string(),
       player2: z.string(),
@@ -568,7 +568,7 @@ export const scoreStatsRouter = router({
     }),
 
   /** Season Awards */
-  seasonAwards: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
+  seasonAwards: moduleProcedure("media", "cards", "stats", "players", "matches", "report").input(dateRangeInput).query(async ({ input }) => {
     const allMatches = await getAllMatchResults({ includeExternal: input?.includeExternal });
     const matches = filterMatchesByDate(allMatches, input?.from, input?.to);
 
@@ -771,7 +771,7 @@ export const scoreStatsRouter = router({
   }),
 
   /** Aggregated season statistics */
-  seasonStats: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
+  seasonStats: moduleProcedure("media", "cards", "stats", "players", "matches", "report").input(dateRangeInput).query(async ({ input }) => {
     const allMatches = await getAllMatchResults({ includeExternal: input?.includeExternal });
     const matches = filterMatchesByDate(allMatches, input?.from, input?.to);
     if (matches.length === 0) {
@@ -942,7 +942,7 @@ export const scoreStatsRouter = router({
   }),
 
   /** Team comparison (Vita vs Gröna) */
-  teamComparison: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
+  teamComparison: moduleProcedure("media", "cards", "stats", "players", "matches", "report").input(dateRangeInput).query(async ({ input }) => {
     const allMatches = await getAllMatchResults();
     const matches = filterMatchesByDate(allMatches, input?.from, input?.to);
 

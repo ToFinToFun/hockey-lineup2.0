@@ -3,7 +3,7 @@ import { getConfigValue } from "../scoreDb";
 import { teamSuggestions, applyTeams } from "../teamRecovery";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { adminProcedure, lineupProcedure, router } from "../_core/trpc";
+import { adminProcedure, lineupProcedure, router, moduleProcedure } from "../_core/trpc";
 import { seasonHistory, seasonOf } from "../playerHistory";
 import { playerProfile } from "../playerProfile";
 import { getAllMatchResults } from "../scoreDb";
@@ -124,10 +124,10 @@ function planImport(rows: ImportRow[], registry: RegistryPlayer[], markMissingAs
 
 export const playersRouter = router({
   /** Alla spelare i registret (även inaktiva och ihopslagna). */
-  list: adminProcedure.query(() => listPlayers()),
+  list: moduleProcedure("media", "cards", "stats", "players", "matches", "report").query(() => listPlayers()),
 
   /** Matcher, positioner, lag, mål och assist per säsong för en spelare. */
-  history: adminProcedure
+  history: moduleProcedure("players", "stats", "cards")
     .input(z.object({ id: z.string().min(1).max(64), includeExternal: z.boolean().optional() }))
     .query(async ({ input }) => {
       const all = seasonHistory(await getAllMatchResults({ includeExternal: input.includeExternal }));
@@ -135,7 +135,7 @@ export const playersRouter = router({
     }),
 
   /** Profil: matchlogg, form, rekord och kemi (kedjekamrater, lagkamrater, motståndare). */
-  profile: adminProcedure
+  profile: moduleProcedure("players", "stats", "cards")
     .input(z.object({ id: z.string().min(1).max(64), includeExternal: z.boolean().optional() }))
     .query(async ({ input }) => {
       const players = await listPlayers();
@@ -144,7 +144,7 @@ export const playersRouter = router({
     }),
 
   /** Antal matcher per spelare för en säsong (standard: innevarande). */
-  seasonCounts: adminProcedure
+  seasonCounts: moduleProcedure("players", "stats", "cards")
     .input(z.object({ season: z.string().max(9).optional() }).optional())
     .query(async ({ input }) => {
       const season = input?.season ?? seasonOf(new Date());
@@ -157,7 +157,7 @@ export const playersRouter = router({
       return { season, counts };
     }),
 
-  update: adminProcedure
+  update: moduleProcedure("players")
     .input(z.object({ id: z.string().max(64), fields: fieldsSchema }))
     .mutation(async ({ input }) => {
       const updated = await updatePlayer(input.id, input.fields as PlayerFields);
@@ -165,7 +165,7 @@ export const playersRouter = router({
       return updated;
     }),
 
-  create: adminProcedure
+  create: moduleProcedure("players")
     .input(fieldsSchema.extend({ name: z.string().trim().min(1).max(120) }))
     .mutation(({ input }) => createPlayer(input as PlayerFields & { name: string })),
 
@@ -178,7 +178,7 @@ export const playersRouter = router({
     }),
 
   /** Saker att se över: möjliga dubbletter, medlemmar utan nummer m.m. */
-  issues: adminProcedure.query(async () => {
+  issues: moduleProcedure("players").query(async () => {
     const live = await listPlayers();
     const byName = new Map<string, RegistryPlayer[]>();
     for (const p of live) {
@@ -216,15 +216,15 @@ export const playersRouter = router({
     }),
 
   /** Förslag på lag för spelare som saknar lag (efter oavsiktlig nollställning). */
-  teamSuggestions: adminProcedure.query(() => teamSuggestions()),
+  teamSuggestions: moduleProcedure("players").query(() => teamSuggestions()),
 
   /** Sätt lag för valda spelare (efter att förslagen godkänts). */
-  applyTeams: adminProcedure
+  applyTeams: moduleProcedure("players")
     .input(z.array(z.object({ playerId: z.string().min(1).max(64), teamColor: z.enum(["white", "green"]) })).max(200))
     .mutation(async ({ input }) => ({ updated: await applyTeams(input) })),
 
   /** Resultatet av engångsrättningen 30/9 (vilka spelare som fick tillbaka laget). */
-  teamRestoreLog: adminProcedure.query(async () => {
+  teamRestoreLog: moduleProcedure("players").query(async () => {
     const raw = await getConfigValue("fix_team_restore_20260930");
     return raw ? (JSON.parse(raw) as { at: string; matchName: string | null; restored: Array<{ id: string; name: string; team: string }> }) : null;
   }),
