@@ -7,6 +7,15 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.59.0 – 2026-10-03
+
+**Uppställningen per match**
+- Internmatchen och varje motståndare har nu en egen sparad uppställning. När man växlar under Lineup → Match sparas den gamla matchens uppställning, och den nya matchens tas fram (vid internmatch båda lagen, mot motståndare vårt lag – deras sida sparas redan på laget). Övriga spelare går till truppen. Det går att köra internmatcher fram till en extern match utan att lagen blandas.
+- Motståndarens länk visar vårt lag live när matchen är vald i Lineup, annars den uppställning som sparades för matchen mot dem – aldrig internmatchens.
+
+**Ändra en skickad länk**
+- Pennan vid en länk: ändra vad laget ser (Uppställning, Spelare, Dölj allt) och matchdagen. Samma länk fortsätter gälla – ingen ny behöver skickas.
+
 ## 2.58.0 – 2026-10-03
 
 - Länk till motståndarlag: välj matchdag – länken slutar fungera ett dygn efter (vid midnatt efter dagen efter matchen). Förifylls när Lineup är inställd på matchen mot laget med egen dag. Utan matchdag gäller länken i 7 dagar som tidigare. Länklistan visar matchdag och sista giltiga dag.

@@ -14,6 +14,8 @@ import { applyLineupPatch, getLineupSnapshot, refreshOpponentPlayers } from "./l
 import { opponentPlayerId, opponentPlayerDbId, isOpponentPlayerId } from "../shared/matchSetup";
 import { createTeamSlots, MAX_TEAM_CONFIG, type TeamConfig } from "../client/src/lib/lineup";
 import { club } from "../shared/club";
+import { getLineupContext } from "./lineupContexts";
+import { getRegistryMap } from "./playersDb";
 
 /** Vad laget får se av vårt lag: uppställningen, bara spelarna (lista) eller inget */
 export type OurTeamView = "lineup" | "players" | "none";
@@ -73,6 +75,22 @@ export async function listOpponentLinks(opponentId: number): Promise<OpponentLin
   return (await readLinks()).filter((l) => l.opponentId === opponentId);
 }
 
+/** Ändra en skickad länk (vad de ser och matchdag) – samma länk, ingen ny behöver skickas. */
+export async function updateOpponentLink(token: string, change: { ourView?: OurTeamView; matchDate?: string | null }): Promise<OpponentLink> {
+  const links = await readLinks();
+  const link = links.find((l) => l.token === token);
+  if (!link) throw new Error("Länken finns inte (eller har gått ut)");
+  if (change.ourView) { link.ourView = change.ourView; link.showOurTeam = change.ourView !== "none"; }
+  if (change.matchDate !== undefined) {
+    const expires = change.matchDate ? linkExpiry({ matchDate: change.matchDate }) : new Date(new Date(link.createdAt).getTime() + 7 * 86_400_000);
+    if (expires.getTime() <= Date.now()) throw new Error("Länken skulle redan ha gått ut med den matchdagen");
+    link.matchDate = change.matchDate;
+    link.expiresAt = expires.toISOString();
+  }
+  await writeLinks(links);
+  return link;
+}
+
 export async function revokeOpponentLink(token: string) {
   await writeLinks((await readLinks()).filter((l) => l.token !== token));
 }
@@ -103,11 +121,25 @@ export async function linkView(token: string) {
     ? Object.fromEntries(Object.entries(live.lineup).filter(([k, p]) => k.startsWith("team-b-") && isOpponentPlayerId(p.id)).map(([k, p]) => [k, opponentPlayerDbId(p.id)]))
     : stored;
   const ourView = ourViewOf(link);
-  const ourPlaced = live ? Object.entries(live.lineup).filter(([k]) => k.startsWith("team-a-")) : [];
-  const ours = live && ourView !== "none"
+  // Vårt lag: live när matchen är vald i Lineup, annars matchens sparade uppställning
+  // (sparas när man växlar till en annan match – blandas aldrig med internmatcher)
+  let ourPlaced: Array<[string, { name: string; number?: string; position: string }]> = live ? Object.entries(live.lineup).filter(([k]) => k.startsWith("team-a-")) : [];
+  let ourConfig: TeamConfig | undefined = live?.teamAConfig;
+  if (!live && ourView !== "none") {
+    const ctx = await getLineupContext(`opp-${link.opponentId}`);
+    if (ctx) {
+      const reg = await getRegistryMap();
+      ourPlaced = Object.entries(ctx.slots).filter(([k]) => k.startsWith("team-a-")).flatMap(([k, id]) => {
+        const r = reg.get(id);
+        return r ? [[k, { name: r.name, number: r.number ?? "", position: r.position }] as [string, { name: string; number?: string; position: string }]] : [];
+      });
+      ourConfig = (ctx.teamAConfig as TeamConfig | undefined) ?? MAX_TEAM_CONFIG;
+    }
+  }
+  const ours = ourPlaced.length && ourView !== "none"
     ? {
-      name: live.teamAName,
-      config: live.teamAConfig,
+      name: live?.teamAName ?? club().name.toUpperCase(),
+      config: ourConfig ?? MAX_TEAM_CONFIG,
       // "players": bara vilka som spelar (ingen plats) – platserna skickas inte alls
       lineup: ourView === "lineup" ? Object.fromEntries(ourPlaced.map(([k, p]) => [k, { name: p.name, number: p.number ?? "", position: p.position }])) : {},
       players: ourView === "players" ? ourPlaced.map(([, p]) => ({ name: p.name, number: p.number ?? "", position: p.position as string })) : [],

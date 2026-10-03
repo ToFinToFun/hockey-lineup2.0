@@ -55,3 +55,8 @@ export function normalizeSetup(s: Partial<MatchSetup> | null | undefined): Match
   const oppList = Array.isArray(s.oppList) ? [...new Set(s.oppList.filter((x) => Number.isInteger(x) && x > 0))].slice(0, 60) : null;
   return { mode: "external", opponentId: s.opponentId ?? null, ourName: s.ourName ?? null, ourLogo: s.ourLogo ?? "club", date, time, location, oppList };
 }
+
+
+/** Nyckel för matchens sparade uppställning: "internal" eller "opp-<id>" (server/lineupContexts.ts) */
+export const contextKeyOf = (setup: { mode: string; opponentId?: number | null }) =>
+  setup.mode === "external" && setup.opponentId ? `opp-${setup.opponentId}` : "internal";

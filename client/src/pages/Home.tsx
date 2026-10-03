@@ -33,7 +33,7 @@ import { PlayerCardOverlay } from "@/components/PlayerCard";
 import { LagetNewsModal } from "@/components/LagetNewsModal";
 import { ShareToolsModal } from "@/components/auth/ShareToolsModal";
 import { RosterSummary } from "@/components/RosterSummary";
-import { INTERNAL_SETUP, isOpponentPlayerId, type MatchSetup } from "@shared/matchSetup";
+import { contextKeyOf, INTERNAL_SETUP, isOpponentPlayerId, type MatchSetup } from "@shared/matchSetup";
 import { useFeatures } from "@/contexts/ClubContext";
 import { MatchSetupModal, setupLabel, ourLogoUrl } from "@/components/opponent/MatchSetupBar";
 import { OpponentTeamPanel, toLineupPlayer } from "@/components/opponent/OpponentTeamPanel";
@@ -737,6 +737,11 @@ export default function Home() {
     const newLineup: Record<string, Player> = {};
     const back: Player[] = [];
     const switching = prev.mode !== next.mode || prev.opponentId !== next.opponentId;
+    // Matchens uppställning sparas innan bytet (internmatch och varje motståndare har sin egen)
+    if (switching) {
+      const slots = Object.fromEntries(Object.entries(current).filter(([, p]) => !isOpponentPlayerId(p.id)).map(([k, p]) => [k, p.id]));
+      void opponentUtils.client.lineup.saveContext.mutate({ key: contextKeyOf(prev), slots, teamAConfig: teamAConfigRef.current, teamBConfig: teamBConfigRef.current }).catch(() => undefined);
+    }
     for (const [slotId, p] of Object.entries(current)) {
       if (switching && slotId.startsWith("team-b-")) {
         // Lag B töms vid byte: våra spelare tillbaka till truppen, motståndarens försvinner
@@ -787,7 +792,41 @@ export default function Home() {
         });
       }).catch(() => undefined);
     }
+    // ...och den nya matchens sparade uppställning tas fram (vårt lag; vid internmatch båda lagen)
+    if (switching) {
+      const key = contextKeyOf(next);
+      void opponentUtils.client.lineup.context.query({ key }).then((ctx) => {
+        if (!ctx || contextKeyOf(setupRef.current) !== key) return;
+        restoreContext(ctx.slots, key === "internal" ? ["team-a-", "team-b-"] : ["team-a-"]);
+        if (ctx.teamAConfig) setTeamAConfig(ctx.teamAConfig as TeamConfig);
+        if (key === "internal" && ctx.teamBConfig) setTeamBConfig(ctx.teamBConfig as TeamConfig);
+      }).catch(() => undefined);
+    }
   }, [pushUndo]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * Ställ upp en sparad matchuppställning: våra spelare på sina platser (för de
+   * angivna lagen), övriga tillbaka till truppen. Spelare som inte finns längre hoppas över.
+   */
+  const restoreContext = useCallback((saved: Record<string, string>, prefixes: string[]) => {
+    const inScope = (slot: string) => prefixes.some((pre) => slot.startsWith(pre));
+    const cur = lineupRef.current;
+    const pool = new Map<string, Player>();
+    for (const p of availablePlayersRef.current) pool.set(p.id, p);
+    for (const p of Object.values(cur)) if (!isOpponentPlayerId(p.id)) pool.set(p.id, p);
+    const nextLineup: Record<string, Player> = {};
+    for (const [slot, p] of Object.entries(cur)) if (!inScope(slot) || isOpponentPlayerId(p.id)) nextLineup[slot] = p;
+    const placed = new Set(Object.values(nextLineup).map((p) => p.id));
+    for (const [slot, id] of Object.entries(saved)) {
+      const p = pool.get(id);
+      if (!p || !inScope(slot) || placed.has(id) || nextLineup[slot]) continue;
+      nextLineup[slot] = p;
+      placed.add(id);
+    }
+    const roster = [...pool.values()].filter((p) => !placed.has(p.id));
+    setLineup(nextLineup);
+    setAvailablePlayers(roster);
+  }, []);
 
   /** Placera/ta bort en motståndarspelare på lag B (påverkar aldrig vår trupp). */
   const placeOpponent = useCallback((slotId: string, player: Player | null) => {

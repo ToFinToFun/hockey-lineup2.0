@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Plus, Trash2, Upload, Archive, ChevronRight, Link2, Copy, Share2, X } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Trash2, Upload, Archive, ChevronRight, Link2, Copy, Share2, X, Pencil } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { prepareLogo } from "./ClubPanel";
 
@@ -26,6 +26,11 @@ function ShareLinks({ opponentId, name }: { opponentId: number; name: string }) 
     onError: (e) => toast.error("Kunde inte skapa länken", { description: e.message }),
   });
   const revoke = trpc.opponents.revokeLink.useMutation({ onSuccess: () => void utils.opponents.links.invalidate({ opponentId }) });
+  const update = trpc.opponents.updateLink.useMutation({
+    onSuccess: () => { toast.success("Länken ändrad – samma länk gäller"); void utils.opponents.links.invalidate({ opponentId }); },
+    onError: (e) => toast.error("Kunde inte ändra länken", { description: e.message }),
+  });
+  const [editing, setEditing] = useState<string | null>(null);
   const [ourView, setOurView] = useState<"lineup" | "players" | "none">("none");
   // Matchdagen: förifylls om Lineup är inställd på matchen mot laget med egen dag
   const live = trpc.lineup.scoreState.useQuery(undefined, { staleTime: 60_000, retry: false });
@@ -47,6 +52,7 @@ function ShareLinks({ opponentId, name }: { opponentId: number; name: string }) 
   return (
     <div className="rounded-xl border border-sky-400/25 bg-sky-500/5 p-3 space-y-2">
       <p className="text-xs font-semibold text-sky-200 flex items-center gap-1.5"><Link2 size={13} /> Dela länk till laget</p>
+      <p className="text-[10px] text-white/40">Vårt lag på deras sida: den aktuella uppställningen när matchen är vald i Lineup, annars den som sparades för matchen när ni växlade (aldrig internmatchens).</p>
       <p className="text-[11px] text-white/45">Laget kan själva fylla i namn, logga och spelare och göra sin uppställning – utan inloggning. Ändringarna syns direkt i Lineup när matchen mot laget är vald; annars sparas de på laget och fylls i när laget väljs. Ni kan köra internmatcher emellan.</p>
       <label className="block text-[11px] text-white/50">Matchdag
         <input type="date" min={todayIso} value={matchDate} onChange={(e) => setMatchDate(e.target.value)}
@@ -66,14 +72,29 @@ function ShareLinks({ opponentId, name }: { opponentId: number; name: string }) 
       <button onClick={() => create.mutate({ opponentId, ourView, days: 7, matchDate: matchDate || null })} disabled={create.isPending}
         className="w-full py-2 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-100 text-sm font-semibold disabled:opacity-40">Skapa länk</button>
       {(links.data ?? []).map((l) => (
-        <div key={l.token} className="flex items-center gap-2 rounded-lg bg-black/30 px-2 py-1.5">
+        <div key={l.token} className="flex flex-wrap items-center gap-2 rounded-lg bg-black/30 px-2 py-1.5">
           <span className="flex-1 min-w-0">
             <span className="block text-[11px] text-white/80 truncate">{url(l.token)}</span>
             <span className="block text-[10px] text-white/40">{l.ourView === "lineup" ? "Ser vår uppställning" : l.ourView === "players" ? "Ser våra spelare" : "Ser inget av vårt lag"} {l.matchDate ? ` · match ${new Date(l.matchDate + "T12:00").toLocaleDateString("sv-SE", { day: "numeric", month: "numeric" })}` : ""} · gäller till {new Date(new Date(l.expiresAt).getTime() - 60_000).toLocaleDateString("sv-SE", { day: "numeric", month: "numeric" })}</span>
           </span>
           <button onClick={() => { void navigator.clipboard.writeText(url(l.token)); toast.success("Länken kopierad"); }} aria-label="Kopiera" className="p-1.5 text-white/60 hover:text-white"><Copy size={13} /></button>
           <button onClick={() => void share(l.token)} aria-label="Dela" className="p-1.5 text-white/60 hover:text-white"><Share2 size={13} /></button>
+          <button onClick={() => setEditing(editing === l.token ? null : l.token)} aria-label="Ändra länken" className={`p-1.5 ${editing === l.token ? "text-sky-200" : "text-white/60 hover:text-white"}`}><Pencil size={13} /></button>
           <button onClick={() => revoke.mutate({ token: l.token })} aria-label="Stäng länken" className="p-1.5 text-red-300/70 hover:text-red-300"><X size={13} /></button>
+          {editing === l.token && (
+            <div className="basis-full space-y-2 pt-1">
+              <div className="grid grid-cols-3 gap-1.5">
+                {([["lineup", "Uppställning"], ["players", "Spelare"], ["none", "Dölj allt"]] as const).map(([v, label]) => (
+                  <button key={v} onClick={() => update.mutate({ token: l.token, ourView: v })} disabled={update.isPending}
+                    className={`py-1 rounded-md text-[10px] font-semibold border ${l.ourView === v ? "bg-sky-500/25 border-sky-400/60 text-sky-100" : "bg-white/5 border-white/10 text-white/55"}`}>{label}</button>
+                ))}
+              </div>
+              <label className="flex items-center gap-2 text-[10px] text-white/50">Matchdag
+                <input type="date" min={todayIso} defaultValue={l.matchDate ?? ""} onChange={(e) => update.mutate({ token: l.token, matchDate: e.target.value || null })}
+                  className="flex-1 rounded bg-white/5 border border-white/10 text-white text-xs px-2 py-1" />
+              </label>
+            </div>
+          )}
         </div>
       ))}
     </div>

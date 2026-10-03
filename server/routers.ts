@@ -13,7 +13,7 @@ import { refreshLiveProfile } from "./cardProfile";
 import { club } from "../shared/club";
 import { getClubOverrides, saveClubOverrides, loadClub } from "./clubConfig";
 import { getFeatures, setFeatures } from "./features";
-import { createOpponentLink, ourViewOf, listOpponentLinks, revokeOpponentLink, resolveLink, linkView, setLinkSlot, afterLinkPlayerChange, getStoredOpponentLineup, getStoredOpponentList, setStoredOpponentList, setLinkList } from "./opponentLinks";
+import { createOpponentLink, updateOpponentLink, ourViewOf, listOpponentLinks, revokeOpponentLink, resolveLink, linkView, setLinkSlot, afterLinkPlayerChange, getStoredOpponentLineup, getStoredOpponentList, setStoredOpponentList, setLinkList } from "./opponentLinks";
 import { listOpponents, getOpponent, saveOpponent, deleteOpponent, addOpponentPlayer, updateOpponentPlayer, deleteOpponentPlayer, MAX_OPPONENT_LOGO_BASE64 } from "./opponents";
 import { CLUB_ASSET_KEYS, MAX_CLUB_ASSET_BASE64, setClubAsset, deleteClubAsset, listClubAssets } from "./clubAssets";
 import { listMediaPosts, mediaPhotoIds, saveMediaPost, deleteMediaPost, MAX_MEDIA_PHOTO_BASE64 } from "./mediaPosts";
@@ -30,6 +30,7 @@ import { getAutoNewsConfig, setAutoNewsConfig, getAutoNewsStatus } from "./autoN
 import { getAutoLineupConfig, setAutoLineupConfig, getAutoLineupState } from "./autoLineup";
 import { getActiveLock, lockLineup, unlockLineup, differsFromLock, parsePublishAt } from "./lineupLock";
 import { scoreLineupView } from "./scoreLineupView";
+import { getLineupContext, saveLineupContext } from "./lineupContexts";
 import { opponentPlayerId } from "../shared/matchSetup";
 import { loadPirConfig, PIR_WEIGHTS_KEY, PIR_ADJUSTMENTS_KEY, PIR_THRESHOLDS_KEY } from "./pirConfig";
 import { DEFAULT_PIR_THRESHOLDS, PIR_THRESHOLD_LIMITS, sanitizeThresholds } from "../shared/pirThresholds";
@@ -503,6 +504,17 @@ export const appRouter = router({
           return await createOpponentLink(input.opponentId, input.ourView ?? (input.showOurTeam ? "lineup" : "none"), { days: input.days, matchDate: input.matchDate });
         } catch (e) { throw new TRPCError({ code: "BAD_REQUEST", message: (e as Error).message }); }
       }),
+    /** Ändra vad laget ser av vårt lag och/eller matchdagen – länken är densamma */
+    updateLink: adminProcedure
+      .input(z.object({
+        token: z.string().max(64),
+        ourView: z.enum(["lineup", "players", "none"]).optional(),
+        matchDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        try { return await updateOpponentLink(input.token, { ourView: input.ourView, matchDate: input.matchDate }); }
+        catch (e) { throw new TRPCError({ code: "BAD_REQUEST", message: (e as Error).message }); }
+      }),
     revokeLink: adminProcedure.input(z.object({ token: z.string().max(64) })).mutation(async ({ input }) => {
       await revokeOpponentLink(input.token);
       return { success: true };
@@ -775,6 +787,20 @@ export const appRouter = router({
     }),
 
     /** När uppställningen senast ändrades (visas som "Ändrad torsdag 18:43"). */
+    /** Sparad uppställning för en match (internmatch eller mot ett lag) – se server/lineupContexts.ts */
+    context: lineupProcedure.input(z.object({ key: z.string().regex(/^(internal|opp-\d+)$/) })).query(({ input }) => getLineupContext(input.key)),
+    saveContext: lineupProcedure
+      .input(z.object({
+        key: z.string().regex(/^(internal|opp-\d+)$/),
+        slots: z.record(z.string().max(40), z.string().max(80)),
+        teamAConfig: z.any().optional(),
+        teamBConfig: z.any().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await saveLineupContext(input.key, { slots: input.slots, teamAConfig: input.teamAConfig, teamBConfig: input.teamBConfig });
+        return { success: true };
+      }),
+
     lastChanged: lineupProcedure.query(async () => ({ changedAt: (await getLineupChangedAt())?.toISOString() ?? null })),
 
     positionHistory: lineupProcedure.query(async () => {
