@@ -7,6 +7,13 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.54.0 – 2026-10-03
+
+**Matcher mot andra lag: alla deras spelare sparas**
+- Namn som skrivs in för motståndarens mål eller assist i Score Tracker ("Lägg till …") sparas som lagets spelare när matchen sparas – och när en match redigeras i matchhistoriken. "Erik Lund #9" sparas med nummer 9. Redan sparade namn läggs inte till igen.
+- Score Tracker: vid motståndarens mål listas lagets alla sparade spelare (inte vår trupp), även de som inte står i uppställningen.
+- (Spelare som läggs till i Lineup, under Inställningar → Motståndare eller via motståndarens länk sparades redan.)
+
 ## 2.53.0 – 2026-10-03
 
 **Matcher mot andra lag – ur beta**

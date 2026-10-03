@@ -8,6 +8,7 @@ import { scheduleLiveProfileRefresh } from "../cardProfile";
 import { unlockLineup } from "../lineupLock";
 import { isOpponentPlayerId, opponentPlayerDbId } from "../../shared/matchSetup";
 import { setStoredOpponentLineup } from "../opponentLinks";
+import { saveNewOpponentScorers } from "../opponents";
 import { notifyLater, mailLayout } from "../notifications";
 import { ENV } from "../_core/env";
 import { TRPCError } from "@trpc/server";
@@ -196,6 +197,8 @@ export const scoreRouter = router({
         });
         scheduleLiveProfileRefresh(); // profilkort med statistik ritas om i bakgrunden
         await unlockLineup().catch(() => undefined); // matchen avslutad – laget låses upp
+        // Mot motståndare: inskrivna målskyttar/assist sparas som lagets spelare
+        if (input.opponentId) await saveNewOpponentScorers(input.opponentId, input.goalHistory).catch((e) => console.error("[motståndare] kunde inte spara spelare:", e));
         // Mot motståndare: lagets uppställning sparas på laget (förifyllt nästa gång)
         if (input.opponentId && input.lineup && typeof input.lineup === "object") {
           const slots = ((input.lineup as { lineup?: Record<string, { id?: string }> }).lineup) ?? {};
@@ -268,6 +271,11 @@ export const scoreRouter = router({
       )
       .mutation(async ({ input }) => {
         const { id, matchEndTime, createdAt, location, ...data } = input;
+        // Mot motståndare: namn som lagts till vid redigering sparas också som lagets spelare
+        if (data.goalHistory) {
+          const m = await getMatchResultById(id).catch(() => null);
+          if (m?.opponentId) await saveNewOpponentScorers(m.opponentId, data.goalHistory).catch(() => undefined);
+        }
         await updateMatch(id, {
           ...data,
           matchEndTime: matchEndTime ? new Date(matchEndTime) : undefined,

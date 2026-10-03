@@ -4,6 +4,7 @@
  * Mirrors the native app's Match tab
  */
 
+import { isOpponentPlayerId } from "@shared/matchSetup";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { IMAGES, COLORS, STORAGE_KEY, type GoalEvent, type MatchState } from "@/lib/scoreConstants";
 import { useSponsors, pickLeastShown, logoForName } from "@/lib/sponsors";
@@ -414,7 +415,11 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
       if (p) { other.push({ ...p, pickPos: fromSlot(slot) }); placedIds.add(p.id); }
     }
 
-    const unplaced = (lineupState.players || [])
+    // Motståndarens mål (match mot annat lag): lagets sparade spelare i stället för vår trupp
+    const pool: Player[] = lineupState.setup?.mode === "external" && goalTeam === "green"
+      ? ((lineupState.opponent?.players ?? []) as unknown as Player[])
+      : (lineupState.players || []).filter((p) => !isOpponentPlayerId(p.id));
+    const unplaced = pool
       .filter(p => !placedIds.has(p.id))
       .map((p) => ({ ...p, pickPos: fromRegistry(p.position) }))
       .sort(byPos);

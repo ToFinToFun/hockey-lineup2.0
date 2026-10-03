@@ -30,6 +30,7 @@ import { getAutoNewsConfig, setAutoNewsConfig, getAutoNewsStatus } from "./autoN
 import { getAutoLineupConfig, setAutoLineupConfig, getAutoLineupState } from "./autoLineup";
 import { getActiveLock, lockLineup, unlockLineup, differsFromLock, parsePublishAt } from "./lineupLock";
 import { scoreLineupView } from "./scoreLineupView";
+import { opponentPlayerId } from "../shared/matchSetup";
 import { loadPirConfig, PIR_WEIGHTS_KEY, PIR_ADJUSTMENTS_KEY, PIR_THRESHOLDS_KEY } from "./pirConfig";
 import { DEFAULT_PIR_THRESHOLDS, PIR_THRESHOLD_LIMITS, sanitizeThresholds } from "../shared/pirThresholds";
 import { positionAndTeamHistory } from "./positionHistory";
@@ -726,7 +727,11 @@ export const appRouter = router({
       const opp = state.setup?.mode === "external" && state.setup.opponentId ? await getOpponent(state.setup.opponentId).catch(() => null) : null;
       return {
         ...state, locked: !!lock, lockedAt: lock?.lockedAt ?? null, lockExpiresAt: lock?.expiresAt ?? null,
-        opponent: opp ? { id: opp.id, name: opp.name, shortName: opp.shortName, color: opp.color, logoUrl: opp.logoUrl } : null,
+        opponent: opp ? {
+          id: opp.id, name: opp.name, shortName: opp.shortName, color: opp.color, logoUrl: opp.logoUrl,
+          // Lagets sparade spelare – går att välja som målskytt även om de inte står i uppställningen
+          players: opp.players.filter((p) => p.active).map((p) => ({ id: opponentPlayerId(p.id), name: p.name, number: p.number ?? "", position: p.position ?? "" })),
+        } : null,
         view,
       };
     }),

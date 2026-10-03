@@ -141,3 +141,42 @@ export async function getOpponentPlayerMap(): Promise<Map<string, Player>> {
     id: opponentPlayerId(r.id), name: r.name, number: r.number ?? "", position: (r.position || "F") as Player["position"], isOpponent: true,
   }]));
 }
+
+
+/** "Erik Lund #9" → { name: "Erik Lund", number: "9" } (exporteras för test) */
+export function parseScorerName(raw: string): { name: string; number: string | null } {
+  const m = raw.trim().match(/^(.*?)\s*#(\d{1,3})\s*$/);
+  return m ? { name: m[1].trim(), number: m[2] } : { name: raw.trim(), number: null };
+}
+
+/**
+ * Namn som skrivits in för motståndarens mål i Score Tracker ("Lägg till …")
+ * sparas som motståndarens spelare, så att de går att välja nästa gång.
+ * Motståndaren är alltid "green" i en match mot annat lag. Redan sparade namn
+ * (även inaktiva) läggs inte till igen. Returnerar antal nya.
+ */
+export function newOpponentNames(goals: Array<{ team?: string; scorer?: string; assist?: string }>, existing: string[]): Array<{ name: string; number: string | null }> {
+  const known = new Set(existing.map((n) => n.trim().toLowerCase()));
+  const out: Array<{ name: string; number: string | null }> = [];
+  for (const g of goals) {
+    if (g.team !== "green") continue;
+    for (const raw of [g.scorer, g.assist]) {
+      if (!raw?.trim()) continue;
+      const p = parseScorerName(raw);
+      const key = p.name.toLowerCase();
+      if (!p.name || known.has(key)) continue;
+      known.add(key);
+      out.push(p);
+    }
+  }
+  return out;
+}
+
+export async function saveNewOpponentScorers(opponentId: number, goals: Array<{ team?: string; scorer?: string; assist?: string }> | null | undefined): Promise<number> {
+  if (!goals?.length) return 0;
+  const db = await requireDb();
+  const rows = await db.select({ name: opponentPlayers.name }).from(opponentPlayers).where(eq(opponentPlayers.opponentId, opponentId));
+  const fresh = newOpponentNames(goals, rows.map((r) => r.name));
+  for (const p of fresh) await addOpponentPlayer(opponentId, { name: p.name.slice(0, 80), number: p.number, position: null });
+  return fresh.length;
+}

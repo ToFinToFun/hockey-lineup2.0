@@ -136,5 +136,5 @@ export interface AppState {
   teamBConfig?: TeamConfig;
   /** Mot motståndare (beta): matchtyp och motståndarlaget */
   setup?: import("@shared/matchSetup").MatchSetup;
-  opponent?: { id: number; name: string; color: string; logoUrl: string | null; shortName?: string | null } | null;
+  opponent?: { id: number; name: string; color: string; logoUrl: string | null; shortName?: string | null; players?: Array<{ id: string; name: string; number: string; position: string }> } | null;
 }
