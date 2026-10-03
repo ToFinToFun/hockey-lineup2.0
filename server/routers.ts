@@ -797,9 +797,15 @@ export const appRouter = router({
       let state = lock ? lock.doc : doc;
       // Lineup kan vara inställd på en extern match längre fram (t.ex. om en månad) medan
       // nästa evenemang är en internmatch: då gäller internmatchens sparade uppställning här
+      let laterExternal: { name: string; date: string | null; emptyInternal: boolean } | null = null;
       if (!lock && state.setup?.mode === "external") {
         const lag = await lagetEvent().catch(() => null);
-        if (!externalIsNext(state.setup, lag?.date)) state = await internalScoreState(state);
+        if (!externalIsNext(state.setup, lag?.date)) {
+          const o = state.setup.opponentId ? await getOpponent(state.setup.opponentId).catch(() => null) : null;
+          const ext = state.setup;
+          state = await internalScoreState(state);
+          laterExternal = { name: o?.name ?? "motståndaren", date: ext.date ?? null, emptyInternal: Object.keys(state.lineup).length === 0 };
+        }
       }
       // Mot motståndare: lagets namn, färg och logga till Score Tracker
       const opp = state.setup?.mode === "external" && state.setup.opponentId ? await getOpponent(state.setup.opponentId).catch(() => null) : null;
@@ -807,6 +813,8 @@ export const appRouter = router({
         ...state, locked: !!lock, lockedAt: lock?.lockedAt ?? null, lockExpiresAt: lock?.expiresAt ?? null,
         // Mot annat lag: motståndarens namn från registret (uppställningens lagnamn kan vara "MOTSTÅNDARE")
         ...(opp ? { teamBName: opp.name.toUpperCase() } : {}),
+        // Lineup står på en extern match längre fram – Score Tracker visar dagens internmatch
+        laterExternal,
         opponent: opp ? {
           id: opp.id, name: opp.name, shortName: opp.shortName, color: opp.color, logoUrl: opp.logoUrl,
           // Lagets sparade spelare – går att välja som målskytt även om de inte står i uppställningen

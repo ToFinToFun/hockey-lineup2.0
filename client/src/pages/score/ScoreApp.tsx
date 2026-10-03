@@ -204,6 +204,7 @@ export default function ScoreApp() {
             <LineupPage
               lineupState={lineupState}
               view={(liveLineup as { view?: ScoreView } | undefined)?.view ?? null}
+              laterExternal={(liveLineup as { laterExternal?: { name: string; date: string | null; emptyInternal: boolean } | null } | undefined)?.laterExternal ?? null}
               loading={loading}
               lastSyncTime={lastSyncTime}
               refreshing={refreshing}

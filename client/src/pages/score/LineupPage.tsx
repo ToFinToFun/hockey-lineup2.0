@@ -32,6 +32,8 @@ export function shortWhen(iso: string): string {
 interface LineupPageProps {
   lineupState: AppState | null;
   view?: ScoreView | null;
+  /** Lineup står på en extern match längre fram – här visas dagens internmatch */
+  laterExternal?: { name: string; date: string | null; emptyInternal: boolean } | null;
   loading: boolean;
   lastSyncTime: Date | null;
   refreshing: boolean;
@@ -164,7 +166,7 @@ function formatSyncTime(date: Date | null): string {
   return date.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" });
 }
 
-export default function LineupPage({ lineupState, view, loading, lastSyncTime, refreshing, onRefresh }: LineupPageProps) {
+export default function LineupPage({ lineupState, view, laterExternal, loading, lastSyncTime, refreshing, onRefresh }: LineupPageProps) {
   const sides = matchSides(lineupState?.setup, lineupState?.opponent, lineupState?.teamAName);
   const teamASlots = useMemo(() =>
     createTeamSlots("team-a", lineupState?.teamAConfig ?? MAX_TEAM_CONFIG),
@@ -220,6 +222,21 @@ export default function LineupPage({ lineupState, view, loading, lastSyncTime, r
               </span>
             </>
           )}
+        </div>
+      </PullToRefresh>
+    );
+  }
+
+  // Inloggad: Lineup står på en extern match längre fram och dagens internmatch saknar sparad uppställning
+  if (laterExternal?.emptyInternal) {
+    const d = laterExternal.date ? new Date(laterExternal.date + "T12:00").toLocaleDateString("sv-SE", { weekday: "short", day: "numeric", month: "numeric" }) : null;
+    return (
+      <PullToRefresh onRefresh={onRefresh} refreshing={refreshing} className="h-full bg-[#1a1a1a]">
+        <div className="flex flex-col items-center justify-center h-full gap-2 p-6 text-center">
+          <span className="text-base font-semibold text-[#ECEDEE]">Ingen uppställning för dagens internmatch</span>
+          <span className="text-xs text-[#9BA1A6]">
+            Lineup står på matchen mot {laterExternal.name}{d ? ` (${d})` : ""}. Växla Lineup till Intern (menyn → Match) och gör dagens lag – matchen mot {laterExternal.name} sparas och kommer tillbaka när du växlar.
+          </span>
         </div>
       </PullToRefresh>
     );

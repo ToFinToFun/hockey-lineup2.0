@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.60.4 – 2026-10-03
+
+- Score Tracker (inloggad): när Lineup står på en extern match längre fram och dagens internmatch inte har någon sparad uppställning visas en förklaring ("Växla Lineup till Intern …") i stället för två tomma lag.
+
 ## 2.60.3 – 2026-10-03
 
 - Score Tracker, välj målskytt vid match mot annat lag: rubrikerna visar lagens riktiga namn och färger (motståndarens namn och färg från registret, vårt lag i klubbens färg) i stället för "MOTSTÅNDARE" i grönt. Servern skickar också motståndarens namn som lagnamn, så att det stämmer även om uppställningen sparats med "Motståndare".
