@@ -160,13 +160,26 @@ export default function ScoreApp() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Sidan ska aldrig rulla och menyn ska sitta fast i botten. Webbläsarens/PWA:ns egen
+  // "dra ner för att uppdatera" kan ändra höjden (då trycktes menyn ned och sidan gick att rulla):
+  // stäng av den här – Uppställning-fliken har en egen dra-för-att-uppdatera.
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prev = { ho: html.style.overscrollBehavior, bo: body.style.overscrollBehavior, ov: body.style.overflow };
+    html.style.overscrollBehavior = "none";
+    body.style.overscrollBehavior = "none";
+    body.style.overflow = "hidden";
+    return () => { html.style.overscrollBehavior = prev.ho; body.style.overscrollBehavior = prev.bo; body.style.overflow = prev.ov; };
+  }, []);
+
   return (
-    <div className="flex items-center justify-center min-h-[100dvh] bg-[#111111]">
+    <div className="fixed inset-0 flex items-center justify-center bg-[#111111] overflow-hidden">
       <div
         className="relative w-full flex flex-col overflow-hidden bg-[#1a1a1a]"
         style={{
           maxWidth: isDesktop ? "480px" : "100%",
-          height: isDesktop ? "min(932px, 100dvh)" : "100dvh",
+          height: isDesktop ? "min(932px, 100%)" : "100%",
           borderRadius: isDesktop ? "24px" : "0",
           boxShadow: isDesktop ? "0 0 80px rgba(0,0,0,0.6)" : "none",
         }}

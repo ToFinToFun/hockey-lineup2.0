@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.60.5 – 2026-10-03
+
+- Score Tracker: sidan ligger fast i fönstret (fixed) och webbläsarens/PWA:ns egen "dra ner för att uppdatera" är avstängd där. Tidigare kunde en sådan uppdatering ändra höjden så att menyn i botten trycktes ned och sidan gick att rulla. Uppställning-fliken har kvar sin egen dra-för-att-uppdatera.
+
 ## 2.60.4 – 2026-10-03
 
 - Score Tracker (inloggad): när Lineup står på en extern match längre fram och dagens internmatch inte har någon sparad uppställning visas en förklaring ("Växla Lineup till Intern …") i stället för två tomma lag.
