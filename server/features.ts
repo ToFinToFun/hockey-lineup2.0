@@ -5,15 +5,16 @@
 import { getConfigValue, setConfigValue } from "./scoreDb";
 
 export interface Features {
-  /** Matcher mot andra lag (motståndarregister m.m.) – beta */
+  /** Matcher mot andra lag – lyft ur beta i v2.53.0, alltid på */
   opponents: boolean;
 }
-const DEFAULTS: Features = { opponents: false };
+const DEFAULTS: Features = { opponents: true };
 
 export async function getFeatures(): Promise<Features> {
   try {
     const raw = await getConfigValue("features");
-    return { ...DEFAULTS, ...(raw ? (JSON.parse(raw) as Partial<Features>) : {}) };
+    // Matcher mot andra lag är inte längre beta: alltid på, oavsett tidigare sparat val
+    return { ...DEFAULTS, ...(raw ? (JSON.parse(raw) as Partial<Features>) : {}), opponents: true };
   } catch {
     return DEFAULTS;
   }

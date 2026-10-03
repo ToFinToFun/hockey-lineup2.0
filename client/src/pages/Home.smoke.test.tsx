@@ -54,9 +54,8 @@ it.skipIf(!canRun)("Lineup-sidan renderar, hämtar läget och flyttar utan fel",
   await authedFetch("/api/trpc/lineup.patch", { method: "POST", headers: { "content-type": "application/json" },
     body: JSON.stringify({ json: { id: `smoke-${Date.now()}`, ops: [{ t: "field", key: "teamBName", value: "LIVETEST" }] } }) });
   await act(async () => { await new Promise(res => setTimeout(res, 800)); });
-  // Lagnamnet står i ett inmatningsfält, så kolla fältens värden.
-  const values = () => Array.from(r.container.querySelectorAll("input")).map(i => (i as HTMLInputElement).value);
-  expect(values()).toContain("LIVETEST");
+  // Lagnamnet visas som text (går inte längre att ändra i Lineup).
+  expect(r.container.textContent ?? "").toContain("LIVETEST");
   const v3 = await ver();
   await act(async () => { await new Promise(res => setTimeout(res, 1500)); });
   expect(await ver()).toBe(v3); // sidan skickar inte tillbaka ändringen

@@ -87,7 +87,6 @@ export function ClubPanel() {
   const utils = trpc.useUtils();
   const q = trpc.club.get.useQuery();
   const logos = trpc.club.logos.useQuery();
-  const setFeatures = trpc.club.setFeatures.useMutation({ onSuccess: () => void utils.club.get.invalidate() });
   const save = trpc.club.set.useMutation({
     onSuccess: () => { toast.success("Klubbens inställningar sparade"); void utils.club.get.invalidate(); },
     onError: (e) => toast.error("Kunde inte spara", { description: e.message }),
@@ -161,14 +160,6 @@ export function ClubPanel() {
         {field("Appens adress", "appUrl", c.appUrl, 200)}
       </div>
       <p className="text-[10px] text-white/35">laget.se-adressen är det som står efter www.laget.se/ (t.ex. {c.laget.slug}). Inloggningen till laget.se ställs in på servern.</p>
-
-      <label className="flex items-start gap-2 rounded-xl border border-amber-400/25 bg-amber-500/5 p-3 text-xs text-white/75">
-        <input type="checkbox" className="mt-0.5" checked={!!q.data.features?.opponents} onChange={(e) => setFeatures.mutate({ opponents: e.target.checked })} />
-        <span>
-          <span className="block font-semibold text-amber-200">Beta: matcher mot andra lag</span>
-          <span className="block text-[11px] text-white/45">Visar fliken Motståndare (lag, loggor och spelare). Uppställning, Score Tracker och bilder mot andra lag kommer i nästa steg.</span>
-        </span>
-      </label>
 
       <button onClick={() => save.mutate(toOverrides(f))} disabled={!dirty || save.isPending}
         className="w-full py-2.5 rounded-xl bg-[#0a7ea4] text-white text-sm font-semibold disabled:opacity-40">

@@ -4,7 +4,7 @@
  */
 import { club, teamLogo } from "@shared/club";
 import { teamName } from "@shared/teams";
-import type { MatchSetup } from "@shared/matchSetup";
+import { ourLogoFor, type MatchSetup } from "@shared/matchSetup";
 
 export interface SideInfo { name: string; logo: string | null; color: string }
 export interface OpponentInfo { id: number; name: string; color: string; logoUrl: string | null; shortName?: string | null }
@@ -12,7 +12,7 @@ export interface OpponentInfo { id: number; name: string; color: string; logoUrl
 export function matchSides(setup: MatchSetup | null | undefined, opponent: OpponentInfo | null | undefined, teamAName?: string): { white: SideInfo; green: SideInfo; external: boolean } {
   if (setup?.mode === "external") {
     const c = club();
-    const ourLogo = setup.ourLogo === "white" ? c.teams.white.logo : setup.ourLogo === "green" ? c.teams.green.logo : c.logo;
+    const ourLogo = ourLogoFor(setup, c);
     return {
       external: true,
       white: { name: setup.ourName || teamAName || c.name, logo: ourLogo, color: c.teams.white.color },

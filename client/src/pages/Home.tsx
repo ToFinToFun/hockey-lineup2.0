@@ -35,7 +35,7 @@ import { ShareToolsModal } from "@/components/auth/ShareToolsModal";
 import { RosterSummary } from "@/components/RosterSummary";
 import { INTERNAL_SETUP, isOpponentPlayerId, type MatchSetup } from "@shared/matchSetup";
 import { useFeatures } from "@/contexts/ClubContext";
-import { MatchSetupBar, ourLogoUrl } from "@/components/opponent/MatchSetupBar";
+import { MatchSetupModal, setupLabel, ourLogoUrl } from "@/components/opponent/MatchSetupBar";
 import { OpponentTeamPanel, toLineupPlayer } from "@/components/opponent/OpponentTeamPanel";
 import { getAltThreshold, setAltThreshold, secondaryFromStats } from "@/lib/altPosition";
 import { MatchResultsBar } from "@/components/MatchResultsBar";
@@ -50,7 +50,7 @@ import { useLineupDocSync } from "@/hooks/useLineupDocSync";
 import { useAuth } from "@/hooks/useAuth";
 import { MatchPredictionBar } from "@/components/MatchPredictionBar";
 import type { Player as PlayerType } from "@/lib/players";
-import { Newspaper, RefreshCw, TrendingUp, Link2, BookmarkPlus, X as XIconSmall, Wifi, WifiOff, Share2, FileText, Check, CalendarDays, Shuffle, PanelLeft, Columns3, Undo2, BarChart3, Settings, Sun, Moon, Home as HomeIcon, Users, FlaskConical, Wand2 } from "lucide-react";
+import { Newspaper, RefreshCw, TrendingUp, Link2, BookmarkPlus, X as XIconSmall, Wifi, WifiOff, Share2, FileText, Check, CalendarDays, Shuffle, PanelLeft, Columns3, Undo2, BarChart3, Settings, Sun, Moon, Home as HomeIcon, Users, FlaskConical, Wand2, Swords } from "lucide-react";
 import { toast } from "sonner";
 import { useLineupTheme } from "@/hooks/useLineupTheme";
 import { useForwardColor } from "@/hooks/useForwardColor";
@@ -224,6 +224,7 @@ export default function Home() {
   const [showSavedLineups, setShowSavedLineups] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showAutoLineup, setShowAutoLineup] = useState(false);
+  const [showMatchSetup, setShowMatchSetup] = useState(false);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [demoActive, setDemoActive] = useState(false);
   const [shareState, setShareState] = useState<"idle" | "saving" | "copied">("idle");
@@ -1865,6 +1866,17 @@ export default function Home() {
                             <TrendingUp className="w-4 h-4" />
                             <span>Player Impact Rating</span>
                           </button>
+                          {/* Match: internmatch eller mot annat lag (dag, tid och plats för bortamatcher) */}
+                          <button
+                            onClick={() => { setShowMatchSetup(true); setShowHeaderMenu(false); }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
+                              isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            <Swords className="w-4 h-4" />
+                            <span className="flex-1 text-left">Match</span>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded ${setup.mode === 'external' ? 'bg-sky-500/20 text-sky-300' : isLineupDark ? 'bg-white/10 text-white/40' : 'bg-gray-200 text-gray-500'}`}>{setup.mode === 'external' ? 'MOT LAG' : 'INTERN'}</span>
+                          </button>
                           {/* Auto-lag: gör om laget före match om det inte stämmer med anmälningarna */}
                           <button
                             onClick={() => { setShowAutoLineup(true); setShowHeaderMenu(false); }}
@@ -2027,10 +2039,8 @@ export default function Home() {
           )}
 
           <main className="px-2 md:px-3 pb-8 overflow-x-hidden max-w-[1400px] mx-auto w-full">
-            {features.opponents && isAdmin && (
-              <div className="mb-2">
-                <MatchSetupBar setup={setup} onChange={applySetup} dark={isLineupDark} />
-              </div>
+            {setup.mode === "external" && (
+              <div className="mb-2 text-[11px] text-sky-200/80 px-1">{setupLabel(setup, opponentQ.data?.name)}</div>
             )}
             {/* Villkorlig rendering: ANTINGEN desktop ELLER mobil – aldrig båda */}
             {/* Detta eliminerar dubbla droppables som förvirrar dnd-kit */}
@@ -2361,6 +2371,8 @@ export default function Home() {
       {/* Inställningar-modal */}
       <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} pirSettings={pirSettings} onPirSettingsChange={handlePirSettingsChange} />
       <AutoLineupModal open={showAutoLineup} onClose={() => setShowAutoLineup(false)} />
+      <MatchSetupModal open={showMatchSetup} onClose={() => setShowMatchSetup(false)} setup={setup}
+        onChange={(next, name) => { applySetup(next, name); void fetchAttendanceFromApi(true).catch(() => undefined); }} />
 
       {/* Bekäftelsedialog för Rensa */}
 

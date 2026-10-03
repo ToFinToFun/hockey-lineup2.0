@@ -34,6 +34,7 @@ import { loadPirConfig, PIR_WEIGHTS_KEY, PIR_ADJUSTMENTS_KEY, PIR_THRESHOLDS_KEY
 import { DEFAULT_PIR_THRESHOLDS, PIR_THRESHOLD_LIMITS, sanitizeThresholds } from "../shared/pirThresholds";
 import { positionAndTeamHistory } from "./positionHistory";
 import { nextEvent, eventStart } from "./autoNews";
+import { withExternalEvent } from "./matchEvent";
 import { NOTIFICATION_TYPES, getRecipients, setRecipients, smtpConfigured, sendTestMail, notifyLater, mailLayout, type NotificationType } from "./notifications";
 import type { LineupOp } from "../shared/lineupDoc";
 import {
@@ -64,7 +65,10 @@ const lineupOpSchema = z.union([
     mode: z.enum(["internal", "external"]),
     opponentId: z.number().int().positive().nullable(),
     ourName: z.string().max(80).nullable(),
-    ourLogo: z.enum(["club", "white", "green"]),
+    ourLogo: z.enum(["club", "white", "green", "crest"]),
+    date: z.string().max(10).nullable().optional(),
+    time: z.string().max(5).nullable().optional(),
+    location: z.string().max(100).nullable().optional(),
   }) }),
 ]);
 
@@ -173,8 +177,8 @@ export const appRouter = router({
   laget: router({
     /** Hämta anmälningslistan från laget.se för dagens/nästa event */
     attendance: lineupProcedure.query(async () => {
-      const result = await fetchAttendance();
-      return result;
+      // Mot andra lag kan matchen ha egen dag/tid/plats (Lineup → Match)
+      return withExternalEvent(await fetchAttendance());
     }),
 
     /** Ändra en spelares deltagarstatus på laget.se */

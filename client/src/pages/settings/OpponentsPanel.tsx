@@ -140,7 +140,7 @@ export function OpponentsPanel() {
   if (open) return <OpponentEditor id={open} onBack={() => setOpen(null)} />;
   return (
     <div className="space-y-4">
-      <p className="text-[11px] text-white/40">Lag vi spelar mot. Logga, färg och spelare sparas, så att nästa match mot samma lag är förifylld. (Beta – används i uppställningen i nästa steg.)</p>
+      <p className="text-[11px] text-white/40">Lag vi spelar mot. Logga, färg och spelare sparas, så att nästa match mot samma lag är förifylld. Välj motståndare i Lineup under menyn → Match.</p>
       <div className="flex gap-2">
         <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) { create.mutate({ name }); setName(""); } }} placeholder="Nytt lag, t.ex. Kalix HC" maxLength={80} className={input} />
         <button onClick={() => { if (name.trim()) { create.mutate({ name }); setName(""); } }} disabled={!name.trim()} className="shrink-0 flex items-center gap-1 px-3 rounded-lg bg-emerald-500 text-emerald-950 text-sm font-bold disabled:opacity-40"><Plus size={14} /> Skapa</button>

@@ -7,7 +7,8 @@
  * Motståndarens spelare har id "opp-<id>" och hör aldrig hemma i vår trupp
  * eller vårt spelarregister.
  */
-export type OurLogo = "club" | "white" | "green";
+/** Vårt lags logga mot andra lag: ett av de interna lagens eller klubbmärket (städet). "club" = äldre val, samma som klubbens logga. */
+export type OurLogo = "club" | "white" | "green" | "crest";
 
 export interface MatchSetup {
   mode: "internal" | "external";
@@ -17,9 +18,24 @@ export interface MatchSetup {
   ourName: string | null;
   /** Vårt lags logga i externa matcher */
   ourLogo: OurLogo;
+  /** Externa matcher: egen dag och tid (annars laget.se:s evenemang), "YYYY-MM-DD" och "HH:MM" */
+  date?: string | null;
+  time?: string | null;
+  /** Externa matcher: egen plats (t.ex. bortamatch) */
+  location?: string | null;
 }
 
-export const INTERNAL_SETUP: MatchSetup = { mode: "internal", opponentId: null, ourName: null, ourLogo: "club" };
+export const INTERNAL_SETUP: MatchSetup = { mode: "internal", opponentId: null, ourName: null, ourLogo: "club", date: null, time: null, location: null };
+
+/** Vårt lags logga mot andra lag */
+export function ourLogoFor(setup: Pick<MatchSetup, "ourLogo"> | null | undefined, c: { logo: string; crest?: { url: string }; teams: { white: { logo: string }; green: { logo: string } } }): string {
+  switch (setup?.ourLogo) {
+    case "white": return c.teams.white.logo;
+    case "green": return c.teams.green.logo;
+    case "crest": return c.crest?.url ?? c.logo;
+    default: return c.logo;
+  }
+}
 
 export const OPP_PREFIX = "opp-";
 export const isOpponentPlayerId = (id: string | undefined | null) => !!id && id.startsWith(OPP_PREFIX);
@@ -28,5 +44,8 @@ export const opponentPlayerDbId = (id: string) => Number(id.slice(OPP_PREFIX.len
 
 export function normalizeSetup(s: Partial<MatchSetup> | null | undefined): MatchSetup {
   if (!s || s.mode !== "external") return INTERNAL_SETUP;
-  return { mode: "external", opponentId: s.opponentId ?? null, ourName: s.ourName ?? null, ourLogo: s.ourLogo ?? "club" };
+  const date = typeof s.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s.date) ? s.date : null;
+  const time = typeof s.time === "string" && /^\d{1,2}:\d{2}$/.test(s.time) ? s.time : null;
+  const location = typeof s.location === "string" && s.location.trim() ? s.location.trim().slice(0, 100) : null;
+  return { mode: "external", opponentId: s.opponentId ?? null, ourName: s.ourName ?? null, ourLogo: s.ourLogo ?? "club", date, time, location };
 }

@@ -7,6 +7,15 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.53.0 – 2026-10-03
+
+**Matcher mot andra lag – ur beta**
+- Flaggan "Beta: matcher mot andra lag" är borttagen; funktionen är alltid på.
+- Matchtypen väljs inte längre i en rad ovanför lagen utan i Lineup → menyn → **Match** (styrelsen): Internmatch eller Mot annat lag, motståndare, vårt lags namn och logga. Menyn visar INTERN/MOT LAG; vid match mot annat lag står "Mot Kalix HC · lör 10/10 15:30 · Kalix ishall" ovanför lagen.
+- Vårt lags logga: Gröna, Vita eller klubbmärket (Städet). Tidigare fanns klubbens logga två gånger (samma som Gröna).
+- Egen **dag, tid och plats** för matcher mot andra lag (t.ex. bortamatch). Gäller i stället för laget.se-evenemangets för nyheten (även den automatiska), Score Tracker (75 min före start), matchens plats och Media. Anmälningarna hämtas fortfarande från laget.se.
+- Lagnamnen går inte längre att ändra genom att klicka på dem i Lineup (risk för misstag). Lagens namn ställs in under Inställningar → Klubb, vårt namn mot andra lag under Match.
+
 ## 2.52.0 – 2026-10-03
 
 **PIR (Inställningar → PIR)**

@@ -18,7 +18,8 @@ interface TeamPanelProps {
   lineup: Record<string, Player>;
   onRemovePlayer: (slotId: string) => void;
   onChangePosition: (playerId: string, pos: Position) => void;
-  onRenameTeam: (name: string) => void;
+  /** Används inte längre – lagnamnet går inte att ändra i Lineup */
+  onRenameTeam?: (name: string) => void;
   onClearTeam: () => void;
   /** Anmälda / placerade i laget, t.ex. "4/8" – visas bredvid Rensa */
   registeredLabel?: string;
@@ -357,15 +358,13 @@ export function TeamPanel({
           className={`${compact ? 'w-6 h-6' : 'w-8 h-8'} object-contain shrink-0`}
         />
         <div className="flex-1 min-w-0">
-          <input
-            type="text"
-            value={teamName}
-            onChange={(e) => onRenameTeam(e.target.value)}
-            className={`bg-transparent border-none outline-none font-black ${compact ? 'text-sm' : 'text-lg'} w-full tracking-widest uppercase ${accentColor}`}
+          {/* Lagnamnet ändras inte här (risk för misstag): lagens namn under Inställningar → Klubb, vårt namn mot andra lag under menyn → Match */}
+          <span
+            className={`block truncate font-black ${compact ? 'text-sm' : 'text-lg'} w-full tracking-widest uppercase ${accentColor}`}
             style={{ fontFamily: "'Oswald', sans-serif" }}
-            placeholder="Lagnamn..."
-            maxLength={30}
-          />
+          >
+            {teamName}
+          </span>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <span

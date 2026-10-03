@@ -13,6 +13,7 @@
  */
 import { getOpponent } from "./opponents";
 import { club } from "../shared/club";
+import { ourLogoFor } from "../shared/matchSetup";
 import { teamAccent } from "../shared/teams";
 import { appUrl } from "./clubConfig";
 import { teamLogo } from "../shared/club";
@@ -95,7 +96,10 @@ export async function nextEvent() {
     const r = await fetchAttendance();
     eventCache = { at: Date.now(), date: r.eventDate || undefined, time: r.eventTime, location: r.eventLocation };
   }
-  return eventCache;
+  // Mot andra lag: matchens egna dag/tid/plats (Lineup → Match) går före laget.se
+  const { withExternalEvent } = await import("./matchEvent");
+  const o = await withExternalEvent({ eventDate: eventCache.date, eventTime: eventCache.time, eventLocation: eventCache.location });
+  return { at: eventCache.at, date: o.eventDate || undefined, time: o.eventTime, location: o.eventLocation };
 }
 
 const weekdayLine = (iso: string) => {
@@ -131,7 +135,7 @@ export async function buildNews(ev: { date: string; time?: string; location?: st
   // Mot motståndare: vårt lags och motståndarens logga och färg
   const ext = doc.setup?.mode === "external" && doc.setup.opponentId ? await getOpponent(doc.setup.opponentId).catch(() => null) : null;
   const c0 = club();
-  const ourLogo = doc.setup?.ourLogo === "white" ? c0.teams.white.logo : doc.setup?.ourLogo === "green" ? c0.teams.green.logo : c0.logo;
+  const ourLogo = ourLogoFor(doc.setup, c0);
   const logoA = ext ? ourLogo : teamLogo("white");
   const logoB = ext ? (ext.logoUrl ?? "") : teamLogo("green");
   const accentB = ext ? ext.color : teamAccent("green");

@@ -1,6 +1,6 @@
 # Plan: klubbinställningar, lag som begrepp och matcher mot andra lag
 
-Senast uppdaterad: 2026-09-30. Ägare: Jerry. Status: **steg 0–7 driftsatta i v2.46.0** (2026-10-02). Flaggan "Beta: matcher mot andra lag" är avstängd tills Jerry provat.
+Senast uppdaterad: 2026-10-03. Ägare: Jerry. Status: **klart.** Steg 0–7 driftsatta i v2.46.0; ur beta i v2.53.0 (flaggan borttagen, matchtyp under Lineup → menyn → Match, egen dag/tid/plats för matcher mot andra lag).
 
 ## Målbild
 
