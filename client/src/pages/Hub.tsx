@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { AccessPanel } from "@/components/auth/AccessPanel";
 import { AppVersion } from "@/components/AppVersion";
-import { BarChart3, Users, ChevronRight, Trophy, ClipboardList, Timer, TrendingUp, Sparkles, History, Settings as SettingsIcon, Image as ImageIcon } from "lucide-react";
+import { BarChart3, Users, ChevronRight, Trophy, ClipboardList, Timer, TrendingUp, Sparkles, History, Settings as SettingsIcon, Image as ImageIcon, Radio } from "lucide-react";
 
 // Keep the hub artwork on the same origin as the application. The old external
 // CDN links can expire or reject requests in production, while Vite serves
@@ -20,6 +20,8 @@ const BG_URL = "/images/background.jpg";
 
 export default function Hub() {
   const { isAdmin, canEditLineup, hasModule } = useAuth();
+  const liveQ = trpc.live.isLive.useQuery(undefined, { refetchInterval: 30_000, retry: false });
+  const liveNow = !!liveQ.data?.live;
   const pending = trpc.score.match.pendingCount.useQuery(undefined, { enabled: hasModule("matches") });
   const pendingCount = pending.data?.count ?? 0;
   return (
@@ -66,6 +68,25 @@ export default function Hub() {
 
         {/* App cards */}
         <div className="w-full max-w-md space-y-4">
+          {/* Live – högst upp, för alla */}
+          <Link href="/live">
+            <div className={`group relative overflow-hidden rounded-2xl border transition-all duration-300 cursor-pointer ${liveNow ? "bg-gradient-to-br from-[#2a0f14] to-[#140a0c] border-red-500/50 hover:border-red-400" : "bg-gradient-to-br from-[#1a1a1a] to-[#111] border-[#2a2a2a] hover:border-red-500/60"}`}>
+              <div className="p-5 sm:p-6 flex items-center gap-4">
+                <div className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-red-500/10 border border-red-500/25 flex items-center justify-center">
+                  <Radio size={24} className="text-red-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold tracking-tight flex items-center gap-2">
+                    Live
+                    {liveNow && <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wider bg-red-600 text-white rounded-full px-2 py-0.5"><span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />PÅGÅR</span>}
+                  </h2>
+                  <p className="text-white/40 text-xs sm:text-sm mt-0.5">{liveNow ? "Följ matchen – mål, poäng och Läktaren" : "Nästa match, uppställningar och live under matchen"}</p>
+                </div>
+                <ChevronRight size={20} className="text-white/20 group-hover:text-red-400 transition-colors flex-shrink-0" />
+              </div>
+            </div>
+          </Link>
+
           {/* Score Tracker Card */}
           <Link href="/score">
             <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] hover:border-[#0a7ea4]/60 transition-all duration-300 cursor-pointer">

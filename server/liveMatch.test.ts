@@ -49,3 +49,13 @@ describe("live", () => {
     expect((await L.postComment(v, "A", "hej")).ok).toBe(false);
   });
 });
+
+describe("ingen avslutar", () => {
+  it("avslutas 30 min efter sluttiden eller efter 90 min utan uppdatering", async () => {
+    const base = { id: "x", deviceId: "d", startedAt: "2026-10-06T20:00:00", updatedAt: "2026-10-06T22:00:00", endedAt: null, whiteScore: 0, greenScore: 0, goals: [], matchStartTime: "2026-10-06T20:00:00", hearts: { white: 0, green: 0 }, uniqueViewers: 0 };
+    expect(L.shouldAutoEnd({ ...base, endTime: "22:00" }, new Date("2026-10-06T22:20:00").getTime())).toBe(false);
+    expect(L.shouldAutoEnd({ ...base, endTime: "22:00" }, new Date("2026-10-06T22:31:00").getTime())).toBe(true);
+    expect(L.shouldAutoEnd({ ...base, endTime: null }, new Date("2026-10-06T23:20:00").getTime())).toBe(false);
+    expect(L.shouldAutoEnd({ ...base, endTime: null }, new Date("2026-10-06T23:31:00").getTime())).toBe(true);
+  });
+});

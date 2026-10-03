@@ -46,6 +46,10 @@ export const LIVE_LIMITS = {
   keepCommentsMs: 24 * 60 * 60 * 1000,
   /** En sändning utan uppdatering så här länge räknas som avbruten */
   staleMs: 4 * 60 * 60 * 1000,
+  /** Avslutas automatiskt: så här länge efter sluttiden … */
+  autoEndAfterEndMs: 30 * 60 * 1000,
+  /** … eller så här länge utan uppdatering (ingen sluttid satt) */
+  autoEndIdleMs: 90 * 60 * 1000,
   /** "Tittar nu": hörts av inom */
   activeMs: 45_000,
 };
@@ -62,14 +66,48 @@ const heartAt = new Map<string, number>();
 let saveTimer: NodeJS.Timeout | null = null;
 
 async function load(): Promise<LiveSession | null> {
-  if (session !== undefined) return session;
-  try {
-    const raw = await getConfigValue(KEY);
-    session = raw ? JSON.parse(raw) : null;
-  } catch {
-    session = null;
+  if (session === undefined) {
+    try {
+      const raw = await getConfigValue(KEY);
+      session = raw ? JSON.parse(raw) : null;
+    } catch {
+      session = null;
+    }
   }
+  if (session && shouldAutoEnd(session)) await finish(session);
   return session!;
+}
+
+/** Sluttiden ("HH:MM") som tidpunkt, räknat från matchens start */
+function endAt(s: LiveSession): number | null {
+  const m = s.endTime?.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  const base = new Date(s.matchStartTime ?? s.startedAt);
+  const e = new Date(base);
+  e.setHours(+m[1], +m[2], 0, 0);
+  if (e.getTime() < base.getTime() - 3600_000) e.setDate(e.getDate() + 1);
+  return e.getTime();
+}
+
+/**
+ * Ingen avslutade? Sändningen avslutas av sig själv 30 min efter sluttiden,
+ * eller efter 90 min utan uppdatering. Exporteras för test.
+ */
+export function shouldAutoEnd(s: LiveSession, now = Date.now()): boolean {
+  if (s.endedAt) return false;
+  const end = endAt(s);
+  if (end !== null && now > end + LIVE_LIMITS.autoEndAfterEndMs) return true;
+  return now - new Date(s.updatedAt).getTime() > LIVE_LIMITS.autoEndIdleMs;
+}
+
+/** Avsluta: antal unika tittare sparas, salt och anonyma koder raderas */
+async function finish(s: LiveSession) {
+  s.endedAt = new Date().toISOString();
+  s.uniqueViewers = s.viewerHashes?.length ?? s.uniqueViewers;
+  delete s.salt;
+  delete s.viewerHashes;
+  active.clear();
+  await setConfigValue(KEY, JSON.stringify(s)).catch(() => undefined);
 }
 async function persist(now = false) {
   if (now) {
@@ -110,6 +148,15 @@ export async function getLiveConfig(): Promise<LiveConfig> {
 }
 export async function setLiveConfig(c: LiveConfig) {
   await setConfigValue(CONFIG, JSON.stringify({ laktaren: !!c.laktaren }));
+}
+
+/** Senast avslutade sändningen (för att spara tittare och hjärtan med matchen) */
+export async function lastLiveStats(maxAgeMs: number): Promise<{ viewers: number; hearts: { white: number; green: number } } | null> {
+  const s = await load();
+  if (!s) return null;
+  const ref = new Date(s.endedAt ?? s.updatedAt).getTime();
+  if (Date.now() - ref > maxAgeMs) return null;
+  return { viewers: s.viewerHashes?.length ?? s.uniqueViewers, hearts: s.hearts };
 }
 
 /** Pågår sändningen? (inte avslutad och uppdaterad nyligen) */
@@ -170,12 +217,8 @@ export async function pushLive(deviceId: string, data: { whiteScore: number; gre
 export async function endLive(deviceId: string | null): Promise<boolean> {
   const s = await load();
   if (!isLive(s) || (deviceId && s!.deviceId !== deviceId)) return false;
-  s!.endedAt = new Date().toISOString();
-  s!.uniqueViewers = s!.viewerHashes?.length ?? s!.uniqueViewers;
-  delete s!.salt;
-  delete s!.viewerHashes;
-  active.clear();
-  await persist(true);
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  await finish(s!);
   return true;
 }
 

@@ -9,6 +9,7 @@ import { unlockLineup } from "../lineupLock";
 import { isOpponentPlayerId, opponentPlayerDbId } from "../../shared/matchSetup";
 import { setStoredOpponentLineup } from "../opponentLinks";
 import { saveNewOpponentScorers } from "../opponents";
+import { lastLiveStats } from "../liveMatch";
 import { notifyLater, mailLayout } from "../notifications";
 import { ENV } from "../_core/env";
 import { TRPCError } from "@trpc/server";
@@ -197,6 +198,12 @@ export const scoreRouter = router({
         });
         scheduleLiveProfileRefresh(); // profilkort med statistik ritas om i bakgrunden
         await unlockLineup().catch(() => undefined); // matchen avslutad – laget låses upp
+        // Sändes matchen live (pågår eller slutade senaste 3 h): tittare och hjärtan sparas med matchen
+        void lastLiveStats(3 * 3600_000).then(async (stats) => {
+          if (!stats) return;
+          const latest = (await getAllMatchesIncludingUnreviewed())[0];
+          if (latest) await setMatchReport(latest.id, { ...((latest as { report?: object | null }).report ?? {}), live: stats } as never);
+        }).catch(() => undefined);
         // Mot motståndare: inskrivna målskyttar/assist sparas som lagets spelare
         if (input.opponentId) await saveNewOpponentScorers(input.opponentId, input.goalHistory).catch((e) => console.error("[motståndare] kunde inte spara spelare:", e));
         // Mot motståndare: lagets uppställning sparas på laget (förifyllt nästa gång)

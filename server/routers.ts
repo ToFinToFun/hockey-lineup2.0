@@ -749,6 +749,8 @@ export const appRouter = router({
         comments: cfg.laktaren && showSession ? await listComments(s.id) : [],
       };
     }),
+    /** Startsidan: pågår en livesändning just nu? */
+    isLive: publicProcedure.query(async () => ({ live: isLive(await currentSession()) })),
     heart: publicProcedure.input(z.object({ team: z.enum(["white", "green"]) })).mutation(async ({ ctx, input }) => {
       const ip = String(ctx.req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() || ctx.req.ip || "";
       const viewer = await touchViewer(ip, String(ctx.req.headers["user-agent"] ?? ""));

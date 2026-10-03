@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.62.0 – 2026-10-03
+
+- Live avslutas av sig själv om ingen gör det: 30 min efter sluttiden, eller efter 90 min utan uppdatering (ingen sluttid satt). Då visas resultatet en halvtimme till, antalet unika tittare sparas och de anonyma koderna raderas.
+- Tittare och hjärtan sparas med matchen även när den sparas efter att live avslutats automatiskt (senaste sändningen inom 3 h).
+- Startsidan: modulen **Live** högst upp, för alla. Under en sändning är den röd med "PÅGÅR".
+
 ## 2.61.1 – 2026-10-03
 
 - Live, Ta över: den nya enheten hämtar matchen som den sänds (ställning, mål med skytt, assist, övrigt och sponsor, start- och sluttid) och fortsätter därifrån – i stället för att skriva över med sin egen. Har den egna mål frågar den först om de ska ersättas.
