@@ -11,7 +11,7 @@
 import { createHash, randomBytes, randomUUID } from "crypto";
 import { getConfigValue, setConfigValue } from "./scoreDb";
 
-export interface LiveGoal { team: "white" | "green"; timestamp: string; scorer?: string; scorerId?: string; assist?: string; assistId?: string }
+export interface LiveGoal { team: "white" | "green"; timestamp: string; scorer?: string; scorerId?: string; assist?: string; assistId?: string; other?: string; sponsor?: string }
 
 export interface LiveSession {
   id: string;
@@ -155,6 +155,8 @@ export async function pushLive(deviceId: string, data: { whiteScore: number; gre
     goals: data.goals.slice(0, 60).map((g) => ({
       team: g.team === "green" ? "green" : "white", timestamp: String(g.timestamp ?? "").slice(0, 20),
       scorer: g.scorer?.slice(0, 60), scorerId: g.scorerId?.slice(0, 80), assist: g.assist?.slice(0, 60), assistId: g.assistId?.slice(0, 80),
+      // Följer med vid övertagande (sparas med matchen), visas inte på livesidan
+      other: g.other?.slice(0, 200), sponsor: g.sponsor?.slice(0, 80),
     })),
     matchStartTime: data.matchStartTime,
     endTime: data.endTime && /^\d{1,2}:\d{2}$/.test(data.endTime) ? data.endTime : null,

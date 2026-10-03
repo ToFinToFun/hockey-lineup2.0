@@ -284,10 +284,43 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
     onError: (e) => toast.error(e.message),
   });
   const liveEnd = trpc.live.end.useMutation({ onSuccess: () => void liveUtils.live.status.invalidate() });
-  const startLive = (takeover = false) => {
-    if (takeover && !confirm("Ta över livesändningen från den andra enheten? Den slutar sända.")) return;
-    liveStart.mutate({ deviceId: liveDevice, takeover });
+  const startLive = async (takeover = false) => {
+    if (!takeover) { liveStart.mutate({ deviceId: liveDevice, takeover }); return; }
+    // Ta över: matchen fortsätter där den andra enheten slutade (ställning, mål, start- och sluttid)
+    const remote = (await liveUtils.live.status.fetch({ deviceId: liveDevice }).catch(() => null))?.match;
+    const local = `${teamWhiteScore}–${teamGreenScore}`;
+    const remoteScore = remote ? `${remote.whiteScore}–${remote.greenScore}` : null;
+    const msg = remote
+      ? goalHistory.length > 0 && JSON.stringify(goalHistory.map((g) => [g.team, g.timestamp])) !== JSON.stringify(remote.goals.map((g) => [g.team, g.timestamp]))
+        ? `Ta över livesändningen?\n\nMatchen här (${local}) ersätts med livesändningens ${remoteScore}, och den fortsätter här. Den andra enheten slutar sända.`
+        : `Ta över livesändningen? Matchen fortsätter här från ${remoteScore}. Den andra enheten slutar sända.`
+      : "Ta över livesändningen från den andra enheten? Den slutar sända.";
+    if (!confirm(msg)) return;
+    try {
+      await liveStart.mutateAsync({ deviceId: liveDevice, takeover: true });
+    } catch { return; }
+    if (remote) {
+      const goals = remote.goals as GoalEvent[];
+      const mst = remote.matchStartTime ?? undefined;
+      setTeamWhiteScore(remote.whiteScore);
+      setTeamGreenScore(remote.greenScore);
+      setGoalHistory(goals);
+      setMatchStartTime(mst);
+      if (remote.endTime) setEndTime(remote.endTime);
+      saveState(remote.whiteScore, remote.greenScore, goals, mst);
+    }
+    setLiveTakenOver(false);
   };
+
+  // Den här enheten sände men någon annan har tagit över: säg det tydligt och spara inte matchen dubbelt
+  const [liveTakenOver, setLiveTakenOver] = useState(false);
+  const wasMine = useRef(false);
+  useEffect(() => {
+    const d = liveStatus.data;
+    if (!d) return;
+    if (wasMine.current && !d.mine && d.live) setLiveTakenOver(true);
+    wasMine.current = !!d.mine;
+  }, [liveStatus.data]);
 
   // ─── End match / save to database ──────────────────────────────
   const saveMatchMutation = trpc.score.match.save.useMutation();
@@ -309,6 +342,8 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
   };
 
   const handleEndMatch = async () => {
+    // Matchen sänds (och sparas) från en annan enhet – undvik två sparade matcher
+    if (liveStatus.data?.live && !liveMine && !confirm("Matchen sänds live från en annan enhet och sparas där. Spara ändå här? Det blir då två matcher i historiken.")) return;
     setSavingMatch(true);
     const { start, source } = resolvedStart();
     // Platsen sparas när laget.se har ett evenemang samma dag (inom 12 h från matchstarten)
@@ -582,6 +617,16 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
     }}>
       {/* Fixed top section: buttons + scores */}
       <div className="shrink-0 flex flex-col gap-3 p-4 pb-2" style={{ backgroundColor: "rgba(0,0,0,0.55)" }}>
+        {liveTakenOver && (
+          <div className="rounded-lg bg-amber-500/15 border border-amber-400/40 px-2.5 py-2 text-[11px] text-amber-100 space-y-1.5">
+            <p><b>Live har tagits över av en annan enhet.</b> Matchen fortsätter och sparas där.</p>
+            <div className="flex gap-2">
+              <button onClick={() => { setTeamWhiteScore(0); setTeamGreenScore(0); setGoalHistory([]); setMatchStartTime(undefined); localStorage.removeItem(STORAGE_KEY); setLiveTakenOver(false); }}
+                className="px-2 py-1 rounded-md bg-white/15 text-white">Nollställ här</button>
+              <button onClick={() => setLiveTakenOver(false)} className="px-2 py-1 rounded-md bg-white/5 text-white/70">Behåll</button>
+            </div>
+          </div>
+        )}
         {/* Live: inloggade kan sända matchen till /live */}
         {canBroadcast && liveStatus.data && (
           liveMine ? (
@@ -593,10 +638,10 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
           ) : liveStatus.data.live ? (
             <div className="flex items-center gap-2 rounded-lg bg-white/5 border border-white/10 px-2.5 py-1.5 text-[11px] text-white/70">
               <span className="flex-1 min-w-0">Live sänds från en annan enhet</span>
-              <button onClick={() => startLive(true)} disabled={liveStart.isPending} className="px-2 py-1 rounded-md bg-white/10 text-white/80">Ta över</button>
+              <button onClick={() => void startLive(true)} disabled={liveStart.isPending} className="px-2 py-1 rounded-md bg-white/10 text-white/80">Ta över</button>
             </div>
           ) : (
-            <button onClick={() => startLive(false)} disabled={liveStart.isPending}
+            <button onClick={() => void startLive(false)} disabled={liveStart.isPending}
               className="flex items-center justify-center gap-2 rounded-lg bg-red-600/15 border border-red-500/40 px-2.5 py-1.5 text-[11px] font-semibold text-red-200">
               <span className="w-2 h-2 rounded-full bg-red-500" /> Starta live – följ matchen på /live
             </button>

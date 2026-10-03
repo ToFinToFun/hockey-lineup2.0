@@ -41,7 +41,7 @@ export function useLivePush(mine: boolean, data: { whiteScore: number; greenScor
       push.mutate({
         deviceId,
         whiteScore: data.whiteScore, greenScore: data.greenScore,
-        goals: data.goals.map((g) => ({ team: g.team, timestamp: g.timestamp, scorer: g.scorer, scorerId: g.scorerId, assist: g.assist, assistId: g.assistId })),
+        goals: data.goals.map((g) => ({ team: g.team, timestamp: g.timestamp, scorer: g.scorer, scorerId: g.scorerId, assist: g.assist, assistId: g.assistId, other: g.other, sponsor: g.sponsor })),
         matchStartTime: data.matchStartTime ?? null, endTime: data.endTime,
       });
     }, 800);

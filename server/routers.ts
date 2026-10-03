@@ -783,6 +783,8 @@ export const appRouter = router({
         hearts: s?.hearts ?? { white: 0, green: 0 },
         comments: s && (live || isAfter(s)) ? await listComments(s.id, true) : [],
         laktaren: (await getLiveConfig()).laktaren,
+        // Matchen som den sänds – hämtas av den som tar över (fortsätter där den andra slutade)
+        match: live ? { whiteScore: s!.whiteScore, greenScore: s!.greenScore, goals: s!.goals, matchStartTime: s!.matchStartTime, endTime: s!.endTime, updatedAt: s!.updatedAt } : null,
       };
     }),
     start: lineupProcedure.input(z.object({ deviceId: z.string().min(8).max(64), takeover: z.boolean().optional() })).mutation(async ({ input }) => {
@@ -798,7 +800,8 @@ export const appRouter = router({
           team: z.enum(["white", "green"]), timestamp: z.string().max(40),
           scorer: z.string().max(80).optional(), scorerId: z.string().max(80).optional(),
           assist: z.string().max(80).optional(), assistId: z.string().max(80).optional(),
-        }).passthrough()).max(80),
+          other: z.string().max(400).optional(), sponsor: z.string().max(120).optional(),
+        })).max(80),
         matchStartTime: z.string().max(40).nullable(), endTime: z.string().max(5).nullable(),
       }))
       .mutation(async ({ input }) => {

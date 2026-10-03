@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.61.1 – 2026-10-03
+
+- Live, Ta över: den nya enheten hämtar matchen som den sänds (ställning, mål med skytt, assist, övrigt och sponsor, start- och sluttid) och fortsätter därifrån – i stället för att skriva över med sin egen. Har den egna mål frågar den först om de ska ersättas.
+- Enheten som blev övertagen får en tydlig ruta ("Live har tagits över … sparas där") med Nollställ här / Behåll, och en varning om den ändå försöker spara matchen (annars blir det två matcher).
+
 ## 2.61.0 – 2026-10-03
 
 **Live**
