@@ -50,12 +50,13 @@ import { useLineupDocSync } from "@/hooks/useLineupDocSync";
 import { useAuth } from "@/hooks/useAuth";
 import { MatchPredictionBar } from "@/components/MatchPredictionBar";
 import type { Player as PlayerType } from "@/lib/players";
-import { Newspaper, RefreshCw, TrendingUp, Link2, BookmarkPlus, X as XIconSmall, Wifi, WifiOff, Share2, FileText, Check, CalendarDays, Shuffle, PanelLeft, Columns3, Undo2, BarChart3, Settings, Sun, Moon, Home as HomeIcon, Users, FlaskConical } from "lucide-react";
+import { Newspaper, RefreshCw, TrendingUp, Link2, BookmarkPlus, X as XIconSmall, Wifi, WifiOff, Share2, FileText, Check, CalendarDays, Shuffle, PanelLeft, Columns3, Undo2, BarChart3, Settings, Sun, Moon, Home as HomeIcon, Users, FlaskConical, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { useLineupTheme } from "@/hooks/useLineupTheme";
 import { useForwardColor } from "@/hooks/useForwardColor";
 import { Link } from "wouter";
 import { SettingsModal } from "@/components/SettingsModal";
+import { AutoLineupModal } from "@/components/AutoLineupModal";
 import { matchRegisteredPlayers, matchDeclinedPlayers, fetchAttendanceFromApi, updateAttendanceOnLaget } from "@/lib/laget";
 import { createPortal } from "react-dom"; // används av PlayerList context-meny
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
@@ -222,6 +223,7 @@ export default function Home() {
   const [showShareTools, setShowShareTools] = useState(false);
   const [showSavedLineups, setShowSavedLineups] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAutoLineup, setShowAutoLineup] = useState(false);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [demoActive, setDemoActive] = useState(false);
   const [shareState, setShareState] = useState<"idle" | "saving" | "copied">("idle");
@@ -311,6 +313,7 @@ export default function Home() {
   }, []);
 
   const { isAdmin } = useAuth();
+  const autoLineupQ = trpc.laget.autoLineup.useQuery(undefined, { enabled: isAdmin, staleTime: 60_000, retry: false });
   // ─── Mot motståndare (beta) ───
   const features = useFeatures();
   const external = setup.mode === "external";
@@ -1862,6 +1865,17 @@ export default function Home() {
                             <TrendingUp className="w-4 h-4" />
                             <span>Player Impact Rating</span>
                           </button>
+                          {/* Auto-lag: gör om laget före match om det inte stämmer med anmälningarna */}
+                          <button
+                            onClick={() => { setShowAutoLineup(true); setShowHeaderMenu(false); }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-all ${
+                              isLineupDark ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            <Wand2 className="w-4 h-4" />
+                            <span className="flex-1 text-left">Auto-lag</span>
+                            {autoLineupQ.data && <span className={`text-[9px] px-1.5 py-0.5 rounded ${autoLineupQ.data.config.enabled ? 'bg-emerald-500/20 text-emerald-300' : isLineupDark ? 'bg-white/10 text-white/40' : 'bg-gray-200 text-gray-500'}`}>{autoLineupQ.data.config.enabled ? 'PÅ' : 'AV'}</span>}
+                          </button>
                               {/* Dela verktyg: tillfälliga länkar till Lineup och Score Tracker */}
                               <button
                                 onClick={() => { setShowShareTools(true); setShowHeaderMenu(false); }}
@@ -2346,6 +2360,7 @@ export default function Home() {
 
       {/* Inställningar-modal */}
       <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} pirSettings={pirSettings} onPirSettingsChange={handlePirSettingsChange} />
+      <AutoLineupModal open={showAutoLineup} onClose={() => setShowAutoLineup(false)} />
 
       {/* Bekäftelsedialog för Rensa */}
 

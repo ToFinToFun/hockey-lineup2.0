@@ -21,7 +21,7 @@ import { fetchAttendance, publishNews, newsExists } from "./lagetSe";
 import { getLineupSnapshot } from "./lineupSync";
 import { listSponsors, recordSponsorNews } from "./sponsorsDb";
 import { readLastPublished, writeLastPublished } from "./newsState";
-import { lockLineup } from "./lineupLock";
+import { lockLineup, parsePublishAt } from "./lineupLock";
 import { notify, mailLayout } from "./notifications";
 import { serverCanvas } from "./serverCanvas";
 import { ENV } from "./_core/env";
@@ -90,7 +90,7 @@ export function autoNewsPhase(now: Date, start: Date, minutesBefore: number): "w
 
 // Evenemanget hämtas från laget.se högst var 20:e minut
 let eventCache: { at: number; date?: string; time?: string; location?: string } | null = null;
-async function nextEvent() {
+export async function nextEvent() {
   if (!eventCache || Date.now() - eventCache.at > 20 * 60_000) {
     const r = await fetchAttendance();
     eventCache = { at: Date.now(), date: r.eventDate || undefined, time: r.eventTime, location: r.eventLocation };
@@ -188,6 +188,9 @@ export async function autoNewsTick(now = new Date()): Promise<void> {
     const publishedAlready = !!sameDay && !scheduledLater;
 
     const news = await buildNews({ date: ev.date, time: ev.time, location: ev.location });
+    // Skapades laget av Auto-lag? Då står det i mejlen.
+    const auto = await import("./autoLineup").then((m) => m.getAutoLineupState()).catch(() => ({} as { eventDate?: string; autoCreated?: boolean }));
+    const autoNote = auto.eventDate === ev.date && auto.autoCreated ? "Laget skapades automatiskt av Auto-lag (anmälningarna fördelades med Auto)." : "";
     const enough = news.registeredPlaced >= cfg.minPlayers;
     const lineupUrl = `${appUrl()}/lineup`;
 
@@ -204,8 +207,9 @@ export async function autoNewsTick(now = new Date()): Promise<void> {
         const m = mailLayout(`Förhandsvisning: ${news.title}`, [
           scheduledLater ? "Den tidsinställda nyheten uppdateras om 15 minuter med uppställningen nedan." : "Om 15 minuter publiceras dagens lag på laget.se med uppställningen nedan.",
           `${news.registeredPlaced} anmälda spelare i uppställningen. Ändra i Lineup före dess om något ska justeras.`,
+          autoNote,
           `<img src="cid:lag" style="max-width:100%;border-radius:8px" alt="Dagens lag">`,
-        ], { href: lineupUrl, label: "Öppna Lineup" });
+        ].filter(Boolean), { href: lineupUrl, label: "Öppna Lineup" });
         await notify("autoNewsPreview", { subject: `Om 15 min: ${news.title}`, ...m, attachments: [{ filename: "dagens-lag.jpg", content: news.image, cid: "lag", contentType: "image/jpeg" }] });
       }
       await setConfigValue(STATE_KEY, JSON.stringify({ ...s, previewSent: true }));
@@ -222,9 +226,9 @@ export async function autoNewsTick(now = new Date()): Promise<void> {
         showPublisher: false, publishAt: d && t ? { date: d, hour: t.slice(0, 2), minute: t.slice(3, 5) } : undefined,
       });
       if (res.success) {
-        await lockLineup(news.title).catch(() => undefined); // laget låses för Score Tracker
+        await lockLineup(news.title, parsePublishAt(sameDay.publishAt)).catch(() => undefined); // laget låses för Score Tracker
         await setStatus(ev.date, `Uppdaterade den tidsinställda nyheten ${shortDate(ev.date)} med aktuell uppställning.`, true);
-        const m = mailLayout("Tidsinställd nyhet uppdaterad", [`"${news.title}" har fått aktuell uppställning och går ut ${sameDay.publishAt}.`], { href: res.url, label: "Visa nyheten" });
+        const m = mailLayout("Tidsinställd nyhet uppdaterad", [`"${news.title}" har fått aktuell uppställning och går ut ${sameDay.publishAt}.`, autoNote].filter(Boolean), { href: res.url, label: "Visa nyheten" });
         await notify("autoNewsPublished", { subject: `Uppdaterad: ${news.title}`, ...m });
       } else {
         await setStatus(ev.date, `Kunde inte uppdatera nyheten: ${res.error}`, false);
@@ -245,7 +249,7 @@ export async function autoNewsTick(now = new Date()): Promise<void> {
         await writeLastPublished({ id: res.id, url: res.url, title: news.title, eventDate: ev.date, publishedAt: new Date().toISOString(), publishAt: null });
         if (news.sponsorId) await recordSponsorNews(news.sponsorId);
         await setStatus(ev.date, `Publicerade dagens lag ${shortDate(ev.date)} (${news.registeredPlaced} anmälda).`, true);
-        const m = mailLayout("Dagens lag publicerat", [`"${news.title}" publicerades automatiskt på laget.se.`], { href: res.url, label: "Visa nyheten" });
+        const m = mailLayout("Dagens lag publicerat", [`"${news.title}" publicerades automatiskt på laget.se.`, autoNote].filter(Boolean), { href: res.url, label: "Visa nyheten" });
         await notify("autoNewsPublished", { subject: `Publicerad: ${news.title}`, ...m });
       } else {
         await setStatus(ev.date, `Kunde inte publicera: ${res.error}`, false);

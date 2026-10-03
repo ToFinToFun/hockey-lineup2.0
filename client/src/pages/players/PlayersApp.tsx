@@ -9,9 +9,8 @@ import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
-import { ArrowLeft, Download, Upload, Plus, Search, Loader2, X, AlertTriangle, GitMerge } from "lucide-react";
+import { ArrowLeft, Download, Upload, Plus, Search, Loader2, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { TeamRecovery } from "./TeamRecovery";
 import { positionName } from "@/lib/players";
 import { PlayerProfileView } from "./PlayerProfile";
 
@@ -142,7 +141,6 @@ const show = (field: string, v: unknown) =>
 export default function PlayersApp() {
   const utils = trpc.useUtils();
   const list = trpc.players.list.useQuery();
-  const issues = trpc.players.issues.useQuery();
   const [filter, setFilter] = useState<Filter>("active");
   const [q, setQ] = useState("");
   type SortKey = "name" | "number" | "position" | "team";
@@ -155,7 +153,6 @@ export default function PlayersApp() {
   const refresh = () => {
     utils.players.invalidate();
   };
-  const merge = trpc.players.merge.useMutation({ onSuccess: () => { toast.success("Spelarna är ihopslagna"); refresh(); } });
 
   const rows = (list.data ?? []) as Row[];
   const byId = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
@@ -212,36 +209,6 @@ export default function PlayersApp() {
       </header>
 
       <main className="max-w-3xl mx-auto p-4 space-y-4">
-        <TeamRecovery />
-        <p className="text-white/40 text-xs">
-          Varje spelare har ett fast ID. Ändringar här syns direkt i Lineup och Score Tracker, och statistiken följer med vid namn- eller nummerbyte.
-          Spelare som inte finns i medlemsregistret flaggas som <b>ej medlem</b> men finns kvar.
-        </p>
-
-        {issues.data && (issues.data.duplicates.length > 0 || issues.data.membersWithoutNumber.length > 0) && (
-          <section className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-amber-300"><AlertTriangle size={14} /> Att se över</h2>
-            {issues.data.duplicates.map((group) => (
-              <div key={group.map((p) => p.id).join()} className="text-xs text-white/70 flex flex-wrap items-center gap-2">
-                <span>Möjlig dubblett:</span>
-                {group.map((p) => <span key={p.id} className="px-2 py-0.5 rounded bg-white/5">{p.name}{p.number ? ` #${p.number}` : ""}{p.active ? "" : " (inaktiv)"}</span>)}
-                {group.length === 2 && (
-                  <button
-                    onClick={() => {
-                      const [a, b] = group[0].active || !group[1].active ? [group[1], group[0]] : [group[0], group[1]];
-                      if (confirm(`Slå ihop "${a.name}${a.number ? " #" + a.number : ""}" med "${b.name}${b.number ? " #" + b.number : ""}"? Historiken samlas på den senare.`)) merge.mutate({ fromId: a.id, intoId: b.id });
-                    }}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/20 text-amber-200"
-                  ><GitMerge size={12} /> Slå ihop</button>
-                )}
-              </div>
-            ))}
-            {issues.data.membersWithoutNumber.length > 0 && (
-              <p className="text-xs text-white/60">Medlemmar utan nummer: {issues.data.membersWithoutNumber.map((p) => p.name).join(", ")}</p>
-            )}
-          </section>
-        )}
-
         <div className="flex flex-wrap items-center gap-2">
           {(["active", "inactive", "nonmember", "all"] as Filter[]).map((f) => (
             <button key={f} onClick={() => setFilter(f)}

@@ -7,6 +7,23 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.51.0 – 2026-10-03
+
+**Score Tracker: uppställningen för den som inte är inloggad**
+- Publicerat lag visas med "Publicerat tis 18:30". En tidsinställd nyhet räknas från den inställda tiden, inte när man klickade; fram till dess står "Laget publiceras tis 18:30". När laget är publicerat visas inget annat lag.
+- Ingen nyhet publicerad eller tidsinställd: från 75 min före matchstart visas uppställningen live från Lineup ("Live från Lineup – inget lag publicerat än").
+- Tidigare än så: "Inget lag publicerat än" med när det visas – i stället för det felaktiga "Kontrollera din internetanslutning".
+- Låset efter publicering sparar den inställda publiceringstiden.
+
+**Auto-lag (Lineup → menyn)**
+- Ny inställning med förklaring, på/av och tid före matchstart (standard 90 min) samt Återställ standard.
+- Vid tiden jämförs uppställningen med anmälningarna på laget.se. Finns en avvikelse (anmälda som saknas, eller spelare i laget som inte är anmälda) och ingen nyhet är publicerad/tidsinställd, och Auto-lag är på → laget görs om helt: anmälningarna synkas och alla anmälda fördelas med Auto (position, lagfärg, PIR).
+- Annars, vid avvikelse → mejl som listar vad som inte stämmer (ny notistyp). Auto-lag har en egen notistyp; förhandsvisnings- och publiceringsmejlen nämner när laget skapades automatiskt.
+- Gäller internmatcher; matcher mot andra lag rörs inte.
+
+**Spelare**
+- Informationen i toppen är borttagen (återställda lag, texten om fast ID och Att se över). Slå ihop dubbletter finns kvar i spelarens redigeringsruta.
+
 ## 2.50.0 – 2026-10-02
 
 **Media → Video: matcher mot andra lag**

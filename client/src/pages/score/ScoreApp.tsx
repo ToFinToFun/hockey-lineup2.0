@@ -8,7 +8,7 @@
 import { teamName } from "@shared/teams";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import MatchPage from "./MatchPage";
-import LineupPage from "./LineupPage";
+import LineupPage, { type ScoreView } from "./LineupPage";
 import PlayerProfileModal from "./PlayerProfileModal";
 import { trpc } from "@/lib/trpc";
 import { saveLineupSnapshot, loadLineupSnapshot, getPendingMatches, flushPendingMatches } from "@/lib/offlineScore";
@@ -59,7 +59,9 @@ export default function ScoreApp() {
   // Offline: använd senast hämtade uppställning om servern inte nås.
   const [snapshot] = useState(() => loadLineupSnapshot<NonNullable<typeof liveLineup>>());
   useEffect(() => {
-    if (liveLineup) saveLineupSnapshot(liveLineup);
+    // Spara inte "inget lag än" som offline-kopia – då försvinner det senast visade laget
+    const mode = (liveLineup as { view?: { mode: string } } | undefined)?.view?.mode;
+    if (liveLineup && mode !== "hidden" && mode !== "scheduled") saveLineupSnapshot(liveLineup);
   }, [liveLineup]);
   const lineupData = liveLineup ?? snapshot?.data ?? null;
   const loading = liveLoading && !snapshot;
@@ -201,6 +203,7 @@ export default function ScoreApp() {
           {activeTab === "lineup" && (
             <LineupPage
               lineupState={lineupState}
+              view={(liveLineup as { view?: ScoreView } | undefined)?.view ?? null}
               loading={loading}
               lastSyncTime={lastSyncTime}
               refreshing={refreshing}

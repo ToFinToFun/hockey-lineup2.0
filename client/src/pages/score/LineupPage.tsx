@@ -14,8 +14,24 @@ import { type AppState, type Slot, createTeamSlots, groupSlots, MAX_TEAM_CONFIG 
 import { positionRowColors, CAPTAIN_COLORS } from "@/lib/positionColors";
 import { type Player } from "@/lib/players";
 
+/** Vad servern visar för den som inte är inloggad (se server/scoreLineupView.ts) */
+export type ScoreView =
+  | { mode: "staff" }
+  | { mode: "published"; publishedAt: string }
+  | { mode: "scheduled"; publishAt: string }
+  | { mode: "live" }
+  | { mode: "hidden"; showFrom: string | null };
+
+const WD = ["sön", "mån", "tis", "ons", "tor", "fre", "lör"];
+/** "tis 18:30" */
+export function shortWhen(iso: string): string {
+  const d = new Date(iso);
+  return `${WD[d.getDay()]} ${d.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" })}`;
+}
+
 interface LineupPageProps {
   lineupState: AppState | null;
+  view?: ScoreView | null;
   loading: boolean;
   lastSyncTime: Date | null;
   refreshing: boolean;
@@ -148,7 +164,7 @@ function formatSyncTime(date: Date | null): string {
   return date.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" });
 }
 
-export default function LineupPage({ lineupState, loading, lastSyncTime, refreshing, onRefresh }: LineupPageProps) {
+export default function LineupPage({ lineupState, view, loading, lastSyncTime, refreshing, onRefresh }: LineupPageProps) {
   const sides = matchSides(lineupState?.setup, lineupState?.opponent, lineupState?.teamAName);
   const teamASlots = useMemo(() =>
     createTeamSlots("team-a", lineupState?.teamAConfig ?? MAX_TEAM_CONFIG),
@@ -186,6 +202,29 @@ export default function LineupPage({ lineupState, loading, lastSyncTime, refresh
     );
   }
 
+  // Inget lag att visa än (för den som inte är inloggad)
+  if (view?.mode === "hidden" || view?.mode === "scheduled") {
+    return (
+      <PullToRefresh onRefresh={onRefresh} refreshing={refreshing} className="h-full bg-[#1a1a1a]">
+        <div className="flex flex-col items-center justify-center h-full gap-2 p-6 text-center">
+          {view.mode === "scheduled" ? (
+            <>
+              <span className="text-base font-semibold text-[#ECEDEE]">Laget publiceras {shortWhen(view.publishAt)}</span>
+              <span className="text-xs text-[#9BA1A6]">Uppställningen visas här när nyheten går ut.</span>
+            </>
+          ) : (
+            <>
+              <span className="text-base font-semibold text-[#ECEDEE]">Inget lag publicerat än</span>
+              <span className="text-xs text-[#9BA1A6]">
+                Uppställningen visas när laget publiceras{view.showFrom ? `, eller senast ${shortWhen(view.showFrom)} (75 min före matchstart)` : ""}.
+              </span>
+            </>
+          )}
+        </div>
+      </PullToRefresh>
+    );
+  }
+
   return (
     <PullToRefresh onRefresh={onRefresh} refreshing={refreshing} className="h-full bg-[#1a1a1a]">
       <div className="px-2 py-3">
@@ -194,7 +233,9 @@ export default function LineupPage({ lineupState, loading, lastSyncTime, refresh
           <div>
             <h2 className="text-base font-bold text-[#ECEDEE]">Laguppställning</h2>
             <p className="text-[10px] text-[#9BA1A6]">
-              Senast synkad: {formatSyncTime(lastSyncTime)}
+              {view?.mode === "published" ? `Publicerat ${shortWhen(view.publishedAt)}`
+                : view?.mode === "live" ? "Live från Lineup – inget lag publicerat än"
+                : `Senast synkad: ${formatSyncTime(lastSyncTime)}`}
             </p>
           </div>
           <div className="flex gap-1.5">

@@ -15,6 +15,8 @@ export const NOTIFICATION_TYPES = {
   autoNewsPreview: "Automatisk nyhet går ut om 15 min (förhandsvisning)",
   autoNewsSkipped: "Automatisk nyhet kan inte gå ut",
   autoNewsPublished: "Automatisk nyhet publicerad/uppdaterad",
+  lineupMismatch: "Uppställningen stämmer inte med anmälningarna (före match)",
+  autoLineup: "Laget skapades automatiskt (Auto-lag)",
 } as const;
 export type NotificationType = keyof typeof NOTIFICATION_TYPES;
 

@@ -15,6 +15,8 @@ type Doc = Awaited<ReturnType<typeof getLineupSnapshot>>["doc"];
 
 export interface LineupLock {
   lockedAt: string;
+  /** Tidsinställd nyhet: när laget räknas som publicerat (annars lockedAt) */
+  publishAt?: string | null;
   expiresAt: string;
   newsTitle: string | null;
   doc: Doc;
@@ -31,11 +33,24 @@ export async function getActiveLock(now = new Date()): Promise<LineupLock | null
   }
 }
 
-/** Lås laget som det ser ut nu (efter publicerad nyhet). */
-export async function lockLineup(newsTitle: string | null): Promise<LineupLock> {
+/** "2026-10-06 18:30" (laget.se:s publiceringstid, lokal tid) → Date */
+export function parsePublishAt(s: string | null | undefined): Date | null {
+  const m = s?.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})/);
+  return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) : null;
+}
+
+/** När laget räknas som publicerat: den inställda tiden, annars när det låstes */
+export const publishedTime = (l: LineupLock) => new Date(l.publishAt ?? l.lockedAt);
+
+/** Lås laget som det ser ut nu (efter publicerad nyhet). publishAt = tidsinställd nyhet. */
+export async function lockLineup(newsTitle: string | null, publishAt: Date | null = null): Promise<LineupLock> {
   const { doc } = await getLineupSnapshot();
   const now = new Date();
-  const lock: LineupLock = { lockedAt: now.toISOString(), expiresAt: new Date(now.getTime() + LOCK_HOURS * 3600_000).toISOString(), newsTitle, doc };
+  const from = publishAt && publishAt.getTime() > now.getTime() ? publishAt : now;
+  const lock: LineupLock = {
+    lockedAt: now.toISOString(), publishAt: publishAt ? publishAt.toISOString() : null,
+    expiresAt: new Date(from.getTime() + LOCK_HOURS * 3600_000).toISOString(), newsTitle, doc,
+  };
   await setConfigValue(KEY, JSON.stringify(lock));
   return lock;
 }

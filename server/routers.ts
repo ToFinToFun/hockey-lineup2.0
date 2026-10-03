@@ -27,7 +27,12 @@ import { getRegistryMap, getRegistryVersion } from "./playersDb";
 import { getLineupSnapshot, applyLineupPatch, getLineupChangedAt } from "./lineupSync";
 import { readLastPublished, writeLastPublished, type PublishedNews } from "./newsState";
 import { getAutoNewsConfig, setAutoNewsConfig, getAutoNewsStatus } from "./autoNews";
-import { getActiveLock, lockLineup, unlockLineup, differsFromLock } from "./lineupLock";
+import { getAutoLineupConfig, setAutoLineupConfig, getAutoLineupState } from "./autoLineup";
+import { getActiveLock, lockLineup, unlockLineup, differsFromLock, parsePublishAt } from "./lineupLock";
+import { scoreLineupView } from "./scoreLineupView";
+import { loadPirConfig, PIR_WEIGHTS_KEY, PIR_ADJUSTMENTS_KEY } from "./pirConfig";
+import { positionAndTeamHistory } from "./positionHistory";
+import { nextEvent, eventStart } from "./autoNews";
 import { NOTIFICATION_TYPES, getRecipients, setRecipients, smtpConfigured, sendTestMail, notifyLater, mailLayout, type NotificationType } from "./notifications";
 import type { LineupOp } from "../shared/lineupDoc";
 import {
@@ -65,19 +70,8 @@ const lineupOpSchema = z.union([
 let pirCache: { key: string; result: Array<ReturnType<typeof calculatePIR>[number] & { label: string }> } | null = null;
 let analysisCache: { key: string; result: PirAnalysis } | null = null;
 
-// PIR-inställningar i app_config (vikter och manuella justeringar per spelare).
-const PIR_WEIGHTS_KEY = "pir_weights";
-const PIR_ADJUSTMENTS_KEY = "pir_adjustments";
+// PIR-inställningar i app_config (vikter och manuella justeringar per spelare): server/pirConfig.ts
 let pirConfigVersion = 0;
-
-async function loadPirConfig(): Promise<{ weights: PirWeights; adjustments: Record<string, number> }> {
-  const [w, a] = await Promise.all([getConfigValue(PIR_WEIGHTS_KEY), getConfigValue(PIR_ADJUSTMENTS_KEY)]);
-  let weights = DEFAULT_PIR_WEIGHTS;
-  let adjustments: Record<string, number> = {};
-  try { if (w) weights = sanitizeWeights(JSON.parse(w)); } catch { /* standardvikter */ }
-  try { if (a) adjustments = JSON.parse(a); } catch { /* inga justeringar */ }
-  return { weights, adjustments };
-}
 
 // Förklaring och historik per spelare – dyrt att räkna, så cachat per spelare och dataläge.
 const pirExplainCache = new Map<string, PirExplanation>();
@@ -271,7 +265,9 @@ export const appRouter = router({
         });
         if (!result.success) return { success: false as const, error: result.error };
         // Laget låses för Score Tracker och statistiken (publicerat = det som gäller)
-        await lockLineup(input.title).catch((e) => console.error("[lås] kunde inte låsa laget:", e));
+        // Tidsinställd nyhet: laget räknas som publicerat först vid den inställda tiden
+        const at = input.publishAt ? parsePublishAt(`${input.publishAt.date} ${input.publishAt.hour}:${input.publishAt.minute}`) : null;
+        await lockLineup(input.title, at).catch((e) => console.error("[lås] kunde inte låsa laget:", e));
 
         const published: PublishedNews = {
           id: result.id, url: result.url, title: input.title, eventDate: input.eventDate,
@@ -305,6 +301,15 @@ export const appRouter = router({
       .input(z.object({ enabled: z.boolean(), minutesBefore: z.number().int().min(15).max(240), minPlayers: z.number().int().min(1).max(40) }))
       .mutation(async ({ input }) => {
         await setAutoNewsConfig(input);
+        return { success: true };
+      }),
+
+    /** Auto-lag (Lineup): gör om laget före match om det inte stämmer med anmälningarna. */
+    autoLineup: lineupProcedure.query(async () => ({ config: await getAutoLineupConfig(), state: await getAutoLineupState() })),
+    setAutoLineup: lineupProcedure
+      .input(z.object({ enabled: z.boolean(), minutesBefore: z.number().int().min(60).max(240) }))
+      .mutation(async ({ input }) => {
+        await setAutoLineupConfig(input);
         return { success: true };
       }),
 
@@ -692,15 +697,32 @@ export const appRouter = router({
      * Laget för Score Tracker: det låsta (efter publicerad nyhet) om spärren är
      * aktiv, annars det aktuella.
      */
-    scoreState: lineupProcedure.query(async () => {
+    /**
+     * Laget i Score Tracker. Inloggade ser alltid laget (det låsta efter publicerad
+     * nyhet, annars Lineup). Andra ser det enligt scoreLineupView: publicerat lag,
+     * annars live från 75 min före matchstart.
+     */
+    scoreState: publicProcedure.query(async ({ ctx }) => {
       const lock = await getActiveLock();
       const { doc } = await getLineupSnapshot();
+      let view: import("./scoreLineupView").ScoreLineupView | { mode: "staff" } = { mode: "staff" };
+      if (!ctx.session) {
+        const ev = await nextEvent().catch(() => null);
+        view = scoreLineupView(lock, eventStart(ev?.date, ev?.time));
+        if (view.mode === "scheduled" || view.mode === "hidden") {
+          // Inget lag att visa än: tomma lag, bara lagnamnen
+          return {
+            ...doc, players: [], lineup: {}, locked: false, lockedAt: null, lockExpiresAt: null, opponent: null, view,
+          };
+        }
+      }
       const state = lock ? lock.doc : doc;
       // Mot motståndare: lagets namn, färg och logga till Score Tracker
       const opp = state.setup?.mode === "external" && state.setup.opponentId ? await getOpponent(state.setup.opponentId).catch(() => null) : null;
       return {
         ...state, locked: !!lock, lockedAt: lock?.lockedAt ?? null, lockExpiresAt: lock?.expiresAt ?? null,
         opponent: opp ? { id: opp.id, name: opp.name, shortName: opp.shortName, color: opp.color, logoUrl: opp.logoUrl } : null,
+        view,
       };
     }),
     /** Spärrens läge för Lineup: låst, när, och om Lineup ändrats sedan dess. */
@@ -721,46 +743,7 @@ export const appRouter = router({
 
     positionHistory: lineupProcedure.query(async () => {
       const allMatches = await getAllMatchResults();
-      // playerKey -> { position -> count }
-      const positionCounts: Record<string, Record<string, number>> = {};
-      // playerKey -> { team -> count }
-      const teamCounts: Record<string, Record<string, number>> = {};
-
-      for (const match of allMatches) {
-        const lineup = match.lineup as any;
-        if (!lineup) continue;
-        const lineupEntries = lineup.lineup || {};
-
-        for (const [slotId, p] of Object.entries(lineupEntries)) {
-          const playerKey = (p as { id?: string } | null)?.id;
-          if (!playerKey) continue;
-
-          // Extract position from slot ID
-          let position = "";
-          if (slotId.includes("-gk-")) {
-            position = "MV";
-          } else if (slotId.includes("-fwd-")) {
-            const parts = slotId.split("-");
-            const lastPart = parts[parts.length - 1];
-            position = lastPart === "c" ? "C" : lastPart === "lw" ? "LW" : lastPart === "rw" ? "RW" : "F";
-          } else if (slotId.includes("-def-")) {
-            position = "B";
-          }
-          if (!position) continue;
-
-          if (!positionCounts[playerKey]) positionCounts[playerKey] = {};
-          positionCounts[playerKey][position] = (positionCounts[playerKey][position] || 0) + 1;
-
-          // Sparade matcher har alltid Vita som lag A
-          let team = "";
-          if (slotId.startsWith("team-a-")) team = "white";
-          else if (slotId.startsWith("team-b-")) team = "green";
-          if (team) {
-            if (!teamCounts[playerKey]) teamCounts[playerKey] = {};
-            teamCounts[playerKey][team] = (teamCounts[playerKey][team] || 0) + 1;
-          }
-        }
-      }
+      const history = positionAndTeamHistory(allMatches);
 
       // Matcher, vinster, mål och assist – innevarande säsong och totalt
       const seasonNow = seasonOf(new Date());
@@ -784,33 +767,8 @@ export const appRouter = router({
         };
       }
 
-      // For each player, find the most-played position and team
       const result: Record<string, { mostPlayed: string; stats: Record<string, number>; mostPlayedTeam?: string; teamStats?: Record<string, number>; record?: (typeof records)[string] }> = {};
-      for (const [playerKey, stats] of Object.entries(positionCounts)) {
-        let mostPlayed = "";
-        let maxCount = 0;
-        for (const [pos, count] of Object.entries(stats)) {
-          if (count > maxCount) {
-            maxCount = count;
-            mostPlayed = pos;
-          }
-        }
-
-        // Most played team
-        let mostPlayedTeam: string | undefined;
-        const tStats = teamCounts[playerKey];
-        if (tStats) {
-          let maxTeamCount = 0;
-          for (const [team, count] of Object.entries(tStats)) {
-            if (count > maxTeamCount) {
-              maxTeamCount = count;
-              mostPlayedTeam = team;
-            }
-          }
-        }
-
-        result[playerKey] = { mostPlayed, stats, mostPlayedTeam, teamStats: tStats, record: records[playerKey] };
-      }
+      for (const [playerKey, h] of Object.entries(history)) result[playerKey] = { ...h, record: records[playerKey] };
 
       return result;
     }),

@@ -19,6 +19,7 @@ import { loadClub } from "../clubConfig";
 import { getClubAsset } from "../clubAssets";
 import { getOpponentLogo } from "../opponents";
 import { startAutoNewsSchedule } from "../autoNews";
+import { startAutoLineupSchedule } from "../autoLineup";
 import { getMediaPhoto } from "../mediaPosts";
 import { registerVideoRoutes } from "../video/videoJobs";
 import { appRouter } from "../routers";
@@ -218,6 +219,7 @@ async function startServer() {
     startLiveProfileSchedule();
     // Automatisk nyhet till laget.se (gör bara något om den är påslagen)
     startAutoNewsSchedule();
+    startAutoLineupSchedule();
     console.log(`Stålstadens v${APP_VERSION} kör på port ${port}`);
   });
 }
