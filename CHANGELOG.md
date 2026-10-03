@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.57.0 – 2026-10-03
+
+- Länk till motståndarlag: välj vad de ser av vårt lag – **Visa uppställning** (spelarna på sina platser), **Visa spelare** (bara vilka som spelar, utan platser; platserna skickas inte alls) eller **Dölj allt**. Länklistan visar valet. Äldre länkar fungerar som förut (visa = uppställning).
+
 ## 2.56.0 – 2026-10-03
 
 - Motståndarens länk: laget väljer själv Platser eller Lista (bocka i vilka som spelar). Listan sparas på laget (migrering 0025, opponents.lineupList) och syns direkt i Lineup när matchen mot laget är vald; annars används den när laget väljs nästa gång. Listan som görs i Lineup sparas också på laget.

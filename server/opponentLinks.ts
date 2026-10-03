@@ -15,10 +15,15 @@ import { opponentPlayerId, opponentPlayerDbId, isOpponentPlayerId } from "../sha
 import { createTeamSlots, MAX_TEAM_CONFIG, type TeamConfig } from "../client/src/lib/lineup";
 import { club } from "../shared/club";
 
+/** Vad laget får se av vårt lag: uppställningen, bara spelarna (lista) eller inget */
+export type OurTeamView = "lineup" | "players" | "none";
+
 export interface OpponentLink {
   token: string;
   opponentId: number;
+  /** Äldre länkar: true = uppställningen. Nya länkar har ourView. */
   showOurTeam: boolean;
+  ourView?: OurTeamView;
   createdAt: string;
   expiresAt: string;
 }
@@ -36,10 +41,12 @@ async function readLinks(): Promise<OpponentLink[]> {
 }
 const writeLinks = (l: OpponentLink[]) => setConfigValue(KEY, JSON.stringify(l));
 
-export async function createOpponentLink(opponentId: number, showOurTeam: boolean, days = 7): Promise<OpponentLink> {
+export const ourViewOf = (l: Pick<OpponentLink, "showOurTeam" | "ourView">): OurTeamView => l.ourView ?? (l.showOurTeam ? "lineup" : "none");
+
+export async function createOpponentLink(opponentId: number, ourView: OurTeamView, days = 7): Promise<OpponentLink> {
   const link: OpponentLink = {
     token: randomBytes(18).toString("base64url"),
-    opponentId, showOurTeam,
+    opponentId, showOurTeam: ourView !== "none", ourView,
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + days * 86_400_000).toISOString(),
   };
@@ -80,16 +87,21 @@ export async function linkView(token: string) {
   const lineup: Record<string, number> = live
     ? Object.fromEntries(Object.entries(live.lineup).filter(([k, p]) => k.startsWith("team-b-") && isOpponentPlayerId(p.id)).map(([k, p]) => [k, opponentPlayerDbId(p.id)]))
     : stored;
-  const ours = live && link.showOurTeam
+  const ourView = ourViewOf(link);
+  const ourPlaced = live ? Object.entries(live.lineup).filter(([k]) => k.startsWith("team-a-")) : [];
+  const ours = live && ourView !== "none"
     ? {
       name: live.teamAName,
       config: live.teamAConfig,
-      lineup: Object.fromEntries(Object.entries(live.lineup).filter(([k]) => k.startsWith("team-a-")).map(([k, p]) => [k, { name: p.name, number: p.number ?? "", position: p.position }])),
+      // "players": bara vilka som spelar (ingen plats) – platserna skickas inte alls
+      lineup: ourView === "lineup" ? Object.fromEntries(ourPlaced.map(([k, p]) => [k, { name: p.name, number: p.number ?? "", position: p.position }])) : {},
+      players: ourView === "players" ? ourPlaced.map(([, p]) => ({ name: p.name, number: p.number ?? "", position: p.position as string })) : [],
     }
     : null;
   return {
     club: { name: club().name, logo: club().logo },
-    showOurTeam: link.showOurTeam,
+    showOurTeam: ourView !== "none",
+    ourView,
     expiresAt: link.expiresAt,
     live: !!live,
     opponent: { id: o.id, name: o.name, shortName: o.shortName, color: o.color, logoUrl: o.logoUrl, players: o.players.filter((p) => p.active) },

@@ -23,7 +23,7 @@ function ShareLinks({ opponentId, name }: { opponentId: number; name: string }) 
   const links = trpc.opponents.links.useQuery({ opponentId });
   const create = trpc.opponents.createLink.useMutation({ onSuccess: () => void utils.opponents.links.invalidate({ opponentId }) });
   const revoke = trpc.opponents.revokeLink.useMutation({ onSuccess: () => void utils.opponents.links.invalidate({ opponentId }) });
-  const [showOurs, setShowOurs] = useState(false);
+  const [ourView, setOurView] = useState<"lineup" | "players" | "none">("none");
   const url = (token: string) => `${window.location.origin}/lag/${token}`;
   const share = async (token: string) => {
     const u = url(token);
@@ -36,14 +36,23 @@ function ShareLinks({ opponentId, name }: { opponentId: number; name: string }) 
     <div className="rounded-xl border border-sky-400/25 bg-sky-500/5 p-3 space-y-2">
       <p className="text-xs font-semibold text-sky-200 flex items-center gap-1.5"><Link2 size={13} /> Dela länk till laget</p>
       <p className="text-[11px] text-white/45">Laget kan själva fylla i namn, logga och spelare och göra sin uppställning – utan inloggning. Länken gäller i 7 dagar.</p>
-      <label className="flex items-center gap-2 text-xs text-white/70"><input type="checkbox" checked={showOurs} onChange={(e) => setShowOurs(e.target.checked)} /> Visa vårt lag för dem</label>
-      <button onClick={() => create.mutate({ opponentId, showOurTeam: showOurs, days: 7 })} disabled={create.isPending}
+      <div>
+        <p className="text-[11px] text-white/50 mb-1">Vårt lag på deras sida</p>
+        <div className="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label="Vårt lag på deras sida">
+          {([["lineup", "Visa uppställning"], ["players", "Visa spelare"], ["none", "Dölj allt"]] as const).map(([v, label]) => (
+            <button key={v} role="radio" aria-checked={ourView === v} onClick={() => setOurView(v)}
+              className={`py-1.5 rounded-lg text-[11px] font-semibold border ${ourView === v ? "bg-sky-500/25 border-sky-400/60 text-sky-100" : "bg-white/5 border-white/10 text-white/55"}`}>{label}</button>
+          ))}
+        </div>
+        <p className="text-[10px] text-white/35 mt-1">{ourView === "lineup" ? "De ser våra spelare på sina platser (kedjor och backpar)." : ourView === "players" ? "De ser vilka som spelar, men inte på vilka platser." : "De ser inget av vårt lag."}</p>
+      </div>
+      <button onClick={() => create.mutate({ opponentId, ourView, days: 7 })} disabled={create.isPending}
         className="w-full py-2 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-100 text-sm font-semibold disabled:opacity-40">Skapa länk</button>
       {(links.data ?? []).map((l) => (
         <div key={l.token} className="flex items-center gap-2 rounded-lg bg-black/30 px-2 py-1.5">
           <span className="flex-1 min-w-0">
             <span className="block text-[11px] text-white/80 truncate">{url(l.token)}</span>
-            <span className="block text-[10px] text-white/40">{l.showOurTeam ? "Ser vårt lag" : "Ser inte vårt lag"} · gäller till {new Date(l.expiresAt).toLocaleDateString("sv-SE", { day: "numeric", month: "numeric" })}</span>
+            <span className="block text-[10px] text-white/40">{l.ourView === "lineup" ? "Ser vår uppställning" : l.ourView === "players" ? "Ser våra spelare" : "Ser inget av vårt lag"} · gäller till {new Date(l.expiresAt).toLocaleDateString("sv-SE", { day: "numeric", month: "numeric" })}</span>
           </span>
           <button onClick={() => { void navigator.clipboard.writeText(url(l.token)); toast.success("Länken kopierad"); }} aria-label="Kopiera" className="p-1.5 text-white/60 hover:text-white"><Copy size={13} /></button>
           <button onClick={() => void share(l.token)} aria-label="Dela" className="p-1.5 text-white/60 hover:text-white"><Share2 size={13} /></button>

@@ -11,6 +11,7 @@ import { trpc } from "@/lib/trpc";
 import { OpponentTeamPanel } from "@/components/opponent/OpponentTeamPanel";
 import { opponentPlayerDbId, opponentPlayerId } from "@shared/matchSetup";
 import type { Player } from "@/lib/players";
+import { sortList } from "@/lib/opponentList";
 
 const POSITIONS = ["", "MV", "B", "C", "F"] as const;
 const input = "w-full rounded-lg bg-white/5 border border-white/10 text-white text-sm px-3 py-2 placeholder:text-white/30";
@@ -134,7 +135,24 @@ export default function OpponentLinkPage() {
               listIds={d.list ?? null}
               onListChange={(ids) => setList.mutate({ token, ids })}
             />
-            {d.ours && (
+            {d.ours && d.ourView === "players" && (
+              <div className="glass-panel rounded-xl overflow-hidden min-w-0" style={{ borderTop: "3px solid #ffffff" }}>
+                <div className="flex items-center gap-2 px-3 py-2.5 border-b border-white/10">
+                  <img src={d.club.logo} alt="" className="w-9 h-9 object-contain" />
+                  <h2 className="flex-1 min-w-0 truncate font-bold tracking-wide text-lg" style={{ fontFamily: "'Oswald', sans-serif" }}>{d.ours.name.toUpperCase()}</h2>
+                  <span className="text-white/45 font-bold tabular-nums text-xs">{d.ours.players.length}</span>
+                </div>
+                <div className="p-2.5 space-y-1">
+                  {sortList(d.ours.players).map((p, i) => (
+                    <div key={i} className="flex items-center gap-1.5 rounded-lg bg-white/[0.04] border border-white/10 px-1.5 py-1 min-h-[34px]">
+                      <span className="pos-badge pos-badge-sm shrink-0">{(p.position || "F").toUpperCase()}</span>
+                      <span className="flex-1 min-w-0 truncate text-xs text-white">{p.name}{p.number ? <span className="text-white/40"> #{p.number}</span> : null}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {d.ours && d.ourView === "lineup" && (
               <OpponentTeamPanel
                 teamName={d.ours.name} logoUrl={d.club.logo} color="#ffffff" config={d.ours.config} teamId="team-a"
                 lineup={Object.fromEntries(Object.entries(d.ours.lineup).map(([k, p]) => [k, { id: k, name: p.name, number: p.number, position: p.position as Player["position"] }]))}
@@ -142,7 +160,7 @@ export default function OpponentLinkPage() {
               />
             )}
           </div>
-          {!d.ours && d.showOurTeam && <p className="text-[11px] text-white/40">{d.club.name}s uppställning visas här när den är klar.</p>}
+          {!d.ours && d.showOurTeam && <p className="text-[11px] text-white/40">{d.club.name}s {d.ourView === "players" ? "spelare visas" : "uppställning visas"} här när {d.ourView === "players" ? "laget" : "den"} är klar.</p>}
         </section>
       </main>
     </div>

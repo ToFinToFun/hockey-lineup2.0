@@ -13,7 +13,7 @@ import { refreshLiveProfile } from "./cardProfile";
 import { club } from "../shared/club";
 import { getClubOverrides, saveClubOverrides, loadClub } from "./clubConfig";
 import { getFeatures, setFeatures } from "./features";
-import { createOpponentLink, listOpponentLinks, revokeOpponentLink, resolveLink, linkView, setLinkSlot, afterLinkPlayerChange, getStoredOpponentLineup, getStoredOpponentList, setStoredOpponentList, setLinkList } from "./opponentLinks";
+import { createOpponentLink, ourViewOf, listOpponentLinks, revokeOpponentLink, resolveLink, linkView, setLinkSlot, afterLinkPlayerChange, getStoredOpponentLineup, getStoredOpponentList, setStoredOpponentList, setLinkList } from "./opponentLinks";
 import { listOpponents, getOpponent, saveOpponent, deleteOpponent, addOpponentPlayer, updateOpponentPlayer, deleteOpponentPlayer, MAX_OPPONENT_LOGO_BASE64 } from "./opponents";
 import { CLUB_ASSET_KEYS, MAX_CLUB_ASSET_BASE64, setClubAsset, deleteClubAsset, listClubAssets } from "./clubAssets";
 import { listMediaPosts, mediaPhotoIds, saveMediaPost, deleteMediaPost, MAX_MEDIA_PHOTO_BASE64 } from "./mediaPosts";
@@ -487,10 +487,16 @@ export const appRouter = router({
       .input(z.object({ id: z.number().int().positive(), ids: z.array(z.number().int().positive()).max(60).nullable() }))
       .mutation(async ({ input }) => { await setStoredOpponentList(input.id, input.ids); return { success: true }; }),
     /** Delningslänkar till laget */
-    links: adminProcedure.input(z.object({ opponentId: z.number().int().positive() })).query(({ input }) => listOpponentLinks(input.opponentId)),
+    links: adminProcedure.input(z.object({ opponentId: z.number().int().positive() })).query(async ({ input }) => (await listOpponentLinks(input.opponentId)).map((l) => ({ ...l, ourView: ourViewOf(l) }))),
     createLink: adminProcedure
-      .input(z.object({ opponentId: z.number().int().positive(), showOurTeam: z.boolean(), days: z.number().int().min(1).max(60).default(7) }))
-      .mutation(({ input }) => createOpponentLink(input.opponentId, input.showOurTeam, input.days)),
+      .input(z.object({
+        opponentId: z.number().int().positive(),
+        /** Vad laget ser av vårt lag: uppställningen, bara spelarna eller inget */
+        ourView: z.enum(["lineup", "players", "none"]).optional(),
+        showOurTeam: z.boolean().optional(),
+        days: z.number().int().min(1).max(60).default(7),
+      }))
+      .mutation(({ input }) => createOpponentLink(input.opponentId, input.ourView ?? (input.showOurTeam ? "lineup" : "none"), input.days)),
     revokeLink: adminProcedure.input(z.object({ token: z.string().max(64) })).mutation(async ({ input }) => {
       await revokeOpponentLink(input.token);
       return { success: true };
