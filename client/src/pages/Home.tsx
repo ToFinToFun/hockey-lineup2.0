@@ -1696,7 +1696,7 @@ export default function Home() {
                       <>
                         {/* Backdrop */}
                         <div className="fixed inset-0 z-40" onClick={() => setShowHeaderMenu(false)} />
-                        <div className={`absolute left-0 top-full mt-1 z-50 rounded-lg shadow-xl border min-w-[180px] py-1 ${
+                        <div className={`absolute right-0 top-full mt-1 z-50 rounded-lg shadow-xl border min-w-[180px] max-w-[calc(100vw-1rem)] max-h-[80vh] overflow-y-auto py-1 ${
                           isLineupDark
                             ? 'bg-[#1a2744] border-white/10'
                             : 'bg-white border-gray-200'
@@ -1906,17 +1906,7 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              {/* Mitten: när uppställningen senast ändrades */}
-              {lastChangedLabel && (
-                <div className="min-w-0 flex justify-center">
-                  <span
-                    className={`text-[10px] sm:text-[11px] font-medium truncate px-2 py-0.5 rounded-full ${isLineupDark ? 'text-white/55 bg-white/5' : 'text-gray-500 bg-gray-100'}`}
-                    title="Senast en spelare placerades, flyttades, togs ur laget eller lades till"
-                  >
-                    Ändrad {lastChangedLabel}
-                  </span>
-                </div>
-              )}
+              {/* "Ändrad …" visas ovanför lagen (platsen i rubriken räcker inte med hallens namn) */}
 
               <div aria-hidden />
               </div>
@@ -2039,8 +2029,21 @@ export default function Home() {
           )}
 
           <main className="px-2 md:px-3 pb-8 overflow-x-hidden max-w-[1400px] mx-auto w-full">
-            {setup.mode === "external" && (
-              <div className="mb-2 text-[11px] text-sky-200/80 px-1">{setupLabel(setup, opponentQ.data?.name)}</div>
+            {/* Matchen (mot annat lag) och när uppställningen senast ändrades */}
+            {(setup.mode === "external" || lastChangedLabel) && (
+              <div className="mb-2 px-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                {setup.mode === "external" && (
+                  <span className="text-[11px] text-sky-200/80 min-w-0 truncate">{setupLabel(setup, opponentQ.data?.name)}</span>
+                )}
+                {lastChangedLabel && (
+                  <span
+                    className={`text-[10px] sm:text-[11px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${isLineupDark ? 'text-white/55 bg-white/5' : 'text-gray-500 bg-gray-100'}`}
+                    title="Senast en spelare placerades, flyttades, togs ur laget eller lades till"
+                  >
+                    Ändrad {lastChangedLabel}
+                  </span>
+                )}
+              </div>
             )}
             {/* Villkorlig rendering: ANTINGEN desktop ELLER mobil – aldrig båda */}
             {/* Detta eliminerar dubbla droppables som förvirrar dnd-kit */}

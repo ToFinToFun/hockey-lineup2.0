@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.54.1 – 2026-10-03
+
+- Lineup: "Ändrad …" står nu ovanför lagen (efter "Mot …" vid match mot annat lag) i stället för längst till höger i rubriken, där den klipptes av när hallens namn visas.
+- Lineup: menyn under kugghjulet öppnas åt vänster och får plats på skärmen (rullar om den är högre än skärmen).
+
 ## 2.54.0 – 2026-10-03
 
 **Matcher mot andra lag: alla deras spelare sparas**
