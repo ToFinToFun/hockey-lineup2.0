@@ -21,6 +21,7 @@ const MediaApp = lazy(() => import("./pages/media/MediaApp"));
 const VideoApp = lazy(() => import("./pages/media/VideoApp"));
 const ReportApp = lazy(() => import("./pages/report/ReportApp"));
 const AccessRedeem = lazy(() => import("./pages/AccessRedeem"));
+const LivePage = lazy(() => import("./pages/live/LivePage"));
 import InviteRedeem from "./pages/InviteRedeem";
 import { RequireRole } from "./components/auth/RequireRole";
 import { lazy, Suspense, useEffect, type ComponentType } from "react";
@@ -80,6 +81,8 @@ function Router() {
       {/* Delad länk med moduler */}
       <Route path="/a/:token">{(params) => <Suspense fallback={<div className="min-h-[100dvh] bg-[#0a0a0a]" />}><AccessRedeem token={params.token} /></Suspense>}</Route>
       <Route path="/rapport" component={ReportPage} />
+      {/* Livesidan – öppen för alla */}
+      <Route path="/live">{() => <Suspense fallback={<div className="min-h-[100dvh] bg-[#07100b]" />}><LivePage /></Suspense>}</Route>
 
       {/* Score Tracker app – öppen för alla */}
       <Route path="/score" component={ScoreApp} />

@@ -30,6 +30,9 @@ import { getAutoNewsConfig, setAutoNewsConfig, getAutoNewsStatus } from "./autoN
 import { getAutoLineupConfig, setAutoLineupConfig, getAutoLineupState } from "./autoLineup";
 import { getActiveLock, lockLineup, unlockLineup, differsFromLock, parsePublishAt } from "./lineupLock";
 import { scoreLineupView } from "./scoreLineupView";
+import { getAllMatchesIncludingUnreviewed, setMatchReport } from "./scoreDb";
+import type { TrpcContext } from "./_core/context";
+import { currentSession, startLive, pushLive, endLive, touchViewer, watchingNow, sendHeart, postComment, listComments, hideComment, getLiveConfig, setLiveConfig, isLive, isAfter, viewerCode } from "./liveMatch";
 import { getLineupContext, saveLineupContext } from "./lineupContexts";
 import { opponentPlayerId, isOpponentPlayerId, INTERNAL_SETUP } from "../shared/matchSetup";
 import type { Player } from "../client/src/lib/players";
@@ -195,6 +198,9 @@ async function internalScoreState<T extends { players: Player[]; lineup: Record<
     ...(ctx?.teamAConfig ? { teamAConfig: ctx.teamAConfig } : {}), ...(ctx?.teamBConfig ? { teamBConfig: ctx.teamBConfig } : {}),
   };
 }
+
+/** Score Trackers lag för den som inte är inloggad (sätts efter appRouter – undviker cirkulär typ) */
+let publicScoreState: (ctx: TrpcContext) => Promise<unknown> = async () => null;
 
 export const appRouter = router({
   system: systemRouter,
@@ -713,6 +719,115 @@ export const appRouter = router({
 
   // ─── Lineup State ──────────────────────────────────────────────────────────
 
+  /**
+   * Live (server/liveMatch.ts): en inloggad Score Tracker sänder, alla följer på /live.
+   * Läktaren: hjärtan och kommentarer (Inställningar → Live).
+   */
+  live: router({
+    state: publicProcedure.query(async ({ ctx }) => {
+      const ip = String(ctx.req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() || ctx.req.ip || "";
+      await touchViewer(ip, String(ctx.req.headers["user-agent"] ?? ""));
+      const s = await currentSession();
+      const cfg = await getLiveConfig();
+      // Laget som i Score Tracker för den som inte är inloggad (publiceringsreglerna gäller)
+      const lineup = (await publicScoreState({ ...ctx, session: null })) as Record<string, unknown> & { players?: unknown };
+      const ev = await nextEvent().catch(() => null);
+      const phase = isLive(s) ? "live" : isAfter(s) ? "after" : "before";
+      const showSession = phase !== "before" && s;
+      return {
+        now: new Date().toISOString(),
+        phase,
+        event: ev ? { date: ev.date ?? null, time: ev.time ?? null, location: ev.location ?? null } : null,
+        lineup: { ...lineup, players: [] },
+        live: showSession ? {
+          id: s.id, startedAt: s.startedAt, updatedAt: s.updatedAt, endedAt: s.endedAt,
+          whiteScore: s.whiteScore, greenScore: s.greenScore, goals: s.goals, matchStartTime: s.matchStartTime, endTime: s.endTime,
+          hearts: s.hearts, uniqueViewers: s.viewerHashes?.length ?? s.uniqueViewers,
+        } : null,
+        watching: phase === "live" ? watchingNow() : 0,
+        laktaren: cfg.laktaren,
+        comments: cfg.laktaren && showSession ? await listComments(s.id) : [],
+      };
+    }),
+    heart: publicProcedure.input(z.object({ team: z.enum(["white", "green"]) })).mutation(async ({ ctx, input }) => {
+      const ip = String(ctx.req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() || ctx.req.ip || "";
+      const viewer = await touchViewer(ip, String(ctx.req.headers["user-agent"] ?? ""));
+      return { ok: viewer ? await sendHeart(viewer, input.team) : false };
+    }),
+    comment: publicProcedure
+      .input(z.object({ name: z.string().max(60), text: z.string().min(1).max(500) }))
+      .mutation(async ({ ctx, input }) => {
+        const ip = String(ctx.req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() || ctx.req.ip || "";
+        const s = await currentSession();
+        const viewer = (await touchViewer(ip, String(ctx.req.headers["user-agent"] ?? ""))) ?? (s && s.salt ? null : viewerCode(ip, String(ctx.req.headers["user-agent"] ?? ""), s?.id ?? "x"));
+        if (!viewer) throw new TRPCError({ code: "BAD_REQUEST", message: "Läktaren är stängd" });
+        const r = await postComment(viewer, input.name, input.text);
+        if (!r.ok) {
+          const msg = r.reason === "wait" ? `Vänta ${Math.ceil((r.waitMs ?? 0) / 1000)} s` : r.reason === "limit" ? "Max 50 kommentarer per match" : r.reason === "empty" ? "Skriv något" : "Läktaren är stängd";
+          throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: msg });
+        }
+        const { viewer: _v, ...c } = r.comment;
+        return c;
+      }),
+
+    /** Score Tracker: läget för sändningen (min enhet, tittare, hjärtan, kommentarer inkl. dolda) */
+    status: lineupProcedure.input(z.object({ deviceId: z.string().max(64) })).query(async ({ input }) => {
+      const s = await currentSession();
+      const live = isLive(s);
+      return {
+        live,
+        mine: live && s!.deviceId === input.deviceId,
+        startedAt: live ? s!.startedAt : null,
+        watching: live ? watchingNow() : 0,
+        uniqueViewers: s ? s.viewerHashes?.length ?? s.uniqueViewers : 0,
+        hearts: s?.hearts ?? { white: 0, green: 0 },
+        comments: s && (live || isAfter(s)) ? await listComments(s.id, true) : [],
+        laktaren: (await getLiveConfig()).laktaren,
+      };
+    }),
+    start: lineupProcedure.input(z.object({ deviceId: z.string().min(8).max(64), takeover: z.boolean().optional() })).mutation(async ({ input }) => {
+      const r = await startLive(input.deviceId, !!input.takeover);
+      if (!r.ok) throw new TRPCError({ code: "CONFLICT", message: "Live sänds redan från en annan enhet" });
+      return { id: r.session.id };
+    }),
+    push: lineupProcedure
+      .input(z.object({
+        deviceId: z.string().max(64),
+        whiteScore: z.number().int().min(0).max(99), greenScore: z.number().int().min(0).max(99),
+        goals: z.array(z.object({
+          team: z.enum(["white", "green"]), timestamp: z.string().max(40),
+          scorer: z.string().max(80).optional(), scorerId: z.string().max(80).optional(),
+          assist: z.string().max(80).optional(), assistId: z.string().max(80).optional(),
+        }).passthrough()).max(80),
+        matchStartTime: z.string().max(40).nullable(), endTime: z.string().max(5).nullable(),
+      }))
+      .mutation(async ({ input }) => {
+        const { deviceId, ...data } = input;
+        const ok = await pushLive(deviceId, data);
+        if (!ok) throw new TRPCError({ code: "CONFLICT", message: "Den här enheten sänder inte längre" });
+        return { ok };
+      }),
+    end: lineupProcedure.input(z.object({ deviceId: z.string().max(64), force: z.boolean().optional() })).mutation(async ({ input }) => {
+      const ok = await endLive(input.force ? null : input.deviceId);
+      // Unika tittare och hjärtan sparas med matchen som just sparades (inom 15 min)
+      if (ok) {
+        const s = await currentSession();
+        const latest = (await getAllMatchesIncludingUnreviewed()).find((m) => m.reviewStatus !== "rejected");
+        if (s && latest && Date.now() - new Date(latest.createdAt).getTime() < 15 * 60_000) {
+          const report = (latest as { report?: Record<string, unknown> | null }).report ?? {};
+          await setMatchReport(latest.id, { ...report, live: { viewers: s.uniqueViewers, hearts: s.hearts } } as never).catch(() => undefined);
+        }
+      }
+      return { ok };
+    }),
+    hide: lineupProcedure.input(z.object({ id: z.string().max(20), hidden: z.boolean() })).mutation(async ({ input }) => ({ ok: await hideComment(input.id, input.hidden) })),
+    getConfig: adminProcedure.query(() => getLiveConfig()),
+    setConfig: adminProcedure.input(z.object({ laktaren: z.boolean() })).mutation(async ({ input }) => {
+      await setLiveConfig(input);
+      return { success: true };
+    }),
+  }),
+
   lineup: router({
     /** Aktuell uppställning (öppen – visas i Score Tracker). */
     getState: publicProcedure.query(async () => {
@@ -1182,3 +1297,5 @@ export const appRouter = router({
 });
 
 export type AppRouter = typeof appRouter;
+
+publicScoreState = (ctx) => appRouter.createCaller(ctx).lineup.scoreState();

@@ -309,7 +309,9 @@ export const scoreRouter = router({
           const latest = (await getAllMatchesIncludingUnreviewed()).find((m) => m.reviewStatus !== "rejected");
           if (latest?.id !== input.id) throw new TRPCError({ code: "FORBIDDEN", message: "Bara den senaste matchen" });
         }
-        await setMatchReport(input.id, input.report);
+        // Livesändningens siffror (tittare, hjärtan) ligger kvar när rapporten ändras
+        const prev = (await getAllMatchesIncludingUnreviewed()).find((m) => m.id === input.id) as { report?: { live?: unknown } | null } | undefined;
+        await setMatchReport(input.id, input.report && prev?.report?.live ? { ...input.report, live: prev.report.live as never } : input.report);
         return { success: true };
       }),
 

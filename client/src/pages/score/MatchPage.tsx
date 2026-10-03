@@ -17,6 +17,7 @@ import { type AppState, createTeamSlots, MAX_TEAM_CONFIG } from "@/lib/lineup";
 import { type Player } from "@/lib/players";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
+import { useLiveStatus, useLivePush } from "@/lib/liveBroadcast";
 import { queueMatch, isNetworkError } from "@/lib/offlineScore";
 import { toast } from "sonner";
 
@@ -273,6 +274,21 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
     localStorage.removeItem(STORAGE_KEY);
   };
 
+  // ─── Live (inloggade sänder till /live) ─────────────────────────
+  const { canBroadcast, deviceId: liveDevice, status: liveStatus } = useLiveStatus();
+  const liveMine = !!liveStatus.data?.mine;
+  useLivePush(liveMine, { whiteScore: teamWhiteScore, greenScore: teamGreenScore, goals: goalHistory, matchStartTime, endTime });
+  const liveUtils = trpc.useUtils();
+  const liveStart = trpc.live.start.useMutation({
+    onSuccess: () => { void liveUtils.live.status.invalidate(); toast.success("Live startad", { description: "Följ på /live" }); },
+    onError: (e) => toast.error(e.message),
+  });
+  const liveEnd = trpc.live.end.useMutation({ onSuccess: () => void liveUtils.live.status.invalidate() });
+  const startLive = (takeover = false) => {
+    if (takeover && !confirm("Ta över livesändningen från den andra enheten? Den slutar sända.")) return;
+    liveStart.mutate({ deviceId: liveDevice, takeover });
+  };
+
   // ─── End match / save to database ──────────────────────────────
   const saveMatchMutation = trpc.score.match.save.useMutation();
 
@@ -282,6 +298,8 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
   const getMatchName = () => matchName(resolvedStart().start, teamWhiteScore, teamGreenScore);
 
   const resetAfterSave = () => {
+    // Matchen är slut: livesidan visar resultatet en halvtimme till
+    if (liveMine) liveEnd.mutate({ deviceId: liveDevice });
     setTeamWhiteScore(0);
     setTeamGreenScore(0);
     setGoalHistory([]);
@@ -564,6 +582,26 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
     }}>
       {/* Fixed top section: buttons + scores */}
       <div className="shrink-0 flex flex-col gap-3 p-4 pb-2" style={{ backgroundColor: "rgba(0,0,0,0.55)" }}>
+        {/* Live: inloggade kan sända matchen till /live */}
+        {canBroadcast && liveStatus.data && (
+          liveMine ? (
+            <div className="flex items-center gap-2 rounded-lg bg-red-600/20 border border-red-500/40 px-2.5 py-1.5 text-[11px]">
+              <span className="flex items-center gap-1.5 font-bold text-white"><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /> SÄNDER LIVE</span>
+              <span className="flex-1 min-w-0 truncate text-white/70">{liveStatus.data.watching} tittar · ♥ {liveStatus.data.hearts.white + liveStatus.data.hearts.green}</span>
+              <button onClick={() => { if (confirm("Avsluta livesändningen? Livesidan visar resultatet en halvtimme till.")) liveEnd.mutate({ deviceId: liveDevice }); }} className="px-2 py-1 rounded-md bg-white/10 text-white/80">Avsluta</button>
+            </div>
+          ) : liveStatus.data.live ? (
+            <div className="flex items-center gap-2 rounded-lg bg-white/5 border border-white/10 px-2.5 py-1.5 text-[11px] text-white/70">
+              <span className="flex-1 min-w-0">Live sänds från en annan enhet</span>
+              <button onClick={() => startLive(true)} disabled={liveStart.isPending} className="px-2 py-1 rounded-md bg-white/10 text-white/80">Ta över</button>
+            </div>
+          ) : (
+            <button onClick={() => startLive(false)} disabled={liveStart.isPending}
+              className="flex items-center justify-center gap-2 rounded-lg bg-red-600/15 border border-red-500/40 px-2.5 py-1.5 text-[11px] font-semibold text-red-200">
+              <span className="w-2 h-2 rounded-full bg-red-500" /> Starta live – följ matchen på /live
+            </button>
+          )
+        )}
         {/* Time Display */}
         <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-1.5">

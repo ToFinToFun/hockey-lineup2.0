@@ -720,6 +720,11 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
               {(selectedMatchData as { location?: string | null }).location && (
                 <p className="text-center text-xs text-white/55 -mt-2">📍 {(selectedMatchData as { location?: string | null }).location}</p>
               )}
+              {(() => {
+                // Livesändningen: unika tittare och hjärtan (sparas när live avslutas)
+                const lv = ((selectedMatchData as unknown as { report?: { live?: { viewers: number; hearts: { white: number; green: number } } } | null }).report?.live) ?? null;
+                return lv ? <p className="text-center text-[11px] text-white/45 -mt-1">Live: {lv.viewers} unika tittare · ♥ {lv.hearts.white + lv.hearts.green}</p> : null;
+              })()}
               {/* Edited indicator */}
               {(selectedMatchData as any).editedAt && (
                 <div className="text-center">

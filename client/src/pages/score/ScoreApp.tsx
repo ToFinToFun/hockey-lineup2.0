@@ -9,19 +9,32 @@ import { teamName } from "@shared/teams";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import MatchPage from "./MatchPage";
 import LineupPage, { type ScoreView } from "./LineupPage";
+import LaktarenPanel from "./LaktarenPanel";
+import { useLiveStatus } from "@/lib/liveBroadcast";
 import PlayerProfileModal from "./PlayerProfileModal";
 import { trpc } from "@/lib/trpc";
 import { saveLineupSnapshot, loadLineupSnapshot, getPendingMatches, flushPendingMatches } from "@/lib/offlineScore";
 import { toast } from "sonner";
 import { AppVersion } from "@/components/AppVersion";
-import { Home, Users, ArrowLeft, CloudOff, UploadCloud, HelpCircle, X } from "lucide-react";
+import { Home, Users, ArrowLeft, CloudOff, UploadCloud, HelpCircle, X, MessageCircle } from "lucide-react";
 import type { AppState } from "@/lib/lineup";
 import { Link } from "wouter";
 
-type TabType = "match" | "lineup";
+type TabType = "match" | "lineup" | "laktaren";
 
 export default function ScoreApp() {
   const [activeTab, setActiveTab] = useState<TabType>("match");
+  // Läktaren (live): flik med nya kommentarer för inloggade när matchen sänds
+  const { status: liveStatus } = useLiveStatus();
+  const laktarenOn = !!liveStatus.data?.laktaren && !!liveStatus.data?.live;
+  const liveComments = liveStatus.data?.comments ?? [];
+  const [seenAt, setSeenAt] = useState(() => { try { return localStorage.getItem("laktaren_seen") ?? ""; } catch { return ""; } });
+  const unread = liveComments.filter((c) => !c.hidden && c.at > seenAt).length;
+  useEffect(() => {
+    if (activeTab !== "laktaren" || !liveComments.length) return;
+    const latest = liveComments[0].at;
+    if (latest > seenAt) { setSeenAt(latest); try { localStorage.setItem("laktaren_seen", latest); } catch { /* bara nu */ } }
+  }, [activeTab, liveComments, seenAt]);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 500);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
 
@@ -213,6 +226,9 @@ export default function ScoreApp() {
           {activeTab === "match" && (
             <MatchPage lineupState={lineupState} />
           )}
+          {activeTab === "laktaren" && liveStatus.data && (
+            <LaktarenPanel comments={liveComments} hearts={liveStatus.data.hearts} watching={liveStatus.data.watching} uniqueViewers={liveStatus.data.uniqueViewers} />
+          )}
           {activeTab === "lineup" && (
             <LineupPage
               lineupState={lineupState}
@@ -258,6 +274,18 @@ export default function ScoreApp() {
               <Home size={18} />
               <span className="text-[10px] font-medium">Match</span>
             </button>
+            {laktarenOn && (
+              <button
+                onClick={() => setActiveTab("laktaren")}
+                className={`relative flex-1 flex flex-col items-center py-1.5 gap-0.5 transition-colors ${activeTab === "laktaren" ? "text-[#0a7ea4]" : "text-[#9BA1A6]"}`}
+              >
+                <MessageCircle size={18} />
+                {unread > 0 && (
+                  <span className="absolute top-0.5 left-1/2 ml-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">{unread > 9 ? "9+" : unread}</span>
+                )}
+                <span className="text-[10px] font-medium">Läktaren</span>
+              </button>
+            )}
             <button
               onClick={() => setActiveTab("lineup")}
               className={`flex-1 flex flex-col items-center py-1.5 gap-0.5 transition-colors ${

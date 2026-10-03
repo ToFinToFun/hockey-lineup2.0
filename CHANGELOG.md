@@ -7,6 +7,15 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.61.0 – 2026-10-03
+
+**Live**
+- Ny sida **/live**, öppen för alla och med fast adress: före matchen lagen (logga, namn), dag, tid, hall, nedräkning till nedslag och uppställningarna enligt publiceringsreglerna; under matchen ställning, mål (skytt, assist, ställning efter målet), poäng per spelare, målvakternas insläppta och tid kvar till sluttid; resultatet en halvtimme efter (inga stjärnor). Uppdateras var 4:e sekund. Fungerar även mot andra lag (deras logga, namn, färg och lista).
+- Score Tracker (inloggade: styrelsen och Lineup-länkar): **Starta live** sänder ställning, mål och sluttid. Sänds det redan från en annan enhet kan man **Ta över**. Live avslutas när matchen sparas (eller med Avsluta).
+- **Läktaren** (Inställningar → Live, av/på): hjärtan i lagens färger och korta kommentarer (max 140 tecken, valfritt namn som bara sparas på enheten). En kommentar per 10 s och max 50 per enhet och match, inget ordfilter. Kommentarerna raderas efter 24 h. I Score Tracker får den som är inloggad fliken Läktaren med röd siffra för nya kommentarer och kan dölja/visa kommentarer.
+- **Unika tittare** räknas utan kakor (anonym kod per enhet och match som raderas när matchen är slut). "Tittar nu" visas live; antal unika tittare och hjärtan sparas med matchen och syns i Matchhistorik.
+- laget.se-nyheten (även den automatiska) får raden "Följ matchen live: …/live".
+
 ## 2.60.5 – 2026-10-03
 
 - Score Tracker: sidan ligger fast i fönstret (fixed) och webbläsarens/PWA:ns egen "dra ner för att uppdatera" är avstängd där. Tidigare kunde en sådan uppdatering ändra höjden så att menyn i botten trycktes ned och sidan gick att rulla. Uppställning-fliken har kvar sin egen dra-för-att-uppdatera.

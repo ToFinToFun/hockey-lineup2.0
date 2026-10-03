@@ -173,7 +173,7 @@ export async function buildNews(ev: { date: string; time?: string; location?: st
 
   return {
     title: formatNewsTitle({ date: ev.date, location: ev.location, time: ev.time }),
-    body: buildNewsBody(sponsor?.name, text, true),
+    body: buildNewsBody(sponsor?.name, text, true, `${appUrl()}/live`),
     image,
     registeredPlaced,
     sponsorId: sponsor && sponsor.id > 0 ? sponsor.id : null,

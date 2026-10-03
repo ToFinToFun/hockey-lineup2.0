@@ -34,11 +34,13 @@ export function formatNewsTitle(opts: { date?: string; location?: string; time?:
  * Brödtexten: sponsorraden först (syns under rubriken i flödet), sedan uppställningen.
  * Med bold blir sponsornamnet fett (<b>) – laget.se:s nyhetsformulär tar <b>-taggar.
  */
-export function buildNewsBody(sponsor: string | undefined, lineupText: string, bold = false): string {
+export function buildNewsBody(sponsor: string | undefined, lineupText: string, bold = false, liveUrl?: string | null): string {
   const name = sponsor?.trim() ?? "";
   const shown = bold ? `<b>${name.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</b>` : name;
   const sponsorLine = name ? `Dagens matchsponsor: ${shown}` : "";
-  return [sponsorLine, lineupText.trim()].filter(Boolean).join("\n\n");
+  // Livesidan (fast adress – visar alltid aktuell match)
+  const liveLine = liveUrl ? `Följ matchen live: ${liveUrl}` : "";
+  return [sponsorLine, lineupText.trim(), liveLine].filter(Boolean).join("\n\n");
 }
 
 /**

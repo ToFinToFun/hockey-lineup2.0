@@ -166,7 +166,7 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
     if (!titleEdited) setTitle(autoTitle);
   }, [autoTitle, titleEdited]);
 
-  const autoBody = useMemo(() => buildNewsBody(sponsor, lineupText, true), [sponsor, lineupText]);
+  const autoBody = useMemo(() => buildNewsBody(sponsor, lineupText, true, `${window.location.origin}/live`), [sponsor, lineupText]);
 
   // Standard: tidsinställ till evenemangsdagen 21:15 om den tiden ligger framåt
   useEffect(() => {

@@ -10,7 +10,7 @@
  */
 import { useEffect, useState } from "react";
 import { Link, useSearch, useLocation } from "wouter";
-import { ArrowLeft, Gauge, Handshake, CalendarRange, Link2, Info, Loader2, CheckCircle2, AlertTriangle, ExternalLink, Bell, Shield, Swords, KeyRound, ChevronRight } from "lucide-react";
+import { ArrowLeft, Gauge, Handshake, CalendarRange, Link2, Info, Loader2, CheckCircle2, AlertTriangle, ExternalLink, Bell, Shield, Swords, KeyRound, ChevronRight, Radio } from "lucide-react";
 import { AccessPanel } from "./AccessPanel";
 import { OpponentsPanel } from "./OpponentsPanel";
 import { ClubPanel } from "./ClubPanel";
@@ -27,6 +27,7 @@ const TABS = [
   { id: "perioder", label: "Perioder", hint: "Försäsong, säsong och slutspel", icon: CalendarRange },
   { id: "pir", label: "PIR", hint: "Player Impact Rating: vikter, gränser och träffsäkerhet", icon: Gauge },
   { id: "sponsorer", label: "Sponsorer", hint: "Registret med loggor och räknare", icon: Handshake },
+  { id: "live", label: "Live", hint: "Livesidan och Läktaren (hjärtan och kommentarer)", icon: Radio },
   { id: "laget", label: "laget.se", hint: "Konto, anslutning och automatisk nyhet", icon: Link2 },
   { id: "notiser", label: "Notiser", hint: "Vem som får vilka mejl", icon: Bell },
   { id: "atkomst", label: "Åtkomst", hint: "Delade länkar till moduler (utan styrelselösenordet)", icon: KeyRound },
@@ -37,7 +38,7 @@ type TabId = (typeof TABS)[number]["id"];
 /** Grupperna på startsidan */
 const GROUPS: Array<{ title: string; tabs: TabId[] }> = [
   { title: "Klubb och lag", tabs: ["klubb", "motstandare", "perioder"] },
-  { title: "Match och data", tabs: ["pir", "sponsorer"] },
+  { title: "Match och data", tabs: ["pir", "sponsorer", "live"] },
   { title: "Kopplingar", tabs: ["laget", "notiser"] },
   { title: "Åtkomst", tabs: ["atkomst"] },
   { title: "", tabs: ["om"] },
@@ -100,6 +101,7 @@ export default function SettingsApp() {
         {tab === "klubb" && <ClubPanel />}
         {tab === "motstandare" && <OpponentsPanel />}
         {tab === "atkomst" && <AccessPanel />}
+        {tab === "live" && <LivePanel />}
         {tab === "om" && <AboutPanel />}
       </main>
     </div>
@@ -200,6 +202,38 @@ function AutoNewsSettings() {
         className="w-full py-2 rounded-lg bg-[#0a7ea4] text-white text-sm font-semibold disabled:opacity-40">
         {save.isPending ? "Sparar…" : dirty ? "Spara" : "Sparat"}
       </button>
+    </div>
+  );
+}
+
+
+/** Live: livesidan och Läktaren */
+function LivePanel() {
+  const utils = trpc.useUtils();
+  const cfg = trpc.live.getConfig.useQuery();
+  const save = trpc.live.setConfig.useMutation({ onSuccess: () => void utils.live.getConfig.invalidate() });
+  const on = cfg.data?.laktaren ?? true;
+  const url = `${window.location.origin}/live`;
+  return (
+    <div className="space-y-4 text-sm">
+      <p className="text-[11px] text-white/45">
+        Livesidan visar alltid aktuell eller nästa match: före matchen lagen, tid, hall och uppställningar (enligt publiceringen),
+        under matchen ställning, mål och poäng när en inloggad Score Tracker trycker Starta live, och resultatet en halvtimme efter.
+        Adressen läggs automatiskt i laget.se-nyheten.
+      </p>
+      <a href={url} target="_blank" rel="noreferrer" className="block rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sky-300 break-all">{url}</a>
+      <div className="flex items-center gap-3 rounded-xl bg-white/[0.03] border border-white/10 px-3 py-3">
+        <span className="flex-1">
+          <span className="block font-semibold">Läktaren under livematcher</span>
+          <span className="block text-[11px] text-white/45">Hjärtan i lagens färger och korta kommentarer (max 140 tecken). En kommentar per 10 s och max 50 per enhet och match. Kommentarerna raderas efter 24 h. Den som sänder kan dölja kommentarer.</span>
+        </span>
+        <button role="switch" aria-checked={on} aria-label="Läktaren under livematcher" disabled={!cfg.data || save.isPending}
+          onClick={() => save.mutate({ laktaren: !on })}
+          className={`shrink-0 w-11 h-6 rounded-full relative ${on ? "bg-emerald-500/70" : "bg-white/15"}`}>
+          <span className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all" style={{ left: on ? "22px" : "2px" }} />
+        </button>
+      </div>
+      <p className="text-[11px] text-white/40">Unika tittare räknas utan kakor: en anonym kod per enhet och match som raderas när matchen är slut – bara antalet sparas.</p>
     </div>
   );
 }
