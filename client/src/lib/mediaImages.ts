@@ -8,7 +8,7 @@
  * Teman (standard, jul, nyår, påsk) byter accentfärg och lägger till dekor.
  */
 import { clubHeading, club, teamLogo } from "@shared/club";
-import { IG_W, IG_H, HEAD, BODY, tryLoad, ensureFonts, fit, canvas, backdrop, presentedBy } from "@/lib/matchReportImages";
+import { IG_W, IG_H, HEAD, BODY, tryLoad, ensureFonts, fit, canvas, backdrop, presentedBy, photoBackdrop } from "@/lib/matchReportImages";
 import { roundRect } from "@/lib/canvas";
 import { teamColor, teamInitials } from "@shared/teams";
 import { POSITION_COLORS } from "@/lib/positionColors";
@@ -54,6 +54,9 @@ const DIM: Partial<Record<MediaBackground, number>> = { ute: 0.45, omklad: 0.6, 
 const dimFor = (id: MediaBackground | undefined, base: number) => base * (id ? DIM[id] ?? 1 : 1);
 
 export interface MediaCommon {
+  /** Egen bild (ersätter bakgrunden i alla mallar) och hur mycket den mörkas (0–1) */
+  photo?: HTMLImageElement | null;
+  photoDim?: number;
   overlay: MediaOverlay;
   /** Bakgrundsbild (standard isen) */
   background?: MediaBackground;
@@ -82,9 +85,6 @@ export interface TextPostData extends MediaCommon {
   body: string;
   /** Kort info-rad i accentfärg, t.ex. "Torsdag 18/12 · 19:00" */
   info: string;
-  /** Egen bild (ersätter arenan) och hur mycket den mörkas (0–1) */
-  photo: HTMLImageElement | null;
-  photoDim: number;
 }
 
 export interface CardsPostData extends MediaCommon {
@@ -363,9 +363,9 @@ export function lineupHeights(groups: LineupGroup[], k: number) {
 }
 
 async function renderLineup(d: LineupPostData): Promise<HTMLCanvasElement> {
-  const [bg, logo, sp] = await Promise.all([tryLoad(bgUrl(d.background)), tryLoad(d.logo !== undefined ? d.logo : LOGO[d.team]), tryLoad(d.sponsor?.logo)]);
+  const [bg, logo, sp] = await Promise.all([(d.photo ? Promise.resolve(null) : tryLoad(bgUrl(d.background))), tryLoad(d.logo !== undefined ? d.logo : LOGO[d.team]), tryLoad(d.sponsor?.logo)]);
   const [c, ctx] = canvas();
-  backdrop(ctx, bg, dimFor(d.background, 0.6));
+  if (d.photo) photoBackdrop(ctx, d.photo, d.photoDim ?? 0.5); else backdrop(ctx, bg, dimFor(d.background, 0.6));
   decorate(ctx, d.overlay);
 
   // Liten rad överst: rubrik och datum
@@ -534,7 +534,7 @@ async function renderLineup(d: LineupPostData): Promise<HTMLCanvasElement> {
 }
 
 async function renderText(d: TextPostData): Promise<HTMLCanvasElement> {
-  const [bg, sp] = await Promise.all([d.photo ? Promise.resolve(null) : tryLoad(bgUrl(d.background)), tryLoad(d.sponsor?.logo)]);
+  const [bg, sp] = await Promise.all([d.photo ? Promise.resolve(null) : (d.photo ? Promise.resolve(null) : tryLoad(bgUrl(d.background))), tryLoad(d.sponsor?.logo)]);
   const [c, ctx] = canvas();
   const accent = accentColor();
   if (d.photo) {
@@ -542,11 +542,12 @@ async function renderText(d: TextPostData): Promise<HTMLCanvasElement> {
     const p = d.photo;
     const sc = Math.max(IG_W / p.width, IG_H / p.height);
     ctx.drawImage(p, (IG_W - p.width * sc) / 2, (IG_H - p.height * sc) / 2, p.width * sc, p.height * sc);
-    ctx.fillStyle = `rgba(0,0,0,${0.15 + d.photoDim * 0.35})`;
+    const dim = d.photoDim ?? 0.5;
+    ctx.fillStyle = `rgba(0,0,0,${0.15 + dim * 0.35})`;
     ctx.fillRect(0, 0, IG_W, IG_H);
     const g = ctx.createLinearGradient(0, IG_H * 0.35, 0, IG_H);
     g.addColorStop(0, "rgba(0,0,0,0)");
-    g.addColorStop(1, `rgba(0,0,0,${0.5 + d.photoDim * 0.4})`);
+    g.addColorStop(1, `rgba(0,0,0,${0.5 + dim * 0.4})`);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, IG_W, IG_H);
   } else {
@@ -688,9 +689,9 @@ export function cardSlots(n: number, top: number, bottom: number): Array<{ x: nu
 }
 
 async function renderCards(d: CardsPostData): Promise<HTMLCanvasElement> {
-  const [bg, sp] = await Promise.all([tryLoad(bgUrl(d.background)), tryLoad(d.sponsor?.logo)]);
+  const [bg, sp] = await Promise.all([(d.photo ? Promise.resolve(null) : tryLoad(bgUrl(d.background))), tryLoad(d.sponsor?.logo)]);
   const [c, ctx] = canvas();
-  backdrop(ctx, bg, dimFor(d.background, 0.62));
+  if (d.photo) photoBackdrop(ctx, d.photo, d.photoDim ?? 0.5); else backdrop(ctx, bg, dimFor(d.background, 0.62));
   decorate(ctx, d.overlay);
   const top = titleBlock(ctx, d.title, d.subtitle, d.dateLine) + 10;
   const bottom = d.sponsor ? IG_H - 180 : IG_H - 60;
@@ -715,9 +716,9 @@ async function renderCards(d: CardsPostData): Promise<HTMLCanvasElement> {
 }
 
 async function renderStats(d: StatsPostData): Promise<HTMLCanvasElement> {
-  const [bg, sp] = await Promise.all([tryLoad(bgUrl(d.background)), tryLoad(d.sponsor?.logo)]);
+  const [bg, sp] = await Promise.all([(d.photo ? Promise.resolve(null) : tryLoad(bgUrl(d.background))), tryLoad(d.sponsor?.logo)]);
   const [c, ctx] = canvas();
-  backdrop(ctx, bg, dimFor(d.background, 0.66));
+  if (d.photo) photoBackdrop(ctx, d.photo, d.photoDim ?? 0.5); else backdrop(ctx, bg, dimFor(d.background, 0.66));
   decorate(ctx, d.overlay);
   const top = titleBlock(ctx, d.title, d.subtitle, d.dateLine) + 10;
   const bottom = d.sponsor ? IG_H - 180 : IG_H - 60;
@@ -794,7 +795,7 @@ export async function renderMediaPost(d: MediaPostData): Promise<HTMLCanvasEleme
   if (d.kind === "stats") return renderStats(d);
   if (d.kind === "result") {
     const { renderResultImage } = await import("@/lib/matchReportImages");
-    const c = await renderResultImage({ ...d.report, background: bgUrl(d.background), sponsor: d.sponsor ?? d.report.sponsor });
+    const c = await renderResultImage({ ...d.report, background: bgUrl(d.background), photo: d.photo ?? null, photoDim: d.photoDim, sponsor: d.sponsor ?? d.report.sponsor });
     decorate(c.getContext("2d")!, d.overlay);
     return c;
   }

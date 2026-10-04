@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.63.4 – 2026-10-04
+
+- Media: "Egen bild" är en ruta bland bakgrunderna (sist) och fungerar i alla mallar – uppställning, spelarkort, statistik, senaste resultat, nästa träning och text. Utan bild är rutan tom med ett rött streck; vald bild visas som miniatyr. Under rutorna: "Mörka bilden", "Byt bild" och "Ta bort bilden". Att välja en annan bakgrund låter bilden ligga kvar (kan väljas igen).
+- Mallen "Text / egen bild" heter nu "Text".
+
 ## 2.63.3 – 2026-10-04
 
 **Media**

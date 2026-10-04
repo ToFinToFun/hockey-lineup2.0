@@ -46,6 +46,9 @@ export interface ReportData {
   colorWhite?: string;
   colorGreen?: string;
   background: string;
+  /** Egen bild (Media) – ersätter bakgrunden och mörkas enligt photoDim */
+  photo?: HTMLImageElement | null;
+  photoDim?: number;
 }
 
 /** Lagets färg i rapporten: rapportens egen (motståndare) eller klubbens. */
@@ -103,6 +106,19 @@ export function backdrop(ctx: CanvasRenderingContext2D, bg: HTMLImageElement | n
   const g = ctx.createLinearGradient(0, IG_H * 0.55, 0, IG_H);
   g.addColorStop(0, "rgba(0,0,0,0)");
   g.addColorStop(1, "rgba(0,0,0,0.55)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, IG_W, IG_H);
+}
+
+/** Egen bild som bakgrund: täcker allt, mörkas enligt reglaget (0–1) och mest nertill. */
+export function photoBackdrop(ctx: CanvasRenderingContext2D, photo: HTMLImageElement, dim = 0.5) {
+  const s = Math.max(IG_W / photo.width, IG_H / photo.height);
+  ctx.drawImage(photo, (IG_W - photo.width * s) / 2, (IG_H - photo.height * s) / 2, photo.width * s, photo.height * s);
+  ctx.fillStyle = `rgba(0,0,0,${0.15 + dim * 0.6})`;
+  ctx.fillRect(0, 0, IG_W, IG_H);
+  const g = ctx.createLinearGradient(0, IG_H * 0.5, 0, IG_H);
+  g.addColorStop(0, "rgba(0,0,0,0)");
+  g.addColorStop(1, `rgba(0,0,0,${0.3 + dim * 0.4})`);
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, IG_W, IG_H);
 }
@@ -195,7 +211,8 @@ export async function renderResultImage(d: ReportData): Promise<HTMLCanvasElemen
     tryLoad(d.background), tryLoad(d.logoWhite), tryLoad(d.logoGreen), tryLoad(d.sponsor?.logo),
   ]);
   const [c, ctx] = canvas();
-  backdrop(ctx, bg);
+  if (d.photo) photoBackdrop(ctx, d.photo, d.photoDim ?? 0.5);
+  else backdrop(ctx, bg);
   header(ctx, fit(ctx, (d.title?.trim() || "Slutresultat").toUpperCase(), IG_W - 120), d.dateLine);
 
   const whiteWon = d.whiteScore > d.greenScore;

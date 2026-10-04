@@ -62,6 +62,8 @@ interface Settings {
   body: string;
   info: string;
   photoDim: number;
+  /** Egen bild används som bakgrund (gäller alla mallar) */
+  useOwnPhoto?: boolean;
 }
 
 const BASE: Omit<Settings, "kind"> = {
@@ -142,6 +144,8 @@ export default function MediaApp() {
   const [s, setS] = useState<Settings>(NEW.lineup);
   const [photo, setPhoto] = useState<HTMLImageElement | null>(null);
   const [newPhoto, setNewPhoto] = useState<string | null | undefined>(undefined);
+  // Egen bild används när en bild finns och den inte valts bort till förmån för en bakgrund
+  const ownActive = !!photo && s.useOwnPhoto !== false;
   const [caption, setCaption] = useState("");
   const [captionEdited, setCaptionEdited] = useState(false);
   const [blob, setBlob] = useState<Blob | null>(null);
@@ -255,13 +259,13 @@ export default function MediaApp() {
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(async () => {
-      const common = { overlay: s.overlay, background: s.background, dateLine: s.dateLine, sponsor };
+      const common = { overlay: s.overlay, background: s.background, dateLine: s.dateLine, sponsor, photo: s.useOwnPhoto !== false ? photo : null, photoDim: s.photoDim };
       const data: MediaPostData =
         s.kind === "lineup" ? { ...common, kind: "lineup", team: s.team, teamName: s.teamName, title: s.title, groups: s.groups, ...(s.teamLogo !== undefined ? { logo: s.teamLogo, accent: s.teamAccent } : {}) }
         : s.kind === "cards" ? { ...common, kind: "cards", title: s.title, subtitle: s.subtitle, cards: cardCanvases }
         : s.kind === "stats" ? { ...common, kind: "stats", title: s.title, subtitle: s.subtitle || range.label, valueLabel: statCat.valueLabel, rows }
-        : s.kind === "result" ? (reportData ? { ...common, kind: "result", report: reportData } : { ...common, kind: "text", title: "Inga matcher än", body: "", info: "", photo: null, photoDim: 0.5 })
-        : { ...common, kind: "text", title: s.title, body: s.body, info: s.info, photo, photoDim: s.photoDim };
+        : s.kind === "result" ? (reportData ? { ...common, kind: "result", report: reportData } : { ...common, kind: "text", title: "Inga matcher än", body: "", info: "" })
+        : { ...common, kind: "text", title: s.title, body: s.body, info: s.info };
       const c = await renderMediaPost(data);
       if (cancelled || !canvasRef.current) return;
       canvasRef.current.width = c.width;
@@ -321,6 +325,7 @@ export default function MediaApp() {
       img.onload = () => setPhoto(img);
       img.src = `data:image/jpeg;base64,${base64}`;
       setNewPhoto(base64);
+      update({ useOwnPhoto: true }); // vald bild används direkt
     } catch (e) {
       toast.error("Bilden kunde inte läsas", { description: (e as Error).message });
     }
@@ -408,7 +413,7 @@ export default function MediaApp() {
         <section className="space-y-3">
           <div className="grid grid-cols-2 lg:grid-cols-1 gap-2">
             <button onClick={() => startNew("lineup")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Users size={14} /> Lagets uppställning</button>
-            <button onClick={() => startNew("text")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Type size={14} /> Text / egen bild</button>
+            <button onClick={() => startNew("text")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Type size={14} /> Text</button>
             <button onClick={() => startNew("cards")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><IdCard size={14} /> Spelarkort</button>
             <button onClick={() => startNew("stats")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><BarChart3 size={14} /> Statistik</button>
             <button onClick={() => startNew("result")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Trophy size={14} /> Senaste resultat</button>
@@ -541,19 +546,6 @@ export default function MediaApp() {
                     title="Nästa träning från laget.se" className="shrink-0 px-2 rounded-lg bg-white/5 border border-white/10"><CalendarDays size={14} /></button>
                 </div>
               </label>
-              <div>
-                <p className="text-[11px] text-white/50 mb-1.5">Bild bakom</p>
-                <div className="flex gap-2 items-center">
-                  <button onClick={() => fileRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs"><Upload size={13} /> {photo ? "Byt bild" : "Egen bild"}</button>
-                  {photo && <button onClick={() => { setPhoto(null); setNewPhoto(null); }} className="flex items-center gap-1 text-[11px] text-red-300/70"><X size={12} /> Ta bort (arenan)</button>}
-                </div>
-                {photo && (
-                  <label className="block mt-2 text-[11px] text-white/50">Mörka bilden
-                    <input type="range" min={0} max={1} step={0.01} value={s.photoDim} onChange={(e) => update({ photoDim: Number(e.target.value) })} className="w-full accent-emerald-400" />
-                  </label>
-                )}
-                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); e.target.value = ""; }} />
-              </div>
             </>
           )}
 
@@ -566,20 +558,38 @@ export default function MediaApp() {
           </label>
           )}
 
-          {!(s.kind === "text" && photo) && (
-            <div>
-              <p className="text-[11px] text-white/50 mb-1.5">Bakgrund</p>
-              <div className="grid grid-cols-4 gap-1.5">
-                {MEDIA_BACKGROUNDS.map((b) => (
-                  <button key={b.id} onClick={() => update({ background: b.id })} title={b.name}
-                    className={`relative rounded-lg overflow-hidden border-2 aspect-[4/5] ${s.background === b.id ? "border-emerald-400" : "border-white/10 opacity-70 hover:opacity-100"}`}>
-                    <img src={b.url} alt="" className="w-full h-full object-cover" />
-                    <span className="absolute inset-x-0 bottom-0 text-[10px] bg-black/60 text-white/85 py-0.5 text-center truncate px-1">{b.name}</span>
-                  </button>
-                ))}
-              </div>
+          <div>
+            <p className="text-[11px] text-white/50 mb-1.5">Bakgrund</p>
+            <div className="grid grid-cols-4 gap-1.5">
+              {MEDIA_BACKGROUNDS.map((b) => (
+                <button key={b.id} onClick={() => update({ background: b.id, useOwnPhoto: false })} title={b.name}
+                  className={`relative rounded-lg overflow-hidden border-2 aspect-[4/5] ${s.background === b.id && !ownActive ? "border-emerald-400" : "border-white/10 opacity-70 hover:opacity-100"}`}>
+                  <img src={b.url} alt="" className="w-full h-full object-cover" />
+                  <span className="absolute inset-x-0 bottom-0 text-[10px] bg-black/60 text-white/85 py-0.5 text-center truncate px-1">{b.name}</span>
+                </button>
+              ))}
+              {/* Egen bild: tom ruta med rött streck tills en bild valts */}
+              <button onClick={() => (photo ? update({ useOwnPhoto: true }) : fileRef.current?.click())} title={photo ? "Egen bild" : "Välj en egen bild"}
+                className={`relative rounded-lg overflow-hidden border-2 aspect-[4/5] bg-[#151515] ${ownActive ? "border-emerald-400" : "border-white/10 opacity-80 hover:opacity-100"}`}>
+                {photo ? <img src={photo.src} alt="" className="w-full h-full object-cover" /> : (
+                  <svg viewBox="0 0 40 50" preserveAspectRatio="none" className="absolute inset-0 w-full h-full"><line x1="2" y1="48" x2="38" y2="2" stroke="#ef4444" strokeWidth="1.5" /></svg>
+                )}
+                <span className="absolute inset-x-0 bottom-0 text-[10px] bg-black/60 text-white/85 py-0.5 text-center truncate px-1">Egen bild</span>
+              </button>
             </div>
-          )}
+            {ownActive && (
+              <div className="mt-2 space-y-1.5">
+                <label className="block text-[11px] text-white/50">Mörka bilden
+                  <input type="range" min={0} max={1} step={0.01} value={s.photoDim} onChange={(e) => update({ photoDim: Number(e.target.value) })} className="w-full accent-emerald-400" />
+                </label>
+                <div className="flex gap-3">
+                  <button onClick={() => fileRef.current?.click()} className="flex items-center gap-1 text-[11px] text-white/60 hover:text-white"><Upload size={12} /> Byt bild</button>
+                  <button onClick={() => { setPhoto(null); setNewPhoto(null); update({ useOwnPhoto: false }); }} className="flex items-center gap-1 text-[11px] text-red-300/70"><X size={12} /> Ta bort bilden</button>
+                </div>
+              </div>
+            )}
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); e.target.value = ""; }} />
+          </div>
 
           <div>
             <p className="text-[11px] text-white/50 mb-1.5">Överlägg</p>
