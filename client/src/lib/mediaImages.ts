@@ -31,22 +31,26 @@ export function overlayFromTheme(theme: string | undefined): MediaOverlay {
 const accentColor = () => teamColor("green");
 
 /** Bakgrundsbilder (4:5, lätt mjukade så att innehållet syns) */
-export type MediaBackground = "arena" | "ute" | "omklad" | "rink" | "klubb" | "gym" | "stig" | "vinterskog" | "sommar" | "slask";
+export type MediaBackground = "arena" | "ute" | "omklad" | "rink" | "klubb" | "gym" | "stig" | "vinterskog" | "sommar" | "slask" | "host" | "pucken" | "malburen";
 export const MEDIA_BACKGROUNDS: Array<{ id: MediaBackground; name: string; url: string }> = [
   { id: "arena", name: "Isen", url: "/images/background.jpg" },
+  { id: "pucken", name: "Pucken på isen", url: "/images/bg-pucken.jpg" },
+  { id: "malburen", name: "Målburen", url: "/images/bg-malburen.jpg" },
+  // Arenan ute – årstiderna bredvid varandra
   { id: "ute", name: "Arenan i snö", url: "/images/bg-arena-ute.jpg" },
-  { id: "omklad", name: "Omklädningsrummet", url: "/images/bg-omkladningsrum.jpg" },
+  { id: "host", name: "Arenan på hösten", url: "/images/bg-arena-host.jpg" },
+  { id: "slask", name: "Arenan på våren", url: "/images/bg-arena-slask.jpg" },
+  { id: "sommar", name: "Arenan på sommaren", url: "/images/bg-arena-sommar.jpg" },
   { id: "rink", name: "Utomhusrinken", url: "/images/bg-utomhusrink.jpg" },
+  { id: "omklad", name: "Omklädningsrummet", url: "/images/bg-omkladningsrum.jpg" },
   { id: "klubb", name: "Klubblokalen", url: "/images/bg-klubblokalen.jpg" },
   { id: "gym", name: "Gymmet", url: "/images/bg-gymmet.jpg" },
   { id: "stig", name: "Skogsstigen", url: "/images/bg-skogsstigen.jpg" },
   { id: "vinterskog", name: "Vinterskogen", url: "/images/bg-vinterskogen.jpg" },
-  { id: "sommar", name: "Arenan i sommarkväll", url: "/images/bg-arena-sommar.jpg" },
-  { id: "slask", name: "Arenan i snöslask", url: "/images/bg-arena-slask.jpg" },
 ];
 const bgUrl = (id: MediaBackground | undefined) => (MEDIA_BACKGROUNDS.find((b) => b.id === id) ?? MEDIA_BACKGROUNDS[0]).url;
 /** De nya bilderna är redan mörka – mörka dem mindre så att miljön syns */
-const DIM: Partial<Record<MediaBackground, number>> = { ute: 0.45, omklad: 0.6, rink: 0.55, klubb: 0.5, gym: 0.55, stig: 0.6, vinterskog: 0.5, sommar: 0.7, slask: 0.5 };
+const DIM: Partial<Record<MediaBackground, number>> = { ute: 0.45, omklad: 0.6, rink: 0.55, klubb: 0.5, gym: 0.55, stig: 0.6, vinterskog: 0.5, sommar: 0.7, slask: 0.5, host: 0.5, pucken: 0.6, malburen: 0.65 };
 const dimFor = (id: MediaBackground | undefined, base: number) => base * (id ? DIM[id] ?? 1 : 1);
 
 export interface MediaCommon {
@@ -134,98 +138,175 @@ export function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxW: num
   return out;
 }
 
-/** Överläggen: sparsamma, mest i kanterna så att texten inte täcks. */
+/**
+ * Överläggen: sparsamma och mest i kanterna så att texten inte täcks. Olika
+ * storlek och skärpa ger djup (nära = större och mjukare). Slumpen är fast,
+ * så samma inlägg ser likadant ut varje gång.
+ */
 function decorate(ctx: CanvasRenderingContext2D, overlay: MediaOverlay) {
   if (overlay === "none") return;
-  let seed = 11;
+  let seed = 7;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  const edgeY = () => (rnd() < 0.55 ? rnd() * 260 : IG_H - rnd() * 200);
+  const between = (a: number, b: number) => a + rnd() * (b - a);
+  // Kanterna: övre 28 % eller nedre 18 % (sällan mitt i bilden)
+  const edgeY = () => (rnd() < 0.6 ? between(0, IG_H * 0.28) : between(IG_H * 0.82, IG_H));
   ctx.save();
-  if (overlay === "sun") {
-    // Mjukt solsken från övre hörnet med strålar
-    const g = ctx.createRadialGradient(IG_W * 0.88, 60, 10, IG_W * 0.88, 60, 520);
-    g.addColorStop(0, "rgba(255,214,120,0.55)");
-    g.addColorStop(0.35, "rgba(255,190,90,0.18)");
-    g.addColorStop(1, "rgba(255,190,90,0)");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, IG_W, IG_H);
-    ctx.globalAlpha = 0.08;
-    ctx.fillStyle = "#ffe3a0";
-    for (let i = 0; i < 9; i++) {
-      const a = Math.PI * 0.55 + (i / 9) * Math.PI * 0.55;
-      ctx.beginPath();
-      ctx.moveTo(IG_W * 0.88, 60);
-      ctx.lineTo(IG_W * 0.88 + Math.cos(a) * 1600, 60 + Math.sin(a) * 1600);
-      ctx.lineTo(IG_W * 0.88 + Math.cos(a + 0.05) * 1600, 60 + Math.sin(a + 0.05) * 1600);
-      ctx.fill();
+
+  if (overlay === "snow") {
+    // Stora, oskarpa flingor nära kameran (djup)
+    for (let i = 0; i < 12; i++) {
+      const x = rnd() * IG_W, y = edgeY(), r = between(18, 38);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      const a = between(0.1, 0.2);
+      g.addColorStop(0, `rgba(255,255,255,${a})`); g.addColorStop(0.6, `rgba(255,255,255,${a * 0.5})`); g.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
     }
-    ctx.restore();
-    return;
-  }
-  const count = overlay === "fireworks" ? 5 : 38;
-  for (let i = 0; i < count; i++) {
-    const x = rnd() * IG_W;
-    const y = edgeY();
-    ctx.globalAlpha = 0.25 + rnd() * 0.4;
-    if (overlay === "snow") {
-      const r = 4 + rnd() * 10;
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = Math.max(1.3, r / 4.5);
-      for (let k = 0; k < 3; k++) {
-        const a = (k * Math.PI) / 3;
+    // Mjuka flingor i flera lager
+    for (let i = 0; i < 150; i++) {
+      const depth = rnd(); // 0 = långt bort, 1 = nära
+      const r = 2 + depth * depth * 10;
+      const x = rnd() * IG_W, y = edgeY();
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      const a = 0.35 + (1 - depth) * 0.45;
+      g.addColorStop(0, `rgba(255,255,255,${a})`);
+      g.addColorStop(0.55, `rgba(255,255,255,${a * 0.6})`);
+      g.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+    // Några snöstjärnor
+    for (let i = 0; i < 7; i++) {
+      const x = rnd() * IG_W, y = edgeY(), r = between(9, 16), rot = rnd() * Math.PI;
+      ctx.save();
+      ctx.translate(x, y); ctx.rotate(rot);
+      ctx.strokeStyle = "rgba(255,255,255,0.75)";
+      ctx.lineWidth = 1.6; ctx.lineCap = "round";
+      ctx.shadowColor = "rgba(255,255,255,0.6)"; ctx.shadowBlur = 6;
+      for (let k = 0; k < 6; k++) {
+        ctx.rotate(Math.PI / 3);
         ctx.beginPath();
-        ctx.moveTo(x - Math.cos(a) * r, y - Math.sin(a) * r);
-        ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+        ctx.moveTo(0, 0); ctx.lineTo(0, -r);
+        ctx.moveTo(0, -r * 0.55); ctx.lineTo(-r * 0.25, -r * 0.75);
+        ctx.moveTo(0, -r * 0.55); ctx.lineTo(r * 0.25, -r * 0.75);
         ctx.stroke();
       }
-    } else if (overlay === "eggs") {
-      const r = 8 + rnd() * 10;
-      const col = ["#f2d64b", "#c8a2ff", "#8ee6b0", "#ffb3c7", "#9ad7ff"][i % 5];
-      ctx.fillStyle = col;
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate((rnd() - 0.5) * 0.8);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, r * 0.75, r, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.7)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(-r * 0.7, -r * 0.1);
-      ctx.lineTo(-r * 0.25, r * 0.15);
-      ctx.lineTo(r * 0.25, -r * 0.15);
-      ctx.lineTo(r * 0.7, r * 0.1);
-      ctx.stroke();
       ctx.restore();
-    } else if (overlay === "leaves") {
-      const r = 10 + rnd() * 12;
-      ctx.fillStyle = ["#d97706", "#b45309", "#ca8a04", "#9a3412"][i % 4];
+    }
+  } else if (overlay === "leaves") {
+    const cols = [["#f59e0b", "#b45309"], ["#ea580c", "#9a3412"], ["#facc15", "#ca8a04"], ["#dc2626", "#7f1d1d"]];
+    for (let i = 0; i < 20; i++) {
+      const x = rnd() * IG_W, y = edgeY(), r = between(14, 34), rot = rnd() * Math.PI * 2;
+      const [c1, c2] = cols[i % cols.length];
       ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(rnd() * Math.PI * 2);
+      ctx.translate(x, y); ctx.rotate(rot);
+      ctx.globalAlpha = between(0.7, 0.95);
+      ctx.shadowColor = "rgba(0,0,0,0.45)"; ctx.shadowBlur = 8; ctx.shadowOffsetY = 3;
+      // Bladet: spetsig ellips med svagt vågig kant
+      const g = ctx.createLinearGradient(0, -r, 0, r);
+      g.addColorStop(0, c1); g.addColorStop(1, c2);
+      ctx.fillStyle = g;
       ctx.beginPath();
       ctx.moveTo(0, -r);
-      ctx.quadraticCurveTo(r * 0.9, 0, 0, r);
-      ctx.quadraticCurveTo(-r * 0.9, 0, 0, -r);
+      ctx.bezierCurveTo(r * 0.75, -r * 0.55, r * 0.7, r * 0.45, 0, r);
+      ctx.bezierCurveTo(-r * 0.7, r * 0.45, -r * 0.75, -r * 0.55, 0, -r);
       ctx.fill();
-      ctx.restore();
-    } else if (overlay === "fireworks") {
-      // Några stora raketer i överkant
-      const cx = 120 + rnd() * (IG_W - 240);
-      const cy = 90 + rnd() * 200;
-      const col = ["#e9c46a", "#ffffff", "#f4a261", "#9ad7ff", "#e76f51"][i % 5];
-      ctx.strokeStyle = col;
-      ctx.lineWidth = 2.2;
-      ctx.globalAlpha = 0.55;
-      const rays = 18;
-      for (let k = 0; k < rays; k++) {
-        const a = (k / rays) * Math.PI * 2;
-        const r1 = 18 + rnd() * 10, r2 = 60 + rnd() * 40;
-        ctx.beginPath();
-        ctx.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
-        ctx.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2);
-        ctx.stroke();
+      ctx.shadowColor = "transparent";
+      // Mittnerv och sidonerver
+      ctx.strokeStyle = "rgba(60,20,0,0.45)"; ctx.lineWidth = Math.max(1, r / 18);
+      ctx.beginPath(); ctx.moveTo(0, -r * 0.9); ctx.lineTo(0, r * 1.25); ctx.stroke();
+      ctx.lineWidth = Math.max(0.8, r / 28);
+      for (const t of [-0.4, 0, 0.4]) {
+        ctx.beginPath(); ctx.moveTo(0, t * r); ctx.lineTo(r * 0.4, t * r - r * 0.25);
+        ctx.moveTo(0, t * r); ctx.lineTo(-r * 0.4, t * r - r * 0.25); ctx.stroke();
       }
+      ctx.restore();
+    }
+  } else if (overlay === "fireworks") {
+    // Raketer: ljusa streck utåt som tunnas och bleknar, glöd i mitten, lösa gnistor
+    const bursts = [[0.17, 0.11, "#facc15"], [0.82, 0.08, "#ffffff"], [0.55, 0.19, "#34d399"], [0.9, 0.27, "#fb923c"]] as const;
+    ctx.globalCompositeOperation = "lighter";
+    for (const [fx, fy, col] of bursts) {
+      const cx = fx * IG_W, cy = fy * IG_H, R = between(130, 210), rays = 40;
+      ctx.save();
+      ctx.shadowColor = col; ctx.shadowBlur = 8;
+      ctx.lineCap = "round";
+      for (let k = 0; k < rays; k++) {
+        const ang = (k / rays) * Math.PI * 2 + between(-0.06, 0.06);
+        const len = R * between(0.55, 1);
+        const x0 = cx + Math.cos(ang) * len * 0.12, y0 = cy + Math.sin(ang) * len * 0.12;
+        const x1 = cx + Math.cos(ang) * len, y1 = cy + Math.sin(ang) * len + len * 0.08; // lite fall
+        const g = ctx.createLinearGradient(x0, y0, x1, y1);
+        g.addColorStop(0, "rgba(255,255,255,0)");
+        g.addColorStop(0.35, col);
+        g.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.strokeStyle = g;
+        ctx.globalAlpha = between(0.55, 0.95);
+        ctx.lineWidth = between(1.4, 2.8);
+        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+        // Gnista i spetsen
+        if (rnd() < 0.6) {
+          ctx.fillStyle = col;
+          ctx.beginPath(); ctx.arc(x1, y1, between(1.5, 3), 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      // Glöd i mitten
+      ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+      const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 0.45);
+      core.addColorStop(0, "rgba(255,255,255,0.35)"); core.addColorStop(0.4, col + "33"); core.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = core; ctx.beginPath(); ctx.arc(cx, cy, R * 0.45, 0, Math.PI * 2); ctx.fill();
+      // Lösa, fallande gnistor under raketen
+      ctx.fillStyle = col;
+      for (let k = 0; k < 18; k++) {
+        ctx.globalAlpha = between(0.2, 0.6);
+        ctx.beginPath(); ctx.arc(cx + between(-R, R) * 0.8, cy + between(0.2, 1.3) * R, between(0.8, 2), 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    }
+    ctx.globalCompositeOperation = "source-over";
+  } else if (overlay === "eggs") {
+    const cols = ["#f9a8d4", "#a5b4fc", "#86efac", "#fde68a", "#fdba74", "#c4b5fd"];
+    for (let i = 0; i < 11; i++) {
+      const x = rnd() * IG_W, y = rnd() < 0.75 ? between(IG_H * 0.85, IG_H * 0.98) : between(IG_H * 0.03, IG_H * 0.15);
+      const r = between(22, 38), rot = between(-0.5, 0.5), col = cols[i % cols.length];
+      ctx.save();
+      ctx.translate(x, y); ctx.rotate(rot);
+      ctx.shadowColor = "rgba(0,0,0,0.45)"; ctx.shadowBlur = 10; ctx.shadowOffsetY = 4;
+      const egg = () => { ctx.beginPath(); ctx.ellipse(0, 0, r * 0.74, r, 0, 0, Math.PI * 2); };
+      const g = ctx.createRadialGradient(-r * 0.25, -r * 0.4, r * 0.1, 0, 0, r * 1.1);
+      g.addColorStop(0, "#ffffff"); g.addColorStop(0.35, col); g.addColorStop(1, col);
+      ctx.fillStyle = g; egg(); ctx.fill();
+      ctx.shadowColor = "transparent";
+      // Mönsterband (sicksack) inom ägget
+      ctx.save(); egg(); ctx.clip();
+      ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = Math.max(1.5, r / 12);
+      ctx.beginPath();
+      for (let k = 0; k <= 8; k++) { const px = -r + (k * r) / 4; const py = (k % 2 ? -1 : 1) * r * 0.1; k ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      for (const dx of [-0.35, 0, 0.35]) { ctx.beginPath(); ctx.arc(dx * r, r * 0.45, r * 0.07, 0, Math.PI * 2); ctx.fill(); }
+      ctx.restore();
+      ctx.restore();
+    }
+  } else if (overlay === "sun") {
+    // Varmt motljus uppe till höger, mjuk dis och svaga linsreflexer
+    const sx = IG_W * 0.9, sy = IG_H * 0.05;
+    const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, IG_W * 0.9);
+    g.addColorStop(0, "rgba(255,226,150,0.55)");
+    g.addColorStop(0.25, "rgba(255,190,100,0.22)");
+    g.addColorStop(0.6, "rgba(255,170,90,0.06)");
+    g.addColorStop(1, "rgba(255,170,90,0)");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, IG_W, IG_H);
+    const core = ctx.createRadialGradient(sx, sy, 0, sx, sy, 70);
+    core.addColorStop(0, "rgba(255,250,230,0.9)"); core.addColorStop(1, "rgba(255,250,230,0)");
+    ctx.fillStyle = core; ctx.beginPath(); ctx.arc(sx, sy, 70, 0, Math.PI * 2); ctx.fill();
+    // Reflexer längs diagonalen mot nedre vänstra hörnet
+    const flares = [[0.22, 34, 0.1], [0.38, 18, 0.14], [0.55, 52, 0.06], [0.72, 12, 0.16], [0.86, 80, 0.05]] as const;
+    for (const [t, r, a] of flares) {
+      const fx = sx + (IG_W * 0.1 - sx) * t, fy = sy + (IG_H * 0.9 - sy) * t;
+      const fg = ctx.createRadialGradient(fx, fy, 0, fx, fy, r);
+      fg.addColorStop(0, `rgba(255,220,160,${a})`); fg.addColorStop(0.7, `rgba(255,200,140,${a * 0.6})`); fg.addColorStop(1, "rgba(255,200,140,0)");
+      ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(fx, fy, r, 0, Math.PI * 2); ctx.fill();
     }
   }
   ctx.restore();

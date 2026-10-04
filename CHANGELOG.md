@@ -7,6 +7,18 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.63.3 – 2026-10-04
+
+**Media**
+- Nya bakgrunder: Pucken på isen, Målburen och Arenan på hösten.
+- Arenans årstider står bredvid varandra i bakgrundsvalet: i snö, på hösten, på våren (snöslask) och på sommaren.
+- Överläggen omgjorda:
+  - Snö: mjuka flingor i flera storlekar och skärpor (djup), några stora oskarpa nära kameran och några snöstjärnor.
+  - Löv: lövformer med nerver, färgskiftning och skugga.
+  - Fyrverkerier: ljusa streck som tunnas och bleknar, glöd i mitten och fallande gnistor.
+  - Ägg: skuggade ägg med mönsterband, något större.
+  - Sol: varmt motljus med mjuka linsreflexer i stället för hårda strålar.
+
 ## 2.63.2 – 2026-10-04
 
 - Media: två nya bakgrunder – Arenan i sommarkväll och Arenan i snöslask. Samma behandling som de övriga (4:5, lätt mjukade, något dämpad färg, anpassad mörkläggning).
