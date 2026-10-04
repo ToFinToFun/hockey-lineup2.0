@@ -278,13 +278,15 @@ export default function MediaApp() {
 
   const startNew = (kind: Kind) => {
     setPostId(null);
-    setPhoto(null);
-    setNewPhoto(undefined);
     setCaptionEdited(false);
-    setS({ ...NEW[kind], dateLine: kind === "lineup" || kind === "text" ? eventLine(event.data) : "" });
+    // Utseendet följer med till nästa mall: bakgrund, egen bild, mörkning och överlägg
+    const look = { background: s.background, overlay: s.overlay, photoDim: s.photoDim, useOwnPhoto: s.useOwnPhoto };
+    // Egen bild från ett öppnat inlägg: ta med den som ny bild så att den sparas med det nya inlägget
+    if (photo && newPhoto === undefined) void currentPhotoBase64().then((b) => setNewPhoto(b)).catch(() => undefined);
+    setS({ ...NEW[kind], ...look, dateLine: kind === "lineup" || kind === "text" ? eventLine(event.data) : "" });
     if (kind === "lineup" && lineupState.data) {
       const { name, groups } = teamGroups(lineupState.data as never, "green");
-      setS({ ...NEW.lineup, dateLine: eventLine(event.data), teamName: name, groups });
+      setS({ ...NEW.lineup, ...look, dateLine: eventLine(event.data), teamName: name, groups });
     }
   };
 
