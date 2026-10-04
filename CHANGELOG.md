@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.63.2 – 2026-10-04
+
+- Media: två nya bakgrunder – Arenan i sommarkväll och Arenan i snöslask. Samma behandling som de övriga (4:5, lätt mjukade, något dämpad färg, anpassad mörkläggning).
+- Test: uppdaterat ett inaktuellt test som förväntade att matcher mot andra lag var avstängt som standard (flaggan är borttagen).
+
 ## 2.63.1 – 2026-10-03
 
 - /live tål många tittare: läget byggs högst var 2:a sekund och delas av alla (tidigare en full uppslagning – lag, motståndare i databasen, nästa evenemang – per tittare var 4:e sekund). Kommentarer, dolda kommentarer och nya mål syns direkt.

@@ -31,7 +31,7 @@ export function overlayFromTheme(theme: string | undefined): MediaOverlay {
 const accentColor = () => teamColor("green");
 
 /** Bakgrundsbilder (4:5, lätt mjukade så att innehållet syns) */
-export type MediaBackground = "arena" | "ute" | "omklad" | "rink" | "klubb" | "gym" | "stig" | "vinterskog";
+export type MediaBackground = "arena" | "ute" | "omklad" | "rink" | "klubb" | "gym" | "stig" | "vinterskog" | "sommar" | "slask";
 export const MEDIA_BACKGROUNDS: Array<{ id: MediaBackground; name: string; url: string }> = [
   { id: "arena", name: "Isen", url: "/images/background.jpg" },
   { id: "ute", name: "Arenan i snö", url: "/images/bg-arena-ute.jpg" },
@@ -41,10 +41,12 @@ export const MEDIA_BACKGROUNDS: Array<{ id: MediaBackground; name: string; url: 
   { id: "gym", name: "Gymmet", url: "/images/bg-gymmet.jpg" },
   { id: "stig", name: "Skogsstigen", url: "/images/bg-skogsstigen.jpg" },
   { id: "vinterskog", name: "Vinterskogen", url: "/images/bg-vinterskogen.jpg" },
+  { id: "sommar", name: "Arenan i sommarkväll", url: "/images/bg-arena-sommar.jpg" },
+  { id: "slask", name: "Arenan i snöslask", url: "/images/bg-arena-slask.jpg" },
 ];
 const bgUrl = (id: MediaBackground | undefined) => (MEDIA_BACKGROUNDS.find((b) => b.id === id) ?? MEDIA_BACKGROUNDS[0]).url;
 /** De nya bilderna är redan mörka – mörka dem mindre så att miljön syns */
-const DIM: Partial<Record<MediaBackground, number>> = { ute: 0.45, omklad: 0.6, rink: 0.55, klubb: 0.5, gym: 0.55, stig: 0.6, vinterskog: 0.5 };
+const DIM: Partial<Record<MediaBackground, number>> = { ute: 0.45, omklad: 0.6, rink: 0.55, klubb: 0.5, gym: 0.55, stig: 0.6, vinterskog: 0.5, sommar: 0.7, slask: 0.5 };
 const dimFor = (id: MediaBackground | undefined, base: number) => base * (id ? DIM[id] ?? 1 : 1);
 
 export interface MediaCommon {

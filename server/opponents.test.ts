@@ -31,9 +31,9 @@ describe.skipIf(!process.env.DATABASE_URL)("motståndarregistret", () => {
     await expect(c.opponents.get({ id })).rejects.toThrow(/finns inte/);
   });
 
-  it("flaggan är av som standard", async () => {
+  it("matcher mot andra lag är alltid påslaget (beta-flaggan borttagen)", async () => {
     const c = appRouter.createCaller(admin as never);
     await c.club.setFeatures({ opponents: false });
-    expect((await c.club.get()).features.opponents).toBe(false);
+    expect((await c.club.get()).features.opponents).toBe(true);
   });
 });
