@@ -10,8 +10,9 @@ import { TrendIcon } from "@/components/PlayerCard";
 
 type Rating = inferRouterOutputs<AppRouter>["pir"]["getRatings"][number];
 
-export default function PirRanking({ ratings, onPlayerClick }: { ratings: Rating[] | undefined; onPlayerClick: (name: string) => void }) {
-  const [role, setRole] = useState<"outfield" | "goalkeeper">("outfield");
+export default function PirRanking({ ratings, onPlayerClick, role: fixedRole }: { ratings: Rating[] | undefined; onPlayerClick: (name: string) => void; role?: "outfield" | "goalkeeper" }) {
+  const [ownRole, setRole] = useState<"outfield" | "goalkeeper">("outfield");
+  const role = fixedRole ?? ownRole;
   const [showAll, setShowAll] = useState(false);
   if (!ratings) return null;
 
@@ -32,11 +33,13 @@ export default function PirRanking({ ratings, onPlayerClick }: { ratings: Rating
         <h3 className="text-[#ECEDEE] text-sm font-semibold flex items-center gap-2">
           <Gauge size={14} className="text-amber-400" /> PIR-ranking
         </h3>
-        <div className="flex gap-1 p-0.5 rounded-lg bg-white/5 border border-white/10 text-[11px]">
-          {([["outfield", "Utespelare"], ["goalkeeper", "Målvakter"]] as const).map(([k, l]) => (
-            <button key={k} onClick={() => setRole(k)} className={`px-2.5 py-1 rounded-md ${role === k ? "bg-white/15 text-white" : "text-white/50"}`}>{l}</button>
-          ))}
-        </div>
+        {!fixedRole && (
+          <div className="flex gap-1 p-0.5 rounded-lg bg-white/5 border border-white/10 text-[11px]">
+            {([["outfield", "Utespelare"], ["goalkeeper", "Målvakter"]] as const).map(([k, l]) => (
+              <button key={k} onClick={() => setRole(k)} className={`px-2.5 py-1 rounded-md ${role === k ? "bg-white/15 text-white" : "text-white/50"}`}>{l}</button>
+            ))}
+          </div>
+        )}
       </div>
       {rows.length === 0 ? (
         <p className="text-xs text-white/40">Ingen har betyg i rollen ännu (kräver 3 matcher).</p>

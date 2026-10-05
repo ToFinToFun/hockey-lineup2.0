@@ -7,6 +7,15 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.65.2 – 2026-10-04
+
+**Statistik → Spelare**
+- Speltid är inte längre en egen huvudflik – den ligger under Spelare.
+- Överst under Spelare: Utespelare / Målvakter, som gäller hela fliken.
+  - Utespelare: topplistorna, Speltid, PIR för utespelare och utmärkelserna (utom målvakt).
+  - Målvakter: egen topplista – vinster, insläppta per 60, hållna nollor, tid i mål och matcher (sortera på var och en), PIR för målvakter och målvaktsutmärkelsen.
+- Målvakternas vinster räknas (målvaktens lag vann).
+
 ## 2.65.1 – 2026-10-04
 
 - Livesidan, styrelsens rad: tydligt att det gäller sändningen, inte matchen. "Sändningen avslutas automatiskt om …" med Avsluta nu, och efter slut "Sändningen stängs om …" med Stäng nu. Avsluta nu stänger bara sändningen – den sparar ingen match; matchen i Score Tracker, matchhistoriken och statistiken påverkas inte.

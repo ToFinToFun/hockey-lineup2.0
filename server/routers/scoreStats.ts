@@ -106,11 +106,11 @@ export const scoreStatsRouter = router({
   iceTime: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
     const matches = filterMatchesByDate(await getAllMatchResults({ includeExternal: input?.includeExternal }), input?.from, input?.to);
     const registry = new Map((await listPlayers()).map((p) => [p.id, p.name]));
-    type Row = { id: string; name: string; matches: number; minutes: number; byPos: Record<IcePos, number>; goals: number; assists: number; gkMatches: number; ga: number; shutouts: number };
+    type Row = { id: string; name: string; matches: number; minutes: number; byPos: Record<IcePos, number>; goals: number; assists: number; gkMatches: number; ga: number; shutouts: number; gkWins: number };
     const rows = new Map<string, Row>();
     const row = (id: string) => {
       let r = rows.get(id);
-      if (!r) { r = { id, name: registry.get(id) ?? id, matches: 0, minutes: 0, byPos: { MV: 0, B: 0, C: 0, F: 0 }, goals: 0, assists: 0, gkMatches: 0, ga: 0, shutouts: 0 }; rows.set(id, r); }
+      if (!r) { r = { id, name: registry.get(id) ?? id, matches: 0, minutes: 0, byPos: { MV: 0, B: 0, C: 0, F: 0 }, goals: 0, assists: 0, gkMatches: 0, ga: 0, shutouts: 0, gkWins: 0 }; rows.set(id, r); }
       return r;
     };
     const bare = (n: string | undefined) => (n ?? "").replace(/\s*#\d*\s*$/, "").trim().toLowerCase();
@@ -127,6 +127,7 @@ export const scoreStatsRouter = router({
         if (k === "white") whiteGoals++; else if (k === "green") greenGoals++;
       }
       const against = { a: aWhite ? greenGoals : whiteGoals, b: aWhite ? whiteGoals : greenGoals };
+      const scored = { a: aWhite ? whiteGoals : greenGoals, b: aWhite ? greenGoals : whiteGoals };
       for (const team of ["a", "b"] as const) {
         const filled = Object.keys(slots).filter((k) => k.startsWith(`team-${team}-`) && slots[k]?.id);
         const mins = iceTimeBySlot(filled, len);
@@ -142,6 +143,7 @@ export const scoreStatsRouter = router({
           // Målvakt: insläppta mål efter andel av matchen; hållen nolla om ensam i målet utan insläppt
           if (k.pos === "MV") {
             r.gkMatches++;
+            if (scored[team] > against[team]) r.gkWins++;
             r.ga += against[team] * (len ? t / len : 1);
             const gkCount = filled.filter((x) => slotKind(x)?.pos === "MV").length;
             if (against[team] === 0 && gkCount === 1) r.shutouts++;
