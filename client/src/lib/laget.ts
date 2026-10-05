@@ -13,6 +13,8 @@ export interface AttendanceData {
   totalRegistered: number;
   /** Starttid "HH:MM" från evenemanget, om den kunde läsas ut */
   eventTime?: string;
+  /** Sluttid "HH:MM" – ger träningens längd */
+  eventEndTime?: string;
   /** Plats från evenemanget, om den kunde läsas ut */
   eventLocation?: string;
   error?: string;

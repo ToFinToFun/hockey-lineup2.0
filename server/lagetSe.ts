@@ -29,6 +29,8 @@ export interface AttendanceResult {
   totalRegistered: number;
   /** Starttid "HH:MM" om den gick att läsa ut */
   eventTime?: string;
+  /** Sluttid "HH:MM" (Aktivitetsinfo) – ger träningens längd */
+  eventEndTime?: string;
   /** Plats från evenemanget om den gick att läsa ut */
   eventLocation?: string;
   error?: string;
@@ -322,9 +324,15 @@ function findNextEventId(html: string): {
  * Formulärets fältnamn är inte dokumenterade, så vi letar efter fält vars
  * name/id ser ut som plats respektive starttid. Returnerar bara det som hittas.
  */
-export function extractEventDetailsFromEditPage(html: string): { location?: string; time?: string } {
+export function extractEventDetailsFromEditPage(html: string): { location?: string; time?: string; endTime?: string } {
   const $ = cheerio.load(html);
-  const result: { location?: string; time?: string } = {};
+  const result: { location?: string; time?: string; endTime?: string } = {};
+  // Sluttiden: "EndDate" = "2026-09-01 23:00:00" (eller dolda EndHourSelect/EndMinuteSelect)
+  const endVal = ($('input[name="EndDateTime"]').attr("value") || $('input[name="EndDate"]').attr("value") || "").trim();
+  const endM = endVal.match(/\b(\d{1,2}):(\d{2})/);
+  const endH = $('input[name="EndHourSelect"]').attr("value"), endMin = $('input[name="EndMinuteSelect"]').attr("value");
+  if (endM) result.endTime = `${endM[1].padStart(2, "0")}:${endM[2]}`;
+  else if (endH && endMin) result.endTime = `${endH.padStart(2, "0")}:${endMin.padStart(2, "0")}`;
   // laget.se: platsen heter PlaceName på fliken Aktivitetsinfo
   const placeName = ($('input[name="PlaceName"]').attr("value") ?? "").trim();
   if (placeName) result.location = placeName.replace(/\s+/g, " ");
@@ -365,7 +373,7 @@ async function fetchEventDetails(
   client: ReturnType<typeof createClient>["client"],
   followRedirects: ReturnType<typeof createClient>["followRedirects"],
   eventId: string
-): Promise<{ location?: string; time?: string }> {
+): Promise<{ location?: string; time?: string; endTime?: string }> {
   try {
     const resp = await followRedirects(await client.get(`${ADMIN_BASE_URL}/${teamSlug()}/Calendar/ManageEvent/${eventId}?siteType=Team`));
     if (resp.status === 200 && typeof resp.data === "string") return extractEventDetailsFromEditPage(resp.data);
@@ -663,7 +671,7 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
     // Steg 2: Försök hämta via admin-kalendern först
     let eventInfo: { eventId: string; eventDate: string; eventTitle: string; eventTime?: string } | null = null;
     // Plats och tid från aktivitetens adminsida – sparas även om deltagarlistan inte finns där
-    let editDetails: { location?: string; time?: string } = {};
+    let editDetails: { location?: string; time?: string; endTime?: string } = {};
 
     try {
       {
@@ -689,6 +697,7 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
                 eventTitle: eventInfo.eventTitle || "Träning",
                 eventDate: eventInfo.eventDate,
                 eventTime: eventInfo.eventTime || details.time,
+                eventEndTime: details.endTime,
                 eventLocation: details.location,
                 registeredNames: registered,
                 declinedNames: declined,
@@ -710,7 +719,7 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
     // Plats och tid även när evenemanget hittades via startsidan
     if (fallbackEventInfo && !editDetails.location) {
       const d = await fetchEventDetails(client, followRedirects, fallbackEventInfo.eventId);
-      editDetails = { location: d.location ?? editDetails.location, time: editDetails.time ?? d.time };
+      editDetails = { location: d.location ?? editDetails.location, time: editDetails.time ?? d.time, endTime: editDetails.endTime ?? d.endTime };
     }
     if (!fallbackEventInfo && !eventInfo) {
       return {
@@ -750,6 +759,7 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
       eventTitle: eid.eventTitle || "Träning",
       eventDate: eid.eventDate,
       eventTime: eventInfo?.eventTime || editDetails.time,
+      eventEndTime: editDetails.endTime,
       eventLocation: editDetails.location,
       registeredNames: registered,
       declinedNames: declined,

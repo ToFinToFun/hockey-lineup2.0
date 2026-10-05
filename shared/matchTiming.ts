@@ -76,3 +76,18 @@ export function elapsedMinutes(goalClock: string | undefined, start: Date | stri
   if (diff < 0 || diff > 5 * 3600) return null;
   return Math.floor(diff / 60);
 }
+
+/**
+ * Träningens längd i minuter från laget.se (start- och sluttid "HH:MM"),
+ * även över midnatt. Rimliga längder (15–240 min), annars null.
+ */
+export function trainingMinutes(start: string | null | undefined, end: string | null | undefined): number | null {
+  const p = (t: string | null | undefined) => {
+    const m = t?.match(/^(\d{1,2}):(\d{2})/);
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  };
+  const a = p(start), b = p(end);
+  if (a == null || b == null) return null;
+  const d = (b - a + 24 * 60) % (24 * 60);
+  return d >= 15 && d <= 240 ? d : null;
+}

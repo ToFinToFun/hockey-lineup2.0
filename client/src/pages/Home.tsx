@@ -33,6 +33,7 @@ import { PlayerCardOverlay } from "@/components/PlayerCard";
 import { LagetNewsModal } from "@/components/LagetNewsModal";
 import { ShareToolsModal } from "@/components/auth/ShareToolsModal";
 import { RosterSummary } from "@/components/RosterSummary";
+import { trainingMinutes } from "@shared/matchTiming";
 import { contextKeyOf, INTERNAL_SETUP, isOpponentPlayerId, type MatchSetup } from "@shared/matchSetup";
 import { useFeatures } from "@/contexts/ClubContext";
 import { MatchSetupModal, setupLabel, ourLogoUrl } from "@/components/opponent/MatchSetupBar";
@@ -41,6 +42,7 @@ import { getAltThreshold, setAltThreshold, secondaryFromStats } from "@/lib/altP
 import { MatchResultsBar } from "@/components/MatchResultsBar";
 import { SlotHighlightContext } from "@/components/PlayerSlot";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { diffLineups, isEmptyDiff, previewLines, doneMessage } from "@/lib/lineupDiff";
 import { SavedLineupsPanel } from "@/components/SavedLineupsPanel";
 import { MobileRosterDrawer } from "@/components/MobileRosterDrawer";
 import { LongPressTooltip } from "@/components/LongPressTooltip";
@@ -184,6 +186,15 @@ export default function Home() {
 
   // Match duration in minutes for ice time calculation
   const [matchTime, setMatchTime] = useState<number>(local?.matchTime ?? 60);
+  // Matchtid från träningen på laget.se – om man inte själv ändrat den för samma träning
+  const [matchTimeSource, setMatchTimeSource] = useState<"laget" | "manual" | null>(null);
+  const matchTimeManualFor = useRef<string | null>(null);
+  const applyTrainingTime = useCallback((r: { eventDate?: string; eventTime?: string; eventEndTime?: string }) => {
+    const mins = trainingMinutes(r.eventTime, r.eventEndTime);
+    if (!mins || matchTimeManualFor.current === (r.eventDate ?? "")) return;
+    setMatchTime(mins);
+    setMatchTimeSource("laget");
+  }, []);
 
   // Refs for config so the sync always reads the latest values
   const teamAConfigRef = useRef(teamAConfig);
@@ -902,20 +913,27 @@ export default function Home() {
   }, [pushUndo]);
 
   // Auto-fördela anmälda spelare på lagen
-  const handleAutoDistribute = useCallback((shuffle = false) => {
-    pushUndo(); // går att ångra – därför ingen bekräftelsedialog
-    // Rensa befintliga lag först
-    const currentLineup = lineupRef.current;
-    const removedPlayers: Player[] = [];
-    for (const [slotId, player] of Object.entries(currentLineup)) {
-      removedPlayers.push(player);
-    }
-
-    // Alla spelare tillbaka i truppen
-    const allPlayers = [...availablePlayersRef.current, ...removedPlayers];
-
-    // Kör auto-fördela (med eller utan shuffle)
+  /** Räkna fram Auto utan att ändra något (för förhandsvisning). */
+  const computeAuto = useCallback((shuffle = false) => {
+    const allPlayers = [...availablePlayersRef.current, ...Object.values(lineupRef.current)];
     const result = autoDistribute(allPlayers, {}, { shuffle, useForBalance: displayPirSettings.useForBalance });
+    return { allPlayers, result, diff: diffLineups(lineupRef.current, result.lineup) };
+  }, [displayPirSettings]);
+
+  // Auto: förhandsvisning – ingen ändring = bara besked, annars bekräftelse med vad som ändras
+  const [autoPreview, setAutoPreview] = useState<ReturnType<typeof computeAuto> | null>(null);
+  const onAutoClick = useCallback(() => {
+    const preview = computeAuto();
+    if (isEmptyDiff(preview.diff)) {
+      toast.success(doneMessage(preview.diff), { duration: 3000 });
+      return;
+    }
+    setAutoPreview(preview);
+  }, [computeAuto]);
+
+  const handleAutoDistribute = useCallback((shuffle = false, precomputed?: ReturnType<typeof computeAuto>) => {
+    pushUndo(); // går att ångra
+    const { allPlayers, result } = precomputed ?? computeAuto(shuffle);
 
     // Uppdatera configs
     setTeamAConfig(result.teamAConfig);
@@ -1179,7 +1197,7 @@ export default function Home() {
   }, []);
 
   // Hämta anmälningar från laget.se via backend-API och markera matchade spelare
-  const handleBulkRegister = useCallback(async (forceRefresh = false): Promise<{ matched: number; declined?: number; unmatched: string[]; unmatchedDeclined?: string[]; changes?: string[]; eventTitle?: string; eventDate?: string; eventTime?: string; eventLocation?: string; error?: string; noEvent?: boolean }> => {
+  const handleBulkRegister = useCallback(async (forceRefresh = false): Promise<{ matched: number; declined?: number; unmatched: string[]; unmatchedDeclined?: string[]; changes?: string[]; eventTitle?: string; eventDate?: string; eventTime?: string; eventEndTime?: string; eventLocation?: string; error?: string; noEvent?: boolean }> => {
     try {
       const data = await fetchAttendanceFromApi(forceRefresh);
 
@@ -1250,7 +1268,7 @@ export default function Home() {
       return {
         matched: matchedIds.length, declined: declinedResult.matchedIds.length,
         unmatched: unmatchedNames, unmatchedDeclined: declinedResult.unmatchedNames ?? [],
-        changes, eventTitle: data.eventTitle, eventDate: data.eventDate, eventTime: data.eventTime, eventLocation: data.eventLocation,
+        changes, eventTitle: data.eventTitle, eventDate: data.eventDate, eventTime: data.eventTime, eventEndTime: data.eventEndTime, eventLocation: data.eventLocation,
       };
     } catch (err: any) {
       return { matched: 0, unmatched: [], error: err.message || "Kunde inte hämta data" };
@@ -1318,6 +1336,7 @@ export default function Home() {
       handleBulkRegister().then((result) => {
         if (result.eventTitle) {
           setEventInfo({ title: result.eventTitle, date: result.eventDate || "", time: result.eventTime, location: result.eventLocation });
+          applyTrainingTime(result);
         } else if (result.noEvent) {
           setEventInfo(null);
         }
@@ -1569,7 +1588,10 @@ export default function Home() {
     setSyncReceipt(null);
     try {
       const result = await handleBulkRegister(true);
-      if (result.eventTitle) setEventInfo({ title: result.eventTitle, date: result.eventDate || "", time: result.eventTime, location: result.eventLocation });
+      if (result.eventTitle) {
+        setEventInfo({ title: result.eventTitle, date: result.eventDate || "", time: result.eventTime, location: result.eventLocation });
+        applyTrainingTime(result);
+      }
       // Visa vad som ändrades och vilka namn från laget.se som inte hittades i truppen
       if (!result.error && !result.noEvent) {
         const missing = [...(result.unmatched ?? []), ...(result.unmatchedDeclined ?? [])];
@@ -1610,10 +1632,7 @@ export default function Home() {
         </button>
         <button
           disabled={external}
-          onClick={() => {
-            handleAutoDistribute();
-            toast.success("Anmälda fördelade på lagen", { action: { label: "Ångra", onClick: () => handleUndo() }, duration: 5000 });
-          }}
+          onClick={onAutoClick}
           title="Fördela anmälda spelare automatiskt (går att ångra)"
           aria-label="Auto-fördela"
           className={`${btn} ${size} bg-emerald-500 text-white hover:bg-emerald-400`}
@@ -1838,6 +1857,7 @@ export default function Home() {
                           }`}>
                             <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                             <span>Matchtid</span>
+                            {matchTimeSource === "laget" && <span className="text-[9px] text-emerald-400/80" title="Längden på träningen på laget.se">från laget.se</span>}
                             <div className="ml-auto flex items-center gap-0.5">
                               <input
                                 type="number"
@@ -1846,7 +1866,12 @@ export default function Home() {
                                 value={matchTime}
                                 onChange={(e) => {
                                   const v = parseInt(e.target.value, 10);
-                                  if (!isNaN(v) && v >= 1 && v <= 999) setMatchTime(v);
+                                  if (!isNaN(v) && v >= 1 && v <= 999) {
+                                    setMatchTime(v);
+                                    // Egen tid gäller för den här träningen – skrivs inte över vid nästa hämtning
+                                    matchTimeManualFor.current = eventInfo?.date ?? "";
+                                    setMatchTimeSource("manual");
+                                  }
                                 }}
                                 className={`w-[36px] text-center bg-transparent outline-none font-bold tabular-nums text-[11px] rounded border ${
                                   isLineupDark ? 'text-white/70 border-white/15' : 'text-gray-700 border-gray-300'
@@ -2517,6 +2542,23 @@ export default function Home() {
           🔒 Lagen är låsta sedan publiceringen {new Date(lockStatus.data.lockedAt).toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" })} – ändringarna används inte i Score Tracker eller statistiken.{" "}
           <span className="underline text-sky-300">Tryck för att låsa upp</span>
         </button>
+      )}
+
+      {/* Auto: vad kommer att ändras? */}
+      {autoPreview && (
+        <ConfirmDialog
+          title="Auto-fördela"
+          message={["Auto kommer att:", ...previewLines(autoPreview.diff)].join("\n")}
+          confirmLabel="OK"
+          cancelLabel="Avbryt"
+          onCancel={() => setAutoPreview(null)}
+          onConfirm={() => {
+            const p = autoPreview;
+            setAutoPreview(null);
+            handleAutoDistribute(false, p);
+            toast.success(doneMessage(p.diff), { action: { label: "Ångra", onClick: () => handleUndo() }, duration: 5000 });
+          }}
+        />
       )}
 
       {/* Remote change toast */}

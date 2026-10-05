@@ -7,6 +7,13 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.63.6 – 2026-10-04
+
+**Lineup**
+- Matchtid från träningen: när anmälningarna hämtas från laget.se sätts matchtiden till träningens längd (start- och sluttid på Aktivitetsinfo, t.ex. 22:15–23:00 = 45 min). Visas som "från laget.se" i kugghjulsmenyn. Ändrar man matchtiden själv gäller den för den träningen och skrivs inte över.
+- Auto frågar först när något ändras: "Auto kommer att: lägga till 2 spelare (…), ta bort 1 spelare (…), flytta 1 spelare till andra laget (…), flytta 3 spelare inom laget" – OK/Avbryt. Ändras ingenting visas bara "Klart! Inga förändringar gjordes."
+- Beskedet efter Auto säger vad som hände, t.ex. "Klart! 2 spelare lades till, 1 spelare togs bort, 1 bytte lag." (med Ångra).
+
 ## 2.63.5 – 2026-10-04
 
 - Media: vid byte av mall följer bakgrunden med – vald bakgrund, egen bild, mörkning och överlägg – i stället för att gå tillbaka till standardbilden.

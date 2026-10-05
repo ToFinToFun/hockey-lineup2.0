@@ -41,3 +41,17 @@ describe("platsen från laget.se på matchen", () => {
     expect(eventLocationFor(null, new Date())).toBeUndefined();
   });
 });
+
+import { trainingMinutes } from "./matchTiming";
+
+describe("matchtid från träningen", () => {
+  it("längd från start och slut, även över midnatt", () => {
+    expect(trainingMinutes("22:15", "23:00")).toBe(45);
+    expect(trainingMinutes("20:00", "21:30")).toBe(90);
+    expect(trainingMinutes("23:30", "00:30")).toBe(60);
+  });
+  it("orimligt eller saknas → null", () => {
+    expect(trainingMinutes("20:00", "20:05")).toBeNull();
+    expect(trainingMinutes("20:00", undefined)).toBeNull();
+  });
+});

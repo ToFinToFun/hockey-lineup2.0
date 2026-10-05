@@ -170,6 +170,6 @@ import path from "path";
 describe("riktig adminsida från laget.se (Redigera aktiviteten)", () => {
   const html = fs.readFileSync(path.join(__dirname, "__fixtures__/laget-event-edit.html"), "utf8");
   it("plats från fältet PlaceName och tid från StartDateTime", () => {
-    expect(extractEventDetailsFromEditPage(html)).toEqual({ location: "Coop Arena C-Hallen", time: "22:15" });
+    expect(extractEventDetailsFromEditPage(html)).toEqual({ location: "Coop Arena C-Hallen", time: "22:15", endTime: "23:00" });
   });
 });

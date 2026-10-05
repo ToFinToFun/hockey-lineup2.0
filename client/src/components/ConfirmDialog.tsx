@@ -74,7 +74,7 @@ export function ConfirmDialog({
 
         {/* Body */}
         <div className="px-5 py-4">
-          <p id="confirm-message" className="text-white/60 text-sm leading-relaxed">
+          <p id="confirm-message" className="text-white/60 text-sm leading-relaxed whitespace-pre-line">
             {message}
           </p>
         </div>
