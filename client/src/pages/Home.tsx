@@ -477,24 +477,9 @@ export default function Home() {
   useEffect(() => {
     if (sync.lastSyncAt) void lastChanged.refetch();
   }, [sync.lastSyncAt]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Uppdateras direkt när en spelare placeras, flyttas eller tas bort (här eller på en annan enhet),
-  // utan att vänta på servern; serverns tid gäller när den är senare
-  const lineupSignature = useMemo(() => Object.entries(lineup).map(([k, p]) => `${k}=${p.id}`).sort().join("|"), [lineup]);
-  const firstSignature = useRef<string | null>(null);
-  const [localChangedAt, setLocalChangedAt] = useState<Date | null>(null);
-  // Vid start laddas laget från servern: räkna inte det som en ändring (vänta tills första synken är klar)
-  const changeTracking = useRef(false);
-  useEffect(() => {
-    if (!sync.lastSyncAt || changeTracking.current) return;
-    const t = setTimeout(() => { changeTracking.current = true; }, 3000);
-    return () => clearTimeout(t);
-  }, [sync.lastSyncAt]);
-  useEffect(() => {
-    if (!changeTracking.current || firstSignature.current === null) { firstSignature.current = lineupSignature; return; }
-    if (lineupSignature !== firstSignature.current) { firstSignature.current = lineupSignature; setLocalChangedAt(new Date()); }
-  }, [lineupSignature]);
-  const serverChangedAt = lastChanged.data?.changedAt ? new Date(lastChanged.data.changedAt) : null;
-  const changedAt = serverChangedAt && localChangedAt ? (serverChangedAt > localChangedAt ? serverChangedAt : localChangedAt) : serverChangedAt ?? localChangedAt;
+  // Bara serverns tid: den sätts när en spelare faktiskt placeras, flyttas, tas ur laget eller
+  // läggs till i truppen – inte när sidan laddas eller synken hämtar laget på nytt.
+  const changedAt = lastChanged.data?.changedAt ? new Date(lastChanged.data.changedAt) : null;
   // Etiketten räknas om varje minut ("idag 15:05" blir "igår 15:05" vid midnatt)
   const [, setTick] = useState(0);
   useEffect(() => { const t = setInterval(() => setTick((n) => n + 1), 60_000); return () => clearInterval(t); }, []);
