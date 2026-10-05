@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.67.1 – 2026-10-04
+
+- Hockeykort: "Ta bort kortet – återgå till standardkortet" (tydligare text och bekräftelse). Efter borttagningen visar förhandsvisningen standardkortet direkt. Egna kort görs som förut; standardkortet används bara för spelare utan sparat kort.
+
 ## 2.67.0 – 2026-10-04
 
 **Hockeykort för alla spelare**

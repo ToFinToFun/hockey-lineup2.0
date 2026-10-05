@@ -291,9 +291,17 @@ export default function CardsApp() {
   };
 
   const removeSaved = async () => {
-    if (!playerId || !confirm("Ta bort det sparade kortet (fotot och valen) för spelaren?")) return;
+    if (!playerId || !confirm("Ta bort det egna kortet (fotot och valen)? Spelaren får standardkortet igen – lagets färg utan foto – i utmärkelser, profiler och Media.")) return;
     await deleteCard.mutateAsync({ playerId });
-    toast.success("Det sparade kortet är borttaget");
+    toast.success("Kortet är borttaget – spelaren har standardkortet igen");
+    // Visa standardkortet direkt
+    setNewSource(null);
+    setPhotoImg(null);
+    setMask(null);
+    setNewMask(undefined);
+    setLoadedInfo(null);
+    const p = players.data?.find((x) => x.id === playerId);
+    setSettings(defaultCardFor(p));
   };
 
   const runCutout = async () => {
@@ -410,7 +418,7 @@ export default function CardsApp() {
           </div>
           {playerId && savedIds.has(playerId) && (
             <button onClick={() => void removeSaved()} className="w-full flex items-center justify-center gap-1.5 text-[11px] text-red-300/70 hover:text-red-300 pt-1">
-              <Trash2 size={12} /> Ta bort sparat kort
+              <Trash2 size={12} /> Ta bort kortet – återgå till standardkortet
             </button>
           )}
         </section>
