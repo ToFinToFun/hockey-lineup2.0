@@ -159,6 +159,13 @@ export function PlayerProfileView({ player, all }: { player: Basic; all: Basic[]
                 <Stat label="Snitt/match" value={`${ice.perMatch} min`} />
                 <Stat label="Poäng/60 min" value={ice.p60 ?? "–"} />
               </div>
+              {ice.byPos.MV > 0 && (
+                <div className="grid grid-cols-3 gap-1.5 mt-1.5">
+                  <Stat label="I mål" value={formatMinutes(ice.byPos.MV)} sub={`${ice.gkMatches} matcher`} />
+                  <Stat label="Insläppta/60" value={ice.ga60 ?? "–"} sub={`${Number.isInteger(ice.ga) ? ice.ga : ice.ga.toFixed(1)} insläppta`} />
+                  <Stat label="Hållna nollor" value={ice.shutouts} />
+                </div>
+              )}
               <div className="mt-2 space-y-1">
                 <PositionSplit byPos={ice.byPos} total={ice.minutes} />
                 <p className="text-[10px] text-white/45">

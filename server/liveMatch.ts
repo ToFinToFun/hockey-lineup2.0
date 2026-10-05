@@ -30,6 +30,8 @@ export interface LiveSession {
   uniqueViewers: number;
   /** Avslutades automatiskt och sparades som "ej avslutad" i matchhistoriken */
   autoSavedMatchId?: number | null;
+  /** Styrelsen tog bort resultatet från livesidan i förtid */
+  hiddenAt?: string | null;
   /** Bara under sändningen: matchens salt och anonyma koder (raderas vid slut) */
   salt?: string;
   viewerHashes?: string[];
@@ -111,6 +113,20 @@ function endAt(s: LiveSession): number | null {
  * Ingen avslutade? Sändningen avslutas av sig själv 30 min efter sluttiden,
  * eller efter 90 min utan uppdatering. Exporteras för test.
  */
+/** När sändningen avslutas automatiskt (ms), eller null om den redan är slut. Exporteras för test. */
+export function autoEndAt(s: LiveSession): number | null {
+  if (s.endedAt) return null;
+  const end = endAt(s);
+  const idle = new Date(s.updatedAt).getTime() + LIVE_LIMITS.autoEndIdleMs;
+  return end !== null ? Math.min(end + LIVE_LIMITS.autoEndAfterEndMs, idle) : idle;
+}
+
+/** När resultatet tas bort från livesidan (ms) efter slut, eller null. */
+export function removeAt(s: LiveSession): number | null {
+  if (!s.endedAt || s.hiddenAt) return null;
+  return new Date(s.endedAt).getTime() + LIVE_LIMITS.afterMinutes * 60_000;
+}
+
 export function shouldAutoEnd(s: LiveSession, now = Date.now()): boolean {
   if (s.endedAt) return false;
   const end = endAt(s);
@@ -182,7 +198,7 @@ export const isLive = (s: LiveSession | null | undefined, now = Date.now()) =>
   !!s && !s.endedAt && now - new Date(s.updatedAt).getTime() < LIVE_LIMITS.staleMs;
 /** Avslutad nyss – resultatet visas en stund */
 export const isAfter = (s: LiveSession | null | undefined, now = Date.now()) =>
-  !!s && !!s.endedAt && now - new Date(s.endedAt).getTime() < LIVE_LIMITS.afterMinutes * 60_000;
+  !!s && !!s.endedAt && !s.hiddenAt && now - new Date(s.endedAt).getTime() < LIVE_LIMITS.afterMinutes * 60_000;
 
 export async function currentSession() {
   return load();
@@ -238,6 +254,35 @@ export async function endLive(deviceId: string | null): Promise<boolean> {
   if (!isLive(s) || (deviceId && s!.deviceId !== deviceId)) return false;
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
   await finish(s!);
+  return true;
+}
+
+/**
+ * Styrelsen avslutar sändningen direkt (som när den avslutas automatiskt):
+ * matchen sparas i matchhistoriken som "ej avslutad" om den inte redan sparats.
+ */
+export async function endLiveNow(): Promise<boolean> {
+  const s = await load();
+  if (!isLive(s)) return false;
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  await finish(s!);
+  if (autoEndHandler) {
+    try {
+      s!.autoSavedMatchId = await autoEndHandler(s!);
+      await setConfigValue(KEY, JSON.stringify(s));
+    } catch (err) {
+      console.error("[live] kunde inte spara matchen:", err);
+    }
+  }
+  return true;
+}
+
+/** Styrelsen tar bort resultatet från livesidan direkt (i stället för efter 30 min). */
+export async function dismissLive(): Promise<boolean> {
+  const s = await load();
+  if (!s || !s.endedAt || s.hiddenAt) return false;
+  s.hiddenAt = new Date().toISOString();
+  await setConfigValue(KEY, JSON.stringify(s));
   return true;
 }
 

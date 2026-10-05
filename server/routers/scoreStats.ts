@@ -106,11 +106,11 @@ export const scoreStatsRouter = router({
   iceTime: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
     const matches = filterMatchesByDate(await getAllMatchResults({ includeExternal: input?.includeExternal }), input?.from, input?.to);
     const registry = new Map((await listPlayers()).map((p) => [p.id, p.name]));
-    type Row = { id: string; name: string; matches: number; minutes: number; byPos: Record<IcePos, number>; goals: number; assists: number };
+    type Row = { id: string; name: string; matches: number; minutes: number; byPos: Record<IcePos, number>; goals: number; assists: number; gkMatches: number; ga: number; shutouts: number };
     const rows = new Map<string, Row>();
     const row = (id: string) => {
       let r = rows.get(id);
-      if (!r) { r = { id, name: registry.get(id) ?? id, matches: 0, minutes: 0, byPos: { MV: 0, B: 0, C: 0, F: 0 }, goals: 0, assists: 0 }; rows.set(id, r); }
+      if (!r) { r = { id, name: registry.get(id) ?? id, matches: 0, minutes: 0, byPos: { MV: 0, B: 0, C: 0, F: 0 }, goals: 0, assists: 0, gkMatches: 0, ga: 0, shutouts: 0 }; rows.set(id, r); }
       return r;
     };
     const bare = (n: string | undefined) => (n ?? "").replace(/\s*#\d*\s*$/, "").trim().toLowerCase();
@@ -119,6 +119,14 @@ export const scoreStatsRouter = router({
       // Utsatt längd (träningens längd på laget.se) – annars start till avslut, annars 60 min
       const len = (m as { plannedMinutes?: number | null }).plannedMinutes ?? matchMinutes(m.matchStartTime, m.matchEndTime ?? m.createdAt);
       const byName = new Map<string, string>();
+      // Insläppta mål per lag (lag A = vita om lagnamnet säger det, som i övrig statistik)
+      const aWhite = teamAIsWhite(((m.lineup as { teamAName?: string } | null)?.teamAName ?? "").toLowerCase());
+      let whiteGoals = 0, greenGoals = 0;
+      for (const g of (Array.isArray(m.goalHistory) ? m.goalHistory : []) as Array<{ team?: string }>) {
+        const k = normalizeTeamKey(g.team);
+        if (k === "white") whiteGoals++; else if (k === "green") greenGoals++;
+      }
+      const against = { a: aWhite ? greenGoals : whiteGoals, b: aWhite ? whiteGoals : greenGoals };
       for (const team of ["a", "b"] as const) {
         const filled = Object.keys(slots).filter((k) => k.startsWith(`team-${team}-`) && slots[k]?.id);
         const mins = iceTimeBySlot(filled, len);
@@ -131,6 +139,13 @@ export const scoreStatsRouter = router({
           r.matches++;
           r.minutes += t;
           r.byPos[k.pos] += t;
+          // Målvakt: insläppta mål efter andel av matchen; hållen nolla om ensam i målet utan insläppt
+          if (k.pos === "MV") {
+            r.gkMatches++;
+            r.ga += against[team] * (len ? t / len : 1);
+            const gkCount = filled.filter((x) => slotKind(x)?.pos === "MV").length;
+            if (against[team] === 0 && gkCount === 1) r.shutouts++;
+          }
           if (p.name) byName.set(bare(p.name), p.id);
         }
       }
@@ -151,6 +166,9 @@ export const scoreStatsRouter = router({
         points,
         perMatch: r.matches ? Math.round(r.minutes / r.matches) : 0,
         p60: r.minutes >= 30 ? Math.round((points / r.minutes) * 60 * 100) / 100 : null,
+        // Målvakt: insläppta (avrundat), insläppta per 60 min i mål, hållna nollor
+        ga: Math.round(r.ga * 10) / 10,
+        ga60: r.byPos.MV >= 30 ? Math.round((r.ga / r.byPos.MV) * 60 * 100) / 100 : null,
       };
     }).sort((a, b) => b.minutes - a.minutes);
   }),

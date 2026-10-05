@@ -29,7 +29,7 @@ vi.mock("@/lib/trpc", () => ({
       opts?.enabled === false || !id ? { isLoading: false, data: undefined } : { isLoading: false, data: profiles[id] } } },
     // Uppskattad speltid (Statistik → Speltid)
     scoreStats: { iceTime: { useQuery: () => ({ isLoading: false, data: [
-      { id: "p1", name: "Ett", matches: 10, minutes: 412, byPos: { MV: 0, B: 300, C: 112, F: 0 }, goals: 5, assists: 3, points: 8, perMatch: 41, p60: 1.17 },
+      { id: "p1", name: "Ett", matches: 10, minutes: 412, byPos: { MV: 0, B: 300, C: 112, F: 0 }, goals: 5, assists: 3, points: 8, perMatch: 41, p60: 1.17, gkMatches: 0, ga: 0, ga60: null, shutouts: 0 },
     ] }) } },
   },
 }));

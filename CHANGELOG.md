@@ -7,6 +7,17 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.65.0 – 2026-10-04
+
+**Målvakter i Statistik → Speltid**
+- Vyn Utespelare/Målvakter. Målvakter: matcher, tid i mål, insläppta, insläppta per 60 min i mål och hållna nollor. Delar två målvakter på matchen fördelas de insläppta målen efter tiden i mål (uppskattad som speltiden). Sortera på tid, insl./60, nollor eller matcher.
+- Spelarprofilen: målvakter får även tid i mål, insläppta/60 och hållna nollor under Speltid.
+
+**Livesidan för styrelsen**
+- Raden "Styrelsen · avslutas automatiskt om …" under sändningen med knappen Avsluta nu (matchen sparas i matchhistoriken som ej avslutad om den inte redan sparats).
+- Efter slut: "resultatet tas bort om …" med knappen Ta bort nu.
+- Idag avslutas en sändning automatiskt 30 min efter sluttiden (eller efter 90 min utan uppdatering), och resultatet visas 30 min efter slut.
+
 ## 2.64.1 – 2026-10-04
 
 - Speltid: matchens längd är den utsatta tiden – träningens längd på laget.se (start–slut), som sparas på matchen när den avslutas i Score Tracker (ny kolumn match_results.plannedMinutes). Tiden från start till att någon tryckte Avsluta används bara om laget.se saknar sluttid; annars 60 min.

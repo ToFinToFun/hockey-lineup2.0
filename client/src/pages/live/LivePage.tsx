@@ -5,6 +5,7 @@
  * sluttid. Efter: resultatet i en halvtimme. Läktaren: hjärtan och kommentarer
  * (Inställningar → Live). Uppdateras var 4:e sekund.
  */
+import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { matchSides, type OpponentInfo, type SideInfo } from "@/lib/matchSides";
@@ -58,6 +59,10 @@ export default function LivePage() {
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
   const [tab, setTab] = useState<"goals" | "players" | "teams" | "laktaren">("goals");
   const d = q.data;
+  // Styrelsen: avsluta sändningen / ta bort resultatet nu, med nedräkning till det sker automatiskt
+  const { isAdmin } = useAuth();
+  const adminEnd = trpc.live.adminEnd.useMutation({ onSuccess: () => void q.refetch() });
+  const dismiss = trpc.live.dismiss.useMutation({ onSuccess: () => void q.refetch() });
 
   // ─── Lagen ───
   const lu = (d?.lineup ?? {}) as { setup?: MatchSetup; opponent?: (OpponentInfo & { players?: P[] }) | null; teamAName?: string; lineup?: Record<string, P>; view?: { mode: string; publishedAt?: string; publishAt?: string; showFrom?: string | null } };
@@ -144,6 +149,27 @@ export default function LivePage() {
         @keyframes heartUp{0%{transform:translateY(0) scale(.8);opacity:0}15%{opacity:1}100%{transform:translateY(-220px) scale(1.2);opacity:0}}
       `}</style>
       <div className="max-w-[560px] mx-auto pb-10 relative">
+        {isAdmin && d?.live && (d.phase === "live" || d.phase === "after") && (() => {
+          const at = d.phase === "live" ? d.live.autoEndAt : d.live.removeAt;
+          const left = at ? Math.max(0, Math.round((at - now) / 1000)) : null;
+          const clock = left === null ? null : left >= 3600 ? `${Math.floor(left / 3600)} h ${pad(Math.floor((left % 3600) / 60))} min` : `${pad(Math.floor(left / 60))}:${pad(left % 60)}`;
+          return (
+            <div className="mx-3 mt-3 flex items-center gap-2 rounded-xl border border-amber-400/30 bg-black/60 backdrop-blur px-3 py-2 text-[11px]">
+              <span className="flex-1 text-[#e7d9b0]">
+                {d.phase === "live"
+                  ? <>Styrelsen · avslutas automatiskt {clock ? <>om <b className="font-oswald text-sm tracking-wide">{clock}</b></> : "senare"}</>
+                  : <>Styrelsen · resultatet tas bort {clock ? <>om <b className="font-oswald text-sm tracking-wide">{clock}</b></> : "senare"}</>}
+              </span>
+              {d.phase === "live" ? (
+                <button disabled={adminEnd.isPending} onClick={() => { if (confirm("Avsluta sändningen nu? Matchen sparas i matchhistoriken som ej avslutad om den inte redan sparats.")) adminEnd.mutate(); }}
+                  className="shrink-0 px-2.5 py-1 rounded-lg bg-red-500/20 border border-red-400/40 text-red-200 font-semibold disabled:opacity-40">Avsluta nu</button>
+              ) : (
+                <button disabled={dismiss.isPending} onClick={() => { if (confirm("Ta bort resultatet från livesidan nu?")) dismiss.mutate(); }}
+                  className="shrink-0 px-2.5 py-1 rounded-lg bg-red-500/20 border border-red-400/40 text-red-200 font-semibold disabled:opacity-40">Ta bort nu</button>
+              )}
+            </div>
+          );
+        })()}
         {/* Rubrik */}
         <div className="flex items-center justify-between px-5 pt-5 pb-1">
           <div className="flex items-center gap-2">

@@ -74,4 +74,33 @@ describe("automatiskt avslutad sparas i historiken", () => {
     await L.currentSession();
     expect(saved).toEqual([2]);
   });
+  it("styrelsen: nedräkning, avsluta nu (sparas som ej avslutad) och ta bort resultatet nu", async () => {
+    const saved: string[] = [];
+    L.setLiveAutoEndHandler(async (sess) => { saved.push(sess.id); return 77; });
+    await L.startLive("enhet-aaaa", false);
+    // Matchen startade nyss och slutar om en timme (hela minuter)
+    const start = new Date(); start.setSeconds(0, 0);
+    const endD = new Date(start.getTime() + 60 * 60_000);
+    const hhmm = `${String(endD.getHours()).padStart(2, "0")}:${String(endD.getMinutes()).padStart(2, "0")}`;
+    await L.pushLive("enhet-aaaa", { whiteScore: 2, greenScore: 1, goals: [], matchStartTime: start.toISOString(), endTime: hhmm });
+    let s = (await L.currentSession())!;
+    // 30 min efter sluttiden eller 90 min utan uppdatering – det som kommer först
+    const end = endD.getTime() + 30 * 60_000;
+    expect(L.autoEndAt(s)).toBe(Math.min(end, new Date(s.updatedAt).getTime() + 90 * 60_000));
+    expect(L.removeAt(s)).toBeNull();
+
+    expect(await L.endLiveNow()).toBe(true);
+    s = (await L.currentSession())!;
+    expect(saved).toEqual([s.id]);
+    expect(s.autoSavedMatchId).toBe(77);
+    expect(L.autoEndAt(s)).toBeNull();
+    expect(L.removeAt(s)).toBe(new Date(s.endedAt!).getTime() + 30 * 60_000);
+    expect(L.isAfter(s)).toBe(true);
+
+    expect(await L.dismissLive()).toBe(true);
+    s = (await L.currentSession())!;
+    expect(L.isAfter(s)).toBe(false);
+    expect(L.removeAt(s)).toBeNull();
+    expect(await L.dismissLive()).toBe(false);
+  });
 });

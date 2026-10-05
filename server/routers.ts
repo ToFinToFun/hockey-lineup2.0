@@ -33,7 +33,7 @@ import { scoreLineupView } from "./scoreLineupView";
 import { getAllMatchesIncludingUnreviewed, setMatchReport, saveMatch } from "./scoreDb";
 import { matchName } from "../shared/matchTiming";
 import type { TrpcContext } from "./_core/context";
-import { setLiveAutoEndHandler, currentSession, startLive, pushLive, endLive, touchViewer, watchingNow, sendHeart, postComment, listComments, hideComment, getLiveConfig, setLiveConfig, isLive, isAfter, viewerCode } from "./liveMatch";
+import { setLiveAutoEndHandler, currentSession, startLive, pushLive, endLive, endLiveNow, dismissLive, autoEndAt, removeAt, touchViewer, watchingNow, sendHeart, postComment, listComments, hideComment, getLiveConfig, setLiveConfig, isLive, isAfter, viewerCode } from "./liveMatch";
 import { getLineupContext, saveLineupContext } from "./lineupContexts";
 import { opponentPlayerId, isOpponentPlayerId, INTERNAL_SETUP } from "../shared/matchSetup";
 import type { Player } from "../client/src/lib/players";
@@ -221,6 +221,9 @@ async function buildLiveState(ctx: TrpcContext) {
       id: s.id, startedAt: s.startedAt, updatedAt: s.updatedAt, endedAt: s.endedAt,
       whiteScore: s.whiteScore, greenScore: s.greenScore, goals: s.goals, matchStartTime: s.matchStartTime, endTime: s.endTime,
       hearts: s.hearts, uniqueViewers: s.viewerHashes?.length ?? s.uniqueViewers,
+      // Nedräkning för styrelsen: när sändningen avslutas / resultatet tas bort automatiskt
+      autoEndAt: phase === "live" ? autoEndAt(s) : null,
+      removeAt: phase === "after" ? removeAt(s) : null,
     } : null,
     watching: phase === "live" ? watchingNow() : 0,
     laktaren: cfg.laktaren,
@@ -830,6 +833,18 @@ export const appRouter = router({
         if (!ok) throw new TRPCError({ code: "CONFLICT", message: "Den här enheten sänder inte längre" });
         return { ok };
       }),
+    /** Styrelsen: avsluta sändningen nu (matchen sparas som "ej avslutad" om den inte sparats). */
+    adminEnd: adminProcedure.mutation(async () => {
+      const ok = await endLiveNow();
+      liveStateCache = null;
+      return { ok };
+    }),
+    /** Styrelsen: ta bort resultatet från livesidan nu. */
+    dismiss: adminProcedure.mutation(async () => {
+      const ok = await dismissLive();
+      liveStateCache = null;
+      return { ok };
+    }),
     end: lineupProcedure.input(z.object({ deviceId: z.string().max(64), force: z.boolean().optional() })).mutation(async ({ input }) => {
       const ok = await endLive(input.force ? null : input.deviceId);
       // Unika tittare och hjärtan sparas med matchen som just sparades (inom 15 min)

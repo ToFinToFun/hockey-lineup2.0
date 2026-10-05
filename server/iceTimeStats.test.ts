@@ -26,6 +26,8 @@ describe.skipIf(!process.env.DATABASE_URL)("speltid i statistiken", () => {
     const by = new Map(rows.map((r) => [r.id, r]));
     // 5 utespelare → alla spelar hela matchen (45 min); målvakten 45
     expect(by.get("it-gk")).toMatchObject({ matches: 1, minutes: 45, byPos: { MV: 45, B: 0, C: 0, F: 0 } });
+    // Målvakten släppte inte in något (bara vita gjorde mål) → hållen nolla, 0 insläppta per 60
+    expect(by.get("it-gk")).toMatchObject({ gkMatches: 1, ga: 0, shutouts: 1, ga60: 0 });
     expect(by.get("it-b1")?.byPos.B).toBe(45);
     expect(by.get("it-c")).toMatchObject({ goals: 1, points: 1, p60: 1.33 });
     expect(by.get("it-lw")).toMatchObject({ assists: 1, byPos: { F: 45 } });
