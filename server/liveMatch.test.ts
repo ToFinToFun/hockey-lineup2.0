@@ -74,7 +74,7 @@ describe("automatiskt avslutad sparas i historiken", () => {
     await L.currentSession();
     expect(saved).toEqual([2]);
   });
-  it("styrelsen: nedräkning, avsluta nu (sparas som ej avslutad) och ta bort resultatet nu", async () => {
+  it("styrelsen: nedräkning, avsluta sändningen nu (sparar ingen match) och stäng slutvisningen nu", async () => {
     const saved: string[] = [];
     L.setLiveAutoEndHandler(async (sess) => { saved.push(sess.id); return 77; });
     await L.startLive("enhet-aaaa", false);
@@ -91,8 +91,8 @@ describe("automatiskt avslutad sparas i historiken", () => {
 
     expect(await L.endLiveNow()).toBe(true);
     s = (await L.currentSession())!;
-    expect(saved).toEqual([s.id]);
-    expect(s.autoSavedMatchId).toBe(77);
+    expect(saved).toEqual([]); // bara sändningen – ingen match sparas
+    expect(s.autoSavedMatchId ?? null).toBeNull();
     expect(L.autoEndAt(s)).toBeNull();
     expect(L.removeAt(s)).toBe(new Date(s.endedAt!).getTime() + 30 * 60_000);
     expect(L.isAfter(s)).toBe(true);

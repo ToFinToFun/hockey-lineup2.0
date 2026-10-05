@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.65.1 – 2026-10-04
+
+- Livesidan, styrelsens rad: tydligt att det gäller sändningen, inte matchen. "Sändningen avslutas automatiskt om …" med Avsluta nu, och efter slut "Sändningen stängs om …" med Stäng nu. Avsluta nu stänger bara sändningen – den sparar ingen match; matchen i Score Tracker, matchhistoriken och statistiken påverkas inte.
+
 ## 2.65.0 – 2026-10-04
 
 **Målvakter i Statistik → Speltid**

@@ -30,7 +30,7 @@ export interface LiveSession {
   uniqueViewers: number;
   /** Avslutades automatiskt och sparades som "ej avslutad" i matchhistoriken */
   autoSavedMatchId?: number | null;
-  /** Styrelsen tog bort resultatet från livesidan i förtid */
+  /** Styrelsen stängde livesidans slutvisning i förtid */
   hiddenAt?: string | null;
   /** Bara under sändningen: matchens salt och anonyma koder (raderas vid slut) */
   salt?: string;
@@ -121,7 +121,7 @@ export function autoEndAt(s: LiveSession): number | null {
   return end !== null ? Math.min(end + LIVE_LIMITS.autoEndAfterEndMs, idle) : idle;
 }
 
-/** När resultatet tas bort från livesidan (ms) efter slut, eller null. */
+/** När livesidans slutvisning stängs (ms) efter slut, eller null. */
 export function removeAt(s: LiveSession): number | null {
   if (!s.endedAt || s.hiddenAt) return null;
   return new Date(s.endedAt).getTime() + LIVE_LIMITS.afterMinutes * 60_000;
@@ -258,26 +258,18 @@ export async function endLive(deviceId: string | null): Promise<boolean> {
 }
 
 /**
- * Styrelsen avslutar sändningen direkt (som när den avslutas automatiskt):
- * matchen sparas i matchhistoriken som "ej avslutad" om den inte redan sparats.
+ * Styrelsen avslutar livesändningen direkt. Bara sändningen – matchen i Score
+ * Tracker, matchhistoriken och statistiken påverkas inte.
  */
 export async function endLiveNow(): Promise<boolean> {
   const s = await load();
   if (!isLive(s)) return false;
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
   await finish(s!);
-  if (autoEndHandler) {
-    try {
-      s!.autoSavedMatchId = await autoEndHandler(s!);
-      await setConfigValue(KEY, JSON.stringify(s));
-    } catch (err) {
-      console.error("[live] kunde inte spara matchen:", err);
-    }
-  }
   return true;
 }
 
-/** Styrelsen tar bort resultatet från livesidan direkt (i stället för efter 30 min). */
+/** Styrelsen stänger livesidans slutvisning direkt (i stället för efter 30 min). Statistiken påverkas inte. */
 export async function dismissLive(): Promise<boolean> {
   const s = await load();
   if (!s || !s.endedAt || s.hiddenAt) return false;

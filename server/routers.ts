@@ -833,13 +833,13 @@ export const appRouter = router({
         if (!ok) throw new TRPCError({ code: "CONFLICT", message: "Den här enheten sänder inte längre" });
         return { ok };
       }),
-    /** Styrelsen: avsluta sändningen nu (matchen sparas som "ej avslutad" om den inte sparats). */
+    /** Styrelsen: avsluta livesändningen nu (bara sändningen – matchen och statistiken påverkas inte). */
     adminEnd: adminProcedure.mutation(async () => {
       const ok = await endLiveNow();
       liveStateCache = null;
       return { ok };
     }),
-    /** Styrelsen: ta bort resultatet från livesidan nu. */
+    /** Styrelsen: stäng livesidans slutvisning nu (statistiken påverkas inte). */
     dismiss: adminProcedure.mutation(async () => {
       const ok = await dismissLive();
       liveStateCache = null;

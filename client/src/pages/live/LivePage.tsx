@@ -157,15 +157,15 @@ export default function LivePage() {
             <div className="mx-3 mt-3 flex items-center gap-2 rounded-xl border border-amber-400/30 bg-black/60 backdrop-blur px-3 py-2 text-[11px]">
               <span className="flex-1 text-[#e7d9b0]">
                 {d.phase === "live"
-                  ? <>Styrelsen · avslutas automatiskt {clock ? <>om <b className="font-oswald text-sm tracking-wide">{clock}</b></> : "senare"}</>
-                  : <>Styrelsen · resultatet tas bort {clock ? <>om <b className="font-oswald text-sm tracking-wide">{clock}</b></> : "senare"}</>}
+                  ? <>Styrelsen · sändningen avslutas automatiskt {clock ? <>om <b className="font-oswald text-sm tracking-wide">{clock}</b></> : "senare"}</>
+                  : <>Styrelsen · sändningen stängs {clock ? <>om <b className="font-oswald text-sm tracking-wide">{clock}</b></> : "senare"}</>}
               </span>
               {d.phase === "live" ? (
-                <button disabled={adminEnd.isPending} onClick={() => { if (confirm("Avsluta sändningen nu? Matchen sparas i matchhistoriken som ej avslutad om den inte redan sparats.")) adminEnd.mutate(); }}
+                <button disabled={adminEnd.isPending} onClick={() => { if (confirm("Avsluta livesändningen nu? Bara sändningen avslutas – matchen i Score Tracker och statistiken påverkas inte.")) adminEnd.mutate(); }}
                   className="shrink-0 px-2.5 py-1 rounded-lg bg-red-500/20 border border-red-400/40 text-red-200 font-semibold disabled:opacity-40">Avsluta nu</button>
               ) : (
-                <button disabled={dismiss.isPending} onClick={() => { if (confirm("Ta bort resultatet från livesidan nu?")) dismiss.mutate(); }}
-                  className="shrink-0 px-2.5 py-1 rounded-lg bg-red-500/20 border border-red-400/40 text-red-200 font-semibold disabled:opacity-40">Ta bort nu</button>
+                <button disabled={dismiss.isPending} onClick={() => { if (confirm("Stäng livesändningen nu? Slutställningen slutar visas på livesidan – statistiken påverkas inte.")) dismiss.mutate(); }}
+                  className="shrink-0 px-2.5 py-1 rounded-lg bg-red-500/20 border border-red-400/40 text-red-200 font-semibold disabled:opacity-40">Stäng nu</button>
               )}
             </div>
           );
