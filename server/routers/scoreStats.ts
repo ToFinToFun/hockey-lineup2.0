@@ -1,5 +1,7 @@
 import { isTeamAWhite as teamAIsWhite, normalizeTeamKey } from "../../shared/teams";
 import { listOpponents } from "../opponents";
+import { listPlayers } from "../playersDb";
+import { iceTimeBySlot, matchMinutes, slotKind, type IcePos } from "../../shared/iceTime";
 import { normalizeGoalType } from "../playerHistory";
 /**
  * Score Tracker statistics tRPC router.
@@ -96,6 +98,62 @@ const dateRangeInput = z
 // ─── Score Stats Router ─────────────────────────────────────────────
 
 export const scoreStatsRouter = router({
+  /**
+   * Uppskattad speltid per spelare (samma regler som i Lineup, räknat på varje
+   * sparad match utifrån uppställningen och matchens längd): total, per
+   * position, snitt per match och poäng per 60 minuter.
+   */
+  iceTime: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
+    const matches = filterMatchesByDate(await getAllMatchResults({ includeExternal: input?.includeExternal }), input?.from, input?.to);
+    const registry = new Map((await listPlayers()).map((p) => [p.id, p.name]));
+    type Row = { id: string; name: string; matches: number; minutes: number; byPos: Record<IcePos, number>; goals: number; assists: number };
+    const rows = new Map<string, Row>();
+    const row = (id: string) => {
+      let r = rows.get(id);
+      if (!r) { r = { id, name: registry.get(id) ?? id, matches: 0, minutes: 0, byPos: { MV: 0, B: 0, C: 0, F: 0 }, goals: 0, assists: 0 }; rows.set(id, r); }
+      return r;
+    };
+    const bare = (n: string | undefined) => (n ?? "").replace(/\s*#\d*\s*$/, "").trim().toLowerCase();
+    for (const m of matches) {
+      const slots = ((m.lineup as { lineup?: Record<string, { id?: string; name?: string }> } | null)?.lineup) ?? {};
+      const len = matchMinutes(m.matchStartTime, m.matchEndTime ?? m.createdAt);
+      const byName = new Map<string, string>();
+      for (const team of ["a", "b"] as const) {
+        const filled = Object.keys(slots).filter((k) => k.startsWith(`team-${team}-`) && slots[k]?.id);
+        const mins = iceTimeBySlot(filled, len);
+        for (const slotId of filled) {
+          const p = slots[slotId]!;
+          if (!p.id || !registry.has(p.id)) continue; // bara våra spelare
+          const r = row(p.id);
+          const k = slotKind(slotId)!;
+          const t = mins.get(slotId) ?? 0;
+          r.matches++;
+          r.minutes += t;
+          r.byPos[k.pos] += t;
+          if (p.name) byName.set(bare(p.name), p.id);
+        }
+      }
+      // Poäng i matchen (id om det finns, annars namnet i uppställningen)
+      for (const g of (Array.isArray(m.goalHistory) ? m.goalHistory : []) as Array<{ scorer?: string; assist?: string; scorerId?: string; assistId?: string }>) {
+        const sid = g.scorerId ?? byName.get(bare(g.scorer));
+        const aid = g.assistId ?? byName.get(bare(g.assist));
+        if (sid && rows.has(sid)) rows.get(sid)!.goals++;
+        if (aid && rows.has(aid)) rows.get(aid)!.assists++;
+      }
+    }
+    return [...rows.values()].map((r) => {
+      const points = r.goals + r.assists;
+      return {
+        ...r,
+        minutes: Math.round(r.minutes),
+        byPos: { MV: Math.round(r.byPos.MV), B: Math.round(r.byPos.B), C: Math.round(r.byPos.C), F: Math.round(r.byPos.F) },
+        points,
+        perMatch: r.matches ? Math.round(r.minutes / r.matches) : 0,
+        p60: r.minutes >= 30 ? Math.round((points / r.minutes) * 60 * 100) / 100 : null,
+      };
+    }).sort((a, b) => b.minutes - a.minutes);
+  }),
+
   /**
    * Statistik per hall (platsen sparas per match): matcher, vinster per lag,
    * mål per match och bästa poänggörare i hallen. Lagens vinster räknas bara för

@@ -7,6 +7,14 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.64.0 – 2026-10-04
+
+**Speltid i statistiken**
+- Uppskattad speltid räknas på alla sparade matcher – även gamla – med samma regler som i Lineup, utifrån matchens uppställning och längd (start/slut i Score Tracker, annars 60 min).
+- Ny flik Statistik → Speltid: total tid, snitt per match, fördelning per position (stapel MV/B/C/F) och poäng per 60 minuter (P/60). Sortera på tid, snitt, P/60 eller matcher; samma periodval som övrig statistik och "Inkl. externa matcher".
+- Spelarprofilen: avsnittet Speltid – totalt, snitt/match, P/60 och tid per position.
+- Statistikens flikar behåller sin bredd och går att svepa i sidled (lade sig över varandra på mobil).
+
 ## 2.63.6 – 2026-10-04
 
 **Lineup**

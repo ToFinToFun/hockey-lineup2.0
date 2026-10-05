@@ -2,6 +2,7 @@
  * Spelarprofil på spelarsidan: bild, form, sammanfattning, rekord, kemi
  * (kedjekamrater, lagkamrater, motståndare), matchlogg och jämförelse.
  */
+import { formatMinutes, PositionSplit } from "@/pages/stats/IceTimeTab";
 import { useFeatures } from "@/contexts/ClubContext";
 import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { useMemo, useState } from "react";
@@ -75,6 +76,8 @@ export function PlayerProfileView({ player, all }: { player: Basic; all: Basic[]
   const [includeExternal, setIncludeExternal] = useState(false);
   const ext = features.opponents && includeExternal ? { includeExternal: true } : {};
   const profile = trpc.players.profile.useQuery({ id: player.id, ...ext });
+  const iceQ = trpc.scoreStats.iceTime.useQuery({ ...ext }, { staleTime: 60_000 });
+  const ice = iceQ.data?.find((r) => r.id === player.id);
   const pir = trpc.pir.player.useQuery({ id: player.id });
   const [showAllMatches, setShowAllMatches] = useState(false);
   const [compareId, setCompareId] = useState("");
@@ -147,6 +150,23 @@ export function PlayerProfileView({ player, all }: { player: Basic; all: Basic[]
               <Stat label="Längst obesegrad" value={p.records.longestUnbeaten} sub="matcher i rad" />
             </div>
           </Section>
+
+          {/* Speltid (uppskattad, totalt) */}
+          {ice && ice.minutes > 0 && (
+            <Section title="Speltid" hint="Uppskattad: samma regler som i Lineup, räknat på varje match utifrån uppställningen och matchens längd.">
+              <div className="grid grid-cols-3 gap-1.5">
+                <Stat label="Totalt" value={formatMinutes(ice.minutes)} sub={`${ice.matches} matcher`} />
+                <Stat label="Snitt/match" value={`${ice.perMatch} min`} />
+                <Stat label="Poäng/60 min" value={ice.p60 ?? "–"} />
+              </div>
+              <div className="mt-2 space-y-1">
+                <PositionSplit byPos={ice.byPos} total={ice.minutes} />
+                <p className="text-[10px] text-white/45">
+                  {(["MV", "B", "C", "F"] as const).filter((k) => ice.byPos[k]).map((k) => `${k} ${formatMinutes(ice.byPos[k])} (${Math.round((ice.byPos[k] / ice.minutes) * 100)} %)`).join(" · ")}
+                </p>
+              </div>
+            </Section>
+          )}
 
           {/* Kemi */}
           <Section title="Kemi" hint="Vinstprocent tillsammans. Stapeln: grön ≥ 60 %, röd < 40 %. V-O-F till höger.">

@@ -9,7 +9,8 @@ import { useState, useMemo, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { IMAGES } from "@/lib/scoreConstants";
-import { ArrowLeft, BarChart3, Users, Shield, Loader2, X, Swords, MapPin } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, Shield, Loader2, X, Swords, MapPin, Timer } from "lucide-react";
+import { IceTimeTab } from "./IceTimeTab";
 import OverviewTab from "./OverviewTab";
 import LeadersTab from "./LeadersTab";
 import AwardsTab from "./AwardsTab";
@@ -59,6 +60,7 @@ const TABS = [
   { id: "overview", label: "Översikt", icon: BarChart3 },
   { id: "players", label: "Spelare", icon: Users },
   { id: "teams", label: "Lag", icon: Shield },
+  { id: "icetime", label: "Speltid", icon: Timer },
   { id: "venues", label: "Hallar", icon: MapPin },
   { id: "opponents", label: "Motståndare", icon: Swords },
 ] as const;
@@ -179,7 +181,7 @@ export default function StatsApp() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                  className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
                     isActive
                       ? "bg-[#0a7ea4] text-white"
                       : "bg-[#1a1a1a] text-[#9BA1A6] hover:bg-[#2a2a2a] hover:text-white"
@@ -259,6 +261,7 @@ export default function StatsApp() {
               </div>
             )}
             {activeTab === "venues" && <VenuesTab input={queryInput as { from?: string; to?: string; includeExternal?: boolean } | undefined} />}
+            {activeTab === "icetime" && <IceTimeTab input={queryInput as never} />}
             {activeTab === "opponents" && <OpponentsTab dateFilter={dateFilter.from || dateFilter.to ? { from: dateFilter.from, to: dateFilter.to } : undefined} />}
             {activeTab === "teams" && (
               <TeamsTab
