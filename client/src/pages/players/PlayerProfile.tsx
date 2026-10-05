@@ -2,6 +2,7 @@
  * Spelarprofil på spelarsidan: bild, form, sammanfattning, rekord, kemi
  * (kedjekamrater, lagkamrater, motståndare), matchlogg och jämförelse.
  */
+import { CardThumb } from "@/components/CardThumb";
 import { formatMinutes, PositionSplit } from "@/pages/stats/IceTimeTab";
 import { useFeatures } from "@/contexts/ClubContext";
 import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
@@ -106,7 +107,8 @@ export function PlayerProfileView({ player, all }: { player: Basic; all: Basic[]
       )}
       {/* Huvud: bild, namn, form */}
       <div className="flex gap-3 items-start">
-        <PlayerPhoto playerId={player.id} width={72} />
+        {/* Spelarens hockeykort (sparat eller standardkort i lagets färg) */}
+        <CardThumb playerId={player.id} height={128} fallback={<PlayerPhoto playerId={player.id} width={72} />} />
         <div className="min-w-0 flex-1">
           <p className="text-base font-bold truncate">{player.name}{player.number ? <span className="text-white/40 font-normal"> #{player.number}</span> : null}</p>
           <p className="text-[11px] text-white/45">

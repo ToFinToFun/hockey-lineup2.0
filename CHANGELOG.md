@@ -7,6 +7,16 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.67.0 – 2026-10-04
+
+**Hockeykort för alla spelare**
+- Alla spelare har ett hockeykort: det sparade kortet, annars ett standardkort – retrostil i spelarens lag (Vita/Gröna, annars Svart) med namn, nummer, position, C/A och statistik, men tom fotoruta (ingen "Ladda upp ett foto").
+- Korten visas i utmärkelserna (vinnarens kort), i spelarprofilerna (Spelare och statistikens profil) och i Media → Spelarkort, där alla aktiva spelare nu kan väljas.
+- Gemensam kod: standardinställningen (defaultCardFor) och ritningen av spelarens kort (renderPlayerCard) används överallt, också i Hockeykort.
+
+**Målvaktskort**
+- GP, SO (hållna nollor), GAA, /60, W% – SO tillbaka i stället för PTS.
+
 ## 2.66.1 – 2026-10-04
 
 **Statistik**

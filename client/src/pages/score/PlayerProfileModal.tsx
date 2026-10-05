@@ -1,3 +1,4 @@
+import { CardThumb } from "@/components/CardThumb";
 import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { POSITION_COLORS } from "@/lib/positionColors";
 import { trpc } from "@/lib/trpc";
@@ -48,6 +49,9 @@ export default function PlayerProfileModal({ playerName, onClose }: PlayerProfil
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex justify-center">
+              <CardThumb playerName={playerName} height={220} />
+            </div>
             {/* Summary Stats */}
             <div className="grid grid-cols-3 gap-2">
               <div className="bg-[#2a2a2a] rounded-xl p-3 text-center border border-[#3a3a3a]">

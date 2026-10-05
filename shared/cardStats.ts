@@ -54,7 +54,7 @@ export function cellsFor(mode: CardSettings["statsMode"], stats: Stats | undefin
     : mode === "preseason" ? (stats.preseason ?? { ...stats.season, matches: 0, goals: 0, assists: 0, points: 0, wins: 0, winPct: 0, goalie: null })
     : stats.season;
   const title = defaultStatsTitle(mode, stats);
-  // Målvakter (position MV eller oftast i mål): GP, PTS, GAA, /60, W% – även innan första matchen i mål
+  // Målvakter (position MV eller oftast i mål): GP, SO (hållna nollor), GAA, /60, W% – även innan första matchen i mål
   if (stats.isGoalie) {
     const g = line.goalie;
     const num = (v: number | null | undefined) => (v == null ? "–" : v.toFixed(1).replace(".", ","));
@@ -62,7 +62,7 @@ export function cellsFor(mode: CardSettings["statsMode"], stats: Stats | undefin
       title,
       cells: [
         { label: "GP", value: String(g?.matches ?? 0) },
-        { label: "PTS", value: String(line.points) },
+        { label: "SO", value: g ? String(g.shutouts) : "–" },
         { label: "GAA", value: g ? num(g.gaa) : "–" },
         { label: "/60", value: num(g?.ga60) },
         { label: "W%", value: g ? `${g.winPct ?? line.winPct}%` : "–" },

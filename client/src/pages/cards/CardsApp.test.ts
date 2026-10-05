@@ -13,12 +13,12 @@ describe("hockeykort", () => {
     expect(skater.cells[3].value).toBe("12");
     const gk = cellsFor("career", { season: line(), career: line({ label: "Totalt", goalie: { matches: 8, gaa: 2.25, shutouts: 2, ga60: 2.67, winPct: 75 } }), form: "", isGoalie: true });
     expect(gk.title).toBe("Totalt");
-    expect(gk.cells.map((c) => c.label)).toEqual(["GP", "PTS", "GAA", "/60", "W%"]);
+    expect(gk.cells.map((c) => c.label)).toEqual(["GP", "SO", "GAA", "/60", "W%"]);
     expect(gk.cells.find((c) => c.label === "/60")?.value).toBe("2,7");
     expect(gk.cells.find((c) => c.label === "W%")?.value).toBe("75%");
     // Målvakt som inte stått i mål än: målvaktsrutor ändå
     const fresh = cellsFor("season", { season: line({ goalie: null }), career: line(), form: "", isGoalie: true });
-    expect(fresh.cells.map((c) => `${c.label}=${c.value}`)).toEqual(["GP=0", "PTS=12", "GAA=–", "/60=–", "W%=–"]);
+    expect(fresh.cells.map((c) => `${c.label}=${c.value}`)).toEqual(["GP=0", "SO=–", "GAA=–", "/60=–", "W%=–"]);
     expect(cellsFor("none", undefined).cells).toEqual([]);
   });
 

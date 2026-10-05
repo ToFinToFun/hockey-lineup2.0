@@ -26,7 +26,7 @@ import type { Player } from "@/lib/players";
 import { prepareSourcePhoto } from "@/lib/cardPhoto";
 import { renderMediaPost, MEDIA_OVERLAYS, MEDIA_BACKGROUNDS, overlayFromTheme, type MediaOverlay, type MediaBackground, type LineupGroup, type MediaPostData } from "@/lib/mediaImages";
 import { type CardSettings } from "@shared/cardRender";
-import { renderSavedCard } from "@/lib/savedCardImage";
+import { renderPlayerCard } from "@/lib/savedCardImage";
 import { cellsFor, defaultStatsTitle } from "@shared/cardStats";
 import { STAT_CATEGORIES, STAT_PERIODS, periodRange, statRows, type StatCategory, type StatPeriod } from "./mediaStats";
 
@@ -191,16 +191,19 @@ export default function MediaApp() {
     (async () => {
       const out: HTMLCanvasElement[] = [];
       for (const id of s.cardPlayers.slice(0, 4)) {
+        // Alla spelare har ett kort: sparat, annars standardkortet (lagets färg, utan foto)
+        const player = registry.data?.find((p) => p.id === id);
+        if (!player) continue;
         const card = savedCards.data!.find((c) => c.playerId === id);
-        if (!card) continue;
-        const stats = await utils.client.cards.stats.query({ playerId: id, ...((card.settings as Partial<CardSettings>)?.includeExternal ? { includeExternal: true } : {}) }).catch(() => undefined);
-        out.push(await renderSavedCard(card, { stats, scale: 0.9 }));
+        const stats = await utils.client.cards.stats.query({ playerId: id, ...((card?.settings as Partial<CardSettings> | undefined)?.includeExternal ? { includeExternal: true } : {}) }).catch(() => undefined);
+        out.push(await renderPlayerCard(player, card, { stats, scale: 0.9 }));
       }
       if (!cancelled) setCardCanvases(out);
     })().catch(() => undefined);
     return () => { cancelled = true; };
-  }, [cardsKey, s.kind, savedCards.data]); // eslint-disable-line react-hooks/exhaustive-deps
-  const cardPlayers = (registry.data ?? []).filter((p) => savedCards.data?.some((c) => c.playerId === p.id)).sort((a, b) => a.name.localeCompare(b.name, "sv"));
+  }, [cardsKey, s.kind, savedCards.data, registry.data]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Alla aktiva spelare – de utan sparat kort får standardkortet
+  const cardPlayers = (registry.data ?? []).filter((p) => p.active !== false).sort((a, b) => a.name.localeCompare(b.name, "sv"));
 
   // Matchtyp i Lineup: mot motståndare → lagens namn, loggor och färger
   const setupNow = (lineupState.data as { setup?: MatchSetup } | undefined)?.setup;
@@ -470,8 +473,8 @@ export default function MediaApp() {
               <label className="block text-[11px] text-white/50">Rubrik<input value={s.title} onChange={(e) => update({ title: e.target.value })} maxLength={40} className={input} /></label>
               <label className="block text-[11px] text-white/50">Underrubrik<input value={s.subtitle} onChange={(e) => update({ subtitle: e.target.value })} maxLength={60} placeholder="T.ex. Vecka 40" className={input} /></label>
               <div>
-                <p className="text-[11px] text-white/50 mb-1.5">Spelare (1–4, med sparade hockeykort) – {s.cardPlayers.length} valda</p>
-                {cardPlayers.length === 0 ? <p className="text-xs text-white/35">Inga sparade hockeykort än – skapa dem i Hockeykort.</p> : (
+                <p className="text-[11px] text-white/50 mb-1.5">Spelare (1–4) – {s.cardPlayers.length} valda. Spelare utan sparat kort får standardkortet i lagets färg.</p>
+                {cardPlayers.length === 0 ? <p className="text-xs text-white/35">Inga spelare i registret.</p> : (
                   <div className="flex flex-wrap gap-1.5 max-h-44 overflow-y-auto">
                     {cardPlayers.map((p) => {
                       const on = s.cardPlayers.includes(p.id);

@@ -3,7 +3,7 @@
  * utmärkelserna och andra ställen som visar kortet. Med stats fylls
  * statistikrutan med aktuella siffror (annars som det sparades).
  */
-import { renderCard, DEFAULT_SETTINGS as CARD_DEFAULTS, type CardSettings } from "@shared/cardRender";
+import { renderCard, defaultCardFor, DEFAULT_SETTINGS as CARD_DEFAULTS, type CardSettings } from "@shared/cardRender";
 import { cellsFor, defaultStatsTitle, type CardStats } from "@shared/cardStats";
 
 export interface SavedCardRef { playerId: string; settings: unknown; updatedAt: string | Date }
@@ -24,4 +24,21 @@ export async function renderSavedCard(card: SavedCardRef, opts: { scale?: number
     settings = { ...settings, cells, statsTitle: ownTitle ? settings.statsTitle : defaultStatsTitle(settings.statsMode, stats), form: stats.form };
   }
   return renderCard({ settings, photo, mask, scale: opts.scale ?? 0.9 });
+}
+
+export interface CardPlayer { id: string; name: string; number?: string | null; position?: string | null; teamColor?: string | null; captainRole?: string | null }
+
+/**
+ * Spelarens hockeykort: det sparade kortet om det finns, annars standardkortet
+ * (retrostil i lagets färg, utan foto). Med stats fylls statistikrutan.
+ */
+export async function renderPlayerCard(player: CardPlayer, card: SavedCardRef | undefined, opts: { scale?: number; stats?: CardStats } = {}): Promise<HTMLCanvasElement> {
+  if (card) return renderSavedCard(card, opts);
+  let settings: CardSettings = { ...defaultCardFor(player), blankPhoto: true };
+  const stats = opts.stats;
+  if (stats) {
+    const { cells } = cellsFor(settings.statsMode, stats);
+    settings = { ...settings, cells, statsTitle: defaultStatsTitle(settings.statsMode, stats), form: stats.form };
+  }
+  return renderCard({ settings, photo: null, mask: null, scale: opts.scale ?? 0.9 });
 }

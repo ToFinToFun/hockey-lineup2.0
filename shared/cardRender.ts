@@ -65,6 +65,8 @@ export interface CardSettings {
   starRank?: 1 | 2 | 3;
   /** Utan foto: visa klubbens märke stort i fotorutan i stället för "Ladda upp ett foto" */
   placeholderLogo?: boolean;
+  /** Standardkort utan foto: tom fotoruta i kortets bakgrund (ingen "Ladda upp ett foto") */
+  blankPhoto?: boolean;
   /** Friläggning: ersätt fotots bakgrund med kortets (amount 0–1 = hur mycket) */
   cutout?: { enabled: boolean; amount: number };
   statsTitle: string;
@@ -362,10 +364,12 @@ async function renderModern({ settings: s, photo, mask, scale = 1 }: RenderInput
     g.addColorStop(1, skin.background);
     ctx.fillStyle = g;
     ctx.fillRect(inner.x, inner.y, inner.w, inner.h);
-    ctx.fillStyle = "rgba(255,255,255,0.35)";
-    ctx.font = `600 30px ${BODY}`;
-    ctx.textAlign = "center";
-    ctx.fillText("Ladda upp ett foto", CARD_W / 2, CARD_H * 0.38);
+    if (!s.blankPhoto) {
+      ctx.fillStyle = "rgba(255,255,255,0.35)";
+      ctx.font = `600 30px ${BODY}`;
+      ctx.textAlign = "center";
+      ctx.fillText("Ladda upp ett foto", CARD_W / 2, CARD_H * 0.38);
+    }
   }
   // Vinjett och toning mot namnskylten
   const vig = ctx.createRadialGradient(CARD_W / 2, CARD_H * 0.38, CARD_W * 0.25, CARD_W / 2, CARD_H * 0.45, CARD_W * 0.85);
@@ -750,6 +754,11 @@ async function renderRetro({ settings: s, photo, mask, scale = 1 }: RenderInput)
       await drawLogo(ctx, big, CARD_W / 2, W.y + W.h * 0.56, W.w * 0.62, c.paper, c.ink);
       ctx.restore();
     }
+  } else if (s.blankPhoto) {
+    // Standardkort utan foto: kortets bakgrund i fotorutan
+    const bg = env.createCanvas(Math.round(W.w), Math.round(W.h));
+    paintBackdrop(bg.getContext("2d")!, W.w, W.h, skin);
+    ctx.drawImage(bg, W.x, W.y, W.w, W.h);
   } else {
     ctx.fillStyle = "#f7f4ee";
     ctx.fillRect(W.x, W.y, W.w, W.h);
@@ -915,4 +924,22 @@ async function renderRetro({ settings: s, photo, mask, scale = 1 }: RenderInput)
   }
 
   return canvas;
+}
+
+/** Positionen på kortet: MV → G, B → D, C → C, F → F. */
+export const CARD_POSITION: Record<string, string> = { MV: "G", B: "D", C: "C", F: "F" };
+
+/**
+ * Standardkortet för en spelare (även utan sparat kort): retrostil i
+ * spelarens lag (Vita/Gröna, annars Svart), namn, nummer, position och C/A.
+ */
+export function defaultCardFor(p: { name?: string; number?: string | null; position?: string | null; teamColor?: string | null; captainRole?: string | null } | null | undefined): CardSettings {
+  return {
+    ...DEFAULT_SETTINGS,
+    skin: p?.teamColor === "white" ? "retro-vit" : p?.teamColor === "green" ? "retro-gron" : "retro-svart",
+    name: p?.name ?? "",
+    number: p?.number ?? "",
+    position: CARD_POSITION[p?.position ?? ""] ?? "",
+    captain: (p?.captainRole as "C" | "A" | null) ?? "",
+  };
 }

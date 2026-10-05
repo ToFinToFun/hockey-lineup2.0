@@ -15,7 +15,7 @@ import { ArrowLeft, Upload, Download, Share2, Save, UserSquare2, Wand2, Loader2,
 import { trpc } from "@/lib/trpc";
 import { CARD_SKINS, cardLogos } from "@shared/cardSkins";
 import { club } from "@shared/club";
-import { renderCard, photoSourceRect, DEFAULT_SETTINGS, CARD_W, type CardSettings, type CardCell } from "@shared/cardRender";
+import { renderCard, photoSourceRect, DEFAULT_SETTINGS, CARD_W, type CardSettings, type CardCell, defaultCardFor, CARD_POSITION } from "@shared/cardRender";
 import { prepareSourcePhoto } from "@/lib/cardPhoto";
 import { computeMask } from "@/lib/cutout";
 
@@ -25,7 +25,6 @@ export { cellsFor, defaultStatsTitle, currentSeasonLabel } from "@shared/cardSta
 /** Positioner på kortet (engelska, som på klassiska hockeykort) */
 const POSITIONS = ["", "G", "D", "C", "LW", "RW", "F"];
 /** Spelarregistrets positioner → kortets */
-const CARD_POSITION: Record<string, string> = { MV: "G", B: "D", C: "C", F: "F" };
 
 async function loadImg(src: string): Promise<HTMLImageElement> {
   return new Promise((res, rej) => {
@@ -84,14 +83,7 @@ export default function CardsApp() {
     setLoadedInfo(null);
     const p = players.data?.find((x) => x.id === id);
     const savedCard = saved.data?.find((c) => c.playerId === id);
-    const base: CardSettings = {
-      ...DEFAULT_SETTINGS,
-      skin: p?.teamColor === "white" ? "retro-vit" : p?.teamColor === "green" ? "retro-gron" : "retro-svart",
-      name: p?.name ?? "",
-      number: p?.number ?? "",
-      position: CARD_POSITION[p?.position ?? ""] ?? "",
-      captain: (p?.captainRole as "C" | "A" | null) ?? "",
-    };
+    const base: CardSettings = defaultCardFor(p);
     if (savedCard) {
       setSettings({ ...base, ...(savedCard.settings as Partial<CardSettings>) });
       setLoadingPhoto(true);
