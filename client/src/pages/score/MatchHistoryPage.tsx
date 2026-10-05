@@ -147,6 +147,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
   const [editDialog, setEditDialog] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editLocation, setEditLocation] = useState("");
+  const [editMinutes, setEditMinutes] = useState("");
 
   const [editGoals, setEditGoals] = useState<GoalEvent[]>([]);
 
@@ -224,6 +225,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
     if (!match) return;
     setEditName(match.name);
     setEditLocation((match as { location?: string | null }).location ?? "");
+    setEditMinutes(String((match as { plannedMinutes?: number | null }).plannedMinutes ?? ""));
     // Sparas nyast först (som Score Tracker visar). Här redigeras i tidsordning: första målet överst.
     const gh = (match.goalHistory as GoalEvent[] | null) ?? [];
     setEditGoals([...gh].reverse().map(g => ({ ...g })));
@@ -422,6 +424,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
       // Tillbaka till lagringsordningen: nyast först
       goalHistory: [...editGoals].reverse(),
       location: editLocation.trim(),
+      plannedMinutes: editMinutes.trim() ? Math.min(240, Math.max(10, Number(editMinutes))) : null,
     });
     setEditDialog(null);
     setSelectedMatch(null);
@@ -1166,6 +1169,14 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
               <input value={editLocation} onChange={(e) => setEditLocation(e.target.value)} maxLength={120} placeholder={knownLocations[0] ? `T.ex. ${knownLocations[0]}` : "Hall"}
                 list="known-venues" className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-[#ECEDEE] text-sm" />
               <datalist id="known-venues">{knownLocations.map((v) => <option key={v} value={v} />)}</datalist>
+            </div>
+
+            {/* Matchlängd: utsatt tid (träningens längd) – används för speltiden */}
+            <div>
+              <label className="text-[#9BA1A6] text-xs font-medium block mb-1">Matchlängd (min)</label>
+              <input value={editMinutes} onChange={(e) => setEditMinutes(e.target.value.replace(/\D/g, "").slice(0, 3))} inputMode="numeric" placeholder="T.ex. 90 – tomt = från start till avslut"
+                className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-[#ECEDEE] text-sm" />
+              <p className="text-[10px] text-white/35 mt-1">Sätts automatiskt till träningens längd på laget.se. Används för speltiden i statistiken.</p>
             </div>
 
             {/* Scores - auto-calculated from goal history */}

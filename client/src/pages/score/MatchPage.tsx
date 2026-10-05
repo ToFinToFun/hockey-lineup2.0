@@ -9,7 +9,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, type CSSProperties }
 import { IMAGES, COLORS, STORAGE_KEY, type GoalEvent, type MatchState } from "@/lib/scoreConstants";
 import { useSponsors, pickLeastShown, logoForName } from "@/lib/sponsors";
 import { useWakeLock } from "@/hooks/useWakeLock";
-import { resolveMatchStart, matchName, eventLocationFor } from "@shared/matchTiming";
+import { resolveMatchStart, matchName, eventLocationFor, plannedMinutesFor } from "@shared/matchTiming";
 import { matchSides, type SideInfo } from "@/lib/matchSides";
 import { defaultTeamNames, isTeamAWhite as teamAIsWhite, teamGenitive, teamName, teamSingular } from "@shared/teams";
 import { playGoalSound as playGoalSoundFx, playEndSignal, unlockAudio } from "@/lib/matchSounds";
@@ -367,6 +367,8 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
       location,
       // Mot motståndare (beta): vilket lag vi mötte
       ...(lineupState?.setup?.mode === "external" && lineupState.setup.opponentId ? { opponentId: lineupState.setup.opponentId } : {}),
+      // Utsatt längd (träningens längd på laget.se) – används för speltiden
+      ...(plannedMinutesFor(eventQuery.data, start) ? { plannedMinutes: plannedMinutesFor(eventQuery.data, start) } : {}),
       // Sluttiden sätts nu, så att en match som laddas upp senare (utan nät) får rätt tid
       matchEndTime: new Date().toISOString(),
       lineup: lineupState || undefined,

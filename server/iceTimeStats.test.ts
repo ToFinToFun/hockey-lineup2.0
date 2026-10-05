@@ -30,6 +30,12 @@ describe.skipIf(!process.env.DATABASE_URL)("speltid i statistiken", () => {
     expect(by.get("it-c")).toMatchObject({ goals: 1, points: 1, p60: 1.33 });
     expect(by.get("it-lw")).toMatchObject({ assists: 1, byPos: { F: 45 } });
     const m = (await c.score.match.list()).find((x: { name: string }) => x.name === name) as { id: number };
+    // Utsatt matchlängd (träningens längd) går före start–avslut
+    await c.score.match.update({ id: m.id, plannedMinutes: 90 });
+    const rows90 = await c.scoreStats.iceTime({ from: "2033-01-10", to: "2033-01-11" });
+    expect(rows90.find((r) => r.id === "it-gk")?.minutes).toBe(90);
+    await c.score.match.update({ id: m.id, plannedMinutes: null });
+    expect((await c.scoreStats.iceTime({ from: "2033-01-10", to: "2033-01-11" })).find((r) => r.id === "it-gk")?.minutes).toBe(45);
     await c.score.match.delete({ id: m.id });
   });
 });

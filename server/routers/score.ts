@@ -172,6 +172,8 @@ export const scoreRouter = router({
           location: z.string().trim().max(120).optional(),
           /** Match mot ett annat lag (beta) */
           opponentId: z.number().int().positive().optional(),
+          /** Utsatt matchlängd (träningens längd på laget.se) */
+          plannedMinutes: z.number().int().min(10).max(240).optional(),
           createdAt: z.string().max(40).optional(),
           lineup: z.any().optional(),
         })
@@ -192,6 +194,7 @@ export const scoreRouter = router({
           matchStartTime: input.matchStartTime ? new Date(input.matchStartTime) : null,
           location: input.location || null,
           opponentId: input.opponentId ?? null,
+          plannedMinutes: input.plannedMinutes ?? null,
           matchEndTime: input.matchEndTime ? new Date(input.matchEndTime) : new Date(),
           createdAt: input.createdAt ? new Date(input.createdAt) : undefined,
           lineup: input.lineup ?? null,
@@ -291,6 +294,8 @@ export const scoreRouter = router({
           createdAt: z.string().optional(),
           /** Plats (tom sträng tar bort den) */
           location: z.string().trim().max(120).optional(),
+          /** Utsatt matchlängd i minuter (null tar bort den) */
+          plannedMinutes: z.number().int().min(10).max(240).nullable().optional(),
         })
       )
       .mutation(async ({ input }) => {

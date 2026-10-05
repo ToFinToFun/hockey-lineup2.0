@@ -96,6 +96,8 @@ export const matchResults = mysqlTable("match_results", {
    * Granskning: matcher sparade utan inloggning är "pending" tills styrelsen
    * godkänner ("approved") eller avvisar ("rejected"). Bara godkända räknas i statistiken.
    */
+  /** Utsatt matchlängd i minuter (träningens längd på laget.se, eller satt i efterhand) – används för speltid */
+  plannedMinutes: int("plannedMinutes"),
   /** Match mot ett annat lag (opponents.id); null = internmatch */
   opponentId: int("opponentId"),
   /** Plats från träningen på laget.se när matchen sparades, t.ex. "Coop Arena C-Hallen" */

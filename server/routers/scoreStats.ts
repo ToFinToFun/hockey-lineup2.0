@@ -116,7 +116,8 @@ export const scoreStatsRouter = router({
     const bare = (n: string | undefined) => (n ?? "").replace(/\s*#\d*\s*$/, "").trim().toLowerCase();
     for (const m of matches) {
       const slots = ((m.lineup as { lineup?: Record<string, { id?: string; name?: string }> } | null)?.lineup) ?? {};
-      const len = matchMinutes(m.matchStartTime, m.matchEndTime ?? m.createdAt);
+      // Utsatt längd (träningens längd på laget.se) – annars start till avslut, annars 60 min
+      const len = (m as { plannedMinutes?: number | null }).plannedMinutes ?? matchMinutes(m.matchStartTime, m.matchEndTime ?? m.createdAt);
       const byName = new Map<string, string>();
       for (const team of ["a", "b"] as const) {
         const filled = Object.keys(slots).filter((k) => k.startsWith(`team-${team}-`) && slots[k]?.id);

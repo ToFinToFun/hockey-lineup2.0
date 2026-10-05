@@ -55,3 +55,14 @@ describe("matchtid från träningen", () => {
     expect(trainingMinutes("20:00", undefined)).toBeNull();
   });
 });
+
+import { plannedMinutesFor } from "./matchTiming";
+
+describe("utsatt matchlängd", () => {
+  it("träningens längd samma kväll, annars ingen", () => {
+    const ev = { eventDate: "2026-10-01", eventTime: "20:00", eventEndTime: "21:30" };
+    expect(plannedMinutesFor(ev, new Date(2026, 9, 1, 20, 5))).toBe(90);
+    expect(plannedMinutesFor(ev, new Date(2026, 9, 3, 20, 0))).toBeUndefined();
+    expect(plannedMinutesFor({ eventDate: "2026-10-01", eventTime: "20:00" }, new Date(2026, 9, 1, 20, 0))).toBeUndefined();
+  });
+});

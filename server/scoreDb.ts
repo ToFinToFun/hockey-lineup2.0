@@ -44,6 +44,8 @@ export interface MatchInput {
   location?: string | null;
   /** Match mot ett annat lag (opponents.id) */
   opponentId?: number | null;
+  /** Utsatt matchlängd i minuter (träningens längd) */
+  plannedMinutes?: number | null;
   createdAt?: Date;
   reviewStatus?: "pending" | "approved" | "rejected";
   reviewedAt?: Date | null;
@@ -228,6 +230,7 @@ export async function saveMatch(input: MatchInput): Promise<number> {
       matchStartTime: input.matchStartTime ?? null,
       location: input.location?.trim() || null,
       opponentId: input.opponentId ?? null,
+      plannedMinutes: input.plannedMinutes ?? null,
       matchEndTime: input.matchEndTime ?? new Date(),
       createdAt: input.createdAt,
       reviewStatus: input.reviewStatus ?? "pending",
@@ -254,7 +257,7 @@ export async function setMatchReport(id: number, report: { stars?: string[]; spo
 
 export async function updateMatch(
   id: number,
-  data: Partial<Pick<MatchInput, "name" | "teamWhiteScore" | "teamGreenScore" | "goalHistory" | "matchEndTime" | "createdAt" | "location">>
+  data: Partial<Pick<MatchInput, "name" | "teamWhiteScore" | "teamGreenScore" | "goalHistory" | "matchEndTime" | "createdAt" | "location" | "plannedMinutes">>
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

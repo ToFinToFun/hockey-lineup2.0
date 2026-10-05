@@ -91,3 +91,14 @@ export function trainingMinutes(start: string | null | undefined, end: string | 
   const d = (b - a + 24 * 60) % (24 * 60);
   return d >= 15 && d <= 240 ? d : null;
 }
+
+/** Utsatt matchlängd från träningen på laget.se, om träningen är samma dag som matchen (inom 12 h). */
+export function plannedMinutesFor(
+  event: { eventDate?: string | null; eventTime?: string | null; eventEndTime?: string | null } | null | undefined,
+  matchStart: Date
+): number | undefined {
+  if (!event?.eventDate || !event.eventTime) return undefined;
+  const ev = eventStartDate(event.eventDate, event.eventTime);
+  if (!ev || Math.abs(matchStart.getTime() - ev.getTime()) > 12 * 3600_000) return undefined;
+  return trainingMinutes(event.eventTime, event.eventEndTime) ?? undefined;
+}

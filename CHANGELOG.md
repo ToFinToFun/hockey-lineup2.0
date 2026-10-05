@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.64.1 – 2026-10-04
+
+- Speltid: matchens längd är den utsatta tiden – träningens längd på laget.se (start–slut), som sparas på matchen när den avslutas i Score Tracker (ny kolumn match_results.plannedMinutes). Tiden från start till att någon tryckte Avsluta används bara om laget.se saknar sluttid; annars 60 min.
+- Matchhistoriken → Redigera: fältet "Matchlängd (min)" för matcher som redan är spelade.
+
 ## 2.64.0 – 2026-10-04
 
 **Speltid i statistiken**
