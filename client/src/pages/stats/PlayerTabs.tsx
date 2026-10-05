@@ -3,7 +3,7 @@
  * sorterbara tabell: klicka på en rubrik för att sortera, igen för att vända.
  */
 import { useMemo } from "react";
-import { Gauge, Timer, Trophy } from "lucide-react";
+import { Gauge, Timer, Trophy, PartyPopper } from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "../../../../server/routers";
 import { trpc } from "@/lib/trpc";
@@ -15,6 +15,7 @@ import { formatMinutes, PositionSplit } from "./IceTimeTab";
 type Outputs = inferRouterOutputs<AppRouter>;
 type Rating = Outputs["pir"]["getRatings"][number];
 type IceRow = Outputs["scoreStats"]["iceTime"][number];
+type FunRow = Outputs["scoreStats"]["funStats"][number];
 type Input = { from?: string; to?: string; includeExternal?: boolean } | undefined;
 
 interface Scorer { name: string; number?: string; goals: number; assists: number; points: number; gwg: number; matches?: number }
@@ -49,6 +50,7 @@ function PirTable({ ratings, role, onPlayerClick }: { ratings: Rating[] | undefi
 
 export function SkatersTab({ stats, input, ratings, onPlayerClick }: { stats: { topScorers?: Scorer[]; starLeaders?: Array<{ name: string; total?: number; points?: number }> } | undefined; input: Input; ratings: Rating[] | undefined; onPlayerClick: (name: string) => void }) {
   const ice = trpc.scoreStats.iceTime.useQuery(input ?? {});
+  const fun = trpc.scoreStats.funStats.useQuery(input ?? {});
   const stars = useMemo(() => new Map((stats?.starLeaders ?? []).map((s) => [bareName(s.name), s.points ?? s.total ?? 0])), [stats?.starLeaders]);
   const scorers = stats?.topScorers ?? [];
   // Utespelare: de som bara stått i mål visas under Målvakter
@@ -94,6 +96,24 @@ export function SkatersTab({ stats, input, ratings, onPlayerClick }: { stats: { 
       </StatSection>
 
       <PirTable ratings={ratings} role="outfield" onPlayerClick={onPlayerClick} />
+
+      <StatSection title="Kul statistik" icon={<PartyPopper size={14} className="text-pink-400" />} hint="1:a = gjorde matchens första mål. Sista = matchens sista mål. Sent = mål de sista 10 minuterna. Torka = längsta svit av matcher utan mål (Nu = pågående). 0 p = matcher utan poäng.">
+        <StatTable<FunRow>
+          rows={(fun.data ?? []).filter((r) => r.matches > 0)}
+          rowKey={(r) => r.id}
+          name={(r) => r.name}
+          onRowClick={(r) => onPlayerClick(r.name)}
+          defaultSort="first"
+          columns={[
+            { key: "first", label: "1:a", title: "Matchens första mål", value: (r) => r.firstGoals },
+            { key: "last", label: "Sista", title: "Matchens sista mål", value: (r) => r.lastGoals },
+            { key: "late", label: "Sent", title: "Mål de sista 10 minuterna", value: (r) => r.lateGoals },
+            { key: "drought", label: "Torka", title: "Längsta svit av matcher utan mål", value: (r) => r.longestDrought },
+            { key: "now", label: "Nu", title: "Pågående svit av matcher utan mål", value: (r) => r.currentDrought },
+            { key: "zero", label: "0 p", title: "Matcher utan poäng", value: (r) => r.pointless },
+          ]}
+        />
+      </StatSection>
 
     </div>
   );

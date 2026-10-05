@@ -1,6 +1,7 @@
 import { isTeamAWhite as teamAIsWhite, normalizeTeamKey, teamName, teamGenitive } from "../../shared/teams";
 import { listOpponents } from "../opponents";
 import { iceTimeFor, iceTimeRows } from "../iceTimeStats";
+import { computeFunStats } from "../funStats";
 import { listPlayers } from "../playersDb";
 import { iceTimeBySlot, matchMinutes, slotKind, type IcePos } from "../../shared/iceTime";
 import { normalizeGoalType } from "../playerHistory";
@@ -169,6 +170,13 @@ export const scoreStatsRouter = router({
    * sparad match utifrån uppställningen och matchens längd): total, per
    * position, snitt per match och poäng per 60 minuter.
    */
+  /** Rolig statistik: första/sista/sena mål, måltorka och matcher utan poäng (server/funStats.ts). */
+  funStats: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
+    const matches = filterMatchesByDate(await getAllMatchResults({ includeExternal: input?.includeExternal }), input?.from, input?.to);
+    const registry = new Map((await listPlayers()).map((p) => [p.id, p.name]));
+    return computeFunStats(matches as never, registry);
+  }),
+
   iceTime: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
     const matches = filterMatchesByDate(await getAllMatchResults({ includeExternal: input?.includeExternal }), input?.from, input?.to)
       // Bara en hall (Statistik → Hallar)
