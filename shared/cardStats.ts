@@ -12,8 +12,8 @@ export interface CardStatLine {
   points: number;
   wins: number;
   winPct: number;
-  /** Målvakt: insläppta per match och hållna nollor (bara matcher i mål) */
-  goalie: { matches: number; gaa: number; shutouts: number } | null;
+  /** Målvakt: matcher i mål, insläppta per match (GAA), per 60 min i mål, hållna nollor, vinstprocent i mål */
+  goalie: { matches: number; gaa: number; shutouts: number; ga60?: number | null; winPct?: number } | null;
 }
 
 export interface CardStats {
@@ -54,14 +54,18 @@ export function cellsFor(mode: CardSettings["statsMode"], stats: Stats | undefin
     : mode === "preseason" ? (stats.preseason ?? { ...stats.season, matches: 0, goals: 0, assists: 0, points: 0, wins: 0, winPct: 0, goalie: null })
     : stats.season;
   const title = defaultStatsTitle(mode, stats);
-  if (stats.isGoalie && line.goalie) {
+  // Målvakter (position MV eller oftast i mål): GP, PTS, GAA, /60, W% – även innan första matchen i mål
+  if (stats.isGoalie) {
+    const g = line.goalie;
+    const num = (v: number | null | undefined) => (v == null ? "–" : v.toFixed(1).replace(".", ","));
     return {
       title,
       cells: [
-        { label: "GP", value: String(line.goalie.matches) },
-        { label: "GAA", value: line.goalie.gaa.toFixed(1).replace(".", ",") },
-        { label: "SO", value: String(line.goalie.shutouts) },
-        { label: "W%", value: `${line.winPct}%` },
+        { label: "GP", value: String(g?.matches ?? 0) },
+        { label: "PTS", value: String(line.points) },
+        { label: "GAA", value: g ? num(g.gaa) : "–" },
+        { label: "/60", value: num(g?.ga60) },
+        { label: "W%", value: g ? `${g.winPct ?? line.winPct}%` : "–" },
       ],
     };
   }

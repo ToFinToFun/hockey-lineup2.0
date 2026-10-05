@@ -2,6 +2,8 @@
  * Hockeykort: sparat originalfoto och val per spelare (max ett), samt
  * statistiken som visas på kortet (säsong, karriär, form).
  */
+import { iceTimeRows } from "./iceTimeStats";
+import { listPlayers } from "./playersDb";
 import { getCurrentPeriods } from "./periodsConfig";
 import { eq } from "drizzle-orm";
 import { getDb } from "./db";
@@ -82,7 +84,16 @@ export async function deleteCard(playerId: string) {
 
 /** Statistiken för kortet: innevarande säsong (från 1 augusti), slutspel, försäsong, totalt och form. */
 export async function cardStats(playerId: string, opts: { includeExternal?: boolean } = {}): Promise<CardStats> {
-  const p = playerProfile(await getAllMatchResults({ includeExternal: opts.includeExternal }), playerId);
+  const allMatches = await getAllMatchResults({ includeExternal: opts.includeExternal });
+  const p = playerProfile(allMatches, playerId);
+  const registry = await listPlayers();
+  const regNames = new Map(registry.map((r) => [r.id, r.name]));
+  const ownPosition = registry.find((r) => r.id === playerId)?.position;
+  /** Målvaktssiffror från den gemensamma speltidsberäkningen för matcherna i loggen */
+  const gkFromIce = (log: typeof p.matchLog) => {
+    const ids = new Set(log.map((e) => e.matchId));
+    return iceTimeRows(allMatches.filter((m) => ids.has(m.id)), regNames).find((r) => r.id === playerId);
+  };
   const periods = await getCurrentPeriods().catch(() => null);
   const inRange = (from: string | undefined, to: string | undefined) => (e: { date: string }) => {
     const d = new Date(e.date);
@@ -97,11 +108,16 @@ export async function cardStats(playerId: string, opts: { includeExternal?: bool
     return {
       label, matches: log.length, goals, assists, points: goals + assists, wins,
       winPct: log.length ? Math.round((wins / log.length) * 100) : 0,
-      goalie: gk.length ? {
-        matches: gk.length,
-        gaa: Math.round((gk.reduce((s, e) => s + e.opp, 0) / gk.length) * 10) / 10,
-        shutouts: gk.filter((e) => e.opp === 0).length,
-      } : null,
+      goalie: gk.length ? (() => {
+        const ice = gkFromIce(log);
+        return {
+          matches: gk.length,
+          gaa: Math.round((gk.reduce((s, e) => s + e.opp, 0) / gk.length) * 10) / 10,
+          shutouts: gk.filter((e) => e.opp === 0).length,
+          ga60: ice?.ga60 ?? null,
+          winPct: Math.round((gk.filter((e) => e.result === "V").length / gk.length) * 100),
+        };
+      })() : null,
     };
   };
   const seasonLog = p.matchLog.filter((e) => seasonOf(new Date(e.date)) === seasonNow);
@@ -112,6 +128,7 @@ export async function cardStats(playerId: string, opts: { includeExternal?: bool
     playoff: line(`Slutspel ${seasonNow}`, p.matchLog.filter(inRange(periods?.playoffFrom, periods?.playoffTo))),
     preseason: line(`Försäsong ${seasonNow}`, p.matchLog.filter(inRange(periods?.preseasonFrom, periods?.preseasonTo))),
     form: p.form,
-    isGoalie: p.matchLog.length > 0 && gkShare >= p.matchLog.length / 2,
+    // Målvakt: registrerad som MV, eller har stått i mål i minst hälften av matcherna
+    isGoalie: ownPosition === "MV" || (p.matchLog.length > 0 && gkShare >= p.matchLog.length / 2),
   };
 }

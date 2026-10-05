@@ -6,7 +6,7 @@
 import { Loader2, MapPin } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { teamGenitive } from "@shared/teams";
-import { GoalieMask } from "@/components/score/HockeyIcons";
+import { HockeyGoal } from "@/components/score/HockeyIcons";
 import { StatTable } from "./StatTable";
 
 type Input = { from?: string; to?: string; includeExternal?: boolean } | undefined;
@@ -20,7 +20,7 @@ function HallGoalie({ input, venue }: { input: Input; venue: string }) {
   const best = [...gks].sort((a, b) => (a.ga60 ?? 99) - (b.ga60 ?? 99) || b.gkWins - a.gkWins)[0];
   return (
     <p className="text-[11px] text-white/60 flex items-center gap-1.5">
-      <GoalieMask size={13} className="text-orange-400 shrink-0" />
+      <HockeyGoal size={13} className="text-orange-400 shrink-0" />
       <span>Bäst målvakt i hallen: <b className="text-white/85 font-semibold">{best.name}</b>
         {" "}– {best.ga60 != null ? `${best.ga60.toString().replace(".", ",")} insl./60 · ` : ""}{best.gkWins} V · {best.shutouts} {best.shutouts === 1 ? "nolla" : "nollor"} ({best.gkMatches} {best.gkMatches === 1 ? "match" : "matcher"})
       </span>

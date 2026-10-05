@@ -1,6 +1,7 @@
 /**
  * OverviewTab – Dashboard with key stats, charts, and trends
  */
+import { HockeyGoal } from "@/components/score/HockeyIcons";
 import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { useMemo } from "react";
 import { Trophy, Target, TrendingUp, Flame, Activity, Users } from "lucide-react";
@@ -439,27 +440,28 @@ export default function OverviewTab({ stats, pirData, onPlayerClick }: OverviewT
         <div className="bg-gradient-to-br from-[#1a1a1a] to-[#111] rounded-xl border border-[#2a2a2a] p-5">
           <h3 className="text-[#ECEDEE] text-sm font-semibold mb-3 flex items-center gap-2">
             <Trophy size={14} className="text-amber-400" />
-            Månadens spelare
+            Månadens spelare och målvakt
           </h3>
           <div className="space-y-2">
             {stats.monthlyMvp.map((mvp: any) => {
               const [year, month] = mvp.month.split("-");
               const monthNames = ["Jan", "Feb", "Mar", "Apr", "Maj", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"];
               const monthLabel = `${monthNames[parseInt(month) - 1]} ${year}`;
+              const gk = (stats.monthlyGoalie ?? []).find((g: any) => g.month === mvp.month);
               return (
-                <button
-                  key={mvp.month}
-                  onClick={() => onPlayerClick(mvp.playerName)}
-                  className="w-full flex items-center justify-between bg-[#0a0a0a] rounded-lg px-3 py-2 border border-[#2a2a2a] hover:border-[#0a7ea4]/30 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-[#687076] text-xs w-16">{monthLabel}</span>
-                    <span className="text-[#ECEDEE] text-xs font-medium">{mvp.playerName}</span>
-                  </div>
-                  <span className="text-[#9BA1A6] text-[10px]">
-                    {mvp.goals}M + {mvp.assists}A = {mvp.points}P ({mvp.matches} matcher)
-                  </span>
-                </button>
+                <div key={mvp.month} className="bg-[#0a0a0a] rounded-lg px-3 py-2 border border-[#2a2a2a] flex items-center gap-3">
+                  <span className="text-[#687076] text-xs w-14 shrink-0">{monthLabel}</span>
+                  <button onClick={() => onPlayerClick(mvp.playerName)} className="flex-1 min-w-0 text-left hover:opacity-80">
+                    <span className="block text-[#ECEDEE] text-xs font-medium truncate">{mvp.playerName}</span>
+                    <span className="block text-[#9BA1A6] text-[10px]">{mvp.goals}M + {mvp.assists}A = {mvp.points}P · {mvp.matches} m</span>
+                  </button>
+                  {gk && (
+                    <button onClick={() => onPlayerClick(gk.playerName)} className="flex-1 min-w-0 text-left border-l border-[#2a2a2a] pl-3 hover:opacity-80">
+                      <span className="flex items-center gap-1 text-[#ECEDEE] text-xs font-medium truncate"><HockeyGoal size={12} className="text-orange-400 shrink-0" />{gk.playerName}</span>
+                      <span className="block text-[#9BA1A6] text-[10px]">{gk.ga60 != null ? `${String(gk.ga60).replace(".", ",")} /60 · ` : ""}{gk.gkWins} V · {gk.shutouts} 0:or</span>
+                    </button>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -473,7 +475,7 @@ export default function OverviewTab({ stats, pirData, onPlayerClick }: OverviewT
             <Flame size={14} className="text-amber-400" />
             Rekord
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {stats.biggestWinWhite && (
               <div className="bg-[#0a0a0a] rounded-lg p-3 border border-[#2a2a2a]">
                 <p className="text-[#687076] text-[10px] uppercase tracking-wider">{teamGenitive("white")} största vinst</p>
@@ -492,6 +494,14 @@ export default function OverviewTab({ stats, pirData, onPlayerClick }: OverviewT
                 <p className="text-[#687076] text-[10px] mt-0.5 truncate">{stats.biggestWinGreen.name}</p>
               </div>
             )}
+            {(stats.extraRecords ?? []).map((r: any) => (
+              <div key={r.key} className="bg-[#0a0a0a] rounded-lg p-3 border border-[#2a2a2a]">
+                <p className="text-[#687076] text-[10px] uppercase tracking-wider">{r.label}</p>
+                <p className="text-amber-300 font-bold text-sm mt-1">{r.value}</p>
+                <p className="text-[#9BA1A6] text-xs mt-0.5 truncate">{r.who}</p>
+                {r.detail && <p className="text-[#687076] text-[10px] truncate">{r.detail}</p>}
+              </div>
+            ))}
             {stats.highestScoringMatch && (
               <div className="bg-[#0a0a0a] rounded-lg p-3 border border-[#2a2a2a]">
                 <p className="text-[#687076] text-[10px] uppercase tracking-wider">Flest mål i en match</p>

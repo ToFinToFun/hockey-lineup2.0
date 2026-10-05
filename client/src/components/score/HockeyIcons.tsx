@@ -1,8 +1,10 @@
+import type React from "react";
 /** Custom hockey-themed SVG icons for Season Awards */
 
 interface IconProps {
   size?: number;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 /** Hockey Puck icon - for Skyttekung (Top Scorer) */
@@ -95,6 +97,22 @@ export function GoalieMask({ size = 24, className = "" }: IconProps) {
       <line x1="7" y1="16.5" x2="17" y2="16.5" stroke="currentColor" strokeWidth="0.8" opacity="0.5" />
       {/* Forehead detail */}
       <path d="M7 6C7 6 9.5 5 12 5C14.5 5 17 6 17 6" stroke="currentColor" strokeWidth="1" opacity="0.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Hockeymål med målgård (utan puck) – målvakterna i statistiken och utmärkelsen Bästa målvakt */
+export function HockeyGoal({ size = 24, className = "", style }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
+      {/* Målgården */}
+      <path d="M3 21.5C3 18.5 7 16.5 12 16.5C17 16.5 21 18.5 21 21.5" stroke="currentColor" strokeWidth="1.4" opacity="0.55" strokeLinecap="round" />
+      {/* Ramen */}
+      <path d="M4 17V6.5C4 5.1 5.1 4 6.5 4H17.5C18.9 4 20 5.1 20 6.5V17" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Nätet */}
+      <path d="M8 4.5L7 17M12 4.5V17M16 4.5L17 17M4.5 8.5H19.5M4.3 12.7H19.7" stroke="currentColor" strokeWidth="0.9" opacity="0.45" />
+      {/* Fötterna på målramen */}
+      <path d="M3 17H6M18 17H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }

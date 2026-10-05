@@ -3,15 +3,14 @@
  * sorterbara tabell: klicka på en rubrik för att sortera, igen för att vända.
  */
 import { useMemo } from "react";
-import { Gauge, Timer, Trophy, Target } from "lucide-react";
+import { Gauge, Timer, Trophy } from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "../../../../server/routers";
 import { trpc } from "@/lib/trpc";
 import { TrendIcon } from "@/components/PlayerCard";
-import { GoalieMask } from "@/components/score/HockeyIcons";
+import { HockeyGoal } from "@/components/score/HockeyIcons";
 import { StatTable, StatSection } from "./StatTable";
 import { formatMinutes, PositionSplit } from "./IceTimeTab";
-import { GoalTypeLeaderboards } from "./LeadersTab";
 
 type Outputs = inferRouterOutputs<AppRouter>;
 type Rating = Outputs["pir"]["getRatings"][number];
@@ -50,7 +49,6 @@ function PirTable({ ratings, role, onPlayerClick }: { ratings: Rating[] | undefi
 
 export function SkatersTab({ stats, input, ratings, onPlayerClick }: { stats: { topScorers?: Scorer[]; starLeaders?: Array<{ name: string; total?: number; points?: number }> } | undefined; input: Input; ratings: Rating[] | undefined; onPlayerClick: (name: string) => void }) {
   const ice = trpc.scoreStats.iceTime.useQuery(input ?? {});
-  const goalTypes = trpc.score.playerStats.useQuery({ from: input?.from, to: input?.to });
   const stars = useMemo(() => new Map((stats?.starLeaders ?? []).map((s) => [bareName(s.name), s.points ?? s.total ?? 0])), [stats?.starLeaders]);
   const scorers = stats?.topScorers ?? [];
   // Utespelare: de som bara stått i mål visas under Målvakter
@@ -97,11 +95,6 @@ export function SkatersTab({ stats, input, ratings, onPlayerClick }: { stats: { 
 
       <PirTable ratings={ratings} role="outfield" onPlayerClick={onPlayerClick} />
 
-      {goalTypes.data && goalTypes.data.length > 0 && (
-        <StatSection title="Måltyper" icon={<Target size={14} className="text-rose-400" />}>
-          <GoalTypeLeaderboards playerStats={goalTypes.data} onPlayerClick={onPlayerClick} />
-        </StatSection>
-      )}
     </div>
   );
 }
@@ -111,7 +104,7 @@ export function GoaliesTab({ input, ratings, onPlayerClick }: { input: Input; ra
   const goalies = (ice.data ?? []).filter((r) => r.byPos.MV > 0);
   return (
     <div className="space-y-8">
-      <StatSection title="Målvakter" icon={<GoalieMask size={15} className="text-orange-400" />} hint="V = vinster (målvaktens lag vann). Delar två målvakter på matchen fördelas de insläppta målen efter tiden i mål (uppskattad som speltiden). /60 = insläppta per 60 minuter i mål, efter minst 30 minuter. Nollor = ensam i målet utan insläppta.">
+      <StatSection title="Målvakter" icon={<HockeyGoal size={15} className="text-orange-400" />} hint="V = vinster (målvaktens lag vann). Delar två målvakter på matchen fördelas de insläppta målen efter tiden i mål (uppskattad som speltiden). /60 = insläppta per 60 minuter i mål, efter minst 30 minuter. Nollor = ensam i målet utan insläppta.">
         <StatTable<IceRow>
           rows={goalies}
           rowKey={(r) => r.id}

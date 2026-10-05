@@ -10,7 +10,7 @@ import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { IMAGES } from "@/lib/scoreConstants";
 import { ArrowLeft, BarChart3, Users, Shield, Loader2, X, Swords, MapPin, Award } from "lucide-react";
-import { GoalieMask } from "@/components/score/HockeyIcons";
+import { HockeyGoal } from "@/components/score/HockeyIcons";
 import { SkatersTab, GoaliesTab } from "./PlayerTabs";
 import OverviewTab from "./OverviewTab";
 import AwardsTab from "./AwardsTab";
@@ -58,7 +58,7 @@ const PERIOD_OPTIONS: { key: PeriodPreset; label: string }[] = [
 const TABS = [
   { id: "overview", label: "Översikt", icon: BarChart3 },
   { id: "players", label: "Spelare", icon: Users },
-  { id: "goalies", label: "Målvakter", icon: GoalieMask },
+  { id: "goalies", label: "Målvakter", icon: HockeyGoal },
   { id: "awards", label: "Utmärkelser", icon: Award },
   { id: "teams", label: "Lag", icon: Shield },
   { id: "venues", label: "Hallar", icon: MapPin },

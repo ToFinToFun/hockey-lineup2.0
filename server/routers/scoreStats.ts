@@ -1,5 +1,6 @@
-import { isTeamAWhite as teamAIsWhite, normalizeTeamKey } from "../../shared/teams";
+import { isTeamAWhite as teamAIsWhite, normalizeTeamKey, teamName, teamGenitive } from "../../shared/teams";
 import { listOpponents } from "../opponents";
+import { iceTimeFor, iceTimeRows } from "../iceTimeStats";
 import { listPlayers } from "../playersDb";
 import { iceTimeBySlot, matchMinutes, slotKind, type IcePos } from "../../shared/iceTime";
 import { normalizeGoalType } from "../playerHistory";
@@ -97,6 +98,71 @@ const dateRangeInput = z
 
 // ─── Score Stats Router ─────────────────────────────────────────────
 
+interface MonthlyGoalie { month: string; playerName: string; gkMatches: number; gkWins: number; ga60: number | null; shutouts: number }
+export interface ExtraRecord { key: string; label: string; value: string; who: string; detail: string }
+
+/**
+ * Fler rekord (exporteras för test): flest mål av ett lag i en match, största
+ * vändningen, snabbaste målet, längsta vinstsviten per lag, flest hållna nollor
+ * och lägst insläppta per 60 min (målvakt, minst 3 matcher i mål).
+ */
+export function computeExtraRecords(
+  matches: Array<{ name: string; teamWhiteScore: number; teamGreenScore: number; goalHistory: unknown; matchStartTime?: Date | string | null; createdAt?: Date | string | null }>,
+  ice: Array<{ name: string; gkMatches: number; shutouts: number; ga60: number | null }>
+): ExtraRecord[] {
+  const out: ExtraRecord[] = [];
+  const short = (n: string) => n.replace(/\s\d+-\d+$/, "");
+  // Flest mål av ett lag i en match
+  let most: { n: number; team: "white" | "green"; m: (typeof matches)[number] } | null = null;
+  for (const m of matches) for (const [team, n] of [["white", m.teamWhiteScore], ["green", m.teamGreenScore]] as const) if (!most || n > most.n) most = { n, team, m };
+  if (most && most.n > 0) out.push({ key: "team_goals", label: "Flest mål av ett lag", value: `${most.n} mål`, who: teamName(most.team), detail: `${short(most.m.name)} · ${most.m.teamWhiteScore}–${most.m.teamGreenScore}` });
+  // Största vändningen: största underläge som vinnande lag vände
+  let comeback: { n: number; team: "white" | "green"; m: (typeof matches)[number] } | null = null;
+  for (const m of matches) {
+    if (m.teamWhiteScore === m.teamGreenScore) continue;
+    const winner: "white" | "green" = m.teamWhiteScore > m.teamGreenScore ? "white" : "green";
+    let w = 0, l = 0, worst = 0;
+    for (const g of (Array.isArray(m.goalHistory) ? m.goalHistory : []) as Array<{ team?: string }>) {
+      const k = normalizeTeamKey(g.team);
+      if (!k) continue;
+      if (k === winner) w++; else l++;
+      worst = Math.min(worst, w - l);
+    }
+    if (worst < 0 && (!comeback || -worst > comeback.n)) comeback = { n: -worst, team: winner, m };
+  }
+  if (comeback) out.push({ key: "comeback", label: "Största vändningen", value: `Från ${comeback.n} måls underläge`, who: teamName(comeback.team), detail: `${short(comeback.m.name)} · ${comeback.m.teamWhiteScore}–${comeback.m.teamGreenScore}` });
+  // Snabbaste målet (minuter från matchstart till första målet)
+  let fastest: { min: number; who: string; m: (typeof matches)[number] } | null = null;
+  for (const m of matches) {
+    if (!m.matchStartTime) continue;
+    const st = new Date(m.matchStartTime);
+    const g = ((Array.isArray(m.goalHistory) ? m.goalHistory : []) as Array<{ timestamp?: string; scorer?: string }>)[0];
+    const t = g?.timestamp?.match(/^(\d{1,2}):(\d{2})/);
+    if (!t) continue;
+    const min = ((Number(t[1]) * 60 + Number(t[2])) - (st.getHours() * 60 + st.getMinutes()) + 1440) % 1440;
+    if (min > 120) continue;
+    if (!fastest || min < fastest.min) fastest = { min, who: (g.scorer ?? "").trim() || "Okänd", m };
+  }
+  if (fastest) out.push({ key: "fastest", label: "Snabbaste målet", value: fastest.min === 0 ? "Under en minut" : `Efter ${fastest.min} min`, who: fastest.who, detail: short(fastest.m.name) });
+  // Längsta vinstsvit per lag (matcherna i tidsordning)
+  const ordered = [...matches].sort((a, b) => new Date(a.matchStartTime ?? a.createdAt ?? 0).getTime() - new Date(b.matchStartTime ?? b.createdAt ?? 0).getTime());
+  for (const team of ["white", "green"] as const) {
+    let run = 0, best = 0;
+    for (const m of ordered) {
+      const won = team === "white" ? m.teamWhiteScore > m.teamGreenScore : m.teamGreenScore > m.teamWhiteScore;
+      run = won ? run + 1 : 0;
+      best = Math.max(best, run);
+    }
+    if (best >= 2) out.push({ key: `streak_${team}`, label: `${teamGenitive(team)} längsta vinstsvit`, value: `${best} vinster i rad`, who: teamName(team), detail: "" });
+  }
+  // Målvakter
+  const so = [...ice].filter((r) => r.shutouts > 0).sort((a, b) => b.shutouts - a.shutouts)[0];
+  if (so) out.push({ key: "shutouts", label: "Flest hållna nollor", value: `${so.shutouts} ${so.shutouts === 1 ? "nolla" : "nollor"}`, who: so.name, detail: `${so.gkMatches} matcher i mål` });
+  const ga = [...ice].filter((r) => r.ga60 != null && r.gkMatches >= 3).sort((a, b) => (a.ga60 ?? 99) - (b.ga60 ?? 99))[0];
+  if (ga) out.push({ key: "ga60", label: "Lägst insläppta/60 (målvakt)", value: `${String(ga.ga60).replace(".", ",")} per 60 min`, who: ga.name, detail: `${ga.gkMatches} matcher i mål` });
+  return out;
+}
+
 export const scoreStatsRouter = router({
   /**
    * Uppskattad speltid per spelare (samma regler som i Lineup, räknat på varje
@@ -107,74 +173,7 @@ export const scoreStatsRouter = router({
     const matches = filterMatchesByDate(await getAllMatchResults({ includeExternal: input?.includeExternal }), input?.from, input?.to)
       // Bara en hall (Statistik → Hallar)
       .filter((m) => !input?.venue || (m as { location?: string | null }).location === input.venue);
-    const registry = new Map((await listPlayers()).map((p) => [p.id, p.name]));
-    type Row = { id: string; name: string; matches: number; minutes: number; byPos: Record<IcePos, number>; goals: number; assists: number; gkMatches: number; ga: number; shutouts: number; gkWins: number };
-    const rows = new Map<string, Row>();
-    const row = (id: string) => {
-      let r = rows.get(id);
-      if (!r) { r = { id, name: registry.get(id) ?? id, matches: 0, minutes: 0, byPos: { MV: 0, B: 0, C: 0, F: 0 }, goals: 0, assists: 0, gkMatches: 0, ga: 0, shutouts: 0, gkWins: 0 }; rows.set(id, r); }
-      return r;
-    };
-    const bare = (n: string | undefined) => (n ?? "").replace(/\s*#\d*\s*$/, "").trim().toLowerCase();
-    for (const m of matches) {
-      const slots = ((m.lineup as { lineup?: Record<string, { id?: string; name?: string }> } | null)?.lineup) ?? {};
-      // Utsatt längd (träningens längd på laget.se) – annars start till avslut, annars 60 min
-      const len = (m as { plannedMinutes?: number | null }).plannedMinutes ?? matchMinutes(m.matchStartTime, m.matchEndTime ?? m.createdAt);
-      const byName = new Map<string, string>();
-      // Insläppta mål per lag (lag A = vita om lagnamnet säger det, som i övrig statistik)
-      const aWhite = teamAIsWhite(((m.lineup as { teamAName?: string } | null)?.teamAName ?? "").toLowerCase());
-      let whiteGoals = 0, greenGoals = 0;
-      for (const g of (Array.isArray(m.goalHistory) ? m.goalHistory : []) as Array<{ team?: string }>) {
-        const k = normalizeTeamKey(g.team);
-        if (k === "white") whiteGoals++; else if (k === "green") greenGoals++;
-      }
-      const against = { a: aWhite ? greenGoals : whiteGoals, b: aWhite ? whiteGoals : greenGoals };
-      const scored = { a: aWhite ? whiteGoals : greenGoals, b: aWhite ? greenGoals : whiteGoals };
-      for (const team of ["a", "b"] as const) {
-        const filled = Object.keys(slots).filter((k) => k.startsWith(`team-${team}-`) && slots[k]?.id);
-        const mins = iceTimeBySlot(filled, len);
-        for (const slotId of filled) {
-          const p = slots[slotId]!;
-          if (!p.id || !registry.has(p.id)) continue; // bara våra spelare
-          const r = row(p.id);
-          const k = slotKind(slotId)!;
-          const t = mins.get(slotId) ?? 0;
-          r.matches++;
-          r.minutes += t;
-          r.byPos[k.pos] += t;
-          // Målvakt: insläppta mål efter andel av matchen; hållen nolla om ensam i målet utan insläppt
-          if (k.pos === "MV") {
-            r.gkMatches++;
-            if (scored[team] > against[team]) r.gkWins++;
-            r.ga += against[team] * (len ? t / len : 1);
-            const gkCount = filled.filter((x) => slotKind(x)?.pos === "MV").length;
-            if (against[team] === 0 && gkCount === 1) r.shutouts++;
-          }
-          if (p.name) byName.set(bare(p.name), p.id);
-        }
-      }
-      // Poäng i matchen (id om det finns, annars namnet i uppställningen)
-      for (const g of (Array.isArray(m.goalHistory) ? m.goalHistory : []) as Array<{ scorer?: string; assist?: string; scorerId?: string; assistId?: string }>) {
-        const sid = g.scorerId ?? byName.get(bare(g.scorer));
-        const aid = g.assistId ?? byName.get(bare(g.assist));
-        if (sid && rows.has(sid)) rows.get(sid)!.goals++;
-        if (aid && rows.has(aid)) rows.get(aid)!.assists++;
-      }
-    }
-    return [...rows.values()].map((r) => {
-      const points = r.goals + r.assists;
-      return {
-        ...r,
-        minutes: Math.round(r.minutes),
-        byPos: { MV: Math.round(r.byPos.MV), B: Math.round(r.byPos.B), C: Math.round(r.byPos.C), F: Math.round(r.byPos.F) },
-        points,
-        perMatch: r.matches ? Math.round(r.minutes / r.matches) : 0,
-        p60: r.minutes >= 30 ? Math.round((points / r.minutes) * 60 * 100) / 100 : null,
-        // Målvakt: insläppta (avrundat), insläppta per 60 min i mål, hållna nollor
-        ga: Math.round(r.ga * 10) / 10,
-        ga60: r.byPos.MV >= 30 ? Math.round((r.ga / r.byPos.MV) * 60 * 100) / 100 : null,
-      };
-    }).sort((a, b) => b.minutes - a.minutes);
+    return iceTimeFor(matches);
   }),
 
   /**
@@ -799,13 +798,13 @@ export const scoreStatsRouter = router({
     // 3. Assistkung
     const byAssists = [...players].sort((a, b) => b.assists - a.assists || b.points - a.points);
     if (byAssists.length > 0 && byAssists[0].assists > 0) {
-      awards.push({ id: "assist_leader", title: "Assistkung", emoji: "\uD83E\uDD45", winner: byAssists[0].name, value: `${byAssists[0].assists} assist`, description: "Flest assist under säsongen", runnerUp: byAssists[1]?.name, runnerUpValue: byAssists[1] ? `${byAssists[1].assists} assist` : undefined, third: byAssists[2]?.name, thirdValue: byAssists[2] ? `${byAssists[2].assists} assist` : undefined });
+      awards.push({ id: "assist_leader", title: "Assistkung", emoji: "\uD83E\uDD1D", winner: byAssists[0].name, value: `${byAssists[0].assists} assist`, description: "Flest assist under säsongen", runnerUp: byAssists[1]?.name, runnerUpValue: byAssists[1] ? `${byAssists[1].assists} assist` : undefined, third: byAssists[2]?.name, thirdValue: byAssists[2] ? `${byAssists[2].assists} assist` : undefined });
     }
 
     // 4. Mr. Clutch
     const byGwg = [...players].sort((a, b) => b.gwg - a.gwg || b.goals - a.goals);
     if (byGwg.length > 0 && byGwg[0].gwg > 0) {
-      awards.push({ id: "mr_clutch", title: "Mr. Clutch", emoji: "\uD83E\uDD45", winner: byGwg[0].name, value: `${byGwg[0].gwg} GWG`, description: "Flest avgörande mål (Game Winning Goals)", runnerUp: byGwg[1]?.name, runnerUpValue: byGwg[1] ? `${byGwg[1].gwg} GWG` : undefined, third: byGwg[2]?.name, thirdValue: byGwg[2] ? `${byGwg[2].gwg} GWG` : undefined });
+      awards.push({ id: "mr_clutch", title: "Mr. Clutch", emoji: "\u26A1", winner: byGwg[0].name, value: `${byGwg[0].gwg} GWG`, description: "Flest avgörande mål (Game Winning Goals)", runnerUp: byGwg[1]?.name, runnerUpValue: byGwg[1] ? `${byGwg[1].gwg} GWG` : undefined, third: byGwg[2]?.name, thirdValue: byGwg[2] ? `${byGwg[2].gwg} GWG` : undefined });
     }
 
     // 5. Vinnaren
@@ -870,6 +869,8 @@ export const scoreStatsRouter = router({
         playerRecordAssists: null as { playerName: string; assists: number; matchName: string } | null,
         playerRecordPoints: null as { playerName: string; points: number; goals: number; assists: number; matchName: string } | null,
         monthlyMvp: [] as { month: string; playerName: string; goals: number; assists: number; points: number; gwg: number; matches: number }[],
+        monthlyGoalie: [] as MonthlyGoalie[],
+        extraRecords: [] as ExtraRecord[],
       };
     }
 
@@ -1009,6 +1010,23 @@ export const scoreStatsRouter = router({
 
     const recentForm = matches.slice(0, 20).map(m => ({ name: m.name, whiteScore: m.teamWhiteScore, greenScore: m.teamGreenScore }));
 
+    // Månadens målvakt (gemensam speltidsberäkning): lägst insläppta/60 (minst 30 min i mål), sedan flest vinster
+    const regNames = new Map((await listPlayers()).map((p) => [p.id, p.name]));
+    const byMonth = new Map<string, typeof matches>();
+    for (const m of matches) {
+      const d = m.createdAt ? new Date(m.createdAt) : null;
+      if (!d) continue;
+      const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      byMonth.set(k, [...(byMonth.get(k) ?? []), m]);
+    }
+    const monthlyGoalie: MonthlyGoalie[] = [...byMonth.entries()].map(([month, ms]) => {
+      const gks = iceTimeRows(ms as never, regNames).filter((r) => r.byPos.MV > 0);
+      const best = [...gks].sort((a, b) => (a.ga60 ?? 99) - (b.ga60 ?? 99) || b.gkWins - a.gkWins || b.shutouts - a.shutouts)[0];
+      return best ? { month, playerName: best.name, gkMatches: best.gkMatches, gkWins: best.gkWins, ga60: best.ga60, shutouts: best.shutouts } : null;
+    }).filter((x): x is MonthlyGoalie => !!x).sort((a, b) => b.month.localeCompare(a.month));
+
+    const extraRecords = computeExtraRecords(matches as never, iceTimeRows(matches as never, regNames));
+
     return {
       totalMatches: matches.length, whiteWins, greenWins, draws, totalGoalsWhite, totalGoalsGreen,
       topScorers, recentForm,
@@ -1018,7 +1036,7 @@ export const scoreStatsRouter = router({
       biggestWinGreen: biggestWinGreen ? { name: biggestWinGreen.name, whiteScore: biggestWinGreen.whiteScore, greenScore: biggestWinGreen.greenScore } : null,
       highestScoringMatch, playerRecordGoals, playerRecordAssists, playerRecordPoints,
       goalTypes: Object.entries(goalTypes).map(([type, count]) => ({ type, count })).sort((a, b) => b.count - a.count),
-      monthlyMvp,
+      monthlyMvp, monthlyGoalie, extraRecords,
     };
   }),
 

@@ -3,13 +3,14 @@
  */
 import { clubHeading, club, teamLogo } from "@shared/club";
 import { useState, useRef, useCallback } from "react";
-import { Award, Download, Share2, Trophy, ChevronDown, ChevronUp } from "lucide-react";
+import { Award, Download, Share2, Trophy, ChevronDown, ChevronUp, Crown, HandHelping, Zap, Medal, Dumbbell, Flame, ShieldCheck, Star } from "lucide-react";
+import { CardThumb } from "@/components/CardThumb";
 import { IMAGES } from "@/lib/scoreConstants";
 import {
   HockeyPuck,
   HockeyStick,
   HockeyGoalNet,
-  GoalieMask,
+  HockeyGoal,
 } from "@/components/score/HockeyIcons";
 
 interface AwardsTabProps {
@@ -30,47 +31,47 @@ const AWARD_STYLES: Record<
     accent: "#F59E0B",
   },
   points_leader: {
-    icon: Trophy,
+    icon: Crown,
     gradient: "from-yellow-400/20 via-yellow-500/10 to-transparent",
     accent: "#FBBF24",
   },
   assist_leader: {
-    icon: HockeyStick,
+    icon: HandHelping,
     gradient: "from-sky-400/20 via-sky-500/10 to-transparent",
     accent: "#38BDF8",
   },
   mr_clutch: {
-    icon: HockeyGoalNet,
+    icon: Zap,
     gradient: "from-red-500/20 via-red-600/10 to-transparent",
     accent: "#EF4444",
   },
   best_winner: {
-    icon: Trophy,
+    icon: Medal,
     gradient: "from-emerald-500/20 via-emerald-600/10 to-transparent",
     accent: "#22C55E",
   },
   iron_man: {
-    icon: Trophy,
+    icon: Dumbbell,
     gradient: "from-slate-400/20 via-slate-500/10 to-transparent",
     accent: "#94A3B8",
   },
   best_streak: {
-    icon: Trophy,
+    icon: Flame,
     gradient: "from-orange-500/20 via-orange-600/10 to-transparent",
     accent: "#F97316",
   },
   unbeaten: {
-    icon: Trophy,
+    icon: ShieldCheck,
     gradient: "from-violet-500/20 via-violet-600/10 to-transparent",
     accent: "#8B5CF6",
   },
   best_match: {
-    icon: Trophy,
+    icon: Star,
     gradient: "from-pink-500/20 via-pink-600/10 to-transparent",
     accent: "#EC4899",
   },
   best_goalkeeper: {
-    icon: GoalieMask,
+    icon: HockeyGoal,
     gradient: "from-cyan-500/20 via-cyan-600/10 to-transparent",
     accent: "#06B6D4",
   },
@@ -114,15 +115,21 @@ function AwardCard({
 
         {/* Header */}
         <div className="flex items-start gap-3 mb-3">
-          <div
-            className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{
-              backgroundColor: `${style.accent}15`,
-              border: `1px solid ${style.accent}30`,
-            }}
-          >
-            <Icon size={20} style={{ color: style.accent }} />
-          </div>
+          <CardThumb
+            playerName={award.winner ?? ""}
+            height={56}
+            fallback={
+              <div
+                className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{
+                  backgroundColor: `${style.accent}15`,
+                  border: `1px solid ${style.accent}30`,
+                }}
+              >
+                <Icon size={20} style={{ color: style.accent }} />
+              </div>
+            }
+          />
           <div className="flex-1 min-w-0">
             <p className="text-[10px] uppercase tracking-wider text-[#687076]">
               {award.title}

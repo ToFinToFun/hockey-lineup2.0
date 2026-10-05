@@ -7,6 +7,19 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.66.1 – 2026-10-04
+
+**Statistik**
+- Målvakter har en ny ikon (hockeymål med målgård) i fliken, rubrikerna, hallarna och utmärkelsen – inte masken.
+- Utmärkelser: en egen ikon och emoji per utmärkelse (inga dubbletter). Vinnarens hockeykort visas i stället för ikonen när spelaren har ett sparat kort.
+- Spelare: "Måltyper" borttaget.
+- Översikt: "Månadens spelare och målvakt" – månadens målvakt (lägst insläppta/60, sedan vinster) på samma rad som månadens spelare.
+- Rekord: flest mål av ett lag i en match, största vändningen, snabbaste målet, längsta vinstsvit per lag, flest hållna nollor och lägst insläppta/60 (målvakt).
+
+**Hockeykort**
+- Målvakter får GP, PTS, GAA, /60 och W% som standard – även målvakter som ännu inte stått i mål (position MV). /60 = insläppta per 60 minuter i mål (samma speltidsberäkning som statistiken); W% räknas på matcherna i mål.
+- Speltidsberäkningen är en gemensam funktion (server/iceTimeStats.ts) som statistiken, hallarna och korten använder.
+
 ## 2.66.0 – 2026-10-04
 
 **Statistiken – översyn**

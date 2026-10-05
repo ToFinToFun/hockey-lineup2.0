@@ -25,7 +25,8 @@ import { createTeamSlots, groupSlots, type TeamConfig } from "@/lib/lineup";
 import type { Player } from "@/lib/players";
 import { prepareSourcePhoto } from "@/lib/cardPhoto";
 import { renderMediaPost, MEDIA_OVERLAYS, MEDIA_BACKGROUNDS, overlayFromTheme, type MediaOverlay, type MediaBackground, type LineupGroup, type MediaPostData } from "@/lib/mediaImages";
-import { renderCard, DEFAULT_SETTINGS as CARD_DEFAULTS, type CardSettings } from "@shared/cardRender";
+import { type CardSettings } from "@shared/cardRender";
+import { renderSavedCard } from "@/lib/savedCardImage";
 import { cellsFor, defaultStatsTitle } from "@shared/cardStats";
 import { STAT_CATEGORIES, STAT_PERIODS, periodRange, statRows, type StatCategory, type StatPeriod } from "./mediaStats";
 
@@ -187,24 +188,13 @@ export default function MediaApp() {
   useEffect(() => {
     if (s.kind !== "cards" || !savedCards.data) { setCardCanvases([]); return; }
     let cancelled = false;
-    const load = (src: string) => new Promise<HTMLImageElement | null>((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
     (async () => {
       const out: HTMLCanvasElement[] = [];
       for (const id of s.cardPlayers.slice(0, 4)) {
         const card = savedCards.data!.find((c) => c.playerId === id);
         if (!card) continue;
-        const v = new Date(card.updatedAt).getTime();
-        const [photo, mask, stats] = await Promise.all([
-          load(`/api/players/${encodeURIComponent(id)}/card-source?v=${v}`),
-          load(`/api/players/${encodeURIComponent(id)}/card-mask?v=${v}`),
-          utils.client.cards.stats.query({ playerId: id, ...((card.settings as Partial<CardSettings>)?.includeExternal ? { includeExternal: true } : {}) }).catch(() => undefined),
-        ]);
-        let settings: CardSettings = { ...CARD_DEFAULTS, ...(card.settings as Partial<CardSettings>) };
-        if (stats && settings.statsMode !== "custom" && settings.statsMode !== "none") {
-          const { cells } = cellsFor(settings.statsMode, stats);
-          settings = { ...settings, cells, statsTitle: settings.statsTitle && !/^(Säsong|Slutspel|Försäsong) \d{4}\/\d{2}$|^Karriär$|^Totalt$|^Form$/.test(settings.statsTitle) ? settings.statsTitle : defaultStatsTitle(settings.statsMode, stats), form: stats.form };
-        }
-        out.push(await renderCard({ settings, photo, mask, scale: 0.9 }));
+        const stats = await utils.client.cards.stats.query({ playerId: id, ...((card.settings as Partial<CardSettings>)?.includeExternal ? { includeExternal: true } : {}) }).catch(() => undefined);
+        out.push(await renderSavedCard(card, { stats, scale: 0.9 }));
       }
       if (!cancelled) setCardCanvases(out);
     })().catch(() => undefined);
