@@ -92,7 +92,7 @@ function getPlayerKey(p: any): string {
 }
 
 const dateRangeInput = z
-  .object({ from: z.string().optional(), to: z.string().optional(), includeExternal: z.boolean().optional() })
+  .object({ from: z.string().optional(), to: z.string().optional(), includeExternal: z.boolean().optional(), venue: z.string().max(120).optional() })
   .optional();
 
 // ─── Score Stats Router ─────────────────────────────────────────────
@@ -104,7 +104,9 @@ export const scoreStatsRouter = router({
    * position, snitt per match och poäng per 60 minuter.
    */
   iceTime: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
-    const matches = filterMatchesByDate(await getAllMatchResults({ includeExternal: input?.includeExternal }), input?.from, input?.to);
+    const matches = filterMatchesByDate(await getAllMatchResults({ includeExternal: input?.includeExternal }), input?.from, input?.to)
+      // Bara en hall (Statistik → Hallar)
+      .filter((m) => !input?.venue || (m as { location?: string | null }).location === input.venue);
     const registry = new Map((await listPlayers()).map((p) => [p.id, p.name]));
     type Row = { id: string; name: string; matches: number; minutes: number; byPos: Record<IcePos, number>; goals: number; assists: number; gkMatches: number; ga: number; shutouts: number; gkWins: number };
     const rows = new Map<string, Row>();
@@ -209,7 +211,7 @@ export const scoreStatsRouter = router({
       venue, matches: h.matches, whiteWins: h.whiteWins, greenWins: h.greenWins, draws: h.draws,
       goalsPerMatch: Math.round((h.goals / h.matches) * 10) / 10,
       top: [...h.scorers.values()].map((l) => ({ ...l, points: l.goals + l.assists }))
-        .sort((a, b) => b.points - a.points || b.goals - a.goals || a.name.localeCompare(b.name, "sv")).slice(0, 5),
+        .sort((a, b) => b.points - a.points || b.goals - a.goals || a.name.localeCompare(b.name, "sv")),
     })).sort((a, b) => b.matches - a.matches);
   }),
 
@@ -253,7 +255,7 @@ export const scoreStatsRouter = router({
       return {
         opponentId: id, name: o?.name ?? "Okänt lag", color: o?.color ?? "#ef4444", logoUrl: o?.logoUrl ?? null,
         matches: r.matches, wins: r.wins, draws: r.draws, losses: r.losses, goalsFor: r.goalsFor, goalsAgainst: r.goalsAgainst,
-        last: r.last, ourScorers: top(r.ours).slice(0, 5), theirScorers: top(r.theirs),
+        last: r.last, ourScorers: top(r.ours), theirScorers: top(r.theirs),
       };
     }).sort((a, b) => b.matches - a.matches || a.name.localeCompare(b.name, "sv"));
   }),
@@ -779,31 +781,31 @@ export const scoreStatsRouter = router({
 
     const awards: Array<{
       id: string; title: string; emoji: string; winner: string;
-      value: string; description: string; runnerUp?: string; runnerUpValue?: string;
+      value: string; description: string; runnerUp?: string; runnerUpValue?: string; third?: string; thirdValue?: string;
     }> = [];
 
     // 1. Skyttekung
     const byGoals = [...players].sort((a, b) => b.goals - a.goals || b.points - a.points);
     if (byGoals.length > 0 && byGoals[0].goals > 0) {
-      awards.push({ id: "top_scorer", title: "Skyttekung", emoji: "\uD83C\uDFD2", winner: byGoals[0].name, value: `${byGoals[0].goals} mål`, description: "Flest gjorda mål under säsongen", runnerUp: byGoals[1]?.name, runnerUpValue: byGoals[1] ? `${byGoals[1].goals} mål` : undefined });
+      awards.push({ id: "top_scorer", title: "Skyttekung", emoji: "\uD83C\uDFD2", winner: byGoals[0].name, value: `${byGoals[0].goals} mål`, description: "Flest gjorda mål under säsongen", runnerUp: byGoals[1]?.name, runnerUpValue: byGoals[1] ? `${byGoals[1].goals} mål` : undefined, third: byGoals[2]?.name, thirdValue: byGoals[2] ? `${byGoals[2].goals} mål` : undefined });
     }
 
     // 2. Poängkung
     const byPoints = [...players].sort((a, b) => b.points - a.points || b.goals - a.goals || b.assists - a.assists || b.gwg - a.gwg);
     if (byPoints.length > 0 && byPoints[0].points > 0) {
-      awards.push({ id: "points_leader", title: "Poängkung", emoji: "\uD83D\uDC51", winner: byPoints[0].name, value: `${byPoints[0].points} poäng (${byPoints[0].goals}+${byPoints[0].assists})`, description: "Flest poäng (mål + assist) under säsongen", runnerUp: byPoints[1]?.name, runnerUpValue: byPoints[1] ? `${byPoints[1].points} poäng` : undefined });
+      awards.push({ id: "points_leader", title: "Poängkung", emoji: "\uD83D\uDC51", winner: byPoints[0].name, value: `${byPoints[0].points} poäng (${byPoints[0].goals}+${byPoints[0].assists})`, description: "Flest poäng (mål + assist) under säsongen", runnerUp: byPoints[1]?.name, runnerUpValue: byPoints[1] ? `${byPoints[1].points} poäng` : undefined, third: byPoints[2]?.name, thirdValue: byPoints[2] ? `${byPoints[2].points} poäng` : undefined });
     }
 
     // 3. Assistkung
     const byAssists = [...players].sort((a, b) => b.assists - a.assists || b.points - a.points);
     if (byAssists.length > 0 && byAssists[0].assists > 0) {
-      awards.push({ id: "assist_leader", title: "Assistkung", emoji: "\uD83E\uDD45", winner: byAssists[0].name, value: `${byAssists[0].assists} assist`, description: "Flest assist under säsongen", runnerUp: byAssists[1]?.name, runnerUpValue: byAssists[1] ? `${byAssists[1].assists} assist` : undefined });
+      awards.push({ id: "assist_leader", title: "Assistkung", emoji: "\uD83E\uDD45", winner: byAssists[0].name, value: `${byAssists[0].assists} assist`, description: "Flest assist under säsongen", runnerUp: byAssists[1]?.name, runnerUpValue: byAssists[1] ? `${byAssists[1].assists} assist` : undefined, third: byAssists[2]?.name, thirdValue: byAssists[2] ? `${byAssists[2].assists} assist` : undefined });
     }
 
     // 4. Mr. Clutch
     const byGwg = [...players].sort((a, b) => b.gwg - a.gwg || b.goals - a.goals);
     if (byGwg.length > 0 && byGwg[0].gwg > 0) {
-      awards.push({ id: "mr_clutch", title: "Mr. Clutch", emoji: "\uD83E\uDD45", winner: byGwg[0].name, value: `${byGwg[0].gwg} GWG`, description: "Flest avgörande mål (Game Winning Goals)", runnerUp: byGwg[1]?.name, runnerUpValue: byGwg[1] ? `${byGwg[1].gwg} GWG` : undefined });
+      awards.push({ id: "mr_clutch", title: "Mr. Clutch", emoji: "\uD83E\uDD45", winner: byGwg[0].name, value: `${byGwg[0].gwg} GWG`, description: "Flest avgörande mål (Game Winning Goals)", runnerUp: byGwg[1]?.name, runnerUpValue: byGwg[1] ? `${byGwg[1].gwg} GWG` : undefined, third: byGwg[2]?.name, thirdValue: byGwg[2] ? `${byGwg[2].gwg} GWG` : undefined });
     }
 
     // 5. Vinnaren
@@ -811,31 +813,31 @@ export const scoreStatsRouter = router({
     const byWinRate = [...eligibleWinRate].sort((a, b) => (b.wins / b.matchesPlayed) - (a.wins / a.matchesPlayed) || b.wins - a.wins);
     if (byWinRate.length > 0 && byWinRate[0].wins > 0) {
       const wr = Math.round((byWinRate[0].wins / byWinRate[0].matchesPlayed) * 100);
-      awards.push({ id: "best_winner", title: "Vinnaren", emoji: "\uD83C\uDFC6", winner: byWinRate[0].name, value: `${wr}% (${byWinRate[0].wins}V/${byWinRate[0].matchesPlayed}M)`, description: `Högsta vinstprocent (min ${minMatches} matcher)`, runnerUp: byWinRate[1]?.name, runnerUpValue: byWinRate[1] ? `${Math.round((byWinRate[1].wins / byWinRate[1].matchesPlayed) * 100)}%` : undefined });
+      awards.push({ id: "best_winner", title: "Vinnaren", emoji: "\uD83C\uDFC6", winner: byWinRate[0].name, value: `${wr}% (${byWinRate[0].wins}V/${byWinRate[0].matchesPlayed}M)`, description: `Högsta vinstprocent (min ${minMatches} matcher)`, runnerUp: byWinRate[1]?.name, runnerUpValue: byWinRate[1] ? `${Math.round((byWinRate[1].wins / byWinRate[1].matchesPlayed) * 100)}%` : undefined, third: byWinRate[2]?.name, thirdValue: byWinRate[2] ? `${Math.round((byWinRate[2].wins / byWinRate[2].matchesPlayed) * 100)}%` : undefined });
     }
 
     // 6. Järnmannen
     const byMatches = [...players].sort((a, b) => b.matchesPlayed - a.matchesPlayed);
     if (byMatches.length > 0) {
-      awards.push({ id: "iron_man", title: "Järnmannen", emoji: "\uD83D\uDCAA", winner: byMatches[0].name, value: `${byMatches[0].matchesPlayed} matcher`, description: "Flest spelade matcher under säsongen", runnerUp: byMatches[1]?.name, runnerUpValue: byMatches[1] ? `${byMatches[1].matchesPlayed} matcher` : undefined });
+      awards.push({ id: "iron_man", title: "Järnmannen", emoji: "\uD83D\uDCAA", winner: byMatches[0].name, value: `${byMatches[0].matchesPlayed} matcher`, description: "Flest spelade matcher under säsongen", runnerUp: byMatches[1]?.name, runnerUpValue: byMatches[1] ? `${byMatches[1].matchesPlayed} matcher` : undefined, third: byMatches[2]?.name, thirdValue: byMatches[2] ? `${byMatches[2].matchesPlayed} matcher` : undefined });
     }
 
     // 7. Bästa sviten
     const byWinStreak = [...players].sort((a, b) => b.maxWinStreak - a.maxWinStreak || b.wins - a.wins);
     if (byWinStreak.length > 0 && byWinStreak[0].maxWinStreak > 1) {
-      awards.push({ id: "best_streak", title: "Bästa sviten", emoji: "\uD83D\uDD25", winner: byWinStreak[0].name, value: `${byWinStreak[0].maxWinStreak} raka vinster`, description: "Längsta vinstsviten under säsongen", runnerUp: byWinStreak[1]?.name, runnerUpValue: byWinStreak[1]?.maxWinStreak > 1 ? `${byWinStreak[1].maxWinStreak} raka vinster` : undefined });
+      awards.push({ id: "best_streak", title: "Bästa sviten", emoji: "\uD83D\uDD25", winner: byWinStreak[0].name, value: `${byWinStreak[0].maxWinStreak} raka vinster`, description: "Längsta vinstsviten under säsongen", runnerUp: byWinStreak[1]?.name, runnerUpValue: byWinStreak[1]?.maxWinStreak > 1 ? `${byWinStreak[1].maxWinStreak} raka vinster` : undefined, third: byWinStreak[2]?.name, thirdValue: byWinStreak[2]?.maxWinStreak > 1 ? `${byWinStreak[2].maxWinStreak} raka vinster` : undefined });
     }
 
     // 8. Obesegrad
     const byUnbeaten = [...players].sort((a, b) => b.maxUnbeatenStreak - a.maxUnbeatenStreak);
     if (byUnbeaten.length > 0 && byUnbeaten[0].maxUnbeatenStreak > 2) {
-      awards.push({ id: "unbeaten", title: "Obesegrad", emoji: "\uD83D\uDEE1\uFE0F", winner: byUnbeaten[0].name, value: `${byUnbeaten[0].maxUnbeatenStreak} matcher utan förlust`, description: "Längsta obesegrade sviten", runnerUp: byUnbeaten[1]?.name, runnerUpValue: byUnbeaten[1]?.maxUnbeatenStreak > 2 ? `${byUnbeaten[1].maxUnbeatenStreak} matcher` : undefined });
+      awards.push({ id: "unbeaten", title: "Obesegrad", emoji: "\uD83D\uDEE1\uFE0F", winner: byUnbeaten[0].name, value: `${byUnbeaten[0].maxUnbeatenStreak} matcher utan förlust`, description: "Längsta obesegrade sviten", runnerUp: byUnbeaten[1]?.name, runnerUpValue: byUnbeaten[1]?.maxUnbeatenStreak > 2 ? `${byUnbeaten[1].maxUnbeatenStreak} matcher` : undefined, third: byUnbeaten[2]?.name, thirdValue: byUnbeaten[2]?.maxUnbeatenStreak > 2 ? `${byUnbeaten[2].maxUnbeatenStreak} matcher` : undefined });
     }
 
     // 9. Matchens spelare
     const byBestMatch = [...players].sort((a, b) => b.bestMatchPoints - a.bestMatchPoints || b.bestMatchGoals - a.bestMatchGoals);
     if (byBestMatch.length > 0 && byBestMatch[0].bestMatchPoints > 0) {
-      awards.push({ id: "best_match", title: "Matchens spelare", emoji: "\u2B50", winner: byBestMatch[0].name, value: `${byBestMatch[0].bestMatchPoints}p (${byBestMatch[0].bestMatchGoals}+${byBestMatch[0].bestMatchAssists})`, description: `Bästa enskilda matchprestationen — ${byBestMatch[0].bestMatchName}`, runnerUp: byBestMatch[1]?.name, runnerUpValue: byBestMatch[1]?.bestMatchPoints > 0 ? `${byBestMatch[1].bestMatchPoints}p` : undefined });
+      awards.push({ id: "best_match", title: "Matchens spelare", emoji: "\u2B50", winner: byBestMatch[0].name, value: `${byBestMatch[0].bestMatchPoints}p (${byBestMatch[0].bestMatchGoals}+${byBestMatch[0].bestMatchAssists})`, description: `Bästa enskilda matchprestationen — ${byBestMatch[0].bestMatchName}`, runnerUp: byBestMatch[1]?.name, runnerUpValue: byBestMatch[1]?.bestMatchPoints > 0 ? `${byBestMatch[1].bestMatchPoints}p` : undefined, third: byBestMatch[2]?.name, thirdValue: byBestMatch[2]?.bestMatchPoints > 0 ? `${byBestMatch[2].bestMatchPoints}p` : undefined });
     }
 
     // 10. Bästa målvakt
@@ -843,7 +845,7 @@ export const scoreStatsRouter = router({
     const byGk = [...goalkeepers].sort((a, b) => (a.goalsAgainst / a.gkMatches) - (b.goalsAgainst / b.gkMatches) || b.cleanSheets - a.cleanSheets);
     if (byGk.length > 0) {
       const gaPer = (byGk[0].goalsAgainst / byGk[0].gkMatches).toFixed(1);
-      awards.push({ id: "best_goalkeeper", title: "Bästa målvakt", emoji: "\uD83E\uDDE4", winner: byGk[0].name, value: `${gaPer} insläppta/match, ${byGk[0].cleanSheets} nollor`, description: `Lägst insläppta mål per match (${byGk[0].gkMatches} matcher i mål)`, runnerUp: byGk[1]?.name, runnerUpValue: byGk[1] ? `${(byGk[1].goalsAgainst / byGk[1].gkMatches).toFixed(1)} insläppta/match` : undefined });
+      awards.push({ id: "best_goalkeeper", title: "Bästa målvakt", emoji: "\uD83E\uDD45", winner: byGk[0].name, value: `${gaPer} insläppta/match, ${byGk[0].cleanSheets} nollor`, description: `Lägst insläppta mål per match (${byGk[0].gkMatches} matcher i mål)`, runnerUp: byGk[1]?.name, runnerUpValue: byGk[1] ? `${(byGk[1].goalsAgainst / byGk[1].gkMatches).toFixed(1)} insläppta/match` : undefined, third: byGk[2]?.name, thirdValue: byGk[2] ? `${(byGk[2].goalsAgainst / byGk[2].gkMatches).toFixed(1)} insläppta/match` : undefined });
     }
 
     return { awards, totalMatches: matches.length };

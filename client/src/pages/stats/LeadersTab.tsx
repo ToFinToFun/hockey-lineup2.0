@@ -173,7 +173,7 @@ function LeaderTable({
 }
 
 // ─── Goal Type Leaderboards ─────────────────────────────────────────────────
-function GoalTypeLeaderboards({
+export function GoalTypeLeaderboards({
   playerStats,
   onPlayerClick,
 }: {

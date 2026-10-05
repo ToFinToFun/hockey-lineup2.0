@@ -7,6 +7,18 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.66.0 – 2026-10-04
+
+**Statistiken – översyn**
+- Flikar: Översikt, Spelare, Målvakter, Utmärkelser, Lag, Hallar, Motståndare – en ikon per sak (Målvakter en hockeymålvakt, inte samma som Lag).
+- En gemensam tabell för alla listor: klicka på en kolumnrubrik för att sortera, igen för att vända ordningen; topp 10 visas, "Visa alla" fäller ut resten. Ettan, tvåan och trean markeras.
+- Spelare: Poängliga (Sp, M, A, P, GWG, ★ i en sorterbar tabell i stället för separata kategoriknappar), Speltid, PIR för utespelare och måltyper.
+- Målvakter: egen flik – vinster, tid i mål, insläppta, insläppta per 60, hållna nollor – och PIR för målvakter.
+- Utmärkelser: egen flik med alla utmärkelser utfällda (även målvaktens) och 1:a, 2:a och 3:e plats. Bästa målvakt har ett hockeymål i stället för handskar.
+- Hallar: bästa målvakt i varje hall och en sorterbar lista över alla poänggörare i hallen.
+- Motståndare: listorna över poänggörare är sorterbara och visar alla.
+- Lag: "Nollor" har målvaktsikonen.
+
 ## 2.65.2 – 2026-10-04
 
 **Statistik → Spelare**

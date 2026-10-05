@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { StatTable } from "./StatTable";
 import { teamInitials } from "@shared/teams";
 import { club } from "@shared/club";
 
@@ -62,21 +63,19 @@ function ScorerList({ title, lines, empty = "Inga poäng" }: { title: string; li
   return (
     <div>
       <p className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-1">{title}</p>
-      {lines.length === 0 ? <p className="text-xs text-white/35">{empty}</p> : (
-        <table className="w-full text-xs">
-          <thead><tr className="text-white/35 text-[10px]"><th className="text-left font-medium">Spelare</th><th className="w-8">G</th><th className="w-8">A</th><th className="w-10">P</th></tr></thead>
-          <tbody>
-            {lines.map((l) => (
-              <tr key={l.name} className="text-white/85">
-                <td className="py-0.5 truncate max-w-[12rem]">{l.name}</td>
-                <td className="text-center tabular-nums">{l.goals}</td>
-                <td className="text-center tabular-nums">{l.assists}</td>
-                <td className="text-center tabular-nums font-semibold">{l.points}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <StatTable
+        rows={lines}
+        rowKey={(r) => r.name}
+        name={(r) => r.name}
+        defaultSort="p"
+        initial={5}
+        empty={empty}
+        columns={[
+          { key: "m", label: "M", title: "Mål", value: (r) => r.goals },
+          { key: "a", label: "A", title: "Assist", value: (r) => r.assists },
+          { key: "p", label: "P", title: "Poäng", value: (r) => r.points },
+        ]}
+      />
     </div>
   );
 }

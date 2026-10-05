@@ -149,18 +149,16 @@ function AwardCard({
           {award.description}
         </p>
 
-        {/* Runner up */}
-        {award.runnerUp && (
-          <div className="mt-3 pt-3 border-t border-[#2a2a2a]/50 flex items-center gap-2">
-            <span className="text-[#687076] text-[10px]">2:a plats:</span>
-            <span className="text-[#9BA1A6] text-[10px] font-medium">
-              {award.runnerUp}
-            </span>
-            {award.runnerUpValue && (
-              <span className="text-[#687076] text-[10px]">
-                ({award.runnerUpValue})
-              </span>
-            )}
+        {/* 2:a och 3:e plats */}
+        {(award.runnerUp || award.third) && (
+          <div className="mt-3 pt-3 border-t border-[#2a2a2a]/50 space-y-1">
+            {([[award.runnerUp, award.runnerUpValue, "2:a"], [award.third, award.thirdValue, "3:e"]] as const).map(([who, val, place]) => who && (
+              <div key={place} className="flex items-center gap-2">
+                <span className="text-[#687076] text-[10px] w-7">{place}</span>
+                <span className="text-[#9BA1A6] text-[10px] font-medium">{who}</span>
+                {val && <span className="text-[#687076] text-[10px]">({val})</span>}
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -269,7 +267,7 @@ function ExportPanel({
       if (award.runnerUp) {
         ctx.fillStyle = "#687076";
         ctx.font = "13px sans-serif";
-        ctx.fillText(`2:a: ${award.runnerUp} ${award.runnerUpValue ? `(${award.runnerUpValue})` : ""}`, x + 60, y + 106);
+        ctx.fillText(`2:a: ${award.runnerUp} ${award.runnerUpValue ? `(${award.runnerUpValue})` : ""}${award.third ? `   3:e: ${award.third}` : ""}`, x + 60, y + 106);
       }
 
       if (col === 1 || i === awards.length - 1) {
@@ -314,7 +312,6 @@ export default function AwardsTab({
   periodLabel,
   periodPreset,
 }: AwardsTabProps) {
-  const [showAll, setShowAll] = useState(false);
 
   const awardsList = awardsData?.awards ?? [];
   const totalMatches = awardsData?.totalMatches ?? 0;
@@ -330,7 +327,7 @@ export default function AwardsTab({
   }
 
   // Show top 6 by default, expand to show all
-  const visible = showAll ? awardsList : awardsList.slice(0, 6);
+  const visible = awardsList; // alla visas direkt
 
   return (
     <div className="space-y-6">
@@ -363,23 +360,6 @@ export default function AwardsTab({
         ))}
       </div>
 
-      {/* Show more */}
-      {awardsList.length > 6 && (
-        <button
-          onClick={() => setShowAll(!showAll)}
-          className="w-full flex items-center justify-center gap-1 py-3 text-xs text-[#0a7ea4] hover:text-[#0a7ea4]/80 transition-colors"
-        >
-          {showAll ? (
-            <>
-              <ChevronUp size={14} /> Visa färre
-            </>
-          ) : (
-            <>
-              <ChevronDown size={14} /> Visa alla ({awardsList.length})
-            </>
-          )}
-        </button>
-      )}
     </div>
   );
 }

@@ -9,13 +9,12 @@ import { useState, useMemo, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { IMAGES } from "@/lib/scoreConstants";
-import { ArrowLeft, BarChart3, Users, Shield, Loader2, X, Swords, MapPin, Timer } from "lucide-react";
-import { IceTimeTab } from "./IceTimeTab";
+import { ArrowLeft, BarChart3, Users, Shield, Loader2, X, Swords, MapPin, Award } from "lucide-react";
+import { GoalieMask } from "@/components/score/HockeyIcons";
+import { SkatersTab, GoaliesTab } from "./PlayerTabs";
 import OverviewTab from "./OverviewTab";
-import LeadersTab from "./LeadersTab";
 import AwardsTab from "./AwardsTab";
 import TeamsTab from "./TeamsTab";
-import PirRanking from "./PirRanking";
 import { PlayerProfileView } from "../players/PlayerProfile";
 
 // ─── Period helpers ─────────────────────────────────────────────────────────
@@ -59,6 +58,8 @@ const PERIOD_OPTIONS: { key: PeriodPreset; label: string }[] = [
 const TABS = [
   { id: "overview", label: "Översikt", icon: BarChart3 },
   { id: "players", label: "Spelare", icon: Users },
+  { id: "goalies", label: "Målvakter", icon: GoalieMask },
+  { id: "awards", label: "Utmärkelser", icon: Award },
   { id: "teams", label: "Lag", icon: Shield },
   { id: "venues", label: "Hallar", icon: MapPin },
   { id: "opponents", label: "Motståndare", icon: Swords },
@@ -119,7 +120,6 @@ export default function StatsApp() {
     return { from: dateFilter.from, to: dateFilter.to, ...ext };
   }, [dateFilter, includeExternal, features.opponents]);
   const visibleTabs = TABS.filter((t) => t.id !== "opponents" || features.opponents);
-  const [playerView, setPlayerView] = useState<"skaters" | "goalies">("skaters");
 
   // Data queries
   const { data: seasonStats, isLoading: loadingStats } = trpc.scoreStats.seasonStats.useQuery(queryInput ?? {});
@@ -244,41 +244,18 @@ export default function StatsApp() {
               />
             )}
             {activeTab === "players" && (
-              <div className="space-y-8">
-                {/* Utespelare / Målvakter – gäller hela fliken */}
-                <div className="flex gap-1 p-0.5 rounded-lg bg-white/5 border border-white/10 w-fit">
-                  {([["skaters", "Utespelare"], ["goalies", "Målvakter"]] as const).map(([k, l]) => (
-                    <button key={k} onClick={() => setPlayerView(k)} className={`px-4 py-1.5 rounded-md text-xs font-semibold ${playerView === k ? "bg-[#0a7ea4] text-white" : "text-white/55"}`}>{l}</button>
-                  ))}
-                </div>
-                {playerView === "skaters" ? (
-                  <>
-                    <LeadersTab
-                      stats={seasonStats}
-                      onPlayerClick={handlePlayerClick}
-                      periodLabel={PERIOD_OPTIONS.find((p) => p.key === periodPreset)?.label ?? "Säsong"}
-                      dateFilter={queryInput as { from?: string; to?: string } | undefined}
-                    />
-                    <section className="space-y-3">
-                      <h3 className="text-[#ECEDEE] text-sm font-semibold flex items-center gap-2"><Timer size={14} className="text-sky-400" /> Speltid</h3>
-                      <IceTimeTab input={queryInput as never} view="skaters" />
-                    </section>
-                  </>
-                ) : (
-                  <section className="space-y-3">
-                    <h3 className="text-[#ECEDEE] text-sm font-semibold flex items-center gap-2"><Shield size={14} className="text-orange-400" /> Målvakter</h3>
-                    <IceTimeTab input={queryInput as never} view="goalies" />
-                  </section>
-                )}
-                <PirRanking ratings={pirData} onPlayerClick={handlePlayerClick} role={playerView === "goalies" ? "goalkeeper" : "outfield"} />
-                <AwardsTab
-                  // Målvakter: bara målvaktsutmärkelserna; Utespelare: övriga
-                  awards={awardsData ? { ...awardsData, awards: (awardsData.awards ?? []).filter((a: { id: string }) => (a.id === "best_goalkeeper") === (playerView === "goalies")) } : awardsData}
-                  onPlayerClick={handlePlayerClick}
-                  periodLabel={PERIOD_OPTIONS.find((p) => p.key === periodPreset)?.label ?? "Säsong"}
-                  periodPreset={periodPreset}
-                />
-              </div>
+              <SkatersTab stats={seasonStats as never} input={queryInput as never} ratings={pirData} onPlayerClick={handlePlayerClick} />
+            )}
+            {activeTab === "goalies" && (
+              <GoaliesTab input={queryInput as never} ratings={pirData} onPlayerClick={handlePlayerClick} />
+            )}
+            {activeTab === "awards" && (
+              <AwardsTab
+                awards={awardsData}
+                onPlayerClick={handlePlayerClick}
+                periodLabel={PERIOD_OPTIONS.find((p) => p.key === periodPreset)?.label ?? "Säsong"}
+                periodPreset={periodPreset}
+              />
             )}
             {activeTab === "venues" && <VenuesTab input={queryInput as { from?: string; to?: string; includeExternal?: boolean } | undefined} />}
             {activeTab === "opponents" && <OpponentsTab dateFilter={dateFilter.from || dateFilter.to ? { from: dateFilter.from, to: dateFilter.to } : undefined} />}

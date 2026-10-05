@@ -6,6 +6,7 @@ import { POSITION_COLORS } from "@/lib/positionColors";
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Shield, Target, Trophy, Users, Flame, Swords, ChevronDown, Search } from "lucide-react";
+import { GoalieMask } from "@/components/score/HockeyIcons";
 import { IMAGES } from "@/lib/scoreConstants";
 
 interface TeamsTabProps {
@@ -407,7 +408,7 @@ function TeamStatCard({
           { label: "Vinster", value: data.wins, icon: Trophy },
           { label: "Mål", value: data.goals, icon: Target },
           { label: "Mål/match", value: data.goalsPerMatch, icon: Target },
-          { label: "Nollor", value: data.cleanSheets, icon: Shield },
+          { label: "Nollor", value: data.cleanSheets, icon: GoalieMask },
           { label: "GWG", value: data.gwg, icon: Flame },
           { label: "Vinstprocent", value: `${data.winRate}%`, icon: Trophy },
           { label: "Unika spelare", value: data.uniquePlayers, icon: Users },
