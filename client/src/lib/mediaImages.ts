@@ -112,7 +112,18 @@ export interface ResultPostData extends MediaCommon {
   report: import("@/lib/matchReportImages").ReportData;
 }
 
-export type MediaPostData = LineupPostData | TextPostData | CardsPostData | StatsPostData | ResultPostData;
+/** Utmärkelse: vinnarnas hockeykort med placering och värde */
+export interface AwardPostData extends MediaCommon {
+  kind: "award";
+  /** T.ex. "Mr. Clutch" */
+  title: string;
+  emoji: string;
+  /** Periodens namn, t.ex. "Oktober 2026" */
+  subtitle: string;
+  places: Array<{ place: 1 | 2 | 3; name: string; value: string; card: HTMLCanvasElement | null }>;
+}
+
+export type MediaPostData = LineupPostData | TextPostData | CardsPostData | StatsPostData | ResultPostData | AwardPostData;
 
 /** Lagens loggor från klubbens inställningar */
 const LOGO = { get white() { return teamLogo("white"); }, get green() { return teamLogo("green"); } };
@@ -688,6 +699,51 @@ export function cardSlots(n: number, top: number, bottom: number): Array<{ x: nu
   return place(2, 2, Math.min(n, 4));
 }
 
+const PLACE_COLOR: Record<1 | 2 | 3, string> = { 1: "#f5c84c", 2: "#cbd5e1", 3: "#d4915a" };
+const PLACE_LABEL: Record<1 | 2 | 3, string> = { 1: "1:a", 2: "2:a", 3: "3:e" };
+
+async function renderAward(d: AwardPostData): Promise<HTMLCanvasElement> {
+  const [bg, sp] = await Promise.all([(d.photo ? Promise.resolve(null) : tryLoad(bgUrl(d.background))), tryLoad(d.sponsor?.logo)]);
+  const [c, ctx] = canvas();
+  if (d.photo) photoBackdrop(ctx, d.photo, d.photoDim ?? 0.5); else backdrop(ctx, bg, dimFor(d.background, 0.62));
+  decorate(ctx, d.overlay);
+  const title = `${d.emoji ? d.emoji + " " : ""}${d.title}`;
+  const top = titleBlock(ctx, title, d.subtitle, d.dateLine) + 30;
+  const bottom = d.sponsor ? IG_H - 200 : IG_H - 90;
+  const list = [...d.places].sort((a, b) => a.place - b.place);
+  const slots = cardSlots(list.length, top, bottom);
+  for (let i = 0; i < list.length; i++) {
+    const p = list[i], slot = slots[i];
+    if (!slot) continue;
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 30; ctx.shadowOffsetY = 10;
+    if (p.card) ctx.drawImage(p.card, slot.x, slot.y, slot.w, slot.h);
+    ctx.restore();
+    // Placering och värde i en skylt över kortets överkant
+    const pillH = Math.max(46, slot.w * 0.15), label = `${PLACE_LABEL[p.place]} · ${p.value}`;
+    ctx.font = `700 ${Math.round(pillH * 0.52)}px ${HEAD}`;
+    const pillW = Math.min(slot.w * 0.92, ctx.measureText(label).width + pillH);
+    const px = slot.x + slot.w / 2 - pillW / 2, py = slot.y - pillH * 0.55;
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 12;
+    ctx.fillStyle = "rgba(10,10,10,0.88)";
+    roundRect(ctx, px, py, pillW, pillH, pillH / 2); ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = PLACE_COLOR[p.place]; ctx.lineWidth = 3;
+    roundRect(ctx, px, py, pillW, pillH, pillH / 2); ctx.stroke();
+    ctx.fillStyle = PLACE_COLOR[p.place];
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(fit(ctx, label, pillW - pillH * 0.6), slot.x + slot.w / 2, py + pillH / 2 + 1);
+    ctx.textBaseline = "alphabetic";
+  }
+  if (!list.length) {
+    ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.font = `500 34px ${BODY}`; ctx.textAlign = "center";
+    ctx.fillText("Ingen vinnare under perioden", IG_W / 2, IG_H / 2);
+  }
+  presentedBy(ctx, d.sponsor ? { name: d.sponsor.name, img: sp } : null, IG_H - 150);
+  return c;
+}
+
 async function renderCards(d: CardsPostData): Promise<HTMLCanvasElement> {
   const [bg, sp] = await Promise.all([(d.photo ? Promise.resolve(null) : tryLoad(bgUrl(d.background))), tryLoad(d.sponsor?.logo)]);
   const [c, ctx] = canvas();
@@ -792,6 +848,7 @@ export async function renderMediaPost(d: MediaPostData): Promise<HTMLCanvasEleme
   await ensureFonts();
   if (d.kind === "lineup") return renderLineup(d);
   if (d.kind === "cards") return renderCards(d);
+  if (d.kind === "award") return renderAward(d);
   if (d.kind === "stats") return renderStats(d);
   if (d.kind === "result") {
     const { renderResultImage } = await import("@/lib/matchReportImages");

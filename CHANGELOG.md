@@ -7,6 +7,17 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.68.0 – 2026-10-04
+
+**Lineup**
+- "Ändrad …" visar bara serverns tid, som sätts när en spelare faktiskt placeras, flyttas, tas ur laget eller läggs till i truppen. Tidigare räknade appen också själv och visade "nu" när sidan laddades eller synken hämtade laget på nytt.
+
+**Media → Utmärkelse** (ny mall)
+- Välj utmärkelse (Skyttekung, Poängkung, Mr. Clutch …, Bästa målvakt), period (säsong, slutspel, försäsong, månad, vecka, totalt) och vilka av topp tre som ska med. Bilden visar vinnarnas hockeykort (sparade eller standardkort) med placering och värde i en skylt, t.ex. "1:a · 93 GWG".
+
+**Statistik → Spelare: Kul statistik**
+- Matchens första mål, sista mål, sena mål (sista 10 minuterna), längsta och pågående måltorka och matcher utan poäng – sorterbart som övriga tabeller. Gemensam funktion: server/funStats.ts.
+
 ## 2.67.1 – 2026-10-04
 
 - Hockeykort: "Ta bort kortet – återgå till standardkortet" (tydligare text och bekräftelse). Efter borttagningen visar förhandsvisningen standardkortet direkt. Egna kort görs som förut; standardkortet används bara för spelare utan sparat kort.

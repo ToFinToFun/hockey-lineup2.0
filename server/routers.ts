@@ -656,7 +656,7 @@ export const appRouter = router({
     save: moduleProcedure("media")
       .input(z.object({
         id: z.number().int().positive().optional(),
-        type: z.enum(["lineup", "text", "cards", "stats", "result"]),
+        type: z.enum(["lineup", "text", "cards", "stats", "result", "award"]),
         title: z.string().trim().min(1).max(120),
         settings: z.record(z.string(), z.unknown()),
         caption: z.string().max(3000),

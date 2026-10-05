@@ -18,7 +18,7 @@ import { club } from "@shared/club";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
-import { ArrowLeft, Download, Share2, Copy, Check, Save, Plus, Trash2, Loader2, RefreshCw, Upload, X, Users, Type, CalendarDays, IdCard, BarChart3, Trophy, Film } from "lucide-react";
+import { ArrowLeft, Download, Share2, Copy, Check, Save, Plus, Trash2, Loader2, RefreshCw, Upload, X, Users, Type, CalendarDays, IdCard, BarChart3, Trophy, Film, Award } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useSponsors, logoForName } from "@/lib/sponsors";
 import { createTeamSlots, groupSlots, type TeamConfig } from "@/lib/lineup";
@@ -30,7 +30,7 @@ import { renderPlayerCard } from "@/lib/savedCardImage";
 import { cellsFor, defaultStatsTitle } from "@shared/cardStats";
 import { STAT_CATEGORIES, STAT_PERIODS, periodRange, statRows, type StatCategory, type StatPeriod } from "./mediaStats";
 
-type Kind = "lineup" | "text" | "cards" | "stats" | "result";
+type Kind = "lineup" | "text" | "cards" | "stats" | "result" | "award";
 
 interface Settings {
   kind: Kind;
@@ -48,6 +48,9 @@ interface Settings {
   statCategory: StatCategory;
   statPeriod: StatPeriod;
   statLimit: number;
+  /** Utmärkelse: vilken (id från statistiken) och vilka placeringar */
+  awardId?: string;
+  awardPlaces?: Array<1 | 2 | 3>;
   /** Senaste resultat: vilken match (standard den senaste) */
   matchId?: number | null;
   /** Ta med matcher mot andra lag (beta) */
@@ -77,6 +80,7 @@ const NEW: Record<Kind, Settings> = {
   cards: { ...BASE, kind: "cards", title: "Veckans spelare" },
   stats: { ...BASE, kind: "stats", title: "Poängligan" },
   result: { ...BASE, kind: "result", title: "" },
+  award: { ...BASE, kind: "award", title: "", awardId: "points_leader", awardPlaces: [1, 2, 3], statPeriod: "month" },
 };
 
 const WEEKDAYS = ["Söndag", "Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag"];
@@ -178,7 +182,30 @@ export default function MediaApp() {
   const extInput = featuresM.opponents && s.statIncludeExternal ? { includeExternal: true } : {};
   const rangeInput = range.from ? { from: range.from, to: range.to, ...extInput } : { ...extInput };
   const statsQ = trpc.scoreStats.seasonStats.useQuery(rangeInput, { enabled: s.kind === "stats" && s.statCategory !== "awards" });
-  const awardsQ = trpc.scoreStats.seasonAwards.useQuery(rangeInput, { enabled: s.kind === "stats" && s.statCategory === "awards" });
+  const awardsQ = trpc.scoreStats.seasonAwards.useQuery(rangeInput, { enabled: (s.kind === "stats" && s.statCategory === "awards") || s.kind === "award" });
+
+  // ─── Utmärkelse: vinnarnas hockeykort (sparade eller standardkort) ───
+  const award = s.kind === "award" ? (awardsQ.data?.awards ?? []).find((a) => a.id === s.awardId) ?? null : null;
+  const [awardCards, setAwardCards] = useState<Array<{ place: 1 | 2 | 3; name: string; value: string; card: HTMLCanvasElement | null }>>([]);
+  const awardKey = award ? JSON.stringify([award.id, award.winner, award.runnerUp, award.third, award.value, s.awardPlaces]) : "";
+  useEffect(() => {
+    if (s.kind !== "award" || !award) { setAwardCards([]); return; }
+    let cancelled = false;
+    const bare = (n: string) => n.replace(/\s*#\d*\s*$/, "").trim().toLowerCase();
+    const places = ([[1, award.winner, award.value], [2, award.runnerUp, award.runnerUpValue], [3, award.third, award.thirdValue]] as const)
+      .filter(([pl, who]) => who && (s.awardPlaces ?? [1, 2, 3]).includes(pl));
+    (async () => {
+      const out: typeof awardCards = [];
+      for (const [pl, who, val] of places) {
+        const player = registry.data?.find((p) => bare(p.name) === bare(who!));
+        const card = player ? savedCards.data?.find((c) => c.playerId === player.id) : undefined;
+        const stats = player ? await utils.client.cards.stats.query({ playerId: player.id }).catch(() => undefined) : undefined;
+        out.push({ place: pl, name: who!, value: (val ?? "").replace(/ \(.*\)$/, ""), card: player ? await renderPlayerCard(player, card, { stats, scale: 0.9 }) : null });
+      }
+      if (!cancelled) setAwardCards(out);
+    })().catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [awardKey, s.kind, registry.data, savedCards.data]); // eslint-disable-line react-hooks/exhaustive-deps
   const statCat = STAT_CATEGORIES.find((c) => c.id === s.statCategory)!;
   const rows = useMemo(() => statRows(s.statCategory, statsQ.data as never, awardsQ.data?.awards as never, s.statLimit), [s.statCategory, s.statLimit, statsQ.data, awardsQ.data]);
 
@@ -257,6 +284,7 @@ export default function MediaApp() {
         s.kind === "lineup" ? { ...common, kind: "lineup", team: s.team, teamName: s.teamName, title: s.title, groups: s.groups, ...(s.teamLogo !== undefined ? { logo: s.teamLogo, accent: s.teamAccent } : {}) }
         : s.kind === "cards" ? { ...common, kind: "cards", title: s.title, subtitle: s.subtitle, cards: cardCanvases }
         : s.kind === "stats" ? { ...common, kind: "stats", title: s.title, subtitle: s.subtitle || range.label, valueLabel: statCat.valueLabel, rows }
+        : s.kind === "award" ? { ...common, kind: "award", title: s.title || award?.title || "Utmärkelse", emoji: award?.emoji ?? "", subtitle: s.subtitle || range.label, places: awardCards }
         : s.kind === "result" ? (reportData ? { ...common, kind: "result", report: reportData } : { ...common, kind: "text", title: "Inga matcher än", body: "", info: "" })
         : { ...common, kind: "text", title: s.title, body: s.body, info: s.info };
       const c = await renderMediaPost(data);
@@ -267,7 +295,7 @@ export default function MediaApp() {
       c.toBlob((b) => { if (!cancelled) setBlob(b); }, "image/jpeg", 0.92);
     }, 120);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [s, photo, sponsor?.name, sponsor?.logo, cardCanvases, rows, range.label, reportData]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [s, photo, sponsor?.name, sponsor?.logo, cardCanvases, rows, range.label, reportData, awardCards, award?.title]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startNew = (kind: Kind) => {
     setPostId(null);
@@ -411,6 +439,7 @@ export default function MediaApp() {
             <button onClick={() => startNew("text")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Type size={14} /> Text</button>
             <button onClick={() => startNew("cards")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><IdCard size={14} /> Spelarkort</button>
             <button onClick={() => startNew("stats")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><BarChart3 size={14} /> Statistik</button>
+            <button onClick={() => startNew("award")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Award size={14} /> Utmärkelse</button>
             <button onClick={() => startNew("result")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Trophy size={14} /> Senaste resultat</button>
             <button onClick={startNextTraining} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><CalendarDays size={14} /> Nästa träning</button>
             <Link href="/media/video" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Film size={14} /> Video (Instagram)</Link>
@@ -489,6 +518,43 @@ export default function MediaApp() {
               </div>
             </>
           )}
+          {s.kind === "award" && (
+            <>
+              <div>
+                <p className="text-[11px] text-white/50 mb-1.5">Utmärkelse</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(awardsQ.data?.awards ?? []).map((a) => (
+                    <button key={a.id} onClick={() => update({ awardId: a.id, title: "" })} className={chip(s.awardId === a.id)}>{a.emoji} {a.title}</button>
+                  ))}
+                  {awardsQ.isLoading && <span className="text-[11px] text-white/40 flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> Hämtar …</span>}
+                  {!awardsQ.isLoading && !(awardsQ.data?.awards ?? []).length && <span className="text-[11px] text-white/40">Inga utmärkelser under perioden.</span>}
+                </div>
+              </div>
+              <div>
+                <p className="text-[11px] text-white/50 mb-1.5">Period</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {STAT_PERIODS.map((p) => <button key={p.id} onClick={() => update({ statPeriod: p.id, subtitle: "" })} className={chip(s.statPeriod === p.id)}>{p.name}</button>)}
+                </div>
+              </div>
+              <div>
+                <p className="text-[11px] text-white/50 mb-1.5">Placeringar</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {([[1, award?.winner], [2, award?.runnerUp], [3, award?.third]] as const).map(([pl, who]) => {
+                    const on = (s.awardPlaces ?? [1, 2, 3]).includes(pl);
+                    return (
+                      <button key={pl} disabled={!who} onClick={() => {
+                        const cur = s.awardPlaces ?? [1, 2, 3];
+                        const next = on ? cur.filter((x) => x !== pl) : [...cur, pl].sort();
+                        if (next.length) update({ awardPlaces: next as Array<1 | 2 | 3> });
+                      }} className={`${chip(on && !!who)} disabled:opacity-35`}>{pl === 1 ? "1:a" : pl === 2 ? "2:a" : "3:e"}{who ? ` – ${who}` : ""}</button>
+                    );
+                  })}
+                </div>
+              </div>
+              <label className="block text-[11px] text-white/50">Rubrik<input value={s.title} onChange={(e) => update({ title: e.target.value })} maxLength={40} placeholder={award?.title ?? "Utmärkelse"} className={input} /></label>
+              <label className="block text-[11px] text-white/50">Underrubrik<input value={s.subtitle} onChange={(e) => update({ subtitle: e.target.value })} maxLength={60} placeholder={range.label} className={input} /></label>
+            </>
+          )}
           {s.kind === "stats" && (
             <>
               <div>
@@ -517,7 +583,7 @@ export default function MediaApp() {
               {(statsQ.isLoading || awardsQ.isLoading) && <p className="text-[11px] text-white/40 flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> Hämtar statistik …</p>}
             </>
           )}
-          {s.kind === "cards" || s.kind === "stats" || s.kind === "result" ? null : s.kind === "lineup" ? (
+          {s.kind === "cards" || s.kind === "stats" || s.kind === "result" || s.kind === "award" ? null : s.kind === "lineup" ? (
             <>
               <div>
                 <p className="text-[11px] text-white/50 mb-1.5">Lag</p>
