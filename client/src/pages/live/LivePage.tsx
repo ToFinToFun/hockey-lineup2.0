@@ -213,7 +213,7 @@ export default function LivePage() {
         {/* Nedräkning före / tid kvar under */}
         {phase === "before" && toStart !== null && toStart > 0 && (
           <div className="mx-5 mt-6 rounded-2xl bg-white/5 border border-white/10 px-4 py-4 flex flex-col items-center gap-1.5">
-            <span className="text-[11px] tracking-[0.18em] text-[#a8b8ad]">NEDSLAG OM</span>
+            <span className="text-[11px] tracking-[0.18em] text-[#a8b8ad]">NEDSLÄPP OM</span>
             <div className="flex items-end gap-2.5 font-oswald">
               {toStart >= 86400 && <><div className="flex flex-col items-center"><span className="text-[46px] font-semibold leading-none">{Math.floor(toStart / 86400)}</span><span className="text-[10px] text-[#7d8e83] tracking-[0.12em]">DAGAR</span></div><span className="text-[40px] text-[#4b5c51] leading-[1.1]">:</span></>}
               {[[Math.floor((toStart % 86400) / 3600), "TIM"], [Math.floor((toStart % 3600) / 60), "MIN"], [toStart % 60, "SEK"]].map(([v, l], i) => (

@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.68.2 – 2026-10-06
+
+- Livesidan: "Nedslag om" heter nu "Nedsläpp om".
+
 ## 2.68.1 – 2026-10-06
 
 - Media: nya inlägg (alla mallar) får en slumpad aktiv sponsor som standard – går fortfarande att byta eller välja "Ingen sponsor".
