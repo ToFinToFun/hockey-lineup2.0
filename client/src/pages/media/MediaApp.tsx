@@ -20,7 +20,7 @@ import { Link } from "wouter";
 import { toast } from "sonner";
 import { ArrowLeft, Download, Share2, Copy, Check, Save, Plus, Trash2, Loader2, RefreshCw, Upload, X, Users, Type, CalendarDays, IdCard, BarChart3, Trophy, Film, Award } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { useSponsors, logoForName } from "@/lib/sponsors";
+import { useSponsors, logoForName, randomSponsorName } from "@/lib/sponsors";
 import { createTeamSlots, groupSlots, type TeamConfig } from "@/lib/lineup";
 import type { Player } from "@/lib/players";
 import { prepareSourcePhoto } from "@/lib/cardPhoto";
@@ -146,7 +146,16 @@ export default function MediaApp() {
   const periodsQ = trpc.score.config.getPeriods.useQuery(undefined, { staleTime: 10 * 60_000 });
 
   const [postId, setPostId] = useState<number | null>(null);
-  const [s, setS] = useState<Settings>(NEW.lineup);
+  const [s, setS] = useState<Settings>(() => ({ ...NEW.lineup, sponsorName: randomSponsorName(sponsors) }));
+  // Sponsorlistan kan komma efter första renderingen: ge ett nytt inlägg en slumpad sponsor en gång
+  const sponsorDefaulted = useRef(s.sponsorName !== null);
+  useEffect(() => {
+    if (sponsorDefaulted.current || postId !== null) return;
+    const name = randomSponsorName(sponsors);
+    if (!name) return;
+    sponsorDefaulted.current = true;
+    setS((prev) => (prev.sponsorName === null ? { ...prev, sponsorName: name } : prev));
+  }, [sponsors]); // eslint-disable-line react-hooks/exhaustive-deps
   const [photo, setPhoto] = useState<HTMLImageElement | null>(null);
   const [newPhoto, setNewPhoto] = useState<string | null | undefined>(undefined);
   // Egen bild används när en bild finns och den inte valts bort till förmån för en bakgrund
@@ -304,10 +313,12 @@ export default function MediaApp() {
     const look = { background: s.background, overlay: s.overlay, photoDim: s.photoDim, useOwnPhoto: s.useOwnPhoto };
     // Egen bild från ett öppnat inlägg: ta med den som ny bild så att den sparas med det nya inlägget
     if (photo && newPhoto === undefined) void currentPhotoBase64().then((b) => setNewPhoto(b)).catch(() => undefined);
-    setS({ ...NEW[kind], ...look, dateLine: kind === "lineup" || kind === "text" ? eventLine(event.data) : "" });
+    // Varje ny mall får en slumpad sponsor (kan ändras till "Ingen sponsor")
+    const sponsorName = randomSponsorName(sponsors);
+    setS({ ...NEW[kind], ...look, sponsorName, dateLine: kind === "lineup" || kind === "text" ? eventLine(event.data) : "" });
     if (kind === "lineup" && lineupState.data) {
       const { name, groups } = teamGroups(lineupState.data as never, "green");
-      setS({ ...NEW.lineup, ...look, dateLine: eventLine(event.data), teamName: name, groups });
+      setS({ ...NEW.lineup, ...look, sponsorName, dateLine: eventLine(event.data), teamName: name, groups });
     }
   };
 

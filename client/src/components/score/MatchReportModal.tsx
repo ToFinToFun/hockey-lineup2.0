@@ -10,7 +10,7 @@ import { trpc } from "@/lib/trpc";
 import { starCandidates, autoStars, starLine, starStat, type StarCandidate } from "@/lib/starsOfGame";
 import { X, Download, Copy, Share2, Loader2, Check, Star, RotateCcw, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { useSponsors, logoForName } from "@/lib/sponsors";
+import { useSponsors, logoForName, randomSponsorName } from "@/lib/sponsors";
 import { renderResultImage, renderGoalsImage, type ReportData, type ReportGoal } from "@/lib/matchReportImages";
 import { starCardSettings, renderStarPost } from "@/lib/starCards";
 import { elapsedMinutes } from "@shared/matchTiming";
@@ -161,7 +161,7 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
   // ─── Presenteras av ───
   const activeSponsors = sponsors.filter((sp) => sp.active);
   const [sponsorName, setSponsorName] = useState<string | null>(() =>
-    match.report?.sponsor !== undefined ? match.report.sponsor ?? null : mostFrequentSponsor(match.goalHistory)
+    match.report?.sponsor !== undefined ? match.report.sponsor ?? null : mostFrequentSponsor(match.goalHistory) ?? randomSponsorName(sponsors)
   );
   const sponsor = sponsorName ? { name: sponsorName, logo: logoForName(sponsors, sponsorName) } : null;
 

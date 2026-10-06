@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.68.1 – 2026-10-06
+
+- Media: nya inlägg (alla mallar) får en slumpad aktiv sponsor som standard – går fortfarande att byta eller välja "Ingen sponsor".
+- Matchrapportens resultatbild: utan sponsor på målen väljs en slumpad sponsor.
+
 ## 2.68.0 – 2026-10-04
 
 **Lineup**

@@ -56,3 +56,9 @@ export function logoForName(sponsors: Sponsor[], name: string | undefined): stri
   const n = name.trim().toLowerCase();
   return sponsors.find((s) => s.name.trim().toLowerCase() === n)?.logo ?? null;
 }
+
+/** Slumpad aktiv sponsor – standardval för nya bilder i Media. */
+export function randomSponsorName(sponsors: Sponsor[]): string | null {
+  const active = sponsors.filter((s) => s.active);
+  return active.length ? active[Math.floor(Math.random() * active.length)].name : null;
+}
