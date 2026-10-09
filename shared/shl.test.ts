@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canCall, matchRow, refreshAfter, shlSeason, shortTeam, standingRow } from "./shl";
+import { canCall, focusSummary, lastRound, matchRow, refreshAfter, shlSeason, shortTeam, standingRow } from "./shl";
 
 describe("SHL från extern källa", () => {
   it("svenska kortnamn", () => {
@@ -42,5 +42,31 @@ describe("SHL från extern källa", () => {
     expect(refreshAfter("matches", 19, live, now)).toBe(10);
     expect(refreshAfter("matches", 12, [], now)).toBe(180);
     expect(refreshAfter("table", 3, [], now)).toBe(24 * 60);
+  });
+});
+
+describe("Luleå i fokus", () => {
+  const m = (id: number, date: string, home: string, away: string, hs: number | null, as: number | null, status: "finished" | "scheduled" | "live") => ({ id, date, home, away, homeScore: hs, awayScore: as, status, statusText: "" });
+  const season = [
+    m(1, "2026-10-01T17:00:00Z", "Luleå", "Brynäs", 3, 1, "finished"),
+    m(2, "2026-10-03T13:15:00Z", "Frölunda", "Luleå", 4, 2, "finished"),
+    m(3, "2026-10-09T17:00:00Z", "Luleå", "Växjö", null, null, "scheduled"),
+    m(4, "2026-10-11T13:15:00Z", "Modo", "Luleå", null, null, "scheduled"),
+    m(5, "2026-10-03T13:15:00Z", "Rögle", "HV71", 1, 0, "finished"),
+  ];
+  it("senaste, nästa, form och tabellplats", () => {
+    const s = focusSummary(season, [], [{ pos: 2, team: "Luleå", gp: 2, w: 1, otw: 0, otl: 0, l: 1, gf: 5, ga: 5, pts: 3 }], "Luleå", new Date("2026-10-05T12:00:00Z"));
+    expect(s.last?.id).toBe(2);
+    expect(s.next?.id).toBe(3);
+    expect(s.form).toEqual(["V", "F"]);
+    expect(s.pos).toBe(2);
+  });
+  it("pågående match i dag går före", () => {
+    const s = focusSummary(season, [m(3, "2026-10-09T17:00:00Z", "Luleå", "Växjö", 1, 0, "live")], null, "Luleå", new Date("2026-10-09T17:30:00Z"));
+    expect(s.last).toMatchObject({ id: 3, status: "live", homeScore: 1 });
+    expect(s.next?.id).toBe(4);
+  });
+  it("senaste omgången", () => {
+    expect(lastRound(season, (iso) => iso.slice(0, 10))).toMatchObject({ day: "2026-10-03", rows: [{ id: 2 }, { id: 5 }] });
   });
 });

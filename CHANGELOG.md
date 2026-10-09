@@ -7,6 +7,15 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.75.0 – 2026-10-09
+
+- Stålbladet med riktigt tidningshuvud: överrad (tidningen, avdelningar, datum och nummer), namnet i stor tryckstil med lätt slitage och ett städ som symbol (Stålstaden), avdelningsrad med "Vi bevakar Stålstaden". Marinblå profil, tidningspapper.
+- Rubriker i smal fet versal som i dagstidningen, citatrubrik i serif, intervjufrågor i fet sans-serif.
+- Förstasidan: rubriken över bilden (bilden tonar ut mot papperet), texten i en ruta och tre puffar i rad längst ner.
+- SHL används på sidorna i stället för våra internmatcher: ny ruta "Luleå i SHL" med senaste (eller pågående) match, form (fem senaste), poäng och tabellplats samt nästa match. SHL i dag/senaste omgången och SHL-tabellen är på som standard. Våra egna matcher finns kvar som val.
+- När SHL visas får tabellen och matcherna platsen i stället för en andra annons. Blir det plats över under texten läggs fler rutor där; ryms inte hela tabellen visas toppen och Luleå.
+- Servern hämtar säsongens schema (Luleås matcher och senaste omgången) var sjätte timme, och efter en färdigspelad match.
+
 ## 2.74.0 – 2026-10-09
 
 - Stålbladet i en enhetlig, neutral stil som en lokaltidning: blått tidningshuvud med bara texten "STÅLBLADET" (ingen logga), röda etiketter, vitt papper. Löpsedeln har samma stil (gul/svart borttagen).

@@ -79,15 +79,17 @@ export function cover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: n
 }
 
 // ─── Tidningens profil (samma på alla sidor) ─────────────────────────────────
-/** Neutral lokaltidning: blått huvud, röda etiketter, vitt papper */
+/** Neutral lokaltidning i nordisk marinblå med ett städ som symbol (Stålstaden) */
 export const PRESS = {
-  blue: "#0c4f96",
-  red: "#c8102e",
-  paper: "#fbfaf7",
-  ink: "#121212",
-  muted: "#5c6066",
-  rule: "#c9ced6",
-  box: "#eef2f7",
+  blue: "#173a63",
+  blueDark: "#0f2847",
+  red: "#b3122a",
+  paper: "#efede7",
+  ink: "#141414",
+  muted: "#5b5f66",
+  rule: "#b9bec6",
+  box: "#e4e9f0",
+  boxBorder: "#c3cad4",
 };
 
 /** Vecka och årgång till tidningshuvudet ("Nr 41 · Årgång 26") */
@@ -99,86 +101,191 @@ export function issueOf(date = new Date()): { nr: number; year: number } {
   return { nr: Math.ceil(((+d - +y0) / 86_400_000 + 1) / 7), year: date.getFullYear() - 2000 };
 }
 
-const WEEKDAY_RE = /^(måndag|tisdag|onsdag|torsdag|fredag|lördag|söndag)\s+/i;
-
-/**
- * Tidningshuvudet: blått band med "STÅLBLADET" i vitt, veckodag, datum och nummer
- * till höger (ingen logga – tidningen är neutral). Returnerar höjden.
- */
-export function masthead(ctx: CanvasRenderingContext2D, dateLine: string, issue: { nr: number; year: number }, h = 124): number {
-  const M = 36;
-  ctx.fillStyle = PRESS.blue;
-  // Bandet går upp till bildens överkant även i 9:16 (där innehållet är nedflyttat)
-  ctx.fillRect(0, -400, IG_W, h + 400);
-  ctx.fillStyle = PRESS.red;
-  ctx.fillRect(0, h, IG_W, 5);
-  const date = dateLine.trim() || new Date().toLocaleDateString("sv-SE", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-  const wd = date.match(WEEKDAY_RE)?.[1] ?? "";
-  const rest = wd ? date.slice(wd.length).trim() : date;
-  const rightW = 300;
-  // Namnet så stort som får plats
-  let px = Math.round(h * 0.86);
-  ctx.font = `700 ${px}px ${HEAD}`;
-  while (px > 40 && ctx.measureText(PRESS_NAME.toUpperCase()).width > IG_W - 2 * M - rightW - 20) { px -= 2; ctx.font = `700 ${px}px ${HEAD}`; }
-  ctx.fillStyle = "#ffffff";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "middle";
-  ctx.letterSpacing = "1px";
-  ctx.fillText(PRESS_NAME.toUpperCase(), M - 2, h / 2 + 3);
-  ctx.letterSpacing = "0px";
-  // Höger: veckodag, datum, nummer
-  ctx.textAlign = "right";
-  ctx.textBaseline = "top";
-  let y = h * 0.14;
-  if (wd) {
-    ctx.font = `700 ${Math.round(h * 0.27)}px ${HEAD}`;
-    ctx.letterSpacing = "2px";
-    ctx.fillText(wd.toUpperCase(), IG_W - M, y);
-    ctx.letterSpacing = "0px";
-    y += h * 0.32;
+/** Städet: tidningens symbol (Stålstaden), med gnistor */
+export function anvil(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, color = PRESS.blue, sparks = true) {
+  const P = (px: number, py: number): [number, number] => [x + px * w, y + py * w];
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  // Ovansidan (banan) med hornet till vänster, midja, bred fot
+  ctx.moveTo(...P(0.3, 0.18));
+  ctx.lineTo(...P(0.98, 0.18));
+  ctx.lineTo(...P(1.0, 0.2));
+  ctx.lineTo(...P(1.0, 0.34));
+  ctx.lineTo(...P(0.9, 0.36));
+  ctx.quadraticCurveTo(...P(0.76, 0.4), ...P(0.74, 0.5));
+  ctx.lineTo(...P(0.74, 0.56));
+  ctx.quadraticCurveTo(...P(0.76, 0.6), ...P(0.86, 0.62));
+  ctx.lineTo(...P(0.9, 0.62));
+  ctx.lineTo(...P(0.92, 0.72));
+  ctx.lineTo(...P(0.28, 0.72));
+  ctx.lineTo(...P(0.3, 0.62));
+  ctx.lineTo(...P(0.34, 0.62));
+  ctx.quadraticCurveTo(...P(0.44, 0.6), ...P(0.46, 0.56));
+  ctx.lineTo(...P(0.46, 0.5));
+  ctx.quadraticCurveTo(...P(0.44, 0.42), ...P(0.34, 0.38));
+  ctx.quadraticCurveTo(...P(0.16, 0.34), ...P(0.02, 0.2));
+  ctx.quadraticCurveTo(...P(0.16, 0.2), ...P(0.3, 0.18));
+  ctx.closePath();
+  ctx.fill();
+  if (sparks) {
+    ctx.strokeStyle = color;
+    ctx.lineCap = "round";
+    ctx.lineWidth = Math.max(2, w * 0.025);
+    const [cx, cy] = P(0.66, 0.12);
+    for (const [ang, len] of [[-155, 0.08], [-125, 0.11], [-95, 0.12], [-65, 0.11], [-35, 0.08]] as const) {
+      const a = (ang * Math.PI) / 180;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * w * 0.05, cy + Math.sin(a) * w * 0.05);
+      ctx.lineTo(cx + Math.cos(a) * w * (0.05 + len), cy + Math.sin(a) * w * (0.05 + len));
+      ctx.stroke();
+    }
   }
-  ctx.font = `500 ${Math.round(h * 0.16)}px ${BODY}`;
-  ctx.fillText(fit(ctx, rest, rightW), IG_W - M, y);
-  y += h * 0.22;
-  ctx.fillStyle = "rgba(255,255,255,0.75)";
-  ctx.font = `500 ${Math.round(h * 0.13)}px ${BODY}`;
-  ctx.fillText(`Nr ${issue.nr} · Årgång ${issue.year}`, IG_W - M, y);
-  return h + 5;
+  ctx.restore();
 }
 
-/** Röd etikett ("INTERVJU", "EXTRA"). Returnerar bredd och höjd. */
-export function kickerTag(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, size = 26): { w: number; h: number } {
+/** Text med tryckslitage (fläckar i färgen, som på tidningspapper) */
+function worn(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, font: string, color: string, h: number) {
+  const [tmp, t] = canvas(Math.ceil(h * 1.4));
+  t.font = font;
+  t.fillStyle = color;
+  t.textAlign = "left";
+  t.textBaseline = "alphabetic";
+  t.fillText(text, x, h * 1.1);
+  t.globalCompositeOperation = "destination-out";
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 1400; i++) {
+    t.globalAlpha = 0.15 + rnd() * 0.5;
+    const r = rnd() < 0.9 ? 0.4 + rnd() * 0.8 : 1 + rnd() * 1.4;
+    t.beginPath();
+    t.arc(rnd() * IG_W, rnd() * h * 1.4, r, 0, Math.PI * 2);
+    t.fill();
+  }
+  t.globalAlpha = 1;
+  t.globalCompositeOperation = "source-over";
+  ctx.drawImage(tmp, 0, y - h * 1.1);
+}
+
+const WEEKDAY_RE = /^(måndag|tisdag|onsdag|torsdag|fredag|lördag|söndag)\s+/i;
+export type MastSize = "full" | "compact" | "small";
+
+/** Hjärta (ritat, inte tecken – typsnitten saknar det) */
+function heart(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number) {
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + s * 0.35);
+  ctx.bezierCurveTo(cx - s * 0.6, cy - s * 0.05, cx - s * 0.35, cy - s * 0.55, cx, cy - s * 0.2);
+  ctx.bezierCurveTo(cx + s * 0.35, cy - s * 0.55, cx + s * 0.6, cy - s * 0.05, cx, cy + s * 0.35);
+  ctx.fill();
+}
+
+/**
+ * Tidningshuvudet som i en riktig dagstidning: överrad (tidningen, avdelningar,
+ * datum och nummer), namnet i stort med tryckslitage och städet, och en rad med
+ * avdelningar. "compact" och "small" för artikel/intervju och sida 2.
+ * Returnerar höjden.
+ */
+export function masthead(ctx: CanvasRenderingContext2D, dateLine: string, issue: { nr: number; year: number }, size: MastSize = "full"): number {
+  const M = 36, W = IG_W - 2 * M;
+  const INK = PRESS.ink;
+  const date = (dateLine.trim() || new Date().toLocaleDateString("sv-SE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })).toUpperCase();
+  const nr = `NR ${issue.nr}  |  ÅRGÅNG ${issue.year}`;
+  const line = (y: number, t = 1.5) => { ctx.fillStyle = INK; ctx.fillRect(M, y, W, t); };
+  const small = (text: string, x: number, y: number, align: CanvasTextAlign, px = 15, weight = 600, color = INK, maxW = 9999) => {
+    ctx.font = `${weight} ${px}px ${HEAD}`;
+    ctx.fillStyle = color;
+    ctx.letterSpacing = "0.8px";
+    ctx.textAlign = align;
+    ctx.textBaseline = "top";
+    ctx.fillText(fit(ctx, text, maxW), x, y);
+    ctx.letterSpacing = "0px";
+  };
+  let y = 14;
+  if (size === "full") {
+    small("DIN LOKALA TIDNING FÖR", M, y, "left");
+    small("ISHOCKEYN I STÅLSTADEN", M, y + 19, "left");
+    small("MATCHER  •  MÄNNISKOR  •  FÖRENINGSLIV  •  GEMENSKAP", IG_W / 2 + 20, y + 9, "center", 16);
+    small(date, IG_W - M, y, "right", 15, 600, INK, 300);
+    small(nr, IG_W - M, y + 19, "right", 14, 500);
+    y += 46;
+    line(y, 2.5);
+    y += 8;
+  }
+  // Namnet och städet
+  const nameH = size === "full" ? 132 : size === "compact" ? 92 : 62;
+  const logoW = size === "full" ? 150 : size === "compact" ? 104 : 72;
+  const rightW = size === "full" ? 0 : size === "compact" ? 250 : 230;
+  const name = PRESS_NAME.toUpperCase();
+  let px = nameH;
+  const font = (p: number) => `900 ${p}px ${SERIF_HEAD}`;
+  ctx.font = font(px);
+  const maxW = W - logoW - 16 - (rightW ? rightW + 20 : 0);
+  while (px > 30 && ctx.measureText(name).width > maxW) { px -= 2; ctx.font = font(px); }
+  const textW = ctx.measureText(name).width;
+  // Versalhöjden i Playfair ≈ 0.71 em; ringen över Å behöver lite luft ovanför
+  const capH = px * 0.71;
+  const top = y + px * 0.16;
+  worn(ctx, name, M - 3, top + capH, font(px), INK, px);
+  const lx = rightW ? M + textW + 18 : IG_W - M - logoW;
+  anvil(ctx, lx, top + capH - logoW * 0.7, logoW, PRESS.blue);
+  if (rightW) {
+    small(date, IG_W - M, top + capH * 0.2, "right", size === "compact" ? 17 : 15, 600, INK, rightW);
+    small(nr, IG_W - M, top + capH * 0.2 + (size === "compact" ? 24 : 20), "right", size === "compact" ? 15 : 13, 500);
+  }
+  y = top + capH + px * 0.1;
+  if (size === "small") { line(y + 4, 2.5); return y + 8; }
+  line(y + 6, 1.5);
+  // Avdelningar
+  const ry = y + 16;
+  small("ISHOCKEY   |   SHL   |   LAGET   |   MATCHER   |   MÄNNISKOR   |   STÖRRE ÄN BARA RESULTAT", M, ry, "left", size === "full" ? 16 : 14, 500);
+  ctx.font = `700 ${size === "full" ? 16 : 14}px ${HEAD}`;
+  const tag = "VI BEVAKAR STÅLSTADEN";
+  small(tag, IG_W - M - 24, ry, "right", size === "full" ? 16 : 14, 700, PRESS.blue);
+  ctx.fillStyle = PRESS.blue;
+  heart(ctx, IG_W - M - 9, ry + 9, 18);
+  line(ry + 28, 2.5);
+  return ry + 34;
+}
+
+/** Etikett ("INTERVJU ///") i tidningens blå med snedstreck */
+export function kickerTag(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, size = 26, color = PRESS.blue): { w: number; h: number } {
   if (!text.trim()) return { w: 0, h: 0 };
   ctx.font = `700 ${size}px ${HEAD}`;
   ctx.letterSpacing = "1.5px";
   const t = text.trim().toUpperCase();
   const w = ctx.measureText(t).width + size * 0.8;
   const h = Math.round(size * 1.5);
-  ctx.fillStyle = PRESS.red;
+  ctx.fillStyle = color;
   ctx.fillRect(x, y, w, h);
+  for (let i = 0; i < 3; i++) {
+    const sx = x + w + 8 + i * (size * 0.42);
+    ctx.beginPath();
+    ctx.moveTo(sx, y + h); ctx.lineTo(sx + size * 0.22, y + h); ctx.lineTo(sx + size * 0.22 + h * 0.4, y); ctx.lineTo(sx + h * 0.4, y); ctx.closePath();
+    ctx.fill();
+  }
   ctx.fillStyle = "#fff";
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   ctx.fillText(t, x + size * 0.4, y + h / 2 + 1);
   ctx.letterSpacing = "0px";
-  return { w, h };
+  return { w: w + 8 + 3 * size * 0.42 + h * 0.4, h };
 }
 
-/** Annons som i tidningen: liten "ANNONS"-rad, logga och annonstext */
+/** Annons som i tidningen: "ANNONS" i ramen, logga och annonstext */
 export function pressAd(ctx: CanvasRenderingContext2D, ad: { name: string; slogan?: string | null }, logo: HTMLImageElement | null, x: number, y: number, w: number, h: number) {
-  ctx.fillStyle = PRESS.muted;
-  ctx.font = `600 13px ${BODY}`;
-  ctx.letterSpacing = "2px";
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = PRESS.boxBorder;
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(x, y, w, h);
+  ctx.fillStyle = PRESS.ink;
+  ctx.font = `700 13px ${HEAD}`;
+  ctx.letterSpacing = "1.5px";
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  ctx.fillText("ANNONS", x, y);
+  ctx.fillText("ANNONS", x + 8, y + 6);
   ctx.letterSpacing = "0px";
-  const by = y + 20, bh = h - 20;
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(x, by, w, bh);
-  ctx.strokeStyle = PRESS.rule;
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(x, by, w, bh);
+  const by = y + 24, bh = h - 24;
   const slogan = ad.slogan?.trim() || "";
   const pad = 14;
   const textH = slogan ? Math.min(bh * 0.4, 84) : 0;
@@ -196,7 +303,7 @@ export function pressAd(ctx: CanvasRenderingContext2D, ad: { name: string; sloga
     ctx.fillText(ad.name.toUpperCase(), x + w / 2, by + pad + lh / 2);
   }
   if (slogan) {
-    ctx.fillStyle = PRESS.ink;
+    ctx.fillStyle = PRESS.blue;
     let px = 24, lines: string[] = [];
     for (; px >= 13; px -= 1) {
       ctx.font = `italic 600 ${px}px ${SERIF_BODY}`;
@@ -231,15 +338,15 @@ export async function renderBill(d: BillPostData): Promise<HTMLCanvasElement> {
   paper(ctx, PRESS.paper, 0.03);
   contentArea(ctx);
   const M = 56;
-  let y = masthead(ctx, d.dateLine, issueOf(), 150) + 40;
-  if (d.kicker) y += kickerTag(ctx, d.kicker, M, y, 44).h + 30;
+  let y = masthead(ctx, d.dateLine, issueOf(), "full") + 36;
+  if (d.kicker) y += kickerTag(ctx, d.kicker, M, y, 44, PRESS.red).h + 30;
 
   // Rubriken så stor som möjligt (egna radbrytningar följs), blocket centreras i ytan
-  const LH = 1.04;
+  const LH = 1.0;
   const limit = d.sponsor ? IG_H - 230 : IG_H - 60;
   const photoH = d.photo ? 330 : 0;
   const subReserve = d.sub ? 140 : 0;
-  const head = fitHeadline(ctx, d.headline || "Rubrik", IG_W - 2 * M, limit - y - photoH - subReserve - 20, (px) => `900 ${px}px ${SERIF_HEAD}`, LH, 220, 60);
+  const head = fitHeadline(ctx, (d.headline || "Rubrik").toUpperCase(), IG_W - 2 * M, limit - y - photoH - subReserve - 20, (px) => `700 ${px}px ${HEAD}`, LH, 240, 60);
   ctx.font = `600 44px ${SERIF_BODY}`;
   const subLines = d.sub ? clip(ctx, wrap(ctx, d.sub, IG_W - 2 * M), 2, IG_W - 2 * M) : [];
   const headH = head.lines.length * head.px * LH;
@@ -248,7 +355,7 @@ export async function renderBill(d: BillPostData): Promise<HTMLCanvasElement> {
   ctx.fillStyle = PRESS.ink;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  ctx.font = `900 ${head.px}px ${SERIF_HEAD}`;
+  ctx.font = `700 ${head.px}px ${HEAD}`;
   head.lines.forEach((l, i) => ctx.fillText(l, M - 4, y + i * head.px * LH));
   y += headH;
   if (subLines.length) {

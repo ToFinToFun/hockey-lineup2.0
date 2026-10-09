@@ -77,3 +77,49 @@ export function refreshAfter(kind: "table" | "matches", hourLocal: number, match
   if (kind === "matches") return liveOrSoon ? 10 : 180;
   return liveOrSoon ? 30 : 60;
 }
+
+/** Laget tidningen följer extra (klubben finns i Luleå) */
+export const FOCUS_TEAM = "Luleå";
+export const isFocus = (team: string) => team === FOCUS_TEAM;
+
+export interface FocusSummary {
+  team: string;
+  last: ShlMatch | null;
+  next: ShlMatch | null;
+  /** Senaste fem (äldst först): V = vinst, F = förlust (efter förl./straffar: "V*"/"F*") */
+  form: Array<"V" | "F">;
+  pos: number | null;
+  pts: number | null;
+  gp: number | null;
+}
+
+/**
+ * Lagets senaste och nästa match, formen och tabellplatsen. Dagens matcher
+ * (tätare uppdaterade) går före säsongens schema för samma match.
+ */
+export function focusSummary(season: ShlMatch[], today: ShlMatch[], table: ShlStandingRow[] | null | undefined, team = FOCUS_TEAM, now = new Date()): FocusSummary {
+  const byId = new Map<number, ShlMatch>();
+  for (const m of season) if (m.home === team || m.away === team) byId.set(m.id, m);
+  for (const m of today) if (m.home === team || m.away === team) byId.set(m.id, m);
+  const games = [...byId.values()].sort((a, b) => a.date.localeCompare(b.date));
+  const played = games.filter((m) => m.status === "finished" && m.homeScore != null);
+  const live = games.find((m) => m.status === "live") ?? null;
+  const upcoming = games.filter((m) => m.status === "scheduled" && +new Date(m.date) > +now - 3 * 3600_000);
+  const won = (m: ShlMatch) => (m.home === team ? m.homeScore! > m.awayScore! : m.awayScore! > m.homeScore!);
+  const row = table?.find((r) => r.team === team);
+  return {
+    team,
+    last: live ?? played[played.length - 1] ?? null,
+    next: upcoming[0] ?? null,
+    form: played.slice(-5).map((m) => (won(m) ? "V" : "F")),
+    pos: row?.pos ?? null, pts: row?.pts ?? null, gp: row?.gp ?? null,
+  };
+}
+
+/** Senaste omgången: alla färdigspelade matcher den senaste dagen det spelades */
+export function lastRound(season: ShlMatch[], dayOf: (iso: string) => string): { day: string; rows: ShlMatch[] } | null {
+  const done = season.filter((m) => m.status === "finished");
+  if (!done.length) return null;
+  const day = done.map((m) => dayOf(m.date)).sort().pop()!;
+  return { day, rows: season.filter((m) => dayOf(m.date) === day).sort((a, b) => a.date.localeCompare(b.date)) };
+}

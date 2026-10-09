@@ -108,6 +108,8 @@ interface Settings {
   /** SHL från Inställningar → Externa källor */
   pressShlTable?: boolean;
   pressShlGames?: boolean;
+  /** Luleå i SHL (senaste/nästa match, form och tabellplats) – på om inget annat valts */
+  pressFocus?: boolean;
 }
 
 const BASE: Omit<Settings, "kind"> = {
@@ -123,8 +125,8 @@ const NEW: Record<Kind, Settings> = {
   award: { ...BASE, kind: "award", title: "", awardId: "points_leader", awardPlaces: [1, 2, 3], statPeriod: "month" },
   image: { ...BASE, kind: "image", title: "" },
   bill: { ...BASE, kind: "bill", title: "", pressStyle: "yellow", kicker: "", pressPhoto: false },
-  front: { ...BASE, kind: "front", title: "", kicker: "Lokalsport", pressPhoto: true, pressLatest: true, pressNext: true, pressResults: true, boxTitle: "", teasers: EMPTY_TEASERS, background: "omklad" },
-  article: { ...BASE, kind: "article", title: "", kicker: "Lokalsport", pressPhoto: true, pressLatest: true, pressNext: true, background: "malburen" },
+  front: { ...BASE, kind: "front", title: "", kicker: "Lokalsport", pressPhoto: true, pressLatest: false, pressNext: true, pressResults: false, boxTitle: "", teasers: EMPTY_TEASERS, background: "omklad" },
+  article: { ...BASE, kind: "article", title: "", kicker: "Lokalsport", pressPhoto: true, pressLatest: false, pressNext: true, background: "malburen" },
   interview: { ...BASE, kind: "interview", title: "", kicker: "Intervju", pressPhoto: true, pressLatest: false, pressNext: true, background: "omklad" },
 };
 
@@ -456,16 +458,31 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
     } : null;
     const shlData = shlQ.data;
     const hhmm = (iso: string) => new Date(iso).toLocaleString("sv-SE", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-    const shlTable = s.pressShlTable && shlData?.table?.rows.length
+    // SHL är på som standard (även i äldre sparade sidor) när det finns data
+    const shlTable = s.pressShlTable !== false && shlData?.table?.rows.length
       ? { source: shlData.source, updated: hhmm(shlData.table.fetchedAt), rows: shlData.table.rows.map((r) => ({ pos: r.pos, team: r.team, gp: r.gp, pts: r.pts })) } : null;
     const gamesToday = shlData?.today.length ? shlData.today : null;
     const gameRows = (gamesToday ?? shlData?.lastRound?.rows ?? []).map((m) => ({
       home: m.home, away: m.away,
-      score: m.homeScore != null && m.status !== "scheduled" ? `${m.homeScore}–${m.awayScore}${m.status === "live" ? "*" : ""}` : null,
+      score: m.homeScore != null && m.status !== "scheduled" ? `${m.homeScore}–${m.awayScore}` : null, live: m.status === "live",
       time: new Date(m.date).toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Europe/Stockholm" }),
     }));
-    const shlGames = s.pressShlGames && gameRows.length && shlData
+    const shlGames = s.pressShlGames !== false && gameRows.length && shlData
       ? { title: gamesToday ? "SHL i dag" : "SHL senaste omgången", rows: gameRows, source: shlData.source, updated: hhmm(gamesToday ? shlData.todayFetchedAt ?? new Date().toISOString() : `${shlData.lastRound!.day}T22:00:00`) } : null;
+    const f = shlData?.focus;
+    const dayStr = (iso: string, time = false) => {
+      const dt = new Date(iso);
+      const wd = dt.toLocaleDateString("sv-SE", { weekday: "short", timeZone: "Europe/Stockholm" }).replace(".", "");
+      const dm = dt.toLocaleDateString("sv-SE", { day: "numeric", month: "numeric", timeZone: "Europe/Stockholm" });
+      return `${wd} ${dm}${time ? ` ${dt.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Europe/Stockholm" })}` : ""}`;
+    };
+    const focus = s.pressFocus !== false && f && shlData && (f.last || f.next) ? {
+      team: f.team,
+      last: f.last && f.last.homeScore != null ? { home: f.last.home, away: f.last.away, homeScore: f.last.homeScore, awayScore: f.last.awayScore ?? 0, live: f.last.status === "live", when: dayStr(f.last.date) } : null,
+      next: f.next ? { home: f.next.home, away: f.next.away, when: dayStr(f.next.date, true) } : null,
+      form: f.form, pos: f.pos, pts: f.pts, gp: f.gp,
+      source: shlData.source, updated: hhmm(shlData.todayFetchedAt ?? shlData.seasonFetchedAt ?? shlData.table?.fetchedAt ?? new Date().toISOString()),
+    } : null;
     return {
       kind: s.kind as PressPageData["kind"], format, dateLine: s.dateLine, sponsor: null,
       kicker: s.kicker ?? "", headline: s.title, quoteHead: s.quoteHead ?? "", ingress: s.subtitle, body: s.body,
@@ -475,7 +492,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
       teasers: s.kind === "front" ? (s.teasers ?? []).map((t, i) => ({ kicker: t.kicker, title: t.title, sub: t.sub, page: t.page, image: teaserImgs[i] ?? null })) : [],
       latest, next,
       results: s.pressResults ? pressResults : [],
-      shlTable, shlGames,
+      shlTable, shlGames, focus,
       ads, issue: issueOf(),
     };
   };
@@ -583,7 +600,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
     s.kind === "cards" ? !!savedCards.data && !!registry.data && cardCanvases.length >= knownCardPlayers
     : s.kind === "stats" ? !statsQ.isFetching && !awardsQ.isFetching && !gkIceQ.isFetching && !gkFunQ.isFetching && !periodsQ.isLoading
     : s.kind === "award" ? awardsQ.isSuccess && !!registry.data && !!savedCards.data && (!award || awardCards.length > 0)
-    : s.kind === "result" || isPress(s.kind) ? matchesQ.isSuccess && !opponentsForResult.isLoading && (!isPress(s.kind) || !!bgImg || ownActive) && teasersLoaded
+    : s.kind === "result" || isPress(s.kind) ? matchesQ.isSuccess && !opponentsForResult.isLoading && (!isPress(s.kind) || !!bgImg || ownActive) && teasersLoaded && (!isPressPage(s.kind) || !shlQ.isLoading)
     : true);
   useEffect(() => {
     if (!headless || renderedRef.current) return;
@@ -870,11 +887,17 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
                     <p className="text-[11px] text-white/50 mb-1.5">På sidan</p>
                     <div className="flex flex-wrap gap-1.5">
                       <button onClick={() => update({ pressPhoto: s.pressPhoto === false })} className={chip(s.pressPhoto !== false)}>{s.pressPhoto !== false ? "✓ " : ""}Bild</button>
-                      <button onClick={() => update({ pressLatest: !s.pressLatest })} disabled={!reportData} className={`${chip(!!s.pressLatest && !!reportData)} disabled:opacity-35`}>{s.pressLatest && reportData ? "✓ " : ""}Senaste matchen</button>
+                      <button onClick={() => update({ pressLatest: !s.pressLatest })} disabled={!reportData} className={`${chip(!!s.pressLatest && !!reportData)} disabled:opacity-35`}>{s.pressLatest && reportData ? "✓ " : ""}Senaste internmatchen</button>
                       <button onClick={() => update({ pressNext: !s.pressNext })} className={chip(!!s.pressNext)}>{s.pressNext ? "✓ " : ""}Nästa match</button>
-                      <button onClick={() => update({ pressResults: !s.pressResults })} className={chip(!!s.pressResults)}>{s.pressResults ? "✓ " : ""}Resultatbörsen</button>
-                      <button onClick={() => update({ pressShlTable: !s.pressShlTable })} disabled={!shlQ.data?.table} className={`${chip(!!s.pressShlTable && !!shlQ.data?.table)} disabled:opacity-35`}>{s.pressShlTable && shlQ.data?.table ? "✓ " : ""}SHL-tabellen</button>
-                      <button onClick={() => update({ pressShlGames: !s.pressShlGames })} disabled={!shlQ.data?.today.length && !shlQ.data?.lastRound} className={`${chip(!!s.pressShlGames && !!(shlQ.data?.today.length || shlQ.data?.lastRound))} disabled:opacity-35`}>{s.pressShlGames && (shlQ.data?.today.length || shlQ.data?.lastRound) ? "✓ " : ""}SHL-matcher</button>
+                      <button onClick={() => update({ pressResults: !s.pressResults })} className={chip(!!s.pressResults)}>{s.pressResults ? "✓ " : ""}Våra matcher</button>
+                      {([
+                        ["pressFocus", "Luleå i SHL", !!shlQ.data?.focus],
+                        ["pressShlGames", "SHL-matcher", !!(shlQ.data?.today.length || shlQ.data?.lastRound)],
+                        ["pressShlTable", "SHL-tabellen", !!shlQ.data?.table],
+                      ] as const).map(([k, name, has]) => {
+                        const on = s[k] !== false && has;
+                        return <button key={k} onClick={() => update({ [k]: s[k] === false })} disabled={!has} className={`${chip(on)} disabled:opacity-35`}>{on ? "✓ " : ""}{name}</button>;
+                      })}
                     </div>
                     <p className="text-[10px] text-white/35 mt-1">Texten går först – rutorna läggs i sidospalten i den här ordningen så långt plats finns, resten på sida 2. Senaste matchen = vald match ovan, nästa match från laget.se.{!shlQ.data?.configured ? " SHL kräver en API-nyckel under Inställningar → Externa källor." : ""}</p>
                   </div>
