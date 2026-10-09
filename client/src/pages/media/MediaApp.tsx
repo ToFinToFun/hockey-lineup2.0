@@ -18,7 +18,7 @@ import { club } from "@shared/club";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
-import { ArrowLeft, Download, Share2, Copy, Check, Save, Plus, Trash2, Loader2, RefreshCw, Upload, X, Users, Type, CalendarDays, IdCard, BarChart3, Trophy, Film, Award, ImageIcon, Clapperboard } from "lucide-react";
+import { ArrowLeft, Download, Share2, Copy, Check, Save, Plus, Trash2, Loader2, RefreshCw, Upload, X, Users, Type, CalendarDays, IdCard, BarChart3, Trophy, Film, Award, ImageIcon, Clapperboard, Newspaper, Wand2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useSponsors, logoForName, randomSponsorName } from "@/lib/sponsors";
 import { createTeamSlots, groupSlots, type TeamConfig } from "@/lib/lineup";
@@ -26,12 +26,15 @@ import type { Player } from "@/lib/players";
 import { prepareSourcePhoto } from "@/lib/cardPhoto";
 import { renderMediaPost, MEDIA_OVERLAYS, MEDIA_BACKGROUNDS, overlayFromTheme, type MediaOverlay, type MediaBackground, type LineupGroup, type MediaPostData, type PostFormat } from "@/lib/mediaImages";
 import { setVideoStill, type VideoStill } from "@/lib/videoStill";
+import { BILL_STYLES, PRESS_NAME, type BillStyle } from "@/lib/pressImages";
+import { pressFacts, headlineSuggestions, articleText, cleanName } from "@/lib/pressText";
 import { type CardSettings } from "@shared/cardRender";
 import { renderPlayerCard } from "@/lib/savedCardImage";
 import { cellsFor, defaultStatsTitle } from "@shared/cardStats";
 import { STAT_CATEGORIES, STAT_PERIODS, periodRange, statRows, goalieRows, isGoalieCategory, type StatCategory, type StatPeriod } from "./mediaStats";
 
-type Kind = "lineup" | "text" | "cards" | "stats" | "result" | "award" | "image";
+type Kind = "lineup" | "text" | "cards" | "stats" | "result" | "award" | "image" | "bill" | "article";
+const isPress = (k: Kind) => k === "bill" || k === "article";
 
 interface Settings {
   kind: Kind;
@@ -71,6 +74,14 @@ interface Settings {
   photoDim: number;
   /** Egen bild används som bakgrund (gäller alla mallar) */
   useOwnPhoto?: boolean;
+  // Stålbladet (löpsedel och artikel)
+  pressStyle?: BillStyle;
+  kicker?: string;
+  byline?: string;
+  /** Bild på löpsedeln/artikeln (egen bild eller vald bakgrund) */
+  pressPhoto?: boolean;
+  /** Faktaruta i artikeln */
+  pressFacts?: boolean;
 }
 
 const BASE: Omit<Settings, "kind"> = {
@@ -85,6 +96,8 @@ const NEW: Record<Kind, Settings> = {
   result: { ...BASE, kind: "result", title: "" },
   award: { ...BASE, kind: "award", title: "", awardId: "points_leader", awardPlaces: [1, 2, 3], statPeriod: "month" },
   image: { ...BASE, kind: "image", title: "" },
+  bill: { ...BASE, kind: "bill", title: "", pressStyle: "yellow", kicker: "", pressPhoto: false },
+  article: { ...BASE, kind: "article", title: "", kicker: "Matchreferat", pressPhoto: true, pressFacts: true, background: "malburen" },
 };
 
 const WEEKDAYS = ["Söndag", "Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag"];
@@ -130,6 +143,7 @@ function defaultCaption(s: Settings, tags: string[]): string {
     const lines = s.groups.map((g) => `${g.label}: ${g.players.map((p) => `${p.name}${p.number ? ` #${p.number}` : ""}`).join(", ")}`);
     return [`${s.title || "Dagens lag"} – ${s.teamName} ${s.team === "green" ? "💚" : "🤍"}`, s.dateLine, "", ...lines, s.sponsorName ? `\nPresenteras av ${s.sponsorName}` : "", "", tagLine].filter((l, i, a) => !(l === "" && a[i - 1] === "")).join("\n").trim();
   }
+  if (isPress(s.kind)) return [s.title, s.subtitle, s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tagLine].filter(Boolean).join("\n\n");
   if (s.kind === "stats" || s.kind === "cards" || s.kind === "image") {
     return [s.title, s.subtitle, s.kind === "image" ? s.info : "", s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tagLine].filter(Boolean).join("\n\n");
   }
@@ -181,10 +195,12 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
   const tags = tagsQuery.data ?? [];
 
   // ─── Senaste resultat: matchrapportens resultatbild för en vald match ───
-  const matchesQ = trpc.score.match.list.useQuery(undefined, { enabled: s.kind === "result", staleTime: 60_000 });
-  const opponentsForResult = trpc.opponents.list.useQuery({ includeArchived: true }, { enabled: s.kind === "result", staleTime: 5 * 60_000 });
+  const needsMatch = s.kind === "result" || isPress(s.kind);
+  const matchesQ = trpc.score.match.list.useQuery(undefined, { enabled: needsMatch, staleTime: 60_000 });
+  const opponentsForResult = trpc.opponents.list.useQuery({ includeArchived: true }, { enabled: needsMatch, staleTime: 5 * 60_000 });
   const resultMatches = useMemo(() => ((matchesQ.data ?? []) as unknown as ReportMatch[]).filter((m) => (m as { reviewStatus?: string }).reviewStatus !== "rejected").slice(0, 15), [matchesQ.data]);
-  const resultMatch = resultMatches.find((m) => m.id === s.matchId) ?? resultMatches[0];
+  // Stålbladet: matchId 0 = ingen match (bara fritext)
+  const resultMatch = isPress(s.kind) && s.matchId === 0 ? undefined : resultMatches.find((m) => m.id === s.matchId) ?? resultMatches[0];
   const reportData = useMemo(() => {
     if (!resultMatch) return null;
     const cands = starCandidates({ teamWhiteScore: resultMatch.teamWhiteScore, teamGreenScore: resultMatch.teamGreenScore, goalHistory: resultMatch.goalHistory, lineup: resultMatch.lineup });
@@ -192,8 +208,38 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
     const keys = saved && saved.length === 3 ? saved : autoStars(cands, resultMatch.id);
     const stars = keys.map((k) => cands.find((c) => c.key === k)).filter(Boolean) as StarCandidate[];
     const opp = resultMatch.opponentId ? opponentsForResult.data?.find((o) => o.id === resultMatch.opponentId) ?? null : null;
-    return buildReportData(resultMatch, stars, null, resultMatch.report?.showStats ?? [true, true, true], s.title || resultMatch.report?.title || undefined, true, opp);
-  }, [resultMatch, opponentsForResult.data, s.title]);
+    return buildReportData(resultMatch, stars, null, resultMatch.report?.showStats ?? [true, true, true], (s.kind === "result" ? s.title : "") || resultMatch.report?.title || undefined, true, opp);
+  }, [resultMatch, opponentsForResult.data, s.title, s.kind]);
+
+  // ─── Stålbladet: rubrikförslag, artikeltext och matchfakta från matchen ───
+  const press = useMemo(() => {
+    if (!isPress(s.kind) || !reportData || !resultMatch) return null;
+    const facts = pressFacts(reportData, (resultMatch as { plannedMinutes?: number | null }).plannedMinutes ?? null);
+    const seed = resultMatch.id;
+    const text = articleText(facts, { location: resultMatch.location ?? null, sponsor: s.sponsorName, seed });
+    const goals = reportData.goals;
+    let w = 0, g = 0;
+    const goalRows = goals.map((x) => { if (x.team === "white") w++; else g++; return `${w}–${g} ${cleanName(x.scorer) || "?"}${x.minute != null ? ` (${x.minute})` : ""}`; });
+    const factRows = [
+      `${reportData.whiteName}–${reportData.greenName} ${reportData.whiteScore}–${reportData.greenScore}`,
+      ...(goalRows.length ? [`Mål: ${goalRows.join(", ")}`] : []),
+      ...(reportData.stars.length ? [`Stjärnor: ${reportData.stars.map((x) => cleanName(x.name)).join(", ")}`] : []),
+      ...(resultMatch.location ? [`Spelplats: ${resultMatch.location}`] : []),
+    ];
+    return { facts, suggestions: headlineSuggestions(facts, seed), text, factRows };
+  }, [s.kind, reportData, resultMatch, s.sponsorName]);
+  // Nytt inlägg: fyll i rubrik och text från matchen (en gång per match – allt går att ändra)
+  const pressFilledFor = useRef<string>("");
+  useEffect(() => {
+    if (!press || postId !== null || !resultMatch) return;
+    const key = `${s.kind}:${resultMatch.id}`;
+    if (pressFilledFor.current === key) return;
+    pressFilledFor.current = key;
+    const h = press.suggestions[0];
+    update(s.kind === "bill"
+      ? { title: h?.headline ?? "", subtitle: h?.sub ?? "", kicker: h?.kicker ?? "SPORT", dateLine: s.dateLine || reportData?.dateLine.split(" · ")[0] || "" }
+      : { title: h?.headline ?? "", subtitle: press.text.ingress, body: press.text.body, kicker: s.kicker || "Matchreferat", dateLine: s.dateLine || reportData?.dateLine.split(" · ")[0] || "", info: s.info || (resultMatch.location ? `Bild från ${resultMatch.location}.` : "") });
+  }, [press, postId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Statistik ───
   const range = periodRange(s.statPeriod, periodsQ.data as never);
@@ -299,6 +345,18 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
 
   const sponsor = s.sponsorName ? { name: s.sponsorName, logo: logoForName(sponsors, s.sponsorName) } : null;
 
+  // Stålbladet: bilden är den egna bilden eller vald bakgrund
+  const [bgImg, setBgImg] = useState<HTMLImageElement | null>(null);
+  useEffect(() => {
+    if (!isPress(s.kind)) return;
+    const url = MEDIA_BACKGROUNDS.find((b) => b.id === s.background)?.url;
+    if (!url) { setBgImg(null); return; }
+    const i = new Image();
+    i.onload = () => setBgImg(i);
+    i.src = url;
+  }, [s.kind, s.background]);
+  const pressImg = ownActive ? photo : bgImg;
+
   // Bilden som ska ritas (formatet kan väljas separat, t.ex. för videon)
   const buildData = (format: PostFormat): MediaPostData => {
       // Mallen Bild: den uppladdade bilden ritas i ramen, inte som bakgrund
@@ -309,6 +367,8 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
         : s.kind === "award" ? { ...common, kind: "award", title: s.title || award?.title || "Utmärkelse", emoji: award?.emoji ?? "", subtitle: s.subtitle || range.label, places: awardCards }
         : s.kind === "result" ? (reportData ? { ...common, kind: "result", report: reportData } : { ...common, kind: "text", title: "Inga matcher än", body: "", info: "" })
         : s.kind === "image" ? { ...common, kind: "image", title: s.title, subtitle: s.subtitle, info: s.info, image: photo }
+        : s.kind === "bill" ? { kind: "bill", format, dateLine: s.dateLine, sponsor, style: s.pressStyle ?? "yellow", kicker: s.kicker ?? "", headline: s.title, sub: s.subtitle, photo: s.pressPhoto ? pressImg : null }
+        : s.kind === "article" ? { kind: "article", format, dateLine: s.dateLine, sponsor, kicker: s.kicker ?? "", headline: s.title, ingress: s.subtitle, body: s.body, caption: s.info, byline: s.byline ?? "", photo: s.pressPhoto !== false ? pressImg : null, facts: s.pressFacts && press ? { title: "Matchfakta", rows: press.factRows } : null }
         : { ...common, kind: "text", title: s.title, body: s.body, info: s.info };
   };
   const format: PostFormat = s.format ?? "feed";
@@ -325,7 +385,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
       c.toBlob((b) => { if (!cancelled) setBlob(b); }, "image/jpeg", 0.92);
     }, 120);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [s, photo, sponsor?.name, sponsor?.logo, cardCanvases, rows, range.label, reportData, awardCards, award?.title]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [s, photo, sponsor?.name, sponsor?.logo, cardCanvases, rows, range.label, reportData, awardCards, award?.title, bgImg, press]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startNew = (kind: Kind) => {
     setPostId(null);
@@ -392,7 +452,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
     s.kind === "cards" ? !!savedCards.data && !!registry.data && cardCanvases.length >= knownCardPlayers
     : s.kind === "stats" ? !statsQ.isFetching && !awardsQ.isFetching && !gkIceQ.isFetching && !gkFunQ.isFetching && !periodsQ.isLoading
     : s.kind === "award" ? awardsQ.isSuccess && !!registry.data && !!savedCards.data && (!award || awardCards.length > 0)
-    : s.kind === "result" ? matchesQ.isSuccess && !opponentsForResult.isLoading
+    : s.kind === "result" || isPress(s.kind) ? matchesQ.isSuccess && !opponentsForResult.isLoading && (!isPress(s.kind) || !!bgImg || ownActive)
     : true);
   useEffect(() => {
     if (!headless || renderedRef.current) return;
@@ -527,6 +587,9 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
             <button onClick={() => startNew("result")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Trophy size={14} /> Senaste resultat</button>
             <button onClick={() => startNew("image")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><ImageIcon size={14} /> Bild</button>
             <button onClick={startNextTraining} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><CalendarDays size={14} /> Nästa träning</button>
+            <p className="col-span-2 lg:col-span-1 text-[11px] text-white/45 mt-1" style={{ fontFamily: "'Playfair Display', serif" }}>{PRESS_NAME} <span className="font-sans text-white/30">– som i lokaltidningen</span></p>
+            <button onClick={() => startNew("bill")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-300/10 border border-amber-300/30 text-sm"><Newspaper size={14} /> Löpsedel</button>
+            <button onClick={() => startNew("article")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-300/10 border border-amber-300/30 text-sm"><Newspaper size={14} /> Artikel</button>
             <Link href="/media/video" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Film size={14} /> Video (Instagram)</Link>
           </div>
           <div>
@@ -587,6 +650,60 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
               </label>
               <label className="block text-[11px] text-white/50">Rubrik<input value={s.title} onChange={(e) => update({ title: e.target.value })} maxLength={40} placeholder={resultMatch?.report?.title || "Slutresultat"} className={input} /></label>
               <p className="text-[10px] text-white/35">Samma resultatbild som matchrapporten (Stars of the Game från rapporten), med vald bakgrund och överlägg.</p>
+            </>
+          )}
+          {isPress(s.kind) && (
+            <>
+              <label className="block text-[11px] text-white/50">Match
+                <select value={s.matchId === 0 ? 0 : resultMatch?.id ?? ""} onChange={(e) => { pressFilledFor.current = ""; update({ matchId: Number(e.target.value) }); }} className={input}>
+                  <option value={0} className="text-black">Ingen match – bara egen text</option>
+                  {resultMatches.map((m) => <option key={m.id} value={m.id} className="text-black">{m.name}</option>)}
+                </select>
+              </label>
+              {press && press.suggestions.length > 0 && (
+                <div>
+                  <p className="text-[11px] text-white/50 mb-1.5">Rubrikförslag från matchen</p>
+                  <div className="flex flex-col gap-1">
+                    {press.suggestions.map((h) => (
+                      <button key={h.headline} onClick={() => update({ title: h.headline, kicker: s.kind === "bill" ? h.kicker : s.kicker, ...(s.kind === "bill" ? { subtitle: h.sub } : {}) })}
+                        className={`text-left px-2.5 py-1.5 rounded-lg border text-xs ${s.title === h.headline ? "bg-amber-300/15 border-amber-300/50" : "bg-white/5 border-white/10"}`}>
+                        <span className="text-[10px] text-red-300/90 font-semibold mr-1.5">{h.kicker}</span>{h.headline}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {s.kind === "bill" && (
+                <div>
+                  <p className="text-[11px] text-white/50 mb-1.5">Löpsedel</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {BILL_STYLES.map((st) => <button key={st.id} onClick={() => update({ pressStyle: st.id })} className={chip((s.pressStyle ?? "yellow") === st.id)}>{st.name}</button>)}
+                    <button onClick={() => update({ pressPhoto: !s.pressPhoto })} className={chip(!!s.pressPhoto)}>{s.pressPhoto ? "✓ " : ""}Bild</button>
+                  </div>
+                </div>
+              )}
+              <label className="block text-[11px] text-white/50">Etikett<input value={s.kicker ?? ""} onChange={(e) => update({ kicker: e.target.value })} maxLength={24} placeholder={s.kind === "bill" ? "T.ex. EXTRA, SPORT, VÄNDNINGEN" : "T.ex. Matchreferat, Krönika"} className={input} /></label>
+              <label className="block text-[11px] text-white/50">Rubrik<input value={s.title} onChange={(e) => update({ title: e.target.value })} maxLength={80} className={input} /></label>
+              <label className="block text-[11px] text-white/50">{s.kind === "bill" ? "Underrubrik" : "Ingress"}
+                <textarea value={s.subtitle} onChange={(e) => update({ subtitle: e.target.value })} rows={2} maxLength={s.kind === "bill" ? 80 : 240} className={input} />
+              </label>
+              {s.kind === "article" && (
+                <>
+                  <label className="block text-[11px] text-white/50">
+                    <span className="flex items-center justify-between">Brödtext
+                      {press && <button onClick={() => update({ subtitle: press.text.ingress, body: press.text.body })} className="flex items-center gap-1 text-[11px] text-sky-300/80"><Wand2 size={12} /> Skriv från matchen</button>}
+                    </span>
+                    <textarea value={s.body} onChange={(e) => update({ body: e.target.value })} rows={6} maxLength={1500} className={input} />
+                  </label>
+                  <label className="block text-[11px] text-white/50">Bildtext<input value={s.info} onChange={(e) => update({ info: e.target.value })} maxLength={90} className={input} /></label>
+                  <label className="block text-[11px] text-white/50">Byline<input value={s.byline ?? ""} onChange={(e) => update({ byline: e.target.value })} maxLength={50} placeholder={`Av ${PRESS_NAME}s utsände`} className={input} /></label>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button onClick={() => update({ pressPhoto: s.pressPhoto === false })} className={chip(s.pressPhoto !== false)}>{s.pressPhoto !== false ? "✓ " : ""}Bild</button>
+                    <button onClick={() => update({ pressFacts: !s.pressFacts })} disabled={!press} className={`${chip(!!s.pressFacts && !!press)} disabled:opacity-35`}>{s.pressFacts && press ? "✓ " : ""}Matchfakta</button>
+                  </div>
+                </>
+              )}
+              <p className="text-[10px] text-white/35">{PRESS_NAME} är klubbens egen påhittade lokaltidning. Sponsorn syns som en annons i tidningen. Bilden väljs bland bakgrunderna nedan (eller egen bild).</p>
             </>
           )}
           {s.kind === "image" && (
@@ -691,7 +808,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
               {(statsQ.isFetching || awardsQ.isFetching || gkIceQ.isFetching || gkFunQ.isFetching) && <p className="text-[11px] text-white/40 flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> Hämtar statistik …</p>}
             </>
           )}
-          {s.kind === "cards" || s.kind === "stats" || s.kind === "result" || s.kind === "award" || s.kind === "image" ? null : s.kind === "lineup" ? (
+          {s.kind === "cards" || s.kind === "stats" || s.kind === "result" || s.kind === "award" || s.kind === "image" || isPress(s.kind) ? null : s.kind === "lineup" ? (
             <>
               <div>
                 <p className="text-[11px] text-white/50 mb-1.5">Lag</p>
@@ -728,7 +845,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
           )}
 
           <div>
-            <p className="text-[11px] text-white/50 mb-1.5">Bakgrund</p>
+            <p className="text-[11px] text-white/50 mb-1.5">{isPress(s.kind) ? "Bild" : "Bakgrund"}</p>
             <div className="grid grid-cols-4 gap-1.5">
               {MEDIA_BACKGROUNDS.map((b) => (
                 <button key={b.id} onClick={() => update({ background: b.id, useOwnPhoto: false })} title={b.name}
@@ -760,12 +877,14 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); e.target.value = ""; }} />
           </div>
 
+          {!isPress(s.kind) && (
           <div>
             <p className="text-[11px] text-white/50 mb-1.5">Överlägg</p>
             <div className="flex flex-wrap gap-1.5">
               {MEDIA_OVERLAYS.map((t) => <button key={t.id} onClick={() => update({ overlay: t.id })} className={chip(s.overlay === t.id)}>{t.name}</button>)}
             </div>
           </div>
+          )}
 
           <label className="block text-[11px] text-white/50">Presenteras av
             <select value={s.sponsorName ?? ""} onChange={(e) => update({ sponsorName: e.target.value || null })} className={input}>

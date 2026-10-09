@@ -135,7 +135,9 @@ export interface ImagePostData extends MediaCommon {
   image: HTMLImageElement | null;
 }
 
-export type MediaPostData = LineupPostData | TextPostData | CardsPostData | StatsPostData | ResultPostData | AwardPostData | ImagePostData;
+export type { BillPostData, ArticlePostData } from "@/lib/pressImages";
+export type MediaPostData = LineupPostData | TextPostData | CardsPostData | StatsPostData | ResultPostData | AwardPostData | ImagePostData
+  | import("@/lib/pressImages").BillPostData | import("@/lib/pressImages").ArticlePostData;
 
 /** Lagens loggor från klubbens inställningar */
 const LOGO = { get white() { return teamLogo("white"); }, get green() { return teamLogo("green"); } };
@@ -938,6 +940,12 @@ export async function renderMediaPost(d: MediaPostData): Promise<HTMLCanvasEleme
   if (d.kind === "award") return renderAward(d);
   if (d.kind === "stats") return renderStats(d);
   if (d.kind === "image") return renderImage(d);
+  if (d.kind === "bill" || d.kind === "article") {
+    // Stålbladet (tidningsstil) – egna typsnitt
+    const press = await import("@/lib/pressImages");
+    await press.ensurePressFonts();
+    return d.kind === "bill" ? press.renderBill(d) : press.renderArticle(d);
+  }
   if (d.kind === "result") {
     const { renderResultImage } = await import("@/lib/matchReportImages");
     const c = await renderResultImage({ ...d.report, background: bgUrl(d.background), photo: d.photo ?? null, photoDim: d.photoDim, sponsor: d.sponsor ?? d.report.sponsor, format: d.format });

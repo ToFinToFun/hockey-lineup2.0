@@ -7,6 +7,16 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.72.0 – 2026-10-09
+
+- Media → Stålbladet: klubbens egen påhittade lokaltidning.
+  - Löpsedel (gul, vit eller svart) med tidningshuvud, etikett, jätterubrik, underrubrik och valfri bild.
+  - Artikel med tidningshuvud, rubrik, ingress, bild med bildtext, byline, brödtext i spalter och faktaruta (matchfakta).
+  - Välj en sparad match: rubrikförslag i tidningsstil (vändning, hattrick, sent avgörande, storseger, nolla …) och färdig ingress och brödtext – allt går att skriva om, eller välj "Ingen match" för helt egen text.
+  - Sponsorn visas som en annons i tidningen.
+  - Fungerar i både 4:5 och 9:16 och kan användas före ett videoklipp.
+- Nya typsnitt för tidningen: Playfair Display och Source Serif 4.
+
 ## 2.71.2 – 2026-10-09
 
 - Målens ordning på ett ställe: shared/goalOrder.ts beskriver regeln (senaste målet först i goalHistory) och har de enda funktionerna för tidsordning, första/sista mål och matchvinnande mål. Alla ställen som tidigare vände listan själva (statistik, rekord, Kul statistik, matchrapport, stjärnor, Score Tracker, matchhistorik, Video) använder dem.

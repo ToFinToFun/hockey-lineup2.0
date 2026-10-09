@@ -9,6 +9,11 @@ Samlat 2026-10-09 (v2.70.0). Inget här är påbörjat eller beslutat i detalj �
 - **Automatisk synk från medlemsregistret (laget.se)** – förberett med laget-namn och externt ID i spelarregistret.
 - **Utskriftsark för hockeykort** – A4, nio kort 63×88 mm med skärmärken. Skippat tills vidare.
 
+## Stålbladet (Media i tidningsstil) – fortsättning
+- Första versionen (v2.72.0): löpsedel (gul/vit/svart) och artikel med rubrikförslag, ingress och brödtext från matchen, matchfakta och sponsorn som annons.
+- Nästa: krönika (fri text med porträtt), resultatsida ("Resultatbörsen" med flera matcher/tabell), intervju (frågor och svar), spelarbetyg (1–5 puckar per spelare), "Veckans profil".
+- Sponsorer som tidningsannonser i fler former (helsidesannons, annonsruta i resultatsidan).
+
 ## Väntar på något
 - **Målljud och slutsignal i Score Tracker** – pausat, ljudfilerna saknas (målljud Vita, målljud Gröna, slutsignal → `client/public/audio/`). Se docs/ASSET-INVENTORY.md.
 - **PIR: "Ta fram förslag"** – köras löpande under säsongen när det finns matcher (försiktiga förslag från 6 matcher).
