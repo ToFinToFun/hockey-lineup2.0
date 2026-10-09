@@ -7,11 +7,14 @@
  * Klippet laddas upp direkt när det väljs (medan resten fylls i). Grafiken ritas
  * här och skickas som PNG; servern sätter ihop videon (server/video/).
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { ArrowLeft, Upload, Loader2, Download, Share2, Copy, Check, Shuffle, Film, RefreshCw, X, ImageIcon } from "lucide-react";
 import { peekVideoStill, clearVideoStill, stillFromImage, type VideoStill } from "@/lib/videoStill";
+import { VIDEO_TIMING, STILL_POSITIONS, DEFAULT_STILL_POSITION, addedDuration, videoSegments, type StillPosition } from "@shared/videoTimeline";
+// Media i dolt läge: ritar ett sparat inlägg till bilden
+const MediaRenderer = lazy(() => import("./MediaApp"));
 import { trpc } from "@/lib/trpc";
 import { useSponsors, pickLeastShown, type Sponsor } from "@/lib/sponsors";
 import { starCandidates, autoStars, type StarCandidate } from "@/lib/starsOfGame";
@@ -37,12 +40,7 @@ function matchDateLine(m: ReportMatch | undefined): string {
   return `${WEEKDAYS[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}${m?.location ? ` · ${m.location}` : ""}`;
 }
 const fmtMB = (b: number) => `${Math.round(b / 1024 / 1024)} MB`;
-/** Intro 1 + intro 2 + outro minus övergångarna (samma som server/video/videoFfmpeg.ts) */
-const BASE_ADDED = 1.6 + 2.8 + 2.6 - 3 * 0.4;
-/** Bild före klippet: standardlängd och gränser (samma som servern) */
-export const STILL_DEFAULT = 3.5, STILL_MIN = 2, STILL_MAX = 8;
-/** Vad intro, ev. bild och outro lägger till (exporteras för test) */
-export const addedSeconds = (still: number) => BASE_ADDED + (still > 0 ? still - 0.4 : 0);
+const { still: STILL_DEFAULT, stillMin: STILL_MIN, stillMax: STILL_MAX } = VIDEO_TIMING;
 
 /** Målen i tidsordning med ställningen efter varje mål (exporteras för test) */
 export function goalsWithScore(m: ReportMatch | undefined) {
@@ -138,6 +136,12 @@ export default function VideoApp() {
   const [still, setStill] = useState<VideoStill | null>(() => peekVideoStill());
   useEffect(() => { clearVideoStill(); }, []);
   const [stillSec, setStillSec] = useState(STILL_DEFAULT);
+  const [stillPos, setStillPos] = useState<StillPosition>(DEFAULT_STILL_POSITION);
+  /** Titelkortet (intro 2) kan stängas av */
+  const [withIntro2, setWithIntro2] = useState(true);
+  // Sparat inlägg från Media: ritas av Media i dolt läge
+  const mediaPosts = trpc.media.list.useQuery(undefined, { staleTime: 60_000 });
+  const [renderPostId, setRenderPostId] = useState<number | null>(null);
   const stillFileRef = useRef<HTMLInputElement>(null);
   const pickStill = (f: File) => {
     const url = URL.createObjectURL(f);
@@ -147,7 +151,8 @@ export default function VideoApp() {
     img.src = url;
   };
   const stillUsed = still ? stillSec : 0;
-  const ADDED_SECONDS = addedSeconds(stillUsed);
+  const timing = { still: stillUsed, stillPosition: stillPos, intro2: withIntro2 };
+  const ADDED_SECONDS = addedDuration(timing);
 
   useEffect(() => {
     fetch("/api/media/video/limits").then((r) => (r.ok ? r.json() : null)).then(setLimits).catch(() => undefined);
@@ -431,7 +436,7 @@ export default function VideoApp() {
       });
     }, 150);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [dataKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dataKey, withIntro2, stillPos, !!still]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Bildtext ───
   const autoCaption = useMemo(() => {
@@ -470,8 +475,8 @@ export default function VideoApp() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           uploadId: upload.id, format, introSide: side,
-          intro2: png(graphics.intro2), outro: png(graphics.outro), overlay: graphics.overlay && hasOverlay(data) ? png(graphics.overlay) : null,
-          still: stillSrc, stillSeconds: stillUsed || undefined,
+          intro2: withIntro2 ? png(graphics.intro2) : null, outro: png(graphics.outro), overlay: graphics.overlay && hasOverlay(data) ? png(graphics.overlay) : null,
+          still: stillSrc, stillSeconds: stillUsed || undefined, stillPosition: stillPos,
           fileName: fileName(), sponsorIds, introLogos,
         }),
       });
@@ -578,7 +583,7 @@ export default function VideoApp() {
           </div>
 
           <div>
-            <p className="text-[11px] text-white/50 mb-1.5">Bild före klippet</p>
+            <p className="text-[11px] text-white/50 mb-1.5">Bild från Media</p>
             {still ? (
               <div className="flex items-start gap-3 rounded-lg bg-white/[0.03] border border-white/10 p-2">
                 <img src={stillSrc!} alt="" className={`w-16 rounded border border-white/15 ${format === "reel" ? "aspect-[9/16]" : "aspect-[4/5]"} object-cover`} />
@@ -587,6 +592,9 @@ export default function VideoApp() {
                   <label className="block text-[11px] text-white/50">Visas {stillSec.toLocaleString("sv-SE")} s
                     <input type="range" min={STILL_MIN} max={STILL_MAX} step={0.5} value={stillSec} onChange={(e) => setStillSec(Number(e.target.value))} className="w-full accent-emerald-400" />
                   </label>
+                  <div className="flex flex-wrap gap-1">
+                    {STILL_POSITIONS.map((p) => <button key={p.id} onClick={() => setStillPos(p.id)} className={`px-2 py-1 rounded-md text-[11px] font-semibold border ${stillPos === p.id ? "bg-emerald-500/20 border-emerald-400/60 text-emerald-200" : "bg-white/5 border-white/10 text-white/60"}`}>{p.name}</button>)}
+                  </div>
                   <div className="flex gap-3">
                     <button onClick={() => stillFileRef.current?.click()} className="flex items-center gap-1 text-[11px] text-white/60 hover:text-white"><Upload size={12} /> Byt bild</button>
                     <button onClick={() => setStill(null)} className="flex items-center gap-1 text-[11px] text-red-300/70"><X size={12} /> Ta bort</button>
@@ -595,12 +603,28 @@ export default function VideoApp() {
               </div>
             ) : (
               <div className="flex flex-wrap gap-2">
-                <Link href="/media" className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs"><ImageIcon size={13} /> Välj i Media</Link>
                 <button onClick={() => stillFileRef.current?.click()} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs"><Upload size={13} /> Ladda upp bild</button>
+                <Link href="/media" className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs"><ImageIcon size={13} /> Skapa i Media</Link>
               </div>
             )}
+            {(mediaPosts.data?.length ?? 0) > 0 && (
+              <label className="block text-[11px] text-white/50 mt-2">{still ? "Byt till sparat inlägg" : "Eller välj ett sparat inlägg"}
+                <div className="flex items-center gap-2">
+                  <select value="" disabled={renderPostId !== null} onChange={(e) => { const id = Number(e.target.value); if (id) setRenderPostId(id); }} className={input}>
+                    <option value="" className="text-black">{renderPostId !== null ? "Ritar bilden …" : "Välj inlägg …"}</option>
+                    {mediaPosts.data!.map((p) => <option key={p.id} value={p.id} className="text-black">{p.title}</option>)}
+                  </select>
+                  {renderPostId !== null && <Loader2 size={16} className="animate-spin text-white/50 shrink-0" />}
+                </div>
+              </label>
+            )}
+            {renderPostId !== null && (
+              <Suspense fallback={null}>
+                <MediaRenderer key={renderPostId} renderPostId={renderPostId} onRendered={(st) => { if (st) setStill(st); setRenderPostId(null); }} />
+              </Suspense>
+            )}
             <input ref={stillFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) pickStill(f); e.target.value = ""; }} />
-            <p className="text-[10px] text-white/35 mt-1">Visas mellan titelkortet och klippet. Bilder från Media finns i båda formaten – rätt format väljs automatiskt (i Media: "Använd före ett videoklipp").</p>
+            <p className="text-[10px] text-white/35 mt-1">Standard först i videon – välj annan plats ovan. Bilder från Media finns i båda formaten, rätt format väljs automatiskt.</p>
           </div>
 
           <div>
@@ -670,8 +694,9 @@ export default function VideoApp() {
 
           <div className="space-y-2">
             <p className="text-[11px] text-white/50">Visa</p>
-            <div className="flex flex-wrap gap-1.5 items-center"><span className="text-[10px] text-white/40 w-16">Intro 2</span>
-              {toggle("intro", "picture", "Kort/foto")}{toggle("intro", "stats", "Statistik")}{toggle("intro", "dateLine", "Datum")}{toggle("intro", "sponsor", "Sponsor")}
+            <div className="flex flex-wrap gap-1.5 items-center"><span className="text-[10px] text-white/40 w-16">Titelkort</span>
+              <button onClick={() => setWithIntro2(!withIntro2)} className={chip(withIntro2)}>{withIntro2 ? "✓ Visa" : "Av"}</button>
+              {withIntro2 && <>{toggle("intro", "picture", "Kort/foto")}{toggle("intro", "stats", "Statistik")}{toggle("intro", "dateLine", "Datum")}{toggle("intro", "sponsor", "Sponsor")}</>}
             </div>
             <div className="flex flex-wrap gap-1.5 items-center"><span className="text-[10px] text-white/40 w-16">Klippet</span>
               {toggle("overlay", "nameBar", "Namnlist")}{toggle("overlay", "score", "Ställning")}{toggle("overlay", "stats", "Statistik")}{toggle("overlay", "clubLogo", "Logga")}{toggle("overlay", "sponsorLogo", "Sponsor")}
@@ -719,16 +744,23 @@ export default function VideoApp() {
 
         {/* Förhandsvisning och resultat */}
         <section className="space-y-3">
-          <div className={`grid gap-2 ${stillSrc ? "grid-cols-4" : "grid-cols-3"}`}>
-            {[["Intro 2", introRef], ...(stillSrc ? [["Bild", null]] : []), ["Klippet", overlayRef], ["Outro", outroRef]].map(([label, ref]) => (
-              <div key={label as string}>
-                {ref ? <canvas ref={ref as React.RefObject<HTMLCanvasElement>} className={`w-full h-auto rounded-lg bg-black ${aspect}`} />
-                  : <img src={stillSrc!} alt="" className={`w-full h-auto rounded-lg bg-black ${aspect}`} />}
-                <p className="text-[10px] text-white/40 text-center mt-1">{label as string}</p>
+          {(() => {
+            const segs = videoSegments(timing).filter((x) => x !== "intro1");
+            const label = { intro2: "Titelkort", still: "Bild", clip: "Klippet", outro: "Outro" } as const;
+            const refs = { intro2: introRef, clip: overlayRef, outro: outroRef } as const;
+            return (
+              <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${segs.length}, minmax(0, 1fr))` }}>
+                {segs.map((seg) => (
+                  <div key={seg}>
+                    {seg === "still" ? <img src={stillSrc!} alt="" className={`w-full h-auto rounded-lg bg-black ${aspect}`} />
+                      : <canvas ref={refs[seg as keyof typeof refs]} className={`w-full h-auto rounded-lg bg-black ${aspect}`} />}
+                    <p className="text-[10px] text-white/40 text-center mt-1">{label[seg as keyof typeof label]}</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <p className="text-[10px] text-white/35">Före intro 2 kommer nedsläppet (1,6 s).{still ? ` Bilden visas ${stillSec.toLocaleString("sv-SE")} s.` : ""} {format === "reel" ? "Text och loggor hålls inom Instagrams säkra yta för Reels." : ""}</p>
+            );
+          })()}
+          <p className="text-[10px] text-white/35">{stillPos === "start" && still ? "Videon börjar med bilden, sedan nedsläppet (1,6 s)." : `Först kommer nedsläppet (1,6 s)${withIntro2 ? "" : " – utan titelkort"}.`}{still ? ` Bilden visas ${stillSec.toLocaleString("sv-SE")} s.` : ""} Hela videon blir ca {Math.round((upload?.duration ?? 0) + ADDED_SECONDS)} s. {format === "reel" ? "Text och loggor hålls inom Instagrams säkra yta för Reels." : ""}</p>
 
           <button onClick={() => void render()} disabled={!upload || !graphics || starting || job?.status === "queued" || job?.status === "rendering"}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-emerald-600 text-white font-semibold disabled:opacity-40">

@@ -25,7 +25,7 @@ import { createTeamSlots, groupSlots, type TeamConfig } from "@/lib/lineup";
 import type { Player } from "@/lib/players";
 import { prepareSourcePhoto } from "@/lib/cardPhoto";
 import { renderMediaPost, MEDIA_OVERLAYS, MEDIA_BACKGROUNDS, overlayFromTheme, type MediaOverlay, type MediaBackground, type LineupGroup, type MediaPostData, type PostFormat } from "@/lib/mediaImages";
-import { setVideoStill } from "@/lib/videoStill";
+import { setVideoStill, type VideoStill } from "@/lib/videoStill";
 import { type CardSettings } from "@shared/cardRender";
 import { renderPlayerCard } from "@/lib/savedCardImage";
 import { cellsFor, defaultStatsTitle } from "@shared/cardStats";
@@ -136,7 +136,12 @@ function defaultCaption(s: Settings, tags: string[]): string {
   return [s.title, s.body, s.info, s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tagLine].filter(Boolean).join("\n\n");
 }
 
-export default function MediaApp() {
+/**
+ * renderPostId: dolt läge (används av Video) – öppnar det sparade inlägget,
+ * väntar tills allt är hämtat och lämnar bilden i båda formaten till onRendered.
+ */
+export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: number; onRendered?: (still: VideoStill | null) => void } = {}) {
+  const headless = renderPostId !== undefined;
   const utils = trpc.useUtils();
   const [, navigate] = useLocation();
   const posts = trpc.media.list.useQuery();
@@ -349,6 +354,7 @@ export default function MediaApp() {
     }));
   };
 
+  const [photoLoading, setPhotoLoading] = useState(false);
   const open = async (p: NonNullable<typeof posts.data>[number]) => {
     setPostId(p.id);
     const saved = p.settings as Partial<Settings>;
@@ -358,10 +364,44 @@ export default function MediaApp() {
     setNewPhoto(undefined);
     setPhoto(null);
     if (p.hasPhoto) {
+      setPhotoLoading(true);
       const img = new Image();
-      img.onload = () => setPhoto(img);
+      img.onload = () => { setPhoto(img); setPhotoLoading(false); };
+      img.onerror = () => setPhotoLoading(false);
       img.src = `/api/media/${p.id}/photo?v=${new Date(p.updatedAt).getTime()}`;
     }
+  };
+
+  // ─── Dolt läge (Video): öppna inlägget och lämna bilden när allt är hämtat ───
+  const openedRef = useRef(false);
+  const renderedRef = useRef(false);
+  useEffect(() => {
+    if (!headless || openedRef.current || !posts.data) return;
+    const p = posts.data.find((x) => x.id === renderPostId);
+    if (!p) { renderedRef.current = true; toast.error("Inlägget finns inte längre"); onRendered?.(null); return; }
+    openedRef.current = true;
+    void open(p);
+  }, [posts.data]); // eslint-disable-line react-hooks/exhaustive-deps
+  const knownCardPlayers = s.cardPlayers.filter((id) => registry.data?.some((p) => p.id === id)).slice(0, 4).length;
+  const headlessReady = headless && postId === renderPostId && !photoLoading && (
+    s.kind === "cards" ? !!savedCards.data && !!registry.data && cardCanvases.length >= knownCardPlayers
+    : s.kind === "stats" ? !statsQ.isFetching && !awardsQ.isFetching && !periodsQ.isLoading
+    : s.kind === "award" ? awardsQ.isSuccess && !!registry.data && !!savedCards.data && (!award || awardCards.length > 0)
+    : s.kind === "result" ? matchesQ.isSuccess && !opponentsForResult.isLoading
+    : true);
+  useEffect(() => {
+    if (!headless || renderedRef.current) return;
+    // Säkerhetsnät: rita ändå efter 15 s om något aldrig blir klart
+    const giveUp = setTimeout(() => void finishHeadless(), 15_000);
+    if (!headlessReady) return () => clearTimeout(giveUp);
+    const t = setTimeout(() => void finishHeadless(), 500);
+    return () => { clearTimeout(t); clearTimeout(giveUp); };
+  }, [headlessReady, s, photo, cardCanvases, rows, reportData, awardCards]); // eslint-disable-line react-hooks/exhaustive-deps
+  const finishHeadless = async () => {
+    if (renderedRef.current || postId !== renderPostId) return;
+    renderedRef.current = true;
+    const [feed, reel] = await Promise.all([renderMediaPost(buildData("feed")), renderMediaPost(buildData("story"))]);
+    onRendered?.({ title: titleFor(), feed: feed.toDataURL("image/png"), reel: reel.toDataURL("image/png") });
   };
 
   const onFile = async (f: File) => {
@@ -458,6 +498,8 @@ export default function MediaApp() {
 
   const input = "w-full rounded-lg bg-white/5 border border-white/10 text-white text-sm px-3 py-2";
   const chip = (on: boolean) => `px-3 py-1.5 rounded-lg text-xs font-semibold border ${on ? "bg-emerald-500/20 border-emerald-400/60 text-emerald-200" : "bg-white/5 border-white/10 text-white/60"}`;
+
+  if (headless) return null;
 
   return (
     <div className="min-h-[100dvh] bg-[#0a0a0a] text-white">

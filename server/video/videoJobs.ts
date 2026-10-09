@@ -21,6 +21,7 @@ import os from "os";
 import { readSession, hasModule } from "../auth";
 import { recordSponsorNews } from "../sponsorsDb";
 import { buildFfmpegArgs, maxClipSeconds, stillSeconds, totalDuration, type VideoFormat } from "./videoFfmpeg";
+import { DEFAULT_STILL_POSITION, isStillPosition } from "../../shared/videoTimeline";
 import { introClip, validCustom } from "./videoIntro";
 import type { IntroSide } from "../../shared/videoIntro";
 
@@ -195,7 +196,7 @@ export function registerVideoRoutes(app: Express) {
   //    (intro 2, overlay, outro) som PNG. Svarar med jobb-id.
   app.post("/api/media/video/render", express.json({ limit: VIDEO_LIMITS.maxGraphicsJson }), async (req, res) => {
     if (!(await requireAdmin(req, res))) return;
-    const b = req.body as { uploadId?: string; format?: string; introSide?: string; intro2?: string; overlay?: string | null; outro?: string; still?: string | null; stillSeconds?: number; fileName?: string; sponsorIds?: number[]; introLogos?: unknown };
+    const b = req.body as { uploadId?: string; format?: string; introSide?: string; intro2?: string; overlay?: string | null; outro?: string; still?: string | null; stillSeconds?: number; stillPosition?: string; fileName?: string; sponsorIds?: number[]; introLogos?: unknown };
     if (!b.uploadId || !ID_RE.test(b.uploadId) || !fs.existsSync(uploadPath(b.uploadId))) return res.status(400).json({ error: "Klippet finns inte längre – ladda upp det igen" });
     const format: VideoFormat = b.format === "feed" ? "feed" : "reel";
     const introSide: IntroSide = b.introSide === "white" ? "white" : "green";
@@ -204,9 +205,13 @@ export function registerVideoRoutes(app: Express) {
     if (b.introLogos && !introCustom) return res.status(400).json({ error: "Loggorna till introt är ogiltiga" });
     // Bild före klippet (Media): längden räknas in i videons maxlängd
     const still = b.still ? stillSeconds(Number(b.stillSeconds) || 3.5) : 0;
+    const stillPosition = isStillPosition(b.stillPosition) ? b.stillPosition : DEFAULT_STILL_POSITION;
+    // Titelkortet kan stängas av (intro2: null)
+    const withIntro2 = b.intro2 !== null;
+    const timing = { still, stillPosition, intro2: withIntro2 };
     if (still) {
       const p = await probe(uploadPath(b.uploadId)).catch(() => null);
-      const maxClip = maxClipSeconds(VIDEO_LIMITS.maxSeconds, still);
+      const maxClip = maxClipSeconds(VIDEO_LIMITS.maxSeconds, timing);
       if (p && p.duration > maxClip + 0.5) return res.status(413).json({ error: `Med bilden får klippet vara högst ${maxClip} s (hela videon ${VIDEO_LIMITS.maxSeconds} s). Korta bilden eller klippet.` });
     }
     const id = newId();
@@ -214,7 +219,7 @@ export function registerVideoRoutes(app: Express) {
     try {
       await fsp.mkdir(dir, { recursive: true });
       await Promise.all([
-        writePng(path.join(dir, "intro2.png"), b.intro2),
+        withIntro2 ? writePng(path.join(dir, "intro2.png"), b.intro2) : Promise.resolve(),
         writePng(path.join(dir, "outro.png"), b.outro),
         b.overlay ? writePng(path.join(dir, "overlay.png"), b.overlay) : Promise.resolve(),
         still ? writePng(path.join(dir, "still.png"), b.still!) : Promise.resolve(),
@@ -236,13 +241,13 @@ export function registerVideoRoutes(app: Express) {
       job.status = "rendering";
       try {
         const p = await probe(uploadPath(uploadId));
-        job.duration = totalDuration(p.duration, still);
+        job.duration = totalDuration(p.duration, timing);
         const args = buildFfmpegArgs({
           format, clip: uploadPath(uploadId), clipDuration: p.duration, clipHasAudio: p.hasAudio,
-          intro1: await introClip(INTRO_DIR, format, introSide, introCustom), intro2: path.join(dir, "intro2.png"),
+          intro1: await introClip(INTRO_DIR, format, introSide, introCustom), intro2: withIntro2 ? path.join(dir, "intro2.png") : null,
           overlay: hasOverlay ? path.join(dir, "overlay.png") : null,
           outro: path.join(dir, "outro.png"), output: path.join(dir, "out.mp4"),
-          still: still ? path.join(dir, "still.png") : null, stillSeconds: still,
+          still: still ? path.join(dir, "still.png") : null, stillSeconds: still, stillPosition,
         });
         await run("ffmpeg", args, (s) => {
           const m = s.match(/time=(\d+):(\d+):(\d+(?:\.\d+)?)/);

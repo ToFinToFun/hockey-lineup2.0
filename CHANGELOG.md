@@ -7,6 +7,16 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.70.0 – 2026-10-09
+
+- Video: bilden från Media kan placeras Först (standard), Efter introt, Efter klippet eller Sist.
+- Video: titelkortet (intro 2) kan stängas av.
+- Video: välj ett sparat Media-inlägg direkt – Media ritar det i bakgrunden i båda formaten.
+- Förhandsvisningen i Video visar delarna i rätt ordning och hela videons längd.
+- Videons delar och längder räknas på ett ställe (shared/videoTimeline.ts) för både webbläsaren och servern.
+- Versionstaggar sätts automatiskt av GitHub Actions för varje versionscommit.
+- docs/PLAN-senare.md: idéer och saker att komma ihåg.
+
 ## 2.69.3 – 2026-10-09
 
 - Säkerhet: nodemailer 6 → 10 (fem kända sårbarheter med hög allvarlighet). Säkerhetsgranskningen i CI går igenom igen.
