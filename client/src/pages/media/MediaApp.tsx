@@ -24,10 +24,10 @@ import { useSponsors, logoForName, randomSponsorName } from "@/lib/sponsors";
 import { createTeamSlots, groupSlots, type TeamConfig } from "@/lib/lineup";
 import type { Player } from "@/lib/players";
 import { prepareSourcePhoto } from "@/lib/cardPhoto";
-import { renderMediaPost, MEDIA_OVERLAYS, MEDIA_BACKGROUNDS, overlayFromTheme, type MediaOverlay, type MediaBackground, type LineupGroup, type MediaPostData, type PostFormat, type PressPageData } from "@/lib/mediaImages";
+import { renderMediaPost, renderMediaPages, MEDIA_OVERLAYS, MEDIA_BACKGROUNDS, overlayFromTheme, type MediaOverlay, type MediaBackground, type LineupGroup, type MediaPostData, type PostFormat, type PressPageData } from "@/lib/mediaImages";
 import { setVideoStill, type VideoStill } from "@/lib/videoStill";
-import { BILL_STYLES, PRESS_NAME, type BillStyle } from "@/lib/pressImages";
-import { pressFacts, headlineSuggestions, articleText, cleanName } from "@/lib/pressText";
+import { PRESS_NAME, issueOf, type BillStyle } from "@/lib/pressImages";
+import { pressFacts, headlineSuggestions, articleText, cleanName, splitPasted } from "@/lib/pressText";
 import { type CardSettings } from "@shared/cardRender";
 import { renderPlayerCard } from "@/lib/savedCardImage";
 import { cellsFor, defaultStatsTitle } from "@shared/cardStats";
@@ -105,6 +105,9 @@ interface Settings {
   teasers?: TeaserSetting[];
   /** Andra annonsen i tidningen (första är vald sponsor) */
   sponsor2Name?: string | null;
+  /** SHL från Inställningar → Externa källor */
+  pressShlTable?: boolean;
+  pressShlGames?: boolean;
 }
 
 const BASE: Omit<Settings, "kind"> = {
@@ -122,8 +125,7 @@ const NEW: Record<Kind, Settings> = {
   bill: { ...BASE, kind: "bill", title: "", pressStyle: "yellow", kicker: "", pressPhoto: false },
   front: { ...BASE, kind: "front", title: "", kicker: "Lokalsport", pressPhoto: true, pressLatest: true, pressNext: true, pressResults: true, boxTitle: "", teasers: EMPTY_TEASERS, background: "omklad" },
   article: { ...BASE, kind: "article", title: "", kicker: "Lokalsport", pressPhoto: true, pressLatest: true, pressNext: true, background: "malburen" },
-  interview: { ...BASE, kind: "interview", title: "", kicker: "Intervju", pressPhoto: true, pressLatest: false, pressNext: true, background: "omklad",
-    body: "Hur skulle du beskriva säsongen hittills?\nSvar …\n\nVad har fungerat bäst?\nSvar …" },
+  interview: { ...BASE, kind: "interview", title: "", kicker: "Intervju", pressPhoto: true, pressLatest: false, pressNext: true, background: "omklad" },
 };
 
 const WEEKDAYS = ["Söndag", "Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag"];
@@ -182,7 +184,7 @@ function defaultCaption(s: Settings, tags: string[]): string {
     const lines = s.groups.map((g) => `${g.label}: ${g.players.map((p) => `${p.name}${p.number ? ` #${p.number}` : ""}`).join(", ")}`);
     return [`${s.title || "Dagens lag"} – ${s.teamName} ${s.team === "green" ? "💚" : "🤍"}`, s.dateLine, "", ...lines, s.sponsorName ? `\nPresenteras av ${s.sponsorName}` : "", "", tagLine].filter((l, i, a) => !(l === "" && a[i - 1] === "")).join("\n").trim();
   }
-  if (isPress(s.kind)) return [[s.title, s.quoteHead].filter(Boolean).join(" "), s.subtitle, tagLine].filter(Boolean).join("\n\n");
+  if (isPress(s.kind)) return [[s.title.replace(/\s*\n\s*/g, " "), s.quoteHead ? `”${s.quoteHead}”` : ""].filter(Boolean).join(" "), s.subtitle, tagLine].filter(Boolean).join("\n\n");
   if (s.kind === "stats" || s.kind === "cards" || s.kind === "image") {
     return [s.title, s.subtitle, s.kind === "image" ? s.info : "", s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tagLine].filter(Boolean).join("\n\n");
   }
@@ -226,6 +228,12 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
   const [caption, setCaption] = useState("");
   const [captionEdited, setCaptionEdited] = useState(false);
   const [blob, setBlob] = useState<Blob | null>(null);
+  /** Tidningssidor: sida 2 när texten inte får plats på en sida */
+  const [extraBlobs, setExtraBlobs] = useState<Blob[]>([]);
+  const [pageCount, setPageCount] = useState(1);
+  const [previewPage, setPreviewPage] = useState(0);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -394,6 +402,9 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
   }, [s.kind, s.background]);
   const pressImg = ownActive ? photo : bgImg;
 
+  // SHL-tabell och matcher (sparade på servern, hämtas med nyckel under Inställningar)
+  const shlQ = trpc.external.shl.useQuery(undefined, { enabled: isPressPage(s.kind), staleTime: 5 * 60_000, retry: false });
+
   // Puffarnas bilder (sparade som små JPEG i inställningarna)
   const [teaserImgs, setTeaserImgs] = useState<Array<HTMLImageElement | null>>([]);
   const teaserKey = s.kind === "front" ? (s.teasers ?? []).map((t) => t.image ?? "").join("|") : "";
@@ -413,7 +424,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
 
   // Resultatbörsen: de senaste matcherna (lagens namn som i matchrapporten)
   const pressResults = useMemo(() => {
-    if (s.kind !== "front") return [];
+    if (!isPressPage(s.kind)) return [];
     return resultMatches.slice(0, 5).map((m) => {
       const opp = m.opponentId ? opponentsForResult.data?.find((o) => o.id === m.opponentId) ?? null : null;
       const r = buildReportData(m, [], null, [false, false, false], undefined, true, opp);
@@ -443,8 +454,18 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
       when: eventLine({ eventDate: ev.eventDate, eventTime: ev.eventTime }),
       what: [ev.eventTitle || "Träning", ev.eventLocation].filter(Boolean).join(" · "),
     } : null;
-    const now = new Date();
-    const week = Math.ceil(((+now - +new Date(now.getFullYear(), 0, 1)) / 86_400_000 + new Date(now.getFullYear(), 0, 1).getDay() + 1) / 7);
+    const shlData = shlQ.data;
+    const hhmm = (iso: string) => new Date(iso).toLocaleString("sv-SE", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+    const shlTable = s.pressShlTable && shlData?.table?.rows.length
+      ? { source: shlData.source, updated: hhmm(shlData.table.fetchedAt), rows: shlData.table.rows.map((r) => ({ pos: r.pos, team: r.team, gp: r.gp, pts: r.pts })) } : null;
+    const gamesToday = shlData?.today.length ? shlData.today : null;
+    const gameRows = (gamesToday ?? shlData?.lastRound?.rows ?? []).map((m) => ({
+      home: m.home, away: m.away,
+      score: m.homeScore != null && m.status !== "scheduled" ? `${m.homeScore}–${m.awayScore}${m.status === "live" ? "*" : ""}` : null,
+      time: new Date(m.date).toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Europe/Stockholm" }),
+    }));
+    const shlGames = s.pressShlGames && gameRows.length && shlData
+      ? { title: gamesToday ? "SHL i dag" : "SHL senaste omgången", rows: gameRows, source: shlData.source, updated: hhmm(gamesToday ? shlData.todayFetchedAt ?? new Date().toISOString() : `${shlData.lastRound!.day}T22:00:00`) } : null;
     return {
       kind: s.kind as PressPageData["kind"], format, dateLine: s.dateLine, sponsor: null,
       kicker: s.kicker ?? "", headline: s.title, quoteHead: s.quoteHead ?? "", ingress: s.subtitle, body: s.body,
@@ -453,8 +474,9 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
       backdrop: bgImg,
       teasers: s.kind === "front" ? (s.teasers ?? []).map((t, i) => ({ kicker: t.kicker, title: t.title, sub: t.sub, page: t.page, image: teaserImgs[i] ?? null })) : [],
       latest, next,
-      results: s.kind === "front" && s.pressResults ? pressResults : [],
-      ads, issue: { nr: week, year: now.getFullYear() - 2000 },
+      results: s.pressResults ? pressResults : [],
+      shlTable, shlGames,
+      ads, issue: issueOf(),
     };
   };
 
@@ -478,15 +500,20 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(async () => {
-      const c = await renderMediaPost(buildData(format));
+      const pages = await renderMediaPages(buildData(format));
       if (cancelled || !canvasRef.current) return;
+      setPageCount(pages.length);
+      // Sida 2 och framåt (tidningssidor där texten fortsätter)
+      void Promise.all(pages.slice(1).map((p) => new Promise<Blob | null>((res) => p.toBlob(res, "image/jpeg", 0.92)))).then((bs) => { if (!cancelled) setExtraBlobs(bs.filter(Boolean) as Blob[]); });
+      const c = pages[Math.min(previewPage, pages.length - 1)];
+      const first = pages[0];
       canvasRef.current.width = c.width;
       canvasRef.current.height = c.height;
       canvasRef.current.getContext("2d")!.drawImage(c, 0, 0);
-      c.toBlob((b) => { if (!cancelled) setBlob(b); }, "image/jpeg", 0.92);
+      first.toBlob((b) => { if (!cancelled) setBlob(b); }, "image/jpeg", 0.92);
     }, 120);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [s, photo, sponsor?.name, sponsor?.logo, cardCanvases, rows, range.label, reportData, awardCards, award?.title, bgImg, press, teaserImgs, pressResults, event.data, sponsors]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [s, photo, sponsor?.name, sponsor?.logo, cardCanvases, rows, range.label, reportData, awardCards, award?.title, bgImg, press, teaserImgs, pressResults, event.data, sponsors, shlQ.data, previewPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startNew = (kind: Kind) => {
     setPostId(null);
@@ -590,7 +617,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
     s.kind === "lineup" ? `${s.title || "Dagens lag"} – ${s.teamName}${s.dateLine ? ` (${s.dateLine.split(" · ")[0]})` : ""}`
     : s.kind === "stats" ? `${s.title || statCat.title} – ${s.subtitle || range.label}`
     : s.kind === "result" ? `Resultat – ${resultMatch?.name ?? ""}`
-    : s.title || "Inlägg utan rubrik";
+    : s.title.replace(/\s*\n\s*/g, " ") || "Inlägg utan rubrik";
 
   const doSave = async (asNew: boolean) => {
     setBusy("save");
@@ -623,21 +650,26 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
   };
 
   const fileName = () => `${club().fileSlug}-${titleFor().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "")}.jpg`;
+  const allBlobs = () => (blob ? [blob, ...(pageCount > 1 ? extraBlobs : [])] : []);
+  const pageName = (i: number, n: number) => (n > 1 ? fileName().replace(/\.jpg$/, `-${i + 1}.jpg`) : fileName());
   const download = () => {
-    if (!blob) return;
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = fileName();
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    const list = allBlobs();
+    list.forEach((b, i) => setTimeout(() => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(b);
+      a.download = pageName(i, list.length);
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    }, i * 400));
   };
   const share = async () => {
-    if (!blob) return;
+    const list = allBlobs();
+    if (!list.length) return;
     setBusy("share");
     try {
       await navigator.clipboard.writeText(caption).catch(() => undefined);
-      const file = new File([blob], fileName(), { type: "image/jpeg" });
-      if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], text: caption });
+      const files = list.map((b, i) => new File([b], pageName(i, list.length), { type: "image/jpeg" }));
+      if (navigator.canShare?.({ files })) await navigator.share({ files, text: caption });
       else download();
     } catch (e) {
       if ((e as DOMException)?.name !== "AbortError") toast.error("Kunde inte dela");
@@ -726,6 +758,12 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
             <button onClick={() => update({ format: "story" })} className={chip(format === "story")}>Story/Reel 9:16</button>
           </div>
           <canvas ref={canvasRef} className={`w-full h-auto rounded-xl shadow-2xl bg-black ${format === "story" ? "aspect-[9/16] max-w-[300px] mx-auto block" : "aspect-[4/5]"}`} aria-label="Förhandsvisning" />
+          {pageCount > 1 && (
+            <div className="flex items-center justify-center gap-1.5">
+              {Array.from({ length: pageCount }, (_, i) => <button key={i} onClick={() => setPreviewPage(i)} className={chip(Math.min(previewPage, pageCount - 1) === i)}>Sida {i + 1}</button>)}
+              <span className="text-[10px] text-amber-200/80 ml-1">Texten fortsätter på sida 2 – laddas ned och delas som karusell.</span>
+            </div>
+          )}
           <p className="text-[10px] text-white/35 text-center">{format === "story" ? "9:16 (1080×1920) – innehållet ligger inom Instagrams säkra yta för Story och Reels." : "4:5 (1080×1350) – samma format som matchrapporten."}</p>
           <div className="grid grid-cols-3 gap-2">
             <button onClick={download} disabled={!blob} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-sm disabled:opacity-40"><Download size={14} /> Ladda ned</button>
@@ -783,13 +821,27 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
                 <div>
                   <p className="text-[11px] text-white/50 mb-1.5">Löpsedel</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {BILL_STYLES.map((st) => <button key={st.id} onClick={() => update({ pressStyle: st.id })} className={chip((s.pressStyle ?? "yellow") === st.id)}>{st.name}</button>)}
                     <button onClick={() => update({ pressPhoto: !s.pressPhoto })} className={chip(!!s.pressPhoto)}>{s.pressPhoto ? "✓ " : ""}Bild</button>
                   </div>
                 </div>
               )}
               <label className="block text-[11px] text-white/50">Etikett<input value={s.kicker ?? ""} onChange={(e) => update({ kicker: e.target.value })} maxLength={24} placeholder={s.kind === "bill" ? "T.ex. EXTRA, SPORT, VÄNDNINGEN" : "T.ex. Lokalsport, Intervju, Krönika"} className={input} /></label>
-              <label className="block text-[11px] text-white/50">{s.kind === "interview" ? "Namn / rubrik" : "Rubrik"}<input value={s.title} onChange={(e) => update({ title: e.target.value })} maxLength={80} placeholder={s.kind === "bill" ? "" : "T.ex. Kapten Hampus Bergman:"} className={input} /></label>
+              {isPressPage(s.kind) && (
+                <div className="rounded-lg border border-sky-400/25 bg-sky-500/5 p-2">
+                  <button onClick={() => setPasteOpen(!pasteOpen)} className="text-[11px] text-sky-200/90 font-semibold">{pasteOpen ? "▾" : "▸"} Klistra in hela texten (t.ex. från ett mejl)</button>
+                  {pasteOpen && (
+                    <div className="mt-2 space-y-1.5">
+                      <textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)} rows={6} placeholder={"Rubrik\n\nIngress …\n\nFråga?\n– Svar …"} className={input} />
+                      <p className="text-[10px] text-white/40">Första raden blir rubrik, nästa stycke ingress och resten text. Allt går att ändra efteråt.</p>
+                      <button onClick={() => { const p = splitPasted(pasteText); update({ ...(p.headline ? { title: p.headline } : {}), ...(p.ingress ? { subtitle: p.ingress } : {}), body: p.body }); setPasteText(""); setPasteOpen(false); toast.success("Texten är fördelad i fälten"); }}
+                        disabled={!pasteText.trim()} className="px-3 py-1.5 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-200 text-xs font-semibold disabled:opacity-40">Fördela i fälten</button>
+                    </div>
+                  )}
+                </div>
+              )}
+              <label className="block text-[11px] text-white/50">{s.kind === "interview" ? "Rubrik (t.ex. namnet)" : "Rubrik"} <span className="text-white/30">– Enter ger ny rad</span>
+                <textarea value={s.title} onChange={(e) => update({ title: e.target.value })} rows={2} maxLength={140} placeholder={s.kind === "bill" ? "" : "T.ex. Kapten Bergman Lahti om frånvaron"} className={input} />
+              </label>
               {isPressPage(s.kind) && (
                 <label className="block text-[11px] text-white/50">Citatrubrik (valfri)<input value={s.quoteHead ?? ""} onChange={(e) => update({ quoteHead: e.target.value })} maxLength={80} placeholder="T.ex. Vi bygger något speciellt här" className={input} /></label>
               )}
@@ -820,13 +872,15 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
                       <button onClick={() => update({ pressPhoto: s.pressPhoto === false })} className={chip(s.pressPhoto !== false)}>{s.pressPhoto !== false ? "✓ " : ""}Bild</button>
                       <button onClick={() => update({ pressLatest: !s.pressLatest })} disabled={!reportData} className={`${chip(!!s.pressLatest && !!reportData)} disabled:opacity-35`}>{s.pressLatest && reportData ? "✓ " : ""}Senaste matchen</button>
                       <button onClick={() => update({ pressNext: !s.pressNext })} className={chip(!!s.pressNext)}>{s.pressNext ? "✓ " : ""}Nästa match</button>
-                      {s.kind === "front" && <button onClick={() => update({ pressResults: !s.pressResults })} className={chip(!!s.pressResults)}>{s.pressResults ? "✓ " : ""}Resultatbörsen</button>}
+                      <button onClick={() => update({ pressResults: !s.pressResults })} className={chip(!!s.pressResults)}>{s.pressResults ? "✓ " : ""}Resultatbörsen</button>
+                      <button onClick={() => update({ pressShlTable: !s.pressShlTable })} disabled={!shlQ.data?.table} className={`${chip(!!s.pressShlTable && !!shlQ.data?.table)} disabled:opacity-35`}>{s.pressShlTable && shlQ.data?.table ? "✓ " : ""}SHL-tabellen</button>
+                      <button onClick={() => update({ pressShlGames: !s.pressShlGames })} disabled={!shlQ.data?.today.length && !shlQ.data?.lastRound} className={`${chip(!!s.pressShlGames && !!(shlQ.data?.today.length || shlQ.data?.lastRound))} disabled:opacity-35`}>{s.pressShlGames && (shlQ.data?.today.length || shlQ.data?.lastRound) ? "✓ " : ""}SHL-matcher</button>
                     </div>
-                    <p className="text-[10px] text-white/35 mt-1">Senaste matchen = vald match ovan. Nästa match hämtas från laget.se.{s.kind === "front" ? " Resultatbörsen visas när det inte finns något citat." : ""}</p>
+                    <p className="text-[10px] text-white/35 mt-1">Texten går först – rutorna läggs i sidospalten i den här ordningen så långt plats finns, resten på sida 2. Senaste matchen = vald match ovan, nästa match från laget.se.{!shlQ.data?.configured ? " SHL kräver en API-nyckel under Inställningar → Externa källor." : ""}</p>
                   </div>
                   {s.kind === "front" && (
                     <div className="space-y-2">
-                      <p className="text-[11px] text-white/50">Puffar längst ner (tom rubrik = ingen puff)</p>
+                      <p className="text-[11px] text-white/50">Puffar i sidospalten (tom rubrik = ingen puff)</p>
                       {(s.teasers ?? EMPTY_TEASERS).map((t, i) => {
                         const set = (patch: Partial<TeaserSetting>) => update({ teasers: (s.teasers ?? EMPTY_TEASERS).map((x, j) => (j === i ? { ...x, ...patch } : x)) });
                         return (
@@ -849,7 +903,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
                   )}
                 </>
               )}
-              <p className="text-[10px] text-white/35">{PRESS_NAME} är klubbens egen påhittade lokaltidning. Sponsorerna syns som vanliga annonser (annonstexten ändras under Sponsorer). Bilden väljs bland bakgrunderna nedan (eller egen bild){s.kind === "article" ? " – artikeln ligger på den valda bakgrunden" : ""}.</p>
+              <p className="text-[10px] text-white/35">{PRESS_NAME} är klubbens egen påhittade lokaltidning. Sponsorerna syns som vanliga annonser (annonstexten ändras under Sponsorer). Bilden väljs bland bakgrunderna nedan (eller egen bild).</p>
             </>
           )}
           {s.kind === "image" && (
@@ -1039,7 +1093,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
             </select>
           </label>
           {isPressPage(s.kind) && (
-            <label className="block text-[11px] text-white/50">Annons 2 {s.kind === "front" ? "(visas när det finns färre än tre puffar)" : "(används inte på den här sidan)"}
+            <label className="block text-[11px] text-white/50">Annons 2 {s.kind === "front" ? "(längst ner på sidan)" : "(i sidospalten om plats finns, annars sida 2)"}
               <select value={s.sponsor2Name ?? ""} onChange={(e) => update({ sponsor2Name: e.target.value || null })} className={input}>
                 <option value="" className="text-black">Ingen annons</option>
                 {sponsors.filter((sp) => sp.active).map((sp) => <option key={sp.name} value={sp.name} className="text-black">{sp.name}</option>)}

@@ -20,6 +20,7 @@ import { getClubAsset } from "../clubAssets";
 import { getOpponentLogo } from "../opponents";
 import { startAutoNewsSchedule } from "../autoNews";
 import { startAutoLineupSchedule } from "../autoLineup";
+import { startExternalSchedule } from "../externalSources";
 import { getMediaPhoto } from "../mediaPosts";
 import { registerVideoRoutes } from "../video/videoJobs";
 import { appRouter } from "../routers";
@@ -220,6 +221,8 @@ async function startServer() {
     // Automatisk nyhet till laget.se (gör bara något om den är påslagen)
     startAutoNewsSchedule();
     startAutoLineupSchedule();
+    // SHL-tabell och matcher (bara med API-nyckel under Inställningar → Externa källor)
+    startExternalSchedule();
     console.log(`Stålstadens v${APP_VERSION} kör på port ${port}`);
   });
 }

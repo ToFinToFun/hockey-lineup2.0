@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pressFacts, headlineSuggestions, articleText, cleanName } from "./pressText";
+import { pressFacts, headlineSuggestions, articleText, cleanName, splitPasted } from "./pressText";
 
 const report = (goals: Array<[string, string, number, boolean?]>, w: number, g: number) => ({
   whiteName: "Vita", greenName: "Gröna", whiteScore: w, greenScore: g, dateLine: "Tisdag 6/10",
@@ -32,5 +32,32 @@ describe("Stålbladet – texter från matchen", () => {
     expect(headlineSuggestions(f)[0].headline).toMatch(/1–1|Vita|Ingen/);
     expect(cleanName("Hampus Bergman #16")).toBe("Hampus Bergman");
     expect(cleanName("Bo (självmål)")).toBe("Bo");
+  });
+});
+
+describe("splitPasted (inklistrat från mejl)", () => {
+  const MAIL = `Lokalpressen ringde och ville ha en intervju..... 🙂
+
+...........
+
+Kapten Bergman Lahti om frånvaron, Vitas form och ryktena om nyförvärv
+
+Efter en övertygande premiär mot Gröna har Vitas lagkapten Hampus Bergman Lahti lyst med sin frånvaro.
+
+Hej Hampus! Har Vita svårt att prestera utan sin lagkapten?
+
+– Svar...`;
+  it("rubrik, ingress och brödtext med tomma rader", () => {
+    const r = splitPasted(MAIL.split("...........")[1]);
+    expect(r.headline).toBe("Kapten Bergman Lahti om frånvaron, Vitas form och ryktena om nyförvärv");
+    expect(r.ingress).toMatch(/^Efter en övertygande premiär/);
+    expect(r.body).toBe("Hej Hampus! Har Vita svårt att prestera utan sin lagkapten?\n\n– Svar...");
+  });
+  it("utan tomma rader (enkla radbrytningar)", () => {
+    const r = splitPasted("Rubriken\nIngressen här.\nFråga ett?\n– Svar ett\nFråga två?\n– Svar två");
+    expect(r).toEqual({ headline: "Rubriken", ingress: "Ingressen här.", body: "Fråga ett?\n– Svar ett\nFråga två?\n– Svar två" });
+  });
+  it("börjar texten med en fråga blir allt brödtext", () => {
+    expect(splitPasted("Hur mår du?\n– Bra")).toEqual({ headline: "", ingress: "", body: "Hur mår du?\n– Bra" });
   });
 });

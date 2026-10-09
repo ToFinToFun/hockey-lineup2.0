@@ -1,24 +1,28 @@
 /**
  * Stålbladet – tidningssidor i Media: förstasidan, artikeln och intervjun.
  *
- * Allt är fritext (rubriker, ingress, brödtext, frågor och svar, citat, puffar)
- * med egna bilder. Runt omkring finns det som får sidan att kännas levande:
- * senaste matchen, nästa match, resultatbörsen och sponsorernas annonser –
- * annonser som i en riktig tidning (logga och en kort text), inte "presenteras av".
+ * Alla sidor har samma uppbyggnad: tidningshuvudet (blått band), etikett,
+ * rubrik, citatrubrik och ingress över hela bredden – sedan texten i spalter
+ * till vänster och en sidospalt till höger (porträtt, citat, puffar, senaste
+ * matchen, nästa match, resultat, SHL och annonser).
  *
- * Samma format som övriga Media-bilder: 4:5, eller 9:16 där bakgrunden fyller
- * hela höjden och sidan ligger i den säkra ytan.
+ * Texten går först: den får hela höjden och sidospalten fylls med det som får
+ * plats. Ryms texten inte fortsätter den på sida 2 (karusell på Instagram), där
+ * även det som inte fick plats i sidospalten hamnar.
+ *
+ * Egna radbrytningar följs (rubrik, ingress och text): Enter = ny rad,
+ * tom rad = nytt stycke. Intervju: en rad som slutar med ? blir en fråga i fetstil.
  */
 import { IG_W, IG_H, HEAD, BODY, tryLoad, fit, canvas, contentArea, frameHeight } from "@/lib/matchReportImages";
-import { PRESS_NAME, SERIF_HEAD, SERIF_BODY, wrap, clip, paper, cover, fitHeadline, type PressCommon } from "@/lib/pressImages";
-import { club } from "@shared/club";
-import { teamColor } from "@shared/teams";
+import { SERIF_HEAD, SERIF_BODY, PRESS, wrap, clip, paper, cover, fitHeadline, masthead, kickerTag, pressAd, type PressCommon } from "@/lib/pressImages";
 
 export type PressPageKind = "front" | "article" | "interview";
 
 export interface PressAd { name: string; logo: string | null; slogan?: string | null }
 export interface PressTeaser { kicker: string; title: string; sub: string; page: string; image: HTMLImageElement | null }
 export interface PressLatest { home: string; away: string; homeScore: number; awayScore: number; homeColor: string; awayColor: string; lines: string[] }
+export interface ShlTableRow { pos: number; team: string; gp: number; pts: number; diff?: number }
+export interface ShlGameRow { home: string; away: string; score: string | null; time: string }
 
 export interface PressPageData extends PressCommon {
   kind: PressPageKind;
@@ -27,167 +31,169 @@ export interface PressPageData extends PressCommon {
   /** Citatrubrik under rubriken, t.ex. "Vi bygger något speciellt här" */
   quoteHead: string;
   ingress: string;
-  /** Brödtext. Intervju: stycken där första raden slutar med ? blir frågor (fetstil). */
+  /** Brödtext. Intervju: rader som slutar med ? blir frågor (fetstil). */
   body: string;
-  /** Rubrik på textrutan (förstasidan), t.ex. "Om säsongen, laget och framåt" */
+  /** Rubrik över texten (förstasidan), t.ex. "Om säsongen, laget och framåt" */
   boxTitle: string;
   caption: string;
   byline: string;
   pullQuote: string;
   pullQuoteBy: string;
   photo: HTMLImageElement | null;
-  /** Artikeln: bilden bakom tidningssidan */
-  backdrop: HTMLImageElement | null;
+  /** Används inte längre (artikeln låg tidigare på en bakgrund) */
+  backdrop?: HTMLImageElement | null;
   teasers: PressTeaser[];
   latest: PressLatest | null;
   next: { when: string; what: string } | null;
   results: Array<{ home: string; away: string; score: string }>;
+  /** SHL-tabellen och SHL-matcher (från Inställningar → Externa källor) */
+  shlTable?: { rows: ShlTableRow[]; source: string; updated: string } | null;
+  shlGames?: { title: string; rows: ShlGameRow[]; source: string; updated: string } | null;
   ads: PressAd[];
   issue: { nr: number; year: number };
 }
 
-const INK = "#141414";
-const PAPER = "#f2eee6";
-const MUTED = "#5b5b5b";
-const LIGHT = "#e6e0d3";
-/** Tidningens färg: klubbens gröna (mörk nog för vit text) */
-const accent = () => shade(teamColor("green"), -0.35);
-
-function shade(hex: string, amt: number): string {
-  const m = hex.replace("#", "").match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
-  if (!m) return "#1d4d2e";
-  const c = m.slice(1).map((h) => Math.round(Math.min(255, Math.max(0, parseInt(h, 16) * (1 + amt)))));
-  return `#${c.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
-}
+const { ink: INK, muted: MUTED, rule: RULE, box: BOX, blue: BLUE, red: RED } = PRESS;
+const M = 36, W = IG_W - 2 * M, SIDE_W = 286, GUTTER = 26;
+const MAIN_W = W - SIDE_W - GUTTER, SIDE_X = M + MAIN_W + GUTTER;
+const BOTTOM = IG_H - 26;
 
 // ─── Text ────────────────────────────────────────────────────────────────────
 
-interface Para { text: string; bold: boolean }
+export interface Para { text: string; bold: boolean; gap: boolean }
 
-/** Stycken (tom rad emellan). Intervju: en rad som slutar med ? blir en fråga. */
+/**
+ * Stycken och rader som skrivna: Enter = ny rad, tom rad = nytt stycke (luft).
+ * Intervju (qa): en rad som slutar med ? blir en fråga i fetstil med luft före;
+ * svaret direkt under frågan (även om det är en tom rad emellan, som i mejl).
+ */
 export function toParagraphs(text: string, qa = false): Para[] {
   const out: Para[] = [];
-  for (const block of text.split(/\n\s*\n/)) {
-    const lines = block.split(/\n/).map((l) => l.trim()).filter(Boolean);
-    if (!lines.length) continue;
-    if (qa && /\?\s*$/.test(lines[0])) {
-      out.push({ text: lines[0], bold: true });
-      if (lines.length > 1) out.push({ text: lines.slice(1).join(" "), bold: false });
-    } else out.push({ text: lines.join(" "), bold: false });
+  const blocks = text.replace(/\r\n?/g, "\n").split(/\n[ \t]*\n/);
+  for (const block of blocks) {
+    const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+    lines.forEach((l, i) => {
+      const q = qa && /\?["”»)]?$/.test(l) && !/^[–—-]/.test(l);
+      const prev = out[out.length - 1];
+      const afterQuestion = qa && !!prev?.bold && !q;
+      const gap = !!prev && !afterQuestion && (i === 0 || (q && !prev.bold));
+      out.push({ text: l, bold: q, gap });
+    });
   }
   return out;
 }
 
-/**
- * Text i en eller flera spalter: största storleken (maxPx → minPx) där allt
- * ryms, annars minsta storleken och … på slutet. Frågor i fetstil, luft mellan stycken.
- */
-function columns(ctx: CanvasRenderingContext2D, paras: Para[], x: number, y: number, w: number, h: number, cols: number, opts: { maxPx: number; minPx: number; gap?: number; color?: string; family?: string; rule?: boolean }) {
-  const gap = opts.gap ?? 30;
-  const colW = (w - gap * (cols - 1)) / cols;
-  const fam = opts.family ?? SERIF_BODY;
-  type Line = { t: string; bold: boolean; space: boolean };
-  let px = opts.maxPx, lines: Line[] = [], perCol = 0, lh = 0;
-  for (; px >= opts.minPx; px -= 1) {
-    lh = Math.round(px * 1.32);
-    lines = [];
-    paras.forEach((p, i) => {
-      ctx.font = `${p.bold ? 700 : 400} ${px}px ${fam}`;
-      const ls = wrap(ctx, p.text, colW);
-      ls.forEach((t, k) => lines.push({ t, bold: p.bold, space: k === 0 && i > 0 && !paras[i - 1].bold }));
-    });
-    perCol = Math.floor(h / lh);
-    const needed = lines.reduce((n, l) => n + (l.space ? 0.5 : 0) + 1, 0);
-    if (needed <= perCol * cols) break;
-  }
-  px = Math.max(px, opts.minPx);
-  ctx.fillStyle = opts.color ?? INK;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  let col = 0, cy = 0;
-  for (let i = 0; i < lines.length; i++) {
-    const l = lines[i];
-    const add = l.space ? lh * 0.5 : 0;
-    if (cy + add + lh > h + 1) {
-      col++; cy = 0;
-      if (col >= cols) {
-        // Ryms inte: … på sista raden
-        const lx = x + (cols - 1) * (colW + gap);
-        ctx.fillStyle = PAPER;
-        ctx.fillRect(lx, y + h - lh, colW, lh);
-        ctx.fillStyle = opts.color ?? INK;
-        ctx.font = `400 ${px}px ${fam}`;
-        ctx.fillText(fit(ctx, `${lines[i - 1]?.t ?? ""}…`, colW), lx, y + h - lh);
-        break;
-      }
-    } else cy += cy === 0 ? 0 : add;
-    ctx.font = `${l.bold ? 700 : 400} ${px}px ${fam}`;
-    ctx.fillText(l.t, x + col * (colW + gap), y + cy);
-    cy += lh;
-  }
-  if (opts.rule && cols > 1) {
-    ctx.fillStyle = "#c9c1b0";
-    for (let c = 1; c < cols; c++) ctx.fillRect(x + c * (colW + gap) - gap / 2, y, 1, h);
-  }
+type Line = { t: string; bold: boolean; gap: boolean; p: number };
+
+function layoutLines(ctx: CanvasRenderingContext2D, paras: Para[], colW: number, px: number, fam = SERIF_BODY): Line[] {
+  const lines: Line[] = [];
+  paras.forEach((p, pi) => {
+    ctx.font = `${p.bold ? 700 : 400} ${px}px ${fam}`;
+    wrap(ctx, p.text, colW).forEach((t, k) => lines.push({ t, bold: p.bold, gap: k === 0 && p.gap, p: pi }));
+  });
+  return lines;
 }
 
-/** Text som ska fylla en ruta: största storleken där den ryms (rader centrerade eller vänster) */
-function fitText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, w: number, h: number, font: (px: number) => string, maxPx: number, minPx: number, lh = 1.15, align: CanvasTextAlign = "left") {
+interface Region { x: number; y: number; w: number; h: number; cols: number }
+const COL_GAP = 24;
+const colWidth = (r: Region) => (r.w - COL_GAP * (r.cols - 1)) / r.cols;
+
+/** Hur många rader (från start) som ryms i ytan */
+function fitCount(lines: Line[], start: number, r: Region, lh: number, reserveLast = 0): number {
+  let col = 0, cy = 0, i = start;
+  for (; i < lines.length; i++) {
+    const add = lines[i].gap && cy > 0 ? lh * 0.55 : 0;
+    const limit = col === r.cols - 1 ? r.h - reserveLast : r.h;
+    if (cy + add + lh > limit + 0.5) {
+      col++; cy = 0;
+      if (col >= r.cols) break;
+      i--; continue;
+    }
+    cy += add + lh;
+  }
+  return i - start;
+}
+
+/** Lägsta höjd där raderna ryms i spalterna (högst max) */
+function balancedHeight(lines: Line[], cols: number, lh: number, max: number): number {
+  const r: Region = { x: 0, y: 0, w: 100, h: max, cols };
+  if (fitCount(lines, 0, r, lh) < lines.length) return max;
+  let lo = 0, hi = max;
+  while (hi - lo > 2) { const mid = (lo + hi) / 2; if (fitCount(lines, 0, { ...r, h: mid }, lh) >= lines.length) hi = mid; else lo = mid; }
+  return Math.ceil(hi);
+}
+
+/** Rita rader i spalter; returnerar index för första raden som inte fick plats */
+function drawLines(ctx: CanvasRenderingContext2D, lines: Line[], start: number, region: Region, px: number, lh: number, opts: { more?: string } = {}): number {
+  let r = region;
+  // Ryms allt: jämna ut spalterna (som i tidningen) i stället för en full och en tom
+  if (!opts.more && r.cols > 1 && fitCount(lines, start, r, lh) >= lines.length - start) {
+    let lo = lh, hi = r.h;
+    while (hi - lo > 2) { const mid = (lo + hi) / 2; if (fitCount(lines, start, { ...r, h: mid }, lh) >= lines.length - start) hi = mid; else lo = mid; }
+    r = { ...r, h: Math.ceil(hi) };
+  }
+  const n = fitCount(lines, start, r, lh, opts.more ? lh : 0);
+  const end = start + n;
+  const colW = colWidth(r);
+  let col = 0, cy = 0;
+  ctx.fillStyle = INK;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  for (let i = start; i < end; i++) {
+    const l = lines[i];
+    const add = l.gap && cy > 0 ? lh * 0.55 : 0;
+    const limit = col === r.cols - 1 && opts.more ? r.h - lh : r.h;
+    if (cy + add + lh > limit + 0.5) { col++; cy = 0; }
+    else cy += add;
+    ctx.font = `${l.bold ? 700 : 400} ${px}px ${SERIF_BODY}`;
+    ctx.fillText(l.t, r.x + col * (colW + COL_GAP), r.y + cy);
+    cy += lh;
+  }
+  if (r.cols > 1) {
+    ctx.fillStyle = RULE;
+    for (let c = 1; c < r.cols; c++) ctx.fillRect(r.x + c * (colW + COL_GAP) - COL_GAP / 2, r.y, 1, r.h);
+  }
+  if (opts.more && end < lines.length) {
+    ctx.fillStyle = RED;
+    ctx.font = `700 ${Math.round(px * 0.85)}px ${HEAD}`;
+    ctx.letterSpacing = "1px";
+    ctx.textAlign = "right";
+    ctx.fillText(opts.more, r.x + r.w, r.y + r.h - lh * 0.9);
+    ctx.letterSpacing = "0px";
+  }
+  return end;
+}
+
+/** Text som ska fylla en ruta: största storleken där den ryms. Returnerar använd höjd. */
+function fitText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, w: number, h: number, font: (px: number) => string, maxPx: number, minPx: number, lh = 1.15, align: CanvasTextAlign = "left", draw = true) {
   if (!text) return 0;
   let px = maxPx, lines: string[] = [];
-  for (; px >= minPx; px -= 2) {
+  for (; px >= minPx; px -= 1) {
     ctx.font = font(px);
     lines = wrap(ctx, text, w);
     if (lines.length * px * lh <= h) break;
   }
-  ctx.font = font(Math.max(px, minPx));
-  const max = Math.max(1, Math.floor(h / (Math.max(px, minPx) * lh)));
-  lines = clip(ctx, lines, max, w);
-  ctx.textAlign = align;
-  ctx.textBaseline = "top";
-  const ax = align === "center" ? x + w / 2 : align === "right" ? x + w : x;
-  lines.forEach((l, i) => ctx.fillText(l, ax, y + i * Math.max(px, minPx) * lh));
-  return lines.length * Math.max(px, minPx) * lh;
-}
-
-// ─── Byggstenar ──────────────────────────────────────────────────────────────
-
-function rule(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, thick = 1.5) {
-  ctx.fillStyle = INK;
-  ctx.fillRect(x, y, w, thick);
-}
-
-/** Etikett i färg med snedstreck ("INTERVJU ///") */
-function kickerBox(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, size = 44) {
-  if (!text) return 0;
-  ctx.font = `700 ${size}px ${HEAD}`;
-  ctx.letterSpacing = "2px";
-  const t = text.toUpperCase();
-  const w = ctx.measureText(t).width + size * 0.9;
-  const h = size * 1.45;
-  ctx.fillStyle = accent();
-  ctx.fillRect(x, y, w, h);
-  // Snedstreck
-  for (let i = 0; i < 3; i++) {
-    ctx.beginPath();
-    const sx = x + w + 10 + i * 18;
-    ctx.moveTo(sx, y + h); ctx.lineTo(sx + 12, y + h); ctx.lineTo(sx + 12 + h * 0.35, y); ctx.lineTo(sx + h * 0.35, y); ctx.closePath();
-    ctx.fill();
+  px = Math.max(px, minPx);
+  ctx.font = font(px);
+  lines = clip(ctx, lines, Math.max(1, Math.floor(h / (px * lh))), w);
+  if (draw) {
+    ctx.textAlign = align;
+    ctx.textBaseline = "top";
+    const ax = align === "center" ? x + w / 2 : align === "right" ? x + w : x;
+    lines.forEach((l, i) => ctx.fillText(l, ax, y + i * px * lh));
   }
-  ctx.fillStyle = "#fff";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "middle";
-  ctx.fillText(t, x + size * 0.45, y + h / 2 + 2);
-  ctx.letterSpacing = "0px";
-  return h;
+  return lines.length * px * lh;
 }
 
-/** Ruta med rubrikrad i tidningens färg */
-function boxHeader(ctx: CanvasRenderingContext2D, title: string, x: number, y: number, w: number, h = 40) {
-  ctx.fillStyle = accent();
+// ─── Rutor i sidospalten ─────────────────────────────────────────────────────
+
+interface SideBox { id: string; h: number; flex?: boolean; minH?: number; draw: (y: number, h: number) => void }
+
+function boxHeader(ctx: CanvasRenderingContext2D, title: string, x: number, y: number, w: number, h = 36) {
+  ctx.fillStyle = BLUE;
   ctx.fillRect(x, y, w, h);
   ctx.fillStyle = "#fff";
-  ctx.font = `700 ${Math.round(h * 0.6)}px ${HEAD}`;
+  ctx.font = `700 ${Math.round(h * 0.56)}px ${HEAD}`;
   ctx.letterSpacing = "1.5px";
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
@@ -196,15 +202,20 @@ function boxHeader(ctx: CanvasRenderingContext2D, title: string, x: number, y: n
   return h;
 }
 
-function frame(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, fill = "#f7f4ee") {
+function frame(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, fill = BOX) {
   ctx.fillStyle = fill;
   ctx.fillRect(x, y, w, h);
-  ctx.strokeStyle = "#b9b1a0";
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(x, y, w, h);
 }
 
-/** Tröja i lagets färg (som i resultatrutan) */
+function source(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, w: number) {
+  ctx.fillStyle = MUTED;
+  ctx.font = `500 12px ${BODY}`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText(fit(ctx, text, w), x, y);
+}
+
+/** Tröja i lagets färg */
 function jersey(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, color: string) {
   ctx.save();
   ctx.translate(cx, cy);
@@ -216,533 +227,452 @@ function jersey(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number
   ctx.closePath();
   ctx.fillStyle = color;
   ctx.fill();
-  ctx.strokeStyle = "#555";
+  ctx.strokeStyle = "#666";
   ctx.lineWidth = 1.5;
   ctx.stroke();
   ctx.restore();
 }
 
-/** Senaste matchen: lagen, resultatet och några rader matchfakta */
-function latestBox(ctx: CanvasRenderingContext2D, m: PressLatest, x: number, y: number, w: number, h: number) {
-  frame(ctx, x, y, w, h);
-  const hh = boxHeader(ctx, "Senaste matchen", x, y, w);
-  const cy = y + hh + 62;
-  jersey(ctx, x + 40, cy - 6, 56, m.homeColor);
-  jersey(ctx, x + w - 40, cy - 6, 56, m.awayColor);
-  ctx.fillStyle = INK;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.font = `700 54px ${HEAD}`;
-  ctx.fillText(`${m.homeScore}–${m.awayScore}`, x + w / 2, cy);
-  ctx.font = `600 19px ${BODY}`;
-  ctx.fillText(fit(ctx, m.home, w / 2 - 14), x + w / 4 + 4, cy + 50);
-  ctx.fillText(fit(ctx, m.away, w / 2 - 14), x + (w * 3) / 4 - 4, cy + 50);
-  let ly = cy + 82;
-  if (m.lines.length && ly < y + h - 30) {
-    ctx.font = `700 18px ${HEAD}`;
-    ctx.textAlign = "left";
-    ctx.letterSpacing = "1px";
-    ctx.fillStyle = accent();
-    ctx.fillText("MATCHFAKTA", x + 14, ly);
-    ctx.letterSpacing = "0px";
-    ly += 14;
-    ctx.fillStyle = "#b9b1a0";
-    ctx.fillRect(x + 14, ly, w - 28, 1);
-    ly += 8;
-    ctx.fillStyle = INK;
-    ctx.font = `400 18px ${SERIF_BODY}`;
-    ctx.textBaseline = "top";
-    for (const l of m.lines) {
-      for (const t of wrap(ctx, l, w - 28)) {
-        if (ly + 24 > y + h - 8) return;
-        ctx.fillText(t, x + 14, ly);
-        ly += 24;
-      }
-    }
-  }
+function latestBox(ctx: CanvasRenderingContext2D, m: PressLatest): SideBox {
+  const lineH = 22;
+  ctx.font = `400 17px ${SERIF_BODY}`;
+  const lines = m.lines.flatMap((l) => wrap(ctx, l, SIDE_W - 24)).slice(0, 4);
+  const h = 36 + 150 + (lines.length ? lines.length * lineH + 14 : 0);
+  return {
+    id: "latest", h,
+    draw: (y) => {
+      const x = SIDE_X, w = SIDE_W;
+      frame(ctx, x, y, w, h);
+      boxHeader(ctx, "Senaste matchen", x, y, w);
+      const cy = y + 36 + 62;
+      jersey(ctx, x + 40, cy - 4, 54, m.homeColor);
+      jersey(ctx, x + w - 40, cy - 4, 54, m.awayColor);
+      ctx.fillStyle = INK;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `700 56px ${HEAD}`;
+      ctx.fillText(`${m.homeScore}–${m.awayScore}`, x + w / 2, cy);
+      ctx.font = `600 17px ${BODY}`;
+      ctx.fillText(fit(ctx, m.home, w / 2 - 14), x + w / 4 + 2, cy + 52);
+      ctx.fillText(fit(ctx, m.away, w / 2 - 14), x + (w * 3) / 4 - 2, cy + 52);
+      let ly = y + 36 + 150;
+      ctx.fillStyle = RULE;
+      if (lines.length) ctx.fillRect(x + 12, ly - 6, w - 24, 1);
+      ctx.fillStyle = INK;
+      ctx.font = `400 17px ${SERIF_BODY}`;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      for (const t of lines) { ctx.fillText(t, x + 12, ly + 2); ly += lineH; }
+    },
+  };
 }
 
-function quoteBox(ctx: CanvasRenderingContext2D, quote: string, by: string, x: number, y: number, w: number, h: number) {
-  frame(ctx, x, y, w, h, "#dfe6e1");
-  ctx.fillStyle = accent();
-  ctx.font = `900 96px ${SERIF_HEAD}`;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  ctx.fillText("”", x + 16, y - 6);
-  ctx.fillStyle = INK;
-  const used = fitText(ctx, `”${quote}”`, x + 18, y + 70, w - 36, h - 70 - (by ? 56 : 20), (px) => `italic 700 ${px}px ${SERIF_BODY}`, 34, 18, 1.2);
-  if (by) {
-    ctx.fillStyle = accent();
-    ctx.font = `700 17px ${HEAD}`;
-    ctx.letterSpacing = "1px";
-    ctx.textAlign = "left";
-    const [name, ...role] = by.split(/,\s*/);
-    const ty = Math.min(y + h - 50, y + 80 + used);
-    ctx.fillText(fit(ctx, name.toUpperCase(), w - 36), x + 18, ty);
-    ctx.letterSpacing = "0px";
-    if (role.length) {
+function nextBox(ctx: CanvasRenderingContext2D, n: { when: string; what: string }): SideBox {
+  const h = 128;
+  return {
+    id: "next", h,
+    draw: (y) => {
+      const x = SIDE_X, w = SIDE_W;
+      frame(ctx, x, y, w, h);
+      ctx.fillStyle = RED;
+      ctx.fillRect(x, y, 6, h);
+      ctx.fillStyle = RED;
+      ctx.font = `700 19px ${HEAD}`;
+      ctx.letterSpacing = "1.5px";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.fillText("NÄSTA MATCH", x + 20, y + 12);
+      ctx.letterSpacing = "0px";
+      ctx.fillStyle = INK;
+      fitText(ctx, n.when.toUpperCase(), x + 20, y + 40, w - 34, 34, (px) => `700 ${px}px ${HEAD}`, 28, 16);
       ctx.fillStyle = MUTED;
-      ctx.font = `500 16px ${BODY}`;
-      ctx.fillText(fit(ctx, role.join(", "), w - 36), x + 18, ty + 22);
+      fitText(ctx, n.what, x + 20, y + 78, w - 34, h - 86, (px) => `400 ${px}px ${SERIF_BODY}`, 19, 14);
+    },
+  };
+}
+
+function listBox(ctx: CanvasRenderingContext2D, id: string, title: string, rows: Array<{ left: string; right: string; strong?: boolean }>, foot: string, rowH = 28): SideBox {
+  const h = 36 + 8 + rows.length * rowH + (foot ? 26 : 8);
+  return {
+    id, h,
+    draw: (y) => {
+      const x = SIDE_X, w = SIDE_W;
+      frame(ctx, x, y, w, h);
+      boxHeader(ctx, title, x, y, w);
+      let ry = y + 36 + 8;
+      for (const r of rows) {
+        if (r.strong) { ctx.fillStyle = "#d9e5f3"; ctx.fillRect(x, ry - 2, w, rowH); }
+        ctx.fillStyle = INK;
+        ctx.textBaseline = "top";
+        ctx.font = `${r.strong ? 700 : 400} ${rowH > 26 ? 18 : 16}px ${SERIF_BODY}`;
+        ctx.textAlign = "left";
+        ctx.fillText(fit(ctx, r.left, w - 96), x + 12, ry + 3);
+        ctx.font = `700 ${rowH > 26 ? 18 : 16}px ${HEAD}`;
+        ctx.textAlign = "right";
+        ctx.fillText(r.right, x + w - 12, ry + 2);
+        ry += rowH;
+        ctx.fillStyle = RULE;
+        ctx.fillRect(x + 12, ry - 2, w - 24, 1);
+      }
+      if (foot) source(ctx, foot, x + 12, y + h - 9, w - 24);
+    },
+  };
+}
+
+function shlTableBox(ctx: CanvasRenderingContext2D, t: NonNullable<PressPageData["shlTable"]>): SideBox {
+  const rowH = 23;
+  const h = 36 + 28 + t.rows.length * rowH + 26;
+  return {
+    id: "shlTable", h,
+    draw: (y) => {
+      const x = SIDE_X, w = SIDE_W;
+      frame(ctx, x, y, w, h);
+      boxHeader(ctx, "SHL-tabellen", x, y, w);
+      const cG = x + w - 64, cP = x + w - 12;
+      ctx.fillStyle = MUTED;
+      ctx.font = `600 13px ${BODY}`;
+      ctx.textBaseline = "top";
+      ctx.textAlign = "right";
+      ctx.fillText("M", cG, y + 44);
+      ctx.fillText("P", cP, y + 44);
+      let ry = y + 36 + 28;
+      for (const r of t.rows) {
+        const local = /lule/i.test(r.team);
+        if (local) { ctx.fillStyle = "#d9e5f3"; ctx.fillRect(x, ry - 2, w, rowH); }
+        ctx.fillStyle = INK;
+        ctx.font = `${local ? 700 : 400} 16px ${SERIF_BODY}`;
+        ctx.textAlign = "right";
+        ctx.fillText(`${r.pos}.`, x + 34, ry + 1);
+        ctx.textAlign = "left";
+        ctx.fillText(fit(ctx, r.team, cG - x - 80), x + 42, ry + 1);
+        ctx.font = `${local ? 700 : 500} 16px ${HEAD}`;
+        ctx.textAlign = "right";
+        ctx.fillText(String(r.gp), cG, ry + 1);
+        ctx.font = `700 16px ${HEAD}`;
+        ctx.fillText(String(r.pts), cP, ry + 1);
+        ry += rowH;
+        // Streck efter plats 6 och 10 (slutspel, play in) och före kvalet
+        const n = t.rows.length;
+        if (r.pos === 6 || r.pos === 10 || r.pos === n - 2) { ctx.fillStyle = r.pos === n - 2 ? RED : BLUE; ctx.fillRect(x + 8, ry - 2, w - 16, 1.5); }
+      }
+      source(ctx, `Källa: ${t.source} · ${t.updated}`, x + 12, y + h - 9, w - 24);
+    },
+  };
+}
+
+function quoteBox(ctx: CanvasRenderingContext2D, quote: string, by: string): SideBox {
+  const textW = SIDE_W - 36;
+  const qh = fitText(ctx, `”${quote}”`, 0, 0, textW, 260, (px) => `italic 700 ${px}px ${SERIF_BODY}`, 32, 19, 1.2, "left", false);
+  const h = 64 + qh + (by ? 58 : 16);
+  return {
+    id: "quote", h,
+    draw: (y) => {
+      const x = SIDE_X, w = SIDE_W;
+      ctx.fillStyle = BLUE;
+      ctx.fillRect(x, y, w, 4);
+      ctx.font = `900 92px ${SERIF_HEAD}`;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.fillText("”", x + 4, y + 2);
+      ctx.fillStyle = INK;
+      fitText(ctx, `”${quote}”`, x + 4, y + 64, textW, 260, (px) => `italic 700 ${px}px ${SERIF_BODY}`, 32, 19, 1.2);
+      if (by) {
+        const [name, ...role] = by.split(/,\s*/);
+        const ty = y + 64 + qh + 12;
+        ctx.fillStyle = BLUE;
+        ctx.font = `700 17px ${HEAD}`;
+        ctx.letterSpacing = "1px";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        ctx.fillText(fit(ctx, name.toUpperCase(), w - 8), x + 4, ty);
+        ctx.letterSpacing = "0px";
+        if (role.length) {
+          ctx.fillStyle = MUTED;
+          ctx.font = `500 15px ${BODY}`;
+          ctx.fillText(fit(ctx, role.join(", "), w - 8), x + 4, ty + 22);
+        }
+      }
+      ctx.fillStyle = BLUE;
+      ctx.fillRect(x, y + h - 4, w, 4);
+    },
+  };
+}
+
+function teaserBox(ctx: CanvasRenderingContext2D, t: PressTeaser, i: number): SideBox {
+  const w = SIDE_W;
+  const imgH = t.image ? 150 : 0;
+  ctx.font = `700 24px ${SERIF_HEAD}`;
+  const titleLines = clip(ctx, wrap(ctx, t.title, w), 3, w);
+  ctx.font = `400 16px ${SERIF_BODY}`;
+  const subLines = t.sub ? clip(ctx, wrap(ctx, t.sub, w), 2, w) : [];
+  const h = imgH + (imgH ? 10 : 0) + (t.kicker ? 22 : 0) + titleLines.length * 28 + subLines.length * 20 + (t.page ? 24 : 4) + 4;
+  return {
+    id: `teaser${i}`, h,
+    draw: (y) => {
+      const x = SIDE_X;
+      let ty = y;
+      if (t.image) { cover(ctx, t.image, x, ty, w, imgH); ty += imgH + 10; }
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      if (t.kicker) {
+        ctx.fillStyle = RED;
+        ctx.font = `700 16px ${HEAD}`;
+        ctx.letterSpacing = "1px";
+        ctx.fillText(fit(ctx, t.kicker.toUpperCase(), w), x, ty);
+        ctx.letterSpacing = "0px";
+        ty += 22;
+      }
+      ctx.fillStyle = INK;
+      ctx.font = `700 24px ${SERIF_HEAD}`;
+      titleLines.forEach((l) => { ctx.fillText(l, x, ty); ty += 28; });
+      ctx.fillStyle = MUTED;
+      ctx.font = `400 16px ${SERIF_BODY}`;
+      subLines.forEach((l) => { ctx.fillText(l, x, ty + 1); ty += 20; });
+      if (t.page) {
+        ctx.fillStyle = BLUE;
+        ctx.font = `700 14px ${HEAD}`;
+        ctx.letterSpacing = "1px";
+        ctx.fillText(`${t.page.toUpperCase()} ›`, x, ty + 5);
+        ctx.letterSpacing = "0px";
+      }
+      ctx.fillStyle = RULE;
+      ctx.fillRect(x, y + h - 1, w, 1);
+    },
+  };
+}
+
+function portraitBox(ctx: CanvasRenderingContext2D, img: HTMLImageElement, caption: string): SideBox {
+  const h = 360 + (caption ? 24 : 0);
+  return {
+    id: "portrait", h,
+    draw: (y) => {
+      cover(ctx, img, SIDE_X, y, SIDE_W, 360);
+      if (caption) {
+        ctx.fillStyle = MUTED;
+        ctx.font = `500 13px ${BODY}`;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        ctx.fillText(fit(ctx, caption, SIDE_W), SIDE_X, y + 366);
+      }
+    },
+  };
+}
+
+function adBox(ctx: CanvasRenderingContext2D, ad: PressAd, logo: HTMLImageElement | null, i: number): SideBox {
+  return { id: `ad${i}`, h: 230, flex: true, minH: 150, draw: (y, h) => pressAd(ctx, ad, logo, SIDE_X, y, SIDE_W, Math.min(h, 380)) };
+}
+
+/** Lägg rutorna uppifrån; det som inte ryms returneras (till sida 2) */
+function placeSide(boxes: SideBox[], top: number, bottom: number): { placed: Array<{ b: SideBox; y: number; h: number }>; rest: SideBox[] } {
+  const placed: Array<{ b: SideBox; y: number; h: number }> = [];
+  const rest: SideBox[] = [];
+  let y = top;
+  const GAP = 20;
+  // Första annonsen syns alltid: plats reserveras innan övriga rutor läggs
+  const firstAd = boxes.find((b) => b.flex);
+  const reserve = firstAd ? (firstAd.minH ?? firstAd.h) + GAP : 0;
+  for (const b of boxes) {
+    const need = b.flex ? b.minH ?? b.h : b.h;
+    const limit = b === firstAd ? bottom : bottom - (placed.some((p) => p.b === firstAd) ? 0 : reserve);
+    if (y + need <= limit) { placed.push({ b, y, h: b.flex ? need : b.h }); y += (b.flex ? need : b.h) + GAP; }
+    else rest.push(b);
+  }
+  // Flexibla rutor (annonser) fyller ut ytan som blir över
+  const spare = bottom - (y - GAP);
+  const flex = placed.filter((p) => p.b.flex);
+  if (flex.length && spare > 0) {
+    let shift = 0;
+    for (const p of placed) {
+      p.y += shift;
+      if (p.b.flex) { const add = Math.min(spare / flex.length, 360 - p.h); p.h += Math.max(0, add); shift += Math.max(0, add); }
     }
   }
+  // Rutor som inte behövde flytta: centrera inte, men låt sista flex-rutan nå botten
+  for (const p of placed) if (p.b.flex && p.h < (p.b.minH ?? 0)) p.h = p.b.minH ?? p.h;
+  return { placed, rest };
 }
 
-/** Annons som i tidningen: liten "ANNONS"-rad, logga och annonstext */
-function adBox(ctx: CanvasRenderingContext2D, ad: PressAd, logo: HTMLImageElement | null, x: number, y: number, w: number, h: number, variant = 0) {
-  const dark = variant % 2 === 1;
-  ctx.fillStyle = MUTED;
-  ctx.font = `700 14px ${BODY}`;
-  ctx.letterSpacing = "2px";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "alphabetic";
-  ctx.fillText("ANNONS", x, y - 6);
-  ctx.letterSpacing = "0px";
-  ctx.fillStyle = dark ? "#16261c" : "#ffffff";
-  ctx.fillRect(x, y, w, h);
-  ctx.strokeStyle = dark ? "#16261c" : "#b9b1a0";
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(x, y, w, h);
-  const slogan = ad.slogan?.trim() || "";
-  const pad = 14;
-  const textH = slogan ? Math.min(h * 0.42, 90) : 0;
-  const lx = x + pad, ly = y + pad, lw = w - 2 * pad, lh = h - 2 * pad - textH;
-  if (logo) {
-    const s = Math.min(lw / logo.width, lh / logo.height);
-    if (dark) { ctx.fillStyle = "#ffffff"; ctx.fillRect(x + w / 2 - (logo.width * s) / 2 - 10, ly + (lh - logo.height * s) / 2 - 8, logo.width * s + 20, logo.height * s + 16); }
-    ctx.drawImage(logo, x + w / 2 - (logo.width * s) / 2, ly + (lh - logo.height * s) / 2, logo.width * s, logo.height * s);
-  } else {
-    ctx.fillStyle = dark ? "#fff" : INK;
-    fitText(ctx, ad.name.toUpperCase(), lx, ly + lh / 2 - Math.min(60, lh) / 2, lw, Math.min(60, lh), (px) => `700 ${px}px ${HEAD}`, 52, 18, 1.0, "center");
-  }
-  if (slogan) {
-    ctx.fillStyle = dark ? "#e8efe9" : INK;
-    fitText(ctx, slogan, lx, y + h - pad - textH, lw, textH, (px) => `italic 600 ${px}px ${SERIF_BODY}`, 26, 14, 1.15, "center");
-  }
-}
+// ─── Sidorna ─────────────────────────────────────────────────────────────────
 
-function resultsBox(ctx: CanvasRenderingContext2D, rows: PressPageData["results"], x: number, y: number, w: number, h: number) {
-  frame(ctx, x, y, w, h);
-  const hh = boxHeader(ctx, "Resultatbörsen", x, y, w);
-  let ry = y + hh + 14;
-  ctx.textBaseline = "top";
-  for (const r of rows) {
-    if (ry + 30 > y + h) break;
-    ctx.fillStyle = INK;
-    ctx.font = `400 19px ${SERIF_BODY}`;
-    ctx.textAlign = "left";
-    ctx.fillText(fit(ctx, `${r.home}–${r.away}`, w - 90), x + 14, ry);
-    ctx.font = `700 19px ${HEAD}`;
-    ctx.textAlign = "right";
-    ctx.fillText(r.score, x + w - 14, ry);
-    ry += 30;
-    ctx.fillStyle = "#d8d0bf";
-    ctx.fillRect(x + 14, ry - 6, w - 28, 1);
-  }
-}
+interface Ctx2 { c: HTMLCanvasElement; ctx: CanvasRenderingContext2D }
 
-function nextBox(ctx: CanvasRenderingContext2D, n: { when: string; what: string }, x: number, y: number, w: number, h: number) {
-  frame(ctx, x, y, w, h, "#e9e4d8");
-  ctx.fillStyle = accent();
-  ctx.font = `700 22px ${HEAD}`;
-  ctx.letterSpacing = "1.5px";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  ctx.fillText("NÄSTA MATCH", x + 18, y + 16);
-  ctx.letterSpacing = "0px";
-  ctx.fillStyle = "#b9b1a0";
-  ctx.fillRect(x + 18, y + 48, w - 36, 1);
-  ctx.fillStyle = INK;
-  fitText(ctx, n.when.toUpperCase(), x + 18, y + 60, w - 36, 36, (px) => `700 ${px}px ${HEAD}`, 30, 18);
-  ctx.fillStyle = MUTED;
-  fitText(ctx, n.what, x + 18, y + 100, w - 36, h - 110, (px) => `400 ${px}px ${SERIF_BODY}`, 22, 15);
-}
-
-function teaser(ctx: CanvasRenderingContext2D, t: PressTeaser, x: number, y: number, w: number, h: number) {
-  const iw = t.image ? Math.round(w * 0.42) : 0;
-  if (t.image) cover(ctx, t.image, x, y, iw, h);
-  const tx = x + iw + (iw ? 14 : 0), tw = w - iw - (iw ? 14 : 0);
-  let ty = y;
-  if (t.kicker) {
-    ctx.font = `700 15px ${HEAD}`;
-    ctx.letterSpacing = "1px";
-    const k = t.kicker.toUpperCase();
-    const kw = Math.min(tw, ctx.measureText(k).width + 14);
-    ctx.fillStyle = accent();
-    ctx.fillRect(tx, ty, kw, 24);
-    ctx.fillStyle = "#fff";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    ctx.fillText(fit(ctx, k, tw - 14), tx + 7, ty + 13);
-    ctx.letterSpacing = "0px";
-    ty += 32;
-  }
-  ctx.fillStyle = INK;
-  const used = fitText(ctx, t.title, tx, ty, tw, h - (ty - y) - (t.sub ? 44 : 26), (px) => `700 ${px}px ${SERIF_HEAD}`, 28, 18, 1.1);
-  ty += used + 4;
-  if (t.sub) {
-    ctx.fillStyle = MUTED;
-    fitText(ctx, t.sub, tx, ty, tw, Math.max(20, y + h - 26 - ty), (px) => `400 ${px}px ${SERIF_BODY}`, 18, 14, 1.15);
-  }
-  if (t.page) {
-    ctx.fillStyle = INK;
-    ctx.font = `700 15px ${HEAD}`;
-    ctx.textAlign = "left";
-    ctx.textBaseline = "alphabetic";
-    ctx.fillText(t.page.toUpperCase(), tx, y + h);
-  }
-}
-
-/** Bild med mjuk övergång mot papperet till vänster (förstasidan) */
-function fadedPhoto(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number, fadeW: number) {
-  cover(ctx, img, x, y, w, h);
-  const g = ctx.createLinearGradient(x, 0, x + fadeW, 0);
-  g.addColorStop(0, PAPER);
-  g.addColorStop(0.55, "rgba(242,238,230,0.75)");
-  g.addColorStop(1, "rgba(242,238,230,0)");
-  ctx.fillStyle = g;
-  ctx.fillRect(x, y, fadeW, h);
-}
-
-function dateText(d: PressPageData) {
-  return d.dateLine || new Date().toLocaleDateString("sv-SE", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-}
-
-/** Tidningshuvudet: "STÅL" svart + "BLADET" i tidningens färg, klubbens logga till höger */
-function masthead(ctx: CanvasRenderingContext2D, d: PressPageData, logo: HTMLImageElement | null, y: number, size: number) {
-  const M = 36;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "alphabetic";
-  const name = PRESS_NAME.toUpperCase();
-  const split = name.startsWith("STÅL") ? 4 : Math.ceil(name.length / 2);
-  let px = size;
-  const avail = IG_W - 2 * M - (logo ? size * 0.95 : 0);
-  for (; px > 40; px -= 4) {
-    ctx.font = `700 ${px}px ${HEAD}`;
-    if (ctx.measureText(name).width <= avail) break;
-  }
-  ctx.font = `700 ${px}px ${HEAD}`;
-  ctx.fillStyle = INK;
-  ctx.fillText(name.slice(0, split), M, y + px * 0.86);
-  const w1 = ctx.measureText(name.slice(0, split)).width;
-  ctx.fillStyle = accent();
-  ctx.fillText(name.slice(split), M + w1, y + px * 0.86);
-  const total = ctx.measureText(name).width;
-  if (logo) {
-    const s = (px * 0.95) / Math.max(logo.width, logo.height);
-    ctx.drawImage(logo, Math.min(IG_W - M - logo.width * s, M + total + 18), y + (px * 0.9 - logo.height * s) / 2, logo.width * s, logo.height * s);
-  }
-  return px * 0.95;
-}
-
-// ─── Förstasidan ─────────────────────────────────────────────────────────────
-export async function renderFront(d: PressPageData): Promise<HTMLCanvasElement> {
-  const [logo, ...adLogos] = await Promise.all([tryLoad(club().logo), ...d.ads.map((a) => tryLoad(a.logo))]);
+function newPage(d: PressPageData): Ctx2 {
   const [c, ctx] = canvas(frameHeight(d.format));
-  paper(ctx, PAPER, 0.04);
+  paper(ctx, PRESS.paper, 0.025);
   contentArea(ctx);
-  const M = 36, W = IG_W - 2 * M;
-  // Överst: tidningen, avdelningarna, datum och nummer
-  ctx.fillStyle = INK;
-  ctx.font = `700 15px ${HEAD}`;
-  ctx.letterSpacing = "1px";
-  ctx.textBaseline = "top";
-  ctx.textAlign = "left";
-  ctx.fillText("DIN LOKALA TIDNING OM", M, 18);
-  ctx.fillText(fit(ctx, club().name.toUpperCase(), 260), M, 38);
-  ctx.textAlign = "center";
-  ctx.font = `700 17px ${HEAD}`;
-  ctx.fillText("MATCHER  •  MÄNNISKOR  •  FÖRENINGSLIV", IG_W / 2, 26);
-  ctx.textAlign = "right";
-  ctx.font = `700 15px ${HEAD}`;
-  ctx.fillText(fit(ctx, dateText(d).toUpperCase(), 280), IG_W - M, 18);
-  ctx.fillText(`NR ${d.issue.nr}  |  ÅRGÅNG ${d.issue.year}`, IG_W - M, 38);
-  ctx.letterSpacing = "0px";
-  rule(ctx, M, 62, W, 2);
-  masthead(ctx, d, logo, 70, 150);
-  rule(ctx, M, 222, W, 1.5);
-  ctx.fillStyle = INK;
-  ctx.font = `600 16px ${HEAD}`;
-  ctx.letterSpacing = "1px";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "middle";
-  ctx.fillText("ISHOCKEY   |   LAGET   |   MÄNNISKOR   |   RESULTAT   |   STÖRRE ÄN BARA RESULTAT", M, 236);
-  ctx.textAlign = "right";
-  ctx.fillStyle = accent();
-  ctx.fillText(`VI BEVAKAR ${club().shortName?.toUpperCase() || club().name.toUpperCase()}`, IG_W - M, 236);
-  ctx.letterSpacing = "0px";
-  rule(ctx, M, 250, W, 1.5);
-
-  // Huvudnyheten (vänster) och sidospalten (höger)
-  const sideW = 238, mainW = W - sideW - 20, sideX = M + mainW + 20;
-  const top = 262, mainBottom = 830;
-  if (d.photo) fadedPhoto(ctx, d.photo, M, top, mainW, mainBottom - top, mainW * 0.62);
-  let y = top + 12;
-  y += kickerBox(ctx, d.kicker, M, y, 44) + 16;
-  const textW = d.photo ? mainW * 0.62 : mainW;
-  // Plats för ingressen längst ner (minst tre rader)
-  const ingressH = d.ingress ? 110 : 0;
-  const head = fitHeadline(ctx, (d.headline || "Rubrik").toUpperCase(), textW, Math.min(280, mainBottom - y - ingressH - (d.quoteHead ? 120 : 0) - 16), (px) => `700 ${px}px ${HEAD}`, 1.0, 104, 40);
-  ctx.fillStyle = INK;
-  ctx.font = `700 ${head.px}px ${HEAD}`;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  head.lines.forEach((l, i) => ctx.fillText(l, M, y + i * head.px));
-  y += head.lines.length * head.px + 8;
-  if (d.quoteHead) y += fitText(ctx, `”${d.quoteHead}”`, M, y, textW, Math.max(60, mainBottom - y - ingressH - 12), (px) => `700 ${px}px ${SERIF_HEAD}`, 64, 30, 1.08) + 12;
-  if (d.ingress) {
-    ctx.fillStyle = INK;
-    fitText(ctx, d.ingress, M, y, textW * 0.95, mainBottom - y - 10, (px) => `400 ${px}px ${SERIF_BODY}`, 26, 17, 1.25);
-  }
-  if (d.photo && d.caption) {
-    ctx.fillStyle = "#fff";
-    ctx.font = `600 14px ${BODY}`;
-    ctx.textAlign = "right";
-    ctx.textBaseline = "alphabetic";
-    ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 6;
-    ctx.fillText(fit(ctx, d.caption.toUpperCase(), mainW * 0.6), M + mainW - 12, mainBottom - 12);
-    ctx.shadowBlur = 0; ctx.shadowColor = "transparent";
-  }
-  // Sidospalten
-  let sy = top;
-  if (d.latest) { latestBox(ctx, d.latest, sideX, sy, sideW, 300); sy += 316; }
-  if (d.pullQuote) { quoteBox(ctx, d.pullQuote, d.pullQuoteBy, sideX, sy, sideW, mainBottom - sy); sy = mainBottom; }
-  else if (d.results.length) { resultsBox(ctx, d.results, sideX, sy, sideW, mainBottom - sy); sy = mainBottom; }
-
-  // Textrutan och annonsen
-  const hasTeasers = d.teasers.some((t) => t.title);
-  const midTop = mainBottom + 20, midBottom = hasTeasers ? 1150 : IG_H - 30;
-  if (d.body) {
-    ctx.fillStyle = LIGHT;
-    ctx.fillRect(M, midTop, mainW, midBottom - midTop);
-    ctx.fillStyle = accent();
-    ctx.fillRect(M, midTop, 6, midBottom - midTop);
-    let by = midTop + 14;
-    if (d.boxTitle) {
-      ctx.fillStyle = accent();
-      by += fitText(ctx, d.boxTitle.toUpperCase(), M + 24, by, mainW - 40, 34, (px) => `700 ${px}px ${HEAD}`, 30, 18) + 8;
-    }
-    columns(ctx, toParagraphs(d.body, true), M + 24, by, mainW - 44, midBottom - by - 14, 2, { maxPx: 22, minPx: 15, rule: true });
-  }
-  if (d.ads[0]) adBox(ctx, d.ads[0], adLogos[0] ?? null, sideX, midTop + 22, sideW, midBottom - midTop - 22, 1);
-  // Puffarna längst ner
-  if (hasTeasers) {
-    rule(ctx, M, 1166, W, 1.5);
-    const list = d.teasers.filter((t) => t.title).slice(0, 3);
-    const n = list.length + (list.length < 3 && d.ads[1] ? 1 : 0);
-    const tw = (W - 24 * (n - 1)) / n;
-    list.forEach((t, i) => {
-      teaser(ctx, t, M + i * (tw + 24), 1180, tw, 140);
-      if (i > 0) { ctx.fillStyle = "#c9c1b0"; ctx.fillRect(M + i * (tw + 24) - 12, 1180, 1, 140); }
-    });
-    if (n > list.length && d.ads[1]) adBox(ctx, d.ads[1], adLogos[1] ?? null, M + list.length * (tw + 24), 1196, tw, 124, 0);
-    rule(ctx, M, IG_H - 18, W, 1.5);
-  }
-  return c;
+  return { c, ctx };
 }
 
-// ─── Artikeln ────────────────────────────────────────────────────────────────
-export async function renderPressArticle(d: PressPageData): Promise<HTMLCanvasElement> {
-  const adLogos = await Promise.all(d.ads.map((a) => tryLoad(a.logo)));
-  const [c, ctx] = canvas(frameHeight(d.format));
-  // Bakom sidan: vald bild, mörkad
-  const H = c.height;
-  if (d.backdrop) cover(ctx, d.backdrop, 0, 0, IG_W, H); else { ctx.fillStyle = "#1b2420"; ctx.fillRect(0, 0, IG_W, H); }
-  ctx.fillStyle = "rgba(0,0,0,0.45)";
-  ctx.fillRect(0, 0, IG_W, H);
-  contentArea(ctx);
-  // Tidningssidan
-  const sx = 96, sy = 120, sw = IG_W - 2 * sx, sh = d.latest ? 1030 : 1150;
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 40; ctx.shadowOffsetY = 12;
-  ctx.fillStyle = PAPER;
-  ctx.fillRect(sx, sy, sw, sh);
-  ctx.restore();
-  ctx.save();
-  ctx.beginPath(); ctx.rect(sx, sy, sw, sh); ctx.clip();
-  paper(ctx, PAPER, 0.035);
-  ctx.restore();
-  const P = 34, x0 = sx + P, w0 = sw - 2 * P;
-  let y = sy + 26;
-  ctx.fillStyle = accent();
-  ctx.font = `700 28px ${HEAD}`;
-  ctx.letterSpacing = "2px";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  ctx.fillText(fit(ctx, (d.kicker || "Lokalsport").toUpperCase(), w0 * 0.6), x0, y);
-  ctx.letterSpacing = "0px";
-  ctx.fillStyle = INK;
-  ctx.font = `600 16px ${SERIF_BODY}`;
-  ctx.textAlign = "right";
-  ctx.fillText(fit(ctx, `${PRESS_NAME.toUpperCase()} · ${dateText(d).toUpperCase()}`, w0 * 0.45), x0 + w0, y + 8);
-  y += 40;
-  ctx.fillStyle = accent();
-  ctx.fillRect(x0, y, w0, 3);
-  y += 18;
-  // Rubrik och citatrubrik
-  const head = fitHeadline(ctx, d.headline || "Rubrik", w0, 200, (px) => `900 ${px}px ${SERIF_HEAD}`, 1.02, 82, 44);
+/** Rubrikblocket över hela bredden. Returnerar y efter blocket. */
+function headBlock(ctx: CanvasRenderingContext2D, d: PressPageData, y: number, maxHeadPx: number, maxHeadH: number): number {
+  const kick = kickerTag(ctx, d.kicker || (d.kind === "interview" ? "Intervju" : ""), M, y, 24);
+  if (kick.h) y += kick.h + 12;
+  const head = fitHeadline(ctx, d.headline || "Rubrik", W, maxHeadH, (px) => `900 ${px}px ${SERIF_HEAD}`, 1.04, maxHeadPx, 40);
   ctx.fillStyle = INK;
   ctx.font = `900 ${head.px}px ${SERIF_HEAD}`;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  head.lines.forEach((l, i) => ctx.fillText(l, x0, y + i * head.px * 1.02));
-  y += head.lines.length * head.px * 1.02 + 4;
-  if (d.quoteHead) y += fitText(ctx, `“${d.quoteHead}”`, x0, y, w0, 110, (px) => `700 ${px}px ${SERIF_HEAD}`, 48, 28, 1.1) + 14;
-  // Vänster: ingress + brödtext. Höger: bild + citat.
-  const bottom = sy + sh - (d.ads[0] || d.next ? 220 : 30);
-  const lw = Math.round(w0 * 0.47), rx = x0 + lw + 26, rw = w0 - lw - 26;
-  let ly = y;
-  if (d.ingress) { ctx.fillStyle = INK; ly += fitText(ctx, d.ingress, x0, ly, lw, 190, (px) => `600 ${px}px ${SERIF_BODY}`, 28, 18, 1.25) + 18; }
+  head.lines.forEach((l, i) => ctx.fillText(l, M - 2, y + i * head.px * 1.04));
+  y += head.lines.length * head.px * 1.04 + 6;
+  if (d.quoteHead) {
+    ctx.fillStyle = BLUE;
+    y += fitText(ctx, `”${d.quoteHead.replace(/^["”“]|["”“]$/g, "")}”`, M, y, W, 120, (px) => `italic 700 ${px}px ${SERIF_BODY}`, 50, 26, 1.12) + 8;
+  }
+  if (d.ingress) {
+    ctx.fillStyle = INK;
+    y += fitText(ctx, d.ingress, M, y + 4, W, 150, (px) => `600 ${px}px ${SERIF_BODY}`, 27, 19, 1.3) + 10;
+  }
   if (d.byline) {
     ctx.fillStyle = MUTED;
-    ctx.font = `italic 600 17px ${SERIF_BODY}`;
-    ctx.fillText(fit(ctx, d.byline, lw), x0, ly);
-    ly += 28;
+    ctx.font = `600 15px ${BODY}`;
+    ctx.letterSpacing = "1px";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(fit(ctx, d.byline.toUpperCase(), W), M, y);
+    ctx.letterSpacing = "0px";
+    y += 24;
   }
-  columns(ctx, toParagraphs(d.body), x0, ly, lw, bottom - ly, 1, { maxPx: 21, minPx: 15 });
-  let ry = y;
-  if (d.photo) {
-    const ph = d.pullQuote ? Math.min(320, (bottom - y) * 0.46) : bottom - y;
-    cover(ctx, d.photo, rx, ry, rw, ph);
-    ry += ph;
+  ctx.fillStyle = INK;
+  ctx.fillRect(M, y + 2, W, 1.5);
+  return y + 18;
+}
+
+/** Sida 2: kort huvud med rubriken (forts.) */
+function contHead(ctx: CanvasRenderingContext2D, d: PressPageData, y: number): number {
+  const kick = kickerTag(ctx, d.kicker || (d.kind === "interview" ? "Intervju" : "Forts."), M, y, 20);
+  ctx.fillStyle = INK;
+  const x = M + (kick.w ? kick.w + 14 : 0);
+  ctx.font = `700 30px ${SERIF_HEAD}`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(fit(ctx, `${(d.headline || "").replace(/\s*\n\s*/g, " ")} (forts.)`, W - (x - M)), x, y + (kick.h || 30) / 2 + 1);
+  y += Math.max(kick.h, 30) + 14;
+  ctx.fillRect(M, y, W, 1.5);
+  return y + 16;
+}
+
+const BODY_MAX = 24, BODY_MIN = 19, BODY_CONT_MIN = 15;
+
+/** Förstasida, artikel och intervju – en eller två sidor */
+export async function renderPressPages(d: PressPageData): Promise<HTMLCanvasElement[]> {
+  const adLogos = await Promise.all(d.ads.map((a) => tryLoad(a.logo)));
+  const p1 = newPage(d);
+  const ctx = p1.ctx;
+  let y = masthead(ctx, d.dateLine, d.issue) + 18;
+  y = headBlock(ctx, d, y, d.kind === "front" ? 112 : 92, d.kind === "front" ? 300 : 230);
+
+  // Huvudspalten: bild (förstasida/artikel) och text
+  const bannerAd = d.kind === "front" && d.ads[1] ? d.ads[1] : null;
+  const bottom = bannerAd ? BOTTOM - 150 : BOTTOM;
+  const sideAds = d.ads.map((a, i) => ({ a, i })).filter(({ i }) => !(bannerAd && i === 1));
+  let my = y;
+  const mainPhoto = d.photo && d.kind !== "interview";
+  const paras = toParagraphs(d.body, d.kind === "interview" || d.kind === "front");
+  const colW = colWidth({ x: M, y: 0, w: MAIN_W, h: 0, cols: 2 });
+  if (mainPhoto) {
+    // Bilden får det texten inte behöver (kort text = större bild)
+    const avail = bottom - y - (d.caption ? 26 : 6) - 10 - (d.boxTitle ? 42 : 0);
+    const lhMax = Math.round(BODY_MAX * 1.34);
+    const need = paras.length ? balancedHeight(layoutLines(ctx, paras, colW, BODY_MAX), 2, lhMax, avail) : 0;
+    const ph = Math.round(Math.max(240, Math.min(avail * 0.62, avail - need)));
+    cover(ctx, d.photo!, M, my, MAIN_W, ph);
+    my += ph + 6;
     if (d.caption) {
       ctx.fillStyle = MUTED;
-      ctx.font = `italic 400 15px ${SERIF_BODY}`;
+      ctx.font = `500 14px ${BODY}`;
+      ctx.textAlign = "left";
       ctx.textBaseline = "top";
-      ctx.fillText(fit(ctx, d.caption, rw), rx, ry + 6);
-      ry += 26;
+      ctx.fillText(fit(ctx, d.caption, MAIN_W), M, my);
+      my += 20;
     }
-    ry += 14;
+    my += 10;
   }
-  if (d.pullQuote && bottom - ry > 120) quoteBox(ctx, d.pullQuote, d.pullQuoteBy, rx, ry, rw, bottom - ry);
-  // Nederst på sidan: annons och nästa match
-  if (d.ads[0] || d.next) {
-    const by = sy + sh - 200;
-    ctx.fillStyle = INK;
-    ctx.fillRect(x0, by - 16, w0, 1);
-    const aw = d.next ? Math.round(w0 * 0.58) : w0;
-    if (d.ads[0]) adBox(ctx, d.ads[0], adLogos[0] ?? null, x0, by + 10, aw, 156, 1);
-    if (d.next) nextBox(ctx, d.next, x0 + (d.ads[0] ? aw + 20 : 0), by + 10, d.ads[0] ? w0 - aw - 20 : w0, 156);
+  if (d.boxTitle) {
+    ctx.fillStyle = BLUE;
+    my += fitText(ctx, d.boxTitle.toUpperCase(), M, my, MAIN_W, 34, (px) => `700 ${px}px ${HEAD}`, 28, 18) + 8;
   }
-  // Under sidan: senaste matchen som en resultattavla
-  if (d.latest) {
-    const m = d.latest;
-    const bx = 150, bw = IG_W - 300, byy = sy + sh + 34, bh = 130;
-    ctx.fillStyle = "rgba(10,18,14,0.88)";
-    ctx.fillRect(bx, byy, bw, bh);
-    ctx.strokeStyle = "rgba(255,255,255,0.18)";
-    ctx.strokeRect(bx, byy, bw, bh);
-    ctx.fillStyle = "rgba(255,255,255,0.7)";
-    ctx.font = `600 16px ${HEAD}`;
-    ctx.letterSpacing = "3px";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "top";
-    ctx.fillText("SENASTE MATCHEN", IG_W / 2, byy + 12);
-    ctx.letterSpacing = "0px";
-    jersey(ctx, bx + 60, byy + 74, 50, m.homeColor);
-    jersey(ctx, bx + bw - 60, byy + 74, 50, m.awayColor);
-    ctx.fillStyle = "#fff";
-    ctx.font = `700 22px ${HEAD}`;
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    ctx.fillText(fit(ctx, m.home.toUpperCase(), 180), bx + 104, byy + 74);
-    ctx.textAlign = "right";
-    ctx.fillText(fit(ctx, m.away.toUpperCase(), 180), bx + bw - 104, byy + 74);
-    ctx.textAlign = "center";
-    ctx.font = `700 62px ${HEAD}`;
-    ctx.fillText(`${m.homeScore} – ${m.awayScore}`, IG_W / 2, byy + 72);
-    ctx.font = `600 14px ${HEAD}`;
-    ctx.fillStyle = "rgba(255,255,255,0.6)";
-    ctx.fillText("SLUT", IG_W / 2, byy + 114);
+  const region1: Region = { x: M, y: my, w: MAIN_W, h: bottom - my, cols: 2 };
+  // Största storlek där allt ryms på sidan 1, annars fortsättning på sida 2
+  let px = BODY_MAX, lines: Line[] = [], cont = false;
+  for (; px >= BODY_MIN; px--) {
+    lines = layoutLines(ctx, paras, colW, px);
+    if (fitCount(lines, 0, region1, Math.round(px * 1.34)) >= lines.length) break;
   }
-  return c;
+  if (px < BODY_MIN) { px = 20; lines = layoutLines(ctx, paras, colW, px); cont = true; }
+  const lh = Math.round(px * 1.34);
+  const end1 = drawLines(ctx, lines, 0, region1, px, lh, cont ? { more: "FORTS. NÄSTA SIDA ›" } : {});
+
+  // Sidospalten
+  const side1 = placeSide(sideBoxes(ctx, d, sideAds, adLogos), y, bottom);
+  side1.placed.forEach((p) => p.b.draw(p.y, p.h));
+  if (bannerAd) pressAd(ctx, bannerAd, adLogos[1] ?? null, M, BOTTOM - 130, W, 130);
+
+  const pages = [p1.c];
+  if (end1 < lines.length) {
+    // Sida 2: resten av texten och det som inte fick plats i sidospalten
+    const p2 = newPage(d);
+    const c2 = p2.ctx;
+    let y2 = masthead(c2, d.dateLine, d.issue, 96) + 16;
+    y2 = contHead(c2, d, y2);
+    const restIds = new Set(side1.rest.map((b) => b.id).filter((id) => !id.startsWith("teaser") && id !== "portrait"));
+    const rest = sideBoxes(c2, d, sideAds, adLogos).filter((b) => restIds.has(b.id));
+    const wide = rest.length === 0;
+    const r2: Region = wide ? { x: M, y: y2, w: W, h: BOTTOM - y2, cols: 3 } : { x: M, y: y2, w: MAIN_W, h: BOTTOM - y2, cols: 2 };
+    const restParas = linesToParas(lines.slice(end1));
+    let px2 = px, lines2: Line[] = [];
+    for (; px2 >= BODY_CONT_MIN; px2--) {
+      lines2 = layoutLines(c2, restParas, colWidth(r2), px2);
+      if (fitCount(lines2, 0, r2, Math.round(px2 * 1.34)) >= lines2.length) break;
+    }
+    px2 = Math.max(px2, BODY_CONT_MIN);
+    lines2 = layoutLines(c2, restParas, colWidth(r2), px2);
+    const end2 = drawLines(c2, lines2, 0, r2, px2, Math.round(px2 * 1.34));
+    if (end2 < lines2.length) {
+      // Ryms inte ens på sida 2: … på sista raden
+      c2.fillStyle = RED;
+      c2.font = `700 16px ${HEAD}`;
+      c2.textAlign = "right";
+      c2.textBaseline = "bottom";
+      c2.fillText("(texten är för lång)", r2.x + r2.w, BOTTOM + 18);
+    }
+    if (!wide) {
+      // Rutorna ritas med sidospaltens x – samma på sida 2
+      const side2 = placeSide(rest, y2, BOTTOM);
+      side2.placed.forEach((p) => p.b.draw(p.y, p.h));
+    }
+    pages.push(p2.c);
+  }
+  return pages;
 }
 
-// ─── Intervjun ───────────────────────────────────────────────────────────────
-export async function renderInterview(d: PressPageData): Promise<HTMLCanvasElement> {
-  const [logo, ...adLogos] = await Promise.all([tryLoad(club().logo), ...d.ads.map((a) => tryLoad(a.logo))]);
-  const [c, ctx] = canvas(frameHeight(d.format));
-  paper(ctx, PAPER, 0.04);
-  contentArea(ctx);
-  const M = 36, W = IG_W - 2 * M;
-  // Kompakt tidningshuvud
-  const mh = masthead(ctx, d, logo, 24, 92);
-  ctx.fillStyle = INK;
-  ctx.font = `700 15px ${HEAD}`;
-  ctx.letterSpacing = "1px";
-  ctx.textAlign = "right";
-  ctx.textBaseline = "top";
-  ctx.fillText(fit(ctx, dateText(d).toUpperCase(), 300), IG_W - M, 30);
-  ctx.fillText(`NR ${d.issue.nr}  |  ÅRGÅNG ${d.issue.year}`, IG_W - M, 52);
-  ctx.letterSpacing = "0px";
-  const top = 24 + mh + 12;
-  rule(ctx, M, top, W, 2);
-  // Överst: etikett, rubrik, citatrubrik och ingress till vänster, porträtt till höger
-  const photoW = d.photo ? 420 : 0;
-  const tw = W - photoW - (photoW ? 24 : 0);
-  let y = top + 20;
-  y += kickerBox(ctx, d.kicker || "Intervju", M, y, 40) + 16;
-  const head = fitHeadline(ctx, (d.headline || "Namn").toUpperCase(), tw, 230, (px) => `700 ${px}px ${HEAD}`, 1.0, 96, 44);
-  ctx.fillStyle = INK;
-  ctx.font = `700 ${head.px}px ${HEAD}`;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  head.lines.forEach((l, i) => ctx.fillText(l, M, y + i * head.px));
-  y += head.lines.length * head.px + 8;
-  const blockBottom = top + 560;
-  if (d.quoteHead) y += fitText(ctx, `”${d.quoteHead}”`, M, y, tw, Math.min(150, blockBottom - y - 90), (px) => `700 ${px}px ${SERIF_HEAD}`, 58, 30, 1.08) + 12;
-  if (d.ingress) { ctx.fillStyle = INK; fitText(ctx, d.ingress, M, y, tw, blockBottom - y, (px) => `400 ${px}px ${SERIF_BODY}`, 26, 17, 1.25); }
-  if (d.photo) {
-    cover(ctx, d.photo, M + tw + 24, top + 20, photoW, blockBottom - top - 20);
-    if (d.caption) {
-      ctx.fillStyle = "#fff";
-      ctx.font = `600 13px ${BODY}`;
-      ctx.textAlign = "right";
-      ctx.textBaseline = "alphabetic";
-      ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 6;
-      ctx.fillText(fit(ctx, d.caption.toUpperCase(), photoW - 24), IG_W - M - 12, blockBottom - 12);
-      ctx.shadowBlur = 0; ctx.shadowColor = "transparent";
-    }
-  }
-  // Frågor och svar + sidospalt (citat, annons)
-  const qTop = blockBottom + 20;
-  const bottomBar = d.latest || d.next ? 150 : 0;
-  const qBottom = IG_H - 30 - bottomBar - (bottomBar ? 16 : 0);
-  const sideW = 238, mainW = W - sideW - 20, sideX = M + mainW + 20;
-  ctx.fillStyle = LIGHT;
-  ctx.fillRect(M, qTop, mainW, qBottom - qTop);
-  ctx.fillStyle = accent();
-  ctx.fillRect(M, qTop, 6, qBottom - qTop);
-  let by = qTop + 14;
-  if (d.boxTitle) { ctx.fillStyle = accent(); by += fitText(ctx, d.boxTitle.toUpperCase(), M + 24, by, mainW - 40, 32, (px) => `700 ${px}px ${HEAD}`, 28, 18) + 8; }
-  columns(ctx, toParagraphs(d.body, true), M + 24, by, mainW - 44, qBottom - by - 14, 2, { maxPx: 22, minPx: 14, rule: true });
-  let sy = qTop;
-  const adH = d.ads[0] ? 200 : 0;
-  if (d.pullQuote) { quoteBox(ctx, d.pullQuote, d.pullQuoteBy, sideX, sy, sideW, qBottom - sy - (adH ? adH + 34 : 0)); }
-  if (d.ads[0]) adBox(ctx, d.ads[0], adLogos[0] ?? null, sideX, d.pullQuote ? qBottom - adH : sy + 22, sideW, d.pullQuote ? adH : qBottom - sy - 22, 1);
-  // Längst ner: senaste matchen och nästa match
-  if (bottomBar) {
-    const yb = IG_H - 30 - bottomBar;
-    const half = d.latest && d.next ? (W - 20) / 2 : W;
-    if (d.latest) {
-      const m = d.latest;
-      frame(ctx, M, yb, half, bottomBar);
-      boxHeader(ctx, "Senaste matchen", M, yb, half, 34);
-      jersey(ctx, M + 46, yb + 88, 48, m.homeColor);
-      jersey(ctx, M + half - 46, yb + 88, 48, m.awayColor);
-      ctx.fillStyle = INK;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.font = `700 52px ${HEAD}`;
-      ctx.fillText(`${m.homeScore}–${m.awayScore}`, M + half / 2, yb + 86);
-      ctx.font = `600 17px ${BODY}`;
-      ctx.fillText(fit(ctx, `${m.home} – ${m.away}`, half - 160), M + half / 2, yb + 128);
-    }
-    if (d.next) nextBox(ctx, d.next, d.latest ? M + half + 20 : M, yb, half, bottomBar);
-  }
-  return c;
+/** Sidospaltens rutor i turordning (porträtt, citat, puffar, matcher, tabeller, annonser) */
+function sideBoxes(ctx: CanvasRenderingContext2D, d: PressPageData, ads: Array<{ a: PressAd; i: number }>, logos: Array<HTMLImageElement | null>): SideBox[] {
+  const boxes: SideBox[] = [];
+  if (d.kind === "interview" && d.photo) boxes.push(portraitBox(ctx, d.photo, d.caption));
+  if (d.pullQuote) boxes.push(quoteBox(ctx, d.pullQuote, d.pullQuoteBy));
+  if (d.kind === "front") d.teasers.filter((t) => t.title).slice(0, 3).forEach((t, i) => boxes.push(teaserBox(ctx, t, i)));
+  if (d.latest) boxes.push(latestBox(ctx, d.latest));
+  if (d.next) boxes.push(nextBox(ctx, d.next));
+  if (d.shlTable?.rows.length) boxes.push(shlTableBox(ctx, d.shlTable));
+  if (d.shlGames?.rows.length) boxes.push(listBox(ctx, "shlGames", d.shlGames.title, d.shlGames.rows.map((r) => ({ left: `${r.home}–${r.away}`, right: r.score ?? r.time, strong: /lule/i.test(r.home + r.away) })), `Källa: ${d.shlGames.source} · ${d.shlGames.updated}`, 26));
+  if (d.results.length) boxes.push(listBox(ctx, "results", "Resultatbörsen", d.results.map((r) => ({ left: `${r.home}–${r.away}`, right: r.score })), ""));
+  ads.forEach(({ a, i }) => boxes.push(adBox(ctx, a, logos[i] ?? null, i)));
+  return boxes;
 }
 
-export function renderPressPage(d: PressPageData): Promise<HTMLCanvasElement> {
-  return d.kind === "front" ? renderFront(d) : d.kind === "article" ? renderPressArticle(d) : renderInterview(d);
+/** Raderna som blev över tillbaka till stycken (för ny radbrytning på sida 2) */
+function linesToParas(lines: Line[]): Para[] {
+  const out: Para[] = [];
+  let last = -1;
+  for (const l of lines) {
+    if (l.p === last) out[out.length - 1].text += ` ${l.t}`;
+    else out.push({ text: l.t, bold: l.bold, gap: l.gap && out.length > 0 });
+    last = l.p;
+  }
+  return out;
+}
+
+/** Första sidan (förhandsvisning och video) */
+export async function renderPressPage(d: PressPageData): Promise<HTMLCanvasElement> {
+  return (await renderPressPages(d))[0];
 }

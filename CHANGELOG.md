@@ -7,6 +7,17 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.74.0 – 2026-10-09
+
+- Stålbladet i en enhetlig, neutral stil som en lokaltidning: blått tidningshuvud med bara texten "STÅLBLADET" (ingen logga), röda etiketter, vitt papper. Löpsedeln har samma stil (gul/svart borttagen).
+- Texten går först: kompakt huvud, rubrik och ingress över hela bredden, texten i spalter och rutorna (porträtt, citat, puffar, senaste/nästa match, resultat, SHL, annonser) i en sidospalt så långt plats finns. Spalterna jämnas ut och en kort text ger större bild.
+- Ryms inte texten fortsätter den på sida 2 ("Forts. nästa sida"); båda sidorna laddas ned och delas som karusell. Förhandsvisningen kan växla mellan sidorna.
+- Egna radbrytningar följs i rubrik och text (Enter = ny rad, tom rad = nytt stycke).
+- "Klistra in hela texten" (t.ex. från ett mejl): första raden blir rubrik, nästa stycke ingress och resten text. Intervju: rader som slutar med ? blir frågor i fetstil och svaret hamnar direkt under.
+- Första annonsen syns alltid; den andra längst ner på förstasidan, annars i sidospalten eller på sida 2.
+- Nytt under Inställningar → Externa källor: API-nyckel till Highlightly (SHL). Servern hämtar själv SHL-tabellen (varje timme dagtid) och dagens SHL-matcher (var tredje timme, var tionde minut när en match pågår), räknar anropen per dygn och stannar vid taket (90 av 100). Det senast hämtade visas med tid.
+- Tidningssidorna kan visa SHL-tabellen (Luleå markerat) och SHL-matcher (i dag eller senaste omgången).
+
 ## 2.73.0 – 2026-10-09
 
 - Stålbladet som en riktig tidning: nya mallarna Förstasida, Artikel och Intervju, med fri text (rubrik, citatrubrik, ingress, brödtext, citat i marginalen, bildtext och byline).

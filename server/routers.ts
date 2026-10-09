@@ -42,6 +42,7 @@ import { DEFAULT_PIR_THRESHOLDS, PIR_THRESHOLD_LIMITS, sanitizeThresholds } from
 import { positionAndTeamHistory } from "./positionHistory";
 import { nextEvent, eventStart, lagetEvent } from "./autoNews";
 import { withExternalEvent, externalIsNext } from "./matchEvent";
+import { externalStatus, setExternalConfig, refreshShl, getShl } from "./externalSources";
 import { NOTIFICATION_TYPES, getRecipients, setRecipients, smtpConfigured, sendTestMail, notifyLater, mailLayout, type NotificationType } from "./notifications";
 import type { LineupOp } from "../shared/lineupDoc";
 import {
@@ -674,6 +675,15 @@ export const appRouter = router({
 
   // ─── Notiser (e-post) ───────────────────────────────────────────────────────
 
+  // Externa källor (SHL-tabell och matcher) – nyckel och status i Inställningar
+  external: router({
+    status: adminProcedure.query(() => externalStatus()),
+    set: adminProcedure
+      .input(z.object({ apiKey: z.string().trim().max(200).nullable().optional(), rapidApi: z.boolean().optional(), enabled: z.boolean().optional(), dailyCap: z.number().int().min(5).max(1000).optional() }))
+      .mutation(async ({ input }) => { await setExternalConfig(input); return externalStatus(); }),
+    refresh: adminProcedure.mutation(async () => ({ ...(await refreshShl(true)), status: await externalStatus() })),
+    shl: moduleProcedure("media").query(() => getShl()),
+  }),
   notifications: router({
     get: adminProcedure.query(async () => ({
       smtpConfigured: smtpConfigured(),

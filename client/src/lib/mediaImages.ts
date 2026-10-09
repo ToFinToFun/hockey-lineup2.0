@@ -956,3 +956,14 @@ export async function renderMediaPost(d: MediaPostData): Promise<HTMLCanvasEleme
   }
   return renderText(d as TextPostData);
 }
+
+/** Alla bilder i inlägget: tidningssidorna kan bli två (texten fortsätter på sida 2) */
+export async function renderMediaPages(d: MediaPostData): Promise<HTMLCanvasElement[]> {
+  if (d.kind === "front" || d.kind === "article" || d.kind === "interview") {
+    await ensureFonts();
+    const press = await import("@/lib/pressImages");
+    await press.ensurePressFonts();
+    return (await import("@/lib/pressPages")).renderPressPages(d);
+  }
+  return [await renderMediaPost(d)];
+}

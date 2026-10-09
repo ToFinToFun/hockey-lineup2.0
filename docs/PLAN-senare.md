@@ -11,7 +11,9 @@ Samlat 2026-10-09 (v2.70.0). Inget här är påbörjat eller beslutat i detalj �
 
 ## Stålbladet (Media i tidningsstil) – fortsättning
 - v2.72.0: löpsedel och artikel. v2.73.0: förstasida, artikel och intervju med fri text, puffar, resultatrutor och annonser (annonstext per sponsor).
-- Nästa: riktiga SHL-tabellen (källa att välja), krönika, spelarbetyg (1–5 puckar per spelare), "Veckans profil".
+- v2.74.0: enhetlig blå stil, sida 2, inklistring och SHL via Highlightly (nyckel under Inställningar → Externa källor).
+- SHL-data kan återanvändas på fler ställen (startsidan, Live, Resultatbörsen).
+- Nästa: krönika, spelarbetyg (1–5 puckar per spelare), "Veckans profil".
 - Sponsorer som tidningsannonser i fler former (helsidesannons, annonsruta i resultatsidan).
 
 ## Väntar på något

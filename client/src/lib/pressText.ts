@@ -135,3 +135,32 @@ export function articleText(f: PressFacts, opts: { location?: string | null; spo
   if (opts.sponsor) p.push(`Matchen presenterades av ${opts.sponsor}.`);
   return { ingress: cap(ingress), body: p.join(" ").replace(/\s+/g, " ").trim() };
 }
+
+/**
+ * Inklistrad text (t.ex. från ett mejl) fördelad i fälten: första raden blir
+ * rubrik, första stycket efter den ingress och resten brödtext. Fungerar med och
+ * utan tomma rader mellan styckena. Radbrytningar i brödtexten behålls.
+ */
+export function splitPasted(raw: string): { headline: string; ingress: string; body: string } {
+  const text = raw.replace(/\r\n?/g, "\n").replace(/ /g, " ").replace(/[ \t]+\n/g, "\n").replace(/^\s*\.{3,}\s*$/gm, "").trim();
+  if (!text) return { headline: "", ingress: "", body: "" };
+  const lines = text.split("\n");
+  // Rubriken: första icke-tomma raden (om den är kort nog och inte en fråga)
+  let i = 0;
+  while (i < lines.length && !lines[i].trim()) i++;
+  const first = lines[i]?.trim() ?? "";
+  const isHead = first.length <= 140 && !/\?$/.test(first);
+  if (!isHead) return { headline: "", ingress: "", body: text };
+  const headline = first;
+  i++;
+  while (i < lines.length && !lines[i].trim()) i++;
+  // Ingressen: nästa stycke (till tom rad), eller nästa rad om texten saknar tomma rader
+  const hasBlank = lines.slice(i).some((l) => !l.trim());
+  const ing: string[] = [];
+  if (i < lines.length && !/\?$/.test(lines[i].trim())) {
+    if (hasBlank) { while (i < lines.length && lines[i].trim()) ing.push(lines[i++].trim()); }
+    else ing.push(lines[i++].trim());
+  }
+  while (i < lines.length && !lines[i].trim()) i++;
+  return { headline, ingress: ing.join(" "), body: lines.slice(i).join("\n").replace(/\n{3,}/g, "\n\n").trim() };
+}

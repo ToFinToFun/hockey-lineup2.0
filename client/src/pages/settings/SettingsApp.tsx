@@ -10,11 +10,12 @@
  */
 import { useEffect, useState } from "react";
 import { Link, useSearch, useLocation } from "wouter";
-import { ArrowLeft, Gauge, Handshake, CalendarRange, Link2, Info, Loader2, CheckCircle2, AlertTriangle, ExternalLink, Bell, Shield, Swords, KeyRound, ChevronRight, Radio } from "lucide-react";
+import { ArrowLeft, Gauge, Handshake, CalendarRange, Link2, Info, Loader2, CheckCircle2, AlertTriangle, ExternalLink, Bell, Shield, Swords, KeyRound, ChevronRight, Radio, Globe } from "lucide-react";
 import { AccessPanel } from "./AccessPanel";
 import { OpponentsPanel } from "./OpponentsPanel";
 import { ClubPanel } from "./ClubPanel";
 import { NotificationsPanel } from "./NotificationsPanel";
+import { ExternalPanel } from "./ExternalPanel";
 import { trpc } from "@/lib/trpc";
 import { PirPanel } from "./PirPanel";
 import { PeriodsPanel } from "./PeriodsPanel";
@@ -29,6 +30,7 @@ const TABS = [
   { id: "sponsorer", label: "Sponsorer", hint: "Registret med loggor och räknare", icon: Handshake },
   { id: "live", label: "Live", hint: "Livesidan och Läktaren (hjärtan och kommentarer)", icon: Radio },
   { id: "laget", label: "laget.se", hint: "Konto, anslutning och automatisk nyhet", icon: Link2 },
+  { id: "externa", label: "Externa källor", hint: "SHL-tabell och matcher (API-nyckel)", icon: Globe },
   { id: "notiser", label: "Notiser", hint: "Vem som får vilka mejl", icon: Bell },
   { id: "atkomst", label: "Åtkomst", hint: "Delade länkar till moduler (utan styrelselösenordet)", icon: KeyRound },
   { id: "om", label: "Om", hint: "Version och databas", icon: Info },
@@ -39,7 +41,7 @@ type TabId = (typeof TABS)[number]["id"];
 const GROUPS: Array<{ title: string; tabs: TabId[] }> = [
   { title: "Klubb och lag", tabs: ["klubb", "motstandare", "perioder"] },
   { title: "Match och data", tabs: ["pir", "sponsorer", "live"] },
-  { title: "Kopplingar", tabs: ["laget", "notiser"] },
+  { title: "Kopplingar", tabs: ["laget", "externa", "notiser"] },
   { title: "Åtkomst", tabs: ["atkomst"] },
   { title: "", tabs: ["om"] },
 ];
@@ -98,6 +100,7 @@ export default function SettingsApp() {
         {tab === "perioder" && <PeriodsPanel />}
         {tab === "laget" && <LagetPanel />}
         {tab === "notiser" && <NotificationsPanel />}
+        {tab === "externa" && <ExternalPanel />}
         {tab === "klubb" && <ClubPanel />}
         {tab === "motstandare" && <OpponentsPanel />}
         {tab === "atkomst" && <AccessPanel />}
