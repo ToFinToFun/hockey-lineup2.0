@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.69.2 – 2026-10-09
+
+- Tester: delningslänk- och motståndartesterna förbereder själva uppställningen (vår spelare, tomt motståndarlag) i stället för att bero på vad databasen råkar innehålla – de föll på en tom databas i CI.
+
 ## 2.69.1 – 2026-10-09
 
 - Tester: servertesterna körs en fil i taget (de delar databasen och Lineups dokument och kunde skriva över varandra i CI), "Ändrad"-testet tål att databasen avrundar till hela sekunder, CI låst till Ubuntu 24.04.

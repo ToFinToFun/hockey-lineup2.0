@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { appRouter } from "./routers";
-import { applyLineupPatch } from "./lineupSync";
+import { applyLineupPatch, getLineupSnapshot } from "./lineupSync";
 import { getAllMatchResults } from "./scoreDb";
 import { createPlayer, listPlayers } from "./playersDb";
 
@@ -13,6 +13,9 @@ describe.skipIf(!process.env.DATABASE_URL)("match mot motståndare (Score Tracke
     const { id: oppId } = await c.opponents.save({ name: "Externa IF", color: "#123456" });
     const op = await c.opponents.addPlayer({ opponentId: oppId, name: "Deras Spelare", number: "9", position: "C" });
     const setup = { mode: "external", opponentId: oppId, ourName: null, ourLogo: "club" };
+    // Börja med ett tomt motståndarlag (oberoende av vad andra tester lämnat kvar)
+    const { doc } = await getLineupSnapshot();
+    await applyLineupPatch(`ext-clear-${Date.now()}`, Object.keys(doc.lineup).filter((k) => k.startsWith("team-b-")).map((slot) => ({ t: "slot", slot, player: null })) as never);
     await applyLineupPatch(`ext-${Date.now()}`, [
       { t: "field", key: "setup", value: setup } as never,
       { t: "slot", slot: "team-a-fwd-1-c", player: { id: "ext-our", name: "Vår Spelare", number: "", position: "C" } as never },

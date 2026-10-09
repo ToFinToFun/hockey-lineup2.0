@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { appRouter } from "./routers";
 import { applyLineupPatch, getLineupSnapshot } from "./lineupSync";
+import { createPlayer, listPlayers } from "./playersDb";
 
 const admin = { req: {} as never, res: {} as never, session: { role: "admin" as const, expiresAt: null } };
 const anon = { req: {} as never, res: {} as never, session: null };
@@ -28,7 +29,10 @@ describe.skipIf(!process.env.DATABASE_URL)("motståndarens delningslänk", () =>
     expect(await a.opponents.storedLineup({ id: oppId })).toEqual({ "team-b-fwd-1-c": p1.id });
 
     // Vi väljer laget i Lineup → deras ändringar går direkt in i uppställningen
-    await applyLineupPatch(`lnk-${Date.now()}`, [{ t: "field", key: "setup", value: { mode: "external", opponentId: oppId, ourName: null, ourLogo: "club" } } as never]);
+    if (!(await listPlayers()).some((p) => p.id === "lnk-our")) await createPlayer({ id: "lnk-our", name: "Vår Länkspelare" });
+    // (med en egen spelare i vårt lag – testet får inte bero på vad databasen råkar innehålla)
+    await applyLineupPatch(`lnk-${Date.now()}`, [{ t: "field", key: "setup", value: { mode: "external", opponentId: oppId, ourName: null, ourLogo: "club" } } as never,
+      { t: "slot", slot: "team-a-fwd-1-rw", player: { id: "lnk-our", name: "Vår Länkspelare", number: "", position: "C" } as never }]);
     const p2 = await pub.opponentLink.addPlayer({ token: hidden.token, name: "Andra Spelaren", position: "MV" });
     await pub.opponentLink.setSlot({ token: hidden.token, slot: "team-b-gk-1", playerId: p2.id });
     expect((await getLineupSnapshot()).doc.lineup["team-b-gk-1"]?.name).toBe("Andra Spelaren");
@@ -47,7 +51,7 @@ describe.skipIf(!process.env.DATABASE_URL)("motståndarens delningslänk", () =>
     await expect(pub.opponentLink.view({ token: hidden.token })).rejects.toThrow(/ogiltig/);
 
     await applyLineupPatch(`lnk2-${Date.now()}`, [{ t: "field", key: "setup", value: { mode: "internal", opponentId: null, ourName: null, ourLogo: "club" } } as never,
-      { t: "slot", slot: "team-b-gk-1", player: null }]);
+      { t: "slot", slot: "team-b-gk-1", player: null }, { t: "slot", slot: "team-a-fwd-1-rw", player: null }]);
     await a.opponents.delete({ id: oppId });
     await a.opponents.delete({ id: other.id });
   });
