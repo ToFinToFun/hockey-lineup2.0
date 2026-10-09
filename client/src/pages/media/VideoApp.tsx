@@ -10,7 +10,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
-import { ArrowLeft, Upload, Loader2, Download, Share2, Copy, Check, Shuffle, Film, RefreshCw } from "lucide-react";
+import { ArrowLeft, Upload, Loader2, Download, Share2, Copy, Check, Shuffle, Film, RefreshCw, X, ImageIcon } from "lucide-react";
+import { peekVideoStill, clearVideoStill, stillFromImage, type VideoStill } from "@/lib/videoStill";
 import { trpc } from "@/lib/trpc";
 import { useSponsors, pickLeastShown, type Sponsor } from "@/lib/sponsors";
 import { starCandidates, autoStars, type StarCandidate } from "@/lib/starsOfGame";
@@ -37,7 +38,11 @@ function matchDateLine(m: ReportMatch | undefined): string {
 }
 const fmtMB = (b: number) => `${Math.round(b / 1024 / 1024)} MB`;
 /** Intro 1 + intro 2 + outro minus övergångarna (samma som server/video/videoFfmpeg.ts) */
-const ADDED_SECONDS = 1.6 + 2.8 + 2.6 - 3 * 0.4;
+const BASE_ADDED = 1.6 + 2.8 + 2.6 - 3 * 0.4;
+/** Bild före klippet: standardlängd och gränser (samma som servern) */
+export const STILL_DEFAULT = 3.5, STILL_MIN = 2, STILL_MAX = 8;
+/** Vad intro, ev. bild och outro lägger till (exporteras för test) */
+export const addedSeconds = (still: number) => BASE_ADDED + (still > 0 ? still - 0.4 : 0);
 
 /** Målen i tidsordning med ställningen efter varje mål (exporteras för test) */
 export function goalsWithScore(m: ReportMatch | undefined) {
@@ -129,6 +134,21 @@ export default function VideoApp() {
   const xhrRef = useRef<XMLHttpRequest | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // ─── Bild före klippet (från Media eller uppladdad här) ───
+  const [still, setStill] = useState<VideoStill | null>(() => peekVideoStill());
+  useEffect(() => { clearVideoStill(); }, []);
+  const [stillSec, setStillSec] = useState(STILL_DEFAULT);
+  const stillFileRef = useRef<HTMLInputElement>(null);
+  const pickStill = (f: File) => {
+    const url = URL.createObjectURL(f);
+    const img = new Image();
+    img.onload = () => { setStill(stillFromImage(img, f.name.replace(/\.[^.]+$/, ""))); URL.revokeObjectURL(url); };
+    img.onerror = () => { toast.error("Bilden kunde inte läsas"); URL.revokeObjectURL(url); };
+    img.src = url;
+  };
+  const stillUsed = still ? stillSec : 0;
+  const ADDED_SECONDS = addedSeconds(stillUsed);
+
   useEffect(() => {
     fetch("/api/media/video/limits").then((r) => (r.ok ? r.json() : null)).then(setLimits).catch(() => undefined);
   }, []);
@@ -156,9 +176,9 @@ export default function VideoApp() {
       };
       v.onerror = () => resolve({ duration: 0, frame: null });
     });
-    if (limits && meta.duration > limits.maxClipSeconds + 0.5) {
+    if (limits && meta.duration > limits.maxSeconds - ADDED_SECONDS + 0.5) {
       URL.revokeObjectURL(url);
-      toast.error(`Klippet är ${Math.round(meta.duration)} s – max ${limits.maxClipSeconds} s`, { description: `Hela videon får vara ${limits.maxSeconds} s med intro och outro. Korta klippet i telefonen först.` });
+      toast.error(`Klippet är ${Math.round(meta.duration)} s – max ${Math.floor(limits.maxSeconds - ADDED_SECONDS)} s`, { description: `Hela videon får vara ${limits.maxSeconds} s med intro och outro. Korta klippet i telefonen först.` });
       return;
     }
     setFile(f);
@@ -377,6 +397,7 @@ export default function VideoApp() {
 
   // ─── Förhandsvisning ───
   const introRef = useRef<HTMLCanvasElement>(null);
+  const stillSrc = still ? (format === "reel" ? still.reel : still.feed) : null;
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const outroRef = useRef<HTMLCanvasElement>(null);
   const [graphics, setGraphics] = useState<Awaited<ReturnType<typeof renderVideoGraphics>> | null>(null);
@@ -450,6 +471,7 @@ export default function VideoApp() {
         body: JSON.stringify({
           uploadId: upload.id, format, introSide: side,
           intro2: png(graphics.intro2), outro: png(graphics.outro), overlay: graphics.overlay && hasOverlay(data) ? png(graphics.overlay) : null,
+          still: stillSrc, stillSeconds: stillUsed || undefined,
           fileName: fileName(), sponsorIds, introLogos,
         }),
       });
@@ -528,14 +550,17 @@ export default function VideoApp() {
               </p>
             )}
             {upProgress !== null && <div className="h-1 mt-1 rounded bg-white/10 overflow-hidden"><div className="h-full bg-emerald-400" style={{ width: `${upProgress * 100}%` }} /></div>}
-            {limits && <p className="text-[10px] text-white/35 mt-1">Max {fmtMB(limits.maxBytes)} och {limits.maxClipSeconds} s (hela videon {limits.maxSeconds} s med intro och outro). Filma gärna i 1080p.</p>}
+            {limits && <p className="text-[10px] text-white/35 mt-1">Max {fmtMB(limits.maxBytes)} och {Math.floor(limits.maxSeconds - ADDED_SECONDS)} s (hela videon {limits.maxSeconds} s med intro{still ? ", bild" : ""} och outro). Filma gärna i 1080p.</p>}
+            {upload && limits && upload.duration > limits.maxSeconds - ADDED_SECONDS + 0.5 && (
+              <p className="text-[10px] text-amber-300/80 mt-1">Med bilden blir videon för lång – korta bilden eller klippet till högst {Math.floor(limits.maxSeconds - ADDED_SECONDS)} s.</p>
+            )}
             {upload && format === "reel" && upload.duration + ADDED_SECONDS > 60 && (
               <p className="text-[10px] text-amber-300/80 mt-1">Videon blir {Math.round(upload.duration + ADDED_SECONDS)} s. Som Story delas den i flera bitar om 60 s – lägg upp den som Reel, eller korta klippet till högst {60 - Math.ceil(ADDED_SECONDS)} s.</p>
             )}
             <details className="mt-2 rounded-lg bg-white/[0.03] border border-white/10 px-3 py-2">
               <summary className="text-[11px] text-white/60 cursor-pointer">Tips: hur långt ska klippet vara?</summary>
               <div className="text-[11px] text-white/55 space-y-1.5 mt-2 leading-relaxed">
-                <p>Intro och outro lägger till ca {Math.round(ADDED_SECONDS)} s till klippet.</p>
+                <p>Intro{still ? ", bilden" : ""} och outro lägger till ca {Math.round(ADDED_SECONDS)} s till klippet.</p>
                 <p><b className="text-white/75">Reel:</b> högst 3 min (verktyget stoppar vid {limits?.maxSeconds ?? 180} s totalt). Korta Reels får oftast mer räckvidd – bara det viktigaste.</p>
                 <p><b className="text-white/75">Story:</b> Instagram delar upp videor i bitar om 60 s. Håll hela videon under 60 s (klippet högst ca {60 - Math.ceil(ADDED_SECONDS)} s) så att intro, klipp och outro hamnar i samma bit.</p>
                 <p><b className="text-white/75">Flöde (4:5):</b> samma längder som Reel – videor i flödet visas även bland Reels.</p>
@@ -550,6 +575,32 @@ export default function VideoApp() {
               <button onClick={() => setFormat("reel")} className={chip(format === "reel")}>Reel / Story (9:16)</button>
               <button onClick={() => setFormat("feed")} className={chip(format === "feed")}>Flöde (4:5)</button>
             </div>
+          </div>
+
+          <div>
+            <p className="text-[11px] text-white/50 mb-1.5">Bild före klippet</p>
+            {still ? (
+              <div className="flex items-start gap-3 rounded-lg bg-white/[0.03] border border-white/10 p-2">
+                <img src={stillSrc!} alt="" className={`w-16 rounded border border-white/15 ${format === "reel" ? "aspect-[9/16]" : "aspect-[4/5]"} object-cover`} />
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <p className="text-xs truncate">{still.title}</p>
+                  <label className="block text-[11px] text-white/50">Visas {stillSec.toLocaleString("sv-SE")} s
+                    <input type="range" min={STILL_MIN} max={STILL_MAX} step={0.5} value={stillSec} onChange={(e) => setStillSec(Number(e.target.value))} className="w-full accent-emerald-400" />
+                  </label>
+                  <div className="flex gap-3">
+                    <button onClick={() => stillFileRef.current?.click()} className="flex items-center gap-1 text-[11px] text-white/60 hover:text-white"><Upload size={12} /> Byt bild</button>
+                    <button onClick={() => setStill(null)} className="flex items-center gap-1 text-[11px] text-red-300/70"><X size={12} /> Ta bort</button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                <Link href="/media" className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs"><ImageIcon size={13} /> Välj i Media</Link>
+                <button onClick={() => stillFileRef.current?.click()} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs"><Upload size={13} /> Ladda upp bild</button>
+              </div>
+            )}
+            <input ref={stillFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) pickStill(f); e.target.value = ""; }} />
+            <p className="text-[10px] text-white/35 mt-1">Visas mellan titelkortet och klippet. Bilder från Media finns i båda formaten – rätt format väljs automatiskt (i Media: "Använd före ett videoklipp").</p>
           </div>
 
           <div>
@@ -668,15 +719,16 @@ export default function VideoApp() {
 
         {/* Förhandsvisning och resultat */}
         <section className="space-y-3">
-          <div className="grid grid-cols-3 gap-2">
-            {[["Intro 2", introRef], ["Klippet", overlayRef], ["Outro", outroRef]].map(([label, ref]) => (
+          <div className={`grid gap-2 ${stillSrc ? "grid-cols-4" : "grid-cols-3"}`}>
+            {[["Intro 2", introRef], ...(stillSrc ? [["Bild", null]] : []), ["Klippet", overlayRef], ["Outro", outroRef]].map(([label, ref]) => (
               <div key={label as string}>
-                <canvas ref={ref as React.RefObject<HTMLCanvasElement>} className={`w-full h-auto rounded-lg bg-black ${aspect}`} />
+                {ref ? <canvas ref={ref as React.RefObject<HTMLCanvasElement>} className={`w-full h-auto rounded-lg bg-black ${aspect}`} />
+                  : <img src={stillSrc!} alt="" className={`w-full h-auto rounded-lg bg-black ${aspect}`} />}
                 <p className="text-[10px] text-white/40 text-center mt-1">{label as string}</p>
               </div>
             ))}
           </div>
-          <p className="text-[10px] text-white/35">Före intro 2 kommer puckflippen (1,6 s). {format === "reel" ? "Text och loggor hålls inom Instagrams säkra yta för Reels." : ""}</p>
+          <p className="text-[10px] text-white/35">Före intro 2 kommer nedsläppet (1,6 s).{still ? ` Bilden visas ${stillSec.toLocaleString("sv-SE")} s.` : ""} {format === "reel" ? "Text och loggor hålls inom Instagrams säkra yta för Reels." : ""}</p>
 
           <button onClick={() => void render()} disabled={!upload || !graphics || starting || job?.status === "queued" || job?.status === "rendering"}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-emerald-600 text-white font-semibold disabled:opacity-40">

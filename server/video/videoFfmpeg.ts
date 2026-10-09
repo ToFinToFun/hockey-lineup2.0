@@ -1,7 +1,7 @@
 /**
  * Media → Video: bygger ffmpeg-kommandot för en färdig Instagram-video.
  *
- *   intro 1 (alltid samma) ─fade→ intro 2 (titelkort) ─fade→ klippet + overlay ─fade→ outro
+ *   intro 1 (alltid samma) ─fade→ intro 2 (titelkort) ─fade→ [bild från Media] ─fade→ klippet + overlay ─fade→ outro
  *
  * Intro 1 (puckflippen) är ett färdigt klipp från servern (videoIntro.ts). Intro 2,
  * overlay och outro ritas som PNG i webbläsaren med samma kod som Media-bilderna;
@@ -27,7 +27,19 @@ export const VIDEO_TIMING = {
   intro2: 2.8,
   outro: 2.6,
   xfade: 0.4,
+  /** Bild före klippet (från Media): standard och gränser */
+  still: 3.5,
+  stillMin: 2,
+  stillMax: 8,
 };
+
+/** Bildens längd inom gränserna (0 = ingen bild) */
+export function stillSeconds(sec: number | null | undefined): number {
+  if (!sec || !Number.isFinite(sec) || sec <= 0) return 0;
+  return r(Math.min(VIDEO_TIMING.stillMax, Math.max(VIDEO_TIMING.stillMin, sec)));
+}
+/** Vad bilden lägger till (övergången borträknad) */
+const stillAdds = (still: number) => (still > 0 ? still - VIDEO_TIMING.xfade : 0);
 
 export interface FfmpegInputs {
   format: VideoFormat;
@@ -41,31 +53,35 @@ export interface FfmpegInputs {
   /** Overlay ovanpå klippet (PNG med genomskinlighet), valfri */
   overlay: string | null;
   outro: string;
+  /** Bild före klippet (PNG i videons format), valfri */
+  still?: string | null;
+  /** Bildens längd i sekunder */
+  stillSeconds?: number;
   output: string;
 }
 
 const r = (n: number) => Math.round(n * 1000) / 1000;
 
 /** Total längd på den färdiga videon */
-export function totalDuration(clipDuration: number): number {
+export function totalDuration(clipDuration: number, still = 0): number {
   const t = VIDEO_TIMING;
-  return r(t.intro1 + t.intro2 + clipDuration + t.outro - 3 * t.xfade);
+  return r(t.intro1 + t.intro2 + clipDuration + t.outro - 3 * t.xfade + stillAdds(still));
 }
 
-/** Hur mycket intro, intro 2 och outro lägger till (övergångarna borträknade) */
-export function addedDuration(): number {
-  return r(totalDuration(0));
+/** Hur mycket intro, intro 2, ev. bild och outro lägger till (övergångarna borträknade) */
+export function addedDuration(still = 0): number {
+  return r(totalDuration(0, still));
 }
 
 /** Längsta klippet som ryms när hela videon får vara maxTotal sekunder (hela sekunder nedåt) */
-export function maxClipSeconds(maxTotal: number): number {
-  return Math.floor(maxTotal - addedDuration());
+export function maxClipSeconds(maxTotal: number, still = 0): number {
+  return Math.floor(maxTotal - addedDuration(still));
 }
 
 /** Var klippet börjar i den färdiga videon (för ljudet) */
-export function clipStart(): number {
+export function clipStart(still = 0): number {
   const t = VIDEO_TIMING;
-  return r(t.intro1 + t.intro2 - 2 * t.xfade);
+  return r(t.intro1 + t.intro2 - 2 * t.xfade + stillAdds(still));
 }
 
 export function buildFfmpegArgs(i: FfmpegInputs): string[] {
@@ -83,12 +99,16 @@ export function buildFfmpegArgs(i: FfmpegInputs): string[] {
     "-i", i.outro, // 3
   ];
   if (i.overlay) args.push("-i", i.overlay); // 4
+  const stillSec = i.still ? stillSeconds(i.stillSeconds ?? VIDEO_TIMING.still) : 0;
+  const stillIdx = i.overlay ? 5 : 4;
+  if (stillSec) args.push("-i", i.still!); // 4 eller 5
   const still = (sec: number) => `fps=${fps},tpad=stop_mode=clone:stop_duration=${sec},trim=duration=${sec},setpts=PTS-STARTPTS`;
 
   const norm = `scale=${w}:${h}:force_original_aspect_ratio=decrease,pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${fps},format=yuv420p`;
   const f: string[] = [];
   f.push(`[0:v]trim=duration=${t.intro1},setpts=PTS-STARTPTS,${norm}[i1]`);
   f.push(`[1:v]${still(t.intro2)},${norm}[i2]`);
+  if (stillSec) f.push(`[${stillIdx}:v]${still(stillSec)},${norm}[st]`);
   // Klippet: fyller rutan; om formatet inte stämmer fylls kanterna med en suddig kopia
   f.push(`[2:v]trim=duration=${dur},setpts=PTS-STARTPTS,fps=${fps},split[cbg][cfg]`);
   // Suddas i låg upplösning (mycket snabbare) och skalas sedan upp
@@ -105,15 +125,21 @@ export function buildFfmpegArgs(i: FfmpegInputs): string[] {
   f.push(`[3:v]${still(t.outro)},${norm}[out]`);
 
   const o1 = r(t.intro1 - t.xfade);
-  const o2 = r(o1 + t.intro2 - t.xfade);
-  const o3 = r(o2 + dur - t.xfade);
   f.push(`[i1][i2]xfade=transition=fade:duration=${t.xfade}:offset=${o1}[x1]`);
-  f.push(`[x1][clip]xfade=transition=fade:duration=${t.xfade}:offset=${o2}[x2]`);
+  let o2 = r(o1 + t.intro2 - t.xfade);
+  let before = "x1";
+  if (stillSec) {
+    f.push(`[x1][st]xfade=transition=fade:duration=${t.xfade}:offset=${o2}[xs]`);
+    o2 = r(o2 + stillSec - t.xfade);
+    before = "xs";
+  }
+  const o3 = r(o2 + dur - t.xfade);
+  f.push(`[${before}][clip]xfade=transition=fade:duration=${t.xfade}:offset=${o2}[x2]`);
   f.push(`[x2][out]xfade=transition=fade:duration=${t.xfade}:offset=${o3},format=yuv420p[v]`);
 
-  // Ljud: tyst under intro/outro, klippets ljud mitt i (med mjuk in- och uttoning)
-  const total = totalDuration(dur);
-  const startMs = Math.round(clipStart() * 1000);
+  // Ljud: tyst under intro/bild/outro, klippets ljud mitt i (med mjuk in- och uttoning)
+  const total = totalDuration(dur, stillSec);
+  const startMs = Math.round(clipStart(stillSec) * 1000);
   if (i.clipHasAudio) {
     f.push(`[2:a]atrim=duration=${dur},asetpts=PTS-STARTPTS,aresample=48000,aformat=channel_layouts=stereo,afade=t=in:st=0:d=${t.xfade},afade=t=out:st=${r(Math.max(0, dur - t.xfade))}:d=${t.xfade},adelay=${startMs}|${startMs},apad=whole_dur=${total}[a]`);
   } else {

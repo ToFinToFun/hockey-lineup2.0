@@ -20,7 +20,7 @@ import path from "path";
 import os from "os";
 import { readSession, hasModule } from "../auth";
 import { recordSponsorNews } from "../sponsorsDb";
-import { buildFfmpegArgs, maxClipSeconds, totalDuration, type VideoFormat } from "./videoFfmpeg";
+import { buildFfmpegArgs, maxClipSeconds, stillSeconds, totalDuration, type VideoFormat } from "./videoFfmpeg";
 import { introClip, validCustom } from "./videoIntro";
 import type { IntroSide } from "../../shared/videoIntro";
 
@@ -195,13 +195,20 @@ export function registerVideoRoutes(app: Express) {
   //    (intro 2, overlay, outro) som PNG. Svarar med jobb-id.
   app.post("/api/media/video/render", express.json({ limit: VIDEO_LIMITS.maxGraphicsJson }), async (req, res) => {
     if (!(await requireAdmin(req, res))) return;
-    const b = req.body as { uploadId?: string; format?: string; introSide?: string; intro2?: string; overlay?: string | null; outro?: string; fileName?: string; sponsorIds?: number[]; introLogos?: unknown };
+    const b = req.body as { uploadId?: string; format?: string; introSide?: string; intro2?: string; overlay?: string | null; outro?: string; still?: string | null; stillSeconds?: number; fileName?: string; sponsorIds?: number[]; introLogos?: unknown };
     if (!b.uploadId || !ID_RE.test(b.uploadId) || !fs.existsSync(uploadPath(b.uploadId))) return res.status(400).json({ error: "Klippet finns inte längre – ladda upp det igen" });
     const format: VideoFormat = b.format === "feed" ? "feed" : "reel";
     const introSide: IntroSide = b.introSide === "white" ? "white" : "green";
     // Matcher mot andra lag: egna loggor på pucken
     const introCustom = b.introLogos ? validCustom(b.introLogos) : null;
     if (b.introLogos && !introCustom) return res.status(400).json({ error: "Loggorna till introt är ogiltiga" });
+    // Bild före klippet (Media): längden räknas in i videons maxlängd
+    const still = b.still ? stillSeconds(Number(b.stillSeconds) || 3.5) : 0;
+    if (still) {
+      const p = await probe(uploadPath(b.uploadId)).catch(() => null);
+      const maxClip = maxClipSeconds(VIDEO_LIMITS.maxSeconds, still);
+      if (p && p.duration > maxClip + 0.5) return res.status(413).json({ error: `Med bilden får klippet vara högst ${maxClip} s (hela videon ${VIDEO_LIMITS.maxSeconds} s). Korta bilden eller klippet.` });
+    }
     const id = newId();
     const dir = jobDir(id);
     try {
@@ -210,6 +217,7 @@ export function registerVideoRoutes(app: Express) {
         writePng(path.join(dir, "intro2.png"), b.intro2),
         writePng(path.join(dir, "outro.png"), b.outro),
         b.overlay ? writePng(path.join(dir, "overlay.png"), b.overlay) : Promise.resolve(),
+        still ? writePng(path.join(dir, "still.png"), b.still!) : Promise.resolve(),
       ]);
     } catch (err) {
       await fsp.rm(dir, { recursive: true, force: true });
@@ -228,12 +236,13 @@ export function registerVideoRoutes(app: Express) {
       job.status = "rendering";
       try {
         const p = await probe(uploadPath(uploadId));
-        job.duration = totalDuration(p.duration);
+        job.duration = totalDuration(p.duration, still);
         const args = buildFfmpegArgs({
           format, clip: uploadPath(uploadId), clipDuration: p.duration, clipHasAudio: p.hasAudio,
           intro1: await introClip(INTRO_DIR, format, introSide, introCustom), intro2: path.join(dir, "intro2.png"),
           overlay: hasOverlay ? path.join(dir, "overlay.png") : null,
           outro: path.join(dir, "outro.png"), output: path.join(dir, "out.mp4"),
+          still: still ? path.join(dir, "still.png") : null, stillSeconds: still,
         });
         await run("ffmpeg", args, (s) => {
           const m = s.match(/time=(\d+):(\d+):(\d+(?:\.\d+)?)/);

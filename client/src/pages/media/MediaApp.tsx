@@ -16,24 +16,27 @@ import type { MatchSetup } from "@shared/matchSetup";
 import { defaultTeamNames, isTeamAWhite, teamGenitive, teamName, teamSingular } from "@shared/teams";
 import { club } from "@shared/club";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
-import { ArrowLeft, Download, Share2, Copy, Check, Save, Plus, Trash2, Loader2, RefreshCw, Upload, X, Users, Type, CalendarDays, IdCard, BarChart3, Trophy, Film, Award } from "lucide-react";
+import { ArrowLeft, Download, Share2, Copy, Check, Save, Plus, Trash2, Loader2, RefreshCw, Upload, X, Users, Type, CalendarDays, IdCard, BarChart3, Trophy, Film, Award, ImageIcon, Clapperboard } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useSponsors, logoForName, randomSponsorName } from "@/lib/sponsors";
 import { createTeamSlots, groupSlots, type TeamConfig } from "@/lib/lineup";
 import type { Player } from "@/lib/players";
 import { prepareSourcePhoto } from "@/lib/cardPhoto";
-import { renderMediaPost, MEDIA_OVERLAYS, MEDIA_BACKGROUNDS, overlayFromTheme, type MediaOverlay, type MediaBackground, type LineupGroup, type MediaPostData } from "@/lib/mediaImages";
+import { renderMediaPost, MEDIA_OVERLAYS, MEDIA_BACKGROUNDS, overlayFromTheme, type MediaOverlay, type MediaBackground, type LineupGroup, type MediaPostData, type PostFormat } from "@/lib/mediaImages";
+import { setVideoStill } from "@/lib/videoStill";
 import { type CardSettings } from "@shared/cardRender";
 import { renderPlayerCard } from "@/lib/savedCardImage";
 import { cellsFor, defaultStatsTitle } from "@shared/cardStats";
 import { STAT_CATEGORIES, STAT_PERIODS, periodRange, statRows, type StatCategory, type StatPeriod } from "./mediaStats";
 
-type Kind = "lineup" | "text" | "cards" | "stats" | "result" | "award";
+type Kind = "lineup" | "text" | "cards" | "stats" | "result" | "award" | "image";
 
 interface Settings {
   kind: Kind;
+  /** 4:5 (flödet, standard) eller 9:16 (Story/Reel) */
+  format?: PostFormat;
   overlay: MediaOverlay;
   background: MediaBackground;
   /** Lagets uppställning mot motståndare: lagets logga och färg (annars klubbens) */
@@ -81,6 +84,7 @@ const NEW: Record<Kind, Settings> = {
   stats: { ...BASE, kind: "stats", title: "Poängligan" },
   result: { ...BASE, kind: "result", title: "" },
   award: { ...BASE, kind: "award", title: "", awardId: "points_leader", awardPlaces: [1, 2, 3], statPeriod: "month" },
+  image: { ...BASE, kind: "image", title: "" },
 };
 
 const WEEKDAYS = ["Söndag", "Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag"];
@@ -126,14 +130,15 @@ function defaultCaption(s: Settings, tags: string[]): string {
     const lines = s.groups.map((g) => `${g.label}: ${g.players.map((p) => `${p.name}${p.number ? ` #${p.number}` : ""}`).join(", ")}`);
     return [`${s.title || "Dagens lag"} – ${s.teamName} ${s.team === "green" ? "💚" : "🤍"}`, s.dateLine, "", ...lines, s.sponsorName ? `\nPresenteras av ${s.sponsorName}` : "", "", tagLine].filter((l, i, a) => !(l === "" && a[i - 1] === "")).join("\n").trim();
   }
-  if (s.kind === "stats" || s.kind === "cards") {
-    return [s.title, s.subtitle, s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tagLine].filter(Boolean).join("\n\n");
+  if (s.kind === "stats" || s.kind === "cards" || s.kind === "image") {
+    return [s.title, s.subtitle, s.kind === "image" ? s.info : "", s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tagLine].filter(Boolean).join("\n\n");
   }
   return [s.title, s.body, s.info, s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tagLine].filter(Boolean).join("\n\n");
 }
 
 export default function MediaApp() {
   const utils = trpc.useUtils();
+  const [, navigate] = useLocation();
   const posts = trpc.media.list.useQuery();
   const save = trpc.media.save.useMutation({ onSuccess: () => utils.media.list.invalidate() });
   const del = trpc.media.delete.useMutation({ onSuccess: () => utils.media.list.invalidate() });
@@ -284,19 +289,25 @@ export default function MediaApp() {
 
   const sponsor = s.sponsorName ? { name: s.sponsorName, logo: logoForName(sponsors, s.sponsorName) } : null;
 
-  // Förhandsvisning
-  useEffect(() => {
-    let cancelled = false;
-    const t = setTimeout(async () => {
-      const common = { overlay: s.overlay, background: s.background, dateLine: s.dateLine, sponsor, photo: s.useOwnPhoto !== false ? photo : null, photoDim: s.photoDim };
-      const data: MediaPostData =
-        s.kind === "lineup" ? { ...common, kind: "lineup", team: s.team, teamName: s.teamName, title: s.title, groups: s.groups, ...(s.teamLogo !== undefined ? { logo: s.teamLogo, accent: s.teamAccent } : {}) }
+  // Bilden som ska ritas (formatet kan väljas separat, t.ex. för videon)
+  const buildData = (format: PostFormat): MediaPostData => {
+      // Mallen Bild: den uppladdade bilden ritas i ramen, inte som bakgrund
+      const common = { overlay: s.overlay, background: s.background, dateLine: s.dateLine, sponsor, photo: s.kind !== "image" && s.useOwnPhoto !== false ? photo : null, photoDim: s.photoDim, format };
+      return s.kind === "lineup" ? { ...common, kind: "lineup", team: s.team, teamName: s.teamName, title: s.title, groups: s.groups, ...(s.teamLogo !== undefined ? { logo: s.teamLogo, accent: s.teamAccent } : {}) }
         : s.kind === "cards" ? { ...common, kind: "cards", title: s.title, subtitle: s.subtitle, cards: cardCanvases }
         : s.kind === "stats" ? { ...common, kind: "stats", title: s.title, subtitle: s.subtitle || range.label, valueLabel: statCat.valueLabel, rows }
         : s.kind === "award" ? { ...common, kind: "award", title: s.title || award?.title || "Utmärkelse", emoji: award?.emoji ?? "", subtitle: s.subtitle || range.label, places: awardCards }
         : s.kind === "result" ? (reportData ? { ...common, kind: "result", report: reportData } : { ...common, kind: "text", title: "Inga matcher än", body: "", info: "" })
+        : s.kind === "image" ? { ...common, kind: "image", title: s.title, subtitle: s.subtitle, info: s.info, image: photo }
         : { ...common, kind: "text", title: s.title, body: s.body, info: s.info };
-      const c = await renderMediaPost(data);
+  };
+  const format: PostFormat = s.format ?? "feed";
+
+  // Förhandsvisning
+  useEffect(() => {
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const c = await renderMediaPost(buildData(format));
       if (cancelled || !canvasRef.current) return;
       canvasRef.current.width = c.width;
       canvasRef.current.height = c.height;
@@ -310,7 +321,8 @@ export default function MediaApp() {
     setPostId(null);
     setCaptionEdited(false);
     // Utseendet följer med till nästa mall: bakgrund, egen bild, mörkning och överlägg
-    const look = { background: s.background, overlay: s.overlay, photoDim: s.photoDim, useOwnPhoto: s.useOwnPhoto };
+    // (bilden i mallen Bild blir inte bakgrund i nästa mall)
+    const look = { background: s.background, overlay: s.overlay, photoDim: s.photoDim, useOwnPhoto: s.kind === "image" ? false : s.useOwnPhoto, format: s.format };
     // Egen bild från ett öppnat inlägg: ta med den som ny bild så att den sparas med det nya inlägget
     if (photo && newPhoto === undefined) void currentPhotoBase64().then((b) => setNewPhoto(b)).catch(() => undefined);
     // Varje ny mall får en slumpad sponsor (kan ändras till "Ingen sponsor")
@@ -359,7 +371,7 @@ export default function MediaApp() {
       img.onload = () => setPhoto(img);
       img.src = `data:image/jpeg;base64,${base64}`;
       setNewPhoto(base64);
-      update({ useOwnPhoto: true }); // vald bild används direkt
+      if (s.kind !== "image") update({ useOwnPhoto: true }); // vald bild används direkt
     } catch (e) {
       toast.error("Bilden kunde inte läsas", { description: (e as Error).message });
     }
@@ -424,6 +436,20 @@ export default function MediaApp() {
       setBusy(null);
     }
   };
+  /** Bild före klippet: rita bilden i båda formaten och öppna Video */
+  const [toVideo, setToVideo] = useState(false);
+  const useInVideo = async () => {
+    setToVideo(true);
+    try {
+      const [feed, reel] = await Promise.all([renderMediaPost(buildData("feed")), renderMediaPost(buildData("story"))]);
+      setVideoStill({ title: titleFor(), feed: feed.toDataURL("image/png"), reel: reel.toDataURL("image/png") });
+      navigate("/media/video");
+    } catch (e) {
+      toast.error("Kunde inte skapa bilden", { description: (e as Error).message });
+    } finally {
+      setToVideo(false);
+    }
+  };
   const copy = async () => {
     await navigator.clipboard.writeText(caption).catch(() => undefined);
     setCopied(true);
@@ -452,6 +478,7 @@ export default function MediaApp() {
             <button onClick={() => startNew("stats")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><BarChart3 size={14} /> Statistik</button>
             <button onClick={() => startNew("award")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Award size={14} /> Utmärkelse</button>
             <button onClick={() => startNew("result")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Trophy size={14} /> Senaste resultat</button>
+            <button onClick={() => startNew("image")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><ImageIcon size={14} /> Bild</button>
             <button onClick={startNextTraining} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><CalendarDays size={14} /> Nästa träning</button>
             <Link href="/media/video" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Film size={14} /> Video (Instagram)</Link>
           </div>
@@ -478,8 +505,12 @@ export default function MediaApp() {
 
         {/* Förhandsvisning och åtgärder */}
         <section className="space-y-2">
-          <canvas ref={canvasRef} className="w-full h-auto rounded-xl shadow-2xl bg-black aspect-[4/5]" aria-label="Förhandsvisning" />
-          <p className="text-[10px] text-white/35 text-center">4:5 (1080×1350) – samma format som matchrapporten.</p>
+          <div className="flex gap-1.5 justify-center">
+            <button onClick={() => update({ format: "feed" })} className={chip(format === "feed")}>Flöde 4:5</button>
+            <button onClick={() => update({ format: "story" })} className={chip(format === "story")}>Story/Reel 9:16</button>
+          </div>
+          <canvas ref={canvasRef} className={`w-full h-auto rounded-xl shadow-2xl bg-black ${format === "story" ? "aspect-[9/16] max-w-[300px] mx-auto block" : "aspect-[4/5]"}`} aria-label="Förhandsvisning" />
+          <p className="text-[10px] text-white/35 text-center">{format === "story" ? "9:16 (1080×1920) – innehållet ligger inom Instagrams säkra yta för Story och Reels." : "4:5 (1080×1350) – samma format som matchrapporten."}</p>
           <div className="grid grid-cols-3 gap-2">
             <button onClick={download} disabled={!blob} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-sm disabled:opacity-40"><Download size={14} /> Ladda ned</button>
             <button onClick={() => void share()} disabled={!blob || !!busy} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-gradient-to-r from-fuchsia-500 to-orange-400 text-white text-sm font-semibold disabled:opacity-40">
@@ -493,6 +524,9 @@ export default function MediaApp() {
             </button>
             <button onClick={() => void doSave(true)} disabled={!!busy || !postId} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 border border-white/15 text-sm disabled:opacity-40"><Plus size={14} /> Spara som nytt</button>
           </div>
+          <button onClick={() => void useInVideo()} disabled={toVideo} className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 border border-white/15 text-sm disabled:opacity-40">
+            {toVideo ? <Loader2 size={14} className="animate-spin" /> : <Clapperboard size={14} />} Använd före ett videoklipp
+          </button>
         </section>
 
         {/* Inställningar */}
@@ -506,6 +540,22 @@ export default function MediaApp() {
               </label>
               <label className="block text-[11px] text-white/50">Rubrik<input value={s.title} onChange={(e) => update({ title: e.target.value })} maxLength={40} placeholder={resultMatch?.report?.title || "Slutresultat"} className={input} /></label>
               <p className="text-[10px] text-white/35">Samma resultatbild som matchrapporten (Stars of the Game från rapporten), med vald bakgrund och överlägg.</p>
+            </>
+          )}
+          {s.kind === "image" && (
+            <>
+              <div>
+                <p className="text-[11px] text-white/50 mb-1.5">Bild</p>
+                <div className="flex items-center gap-2">
+                  {photo && <img src={photo.src} alt="" className="w-14 h-14 rounded-lg object-cover border border-white/15" />}
+                  <button onClick={() => fileRef.current?.click()} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Upload size={14} /> {photo ? "Byt bild" : "Ladda upp bild"}</button>
+                  {photo && <button onClick={() => { setPhoto(null); setNewPhoto(null); }} className="flex items-center gap-1 text-[11px] text-red-300/70"><X size={12} /> Ta bort</button>}
+                </div>
+                <p className="text-[10px] text-white/35 mt-1">Valfri bild – visas hel i en ram, liggande eller stående.</p>
+              </div>
+              <label className="block text-[11px] text-white/50">Rubrik<input value={s.title} onChange={(e) => update({ title: e.target.value })} maxLength={40} placeholder="T.ex. Tack för i år!" className={input} /></label>
+              <label className="block text-[11px] text-white/50">Underrubrik<input value={s.subtitle} onChange={(e) => update({ subtitle: e.target.value })} maxLength={60} className={input} /></label>
+              <label className="block text-[11px] text-white/50">Info-rad under bilden (i färg)<input value={s.info} onChange={(e) => update({ info: e.target.value })} maxLength={40} placeholder="T.ex. Lördag 12/12 · 18:00" className={input} /></label>
             </>
           )}
           {s.kind === "cards" && (
@@ -594,7 +644,7 @@ export default function MediaApp() {
               {(statsQ.isLoading || awardsQ.isLoading) && <p className="text-[11px] text-white/40 flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> Hämtar statistik …</p>}
             </>
           )}
-          {s.kind === "cards" || s.kind === "stats" || s.kind === "result" || s.kind === "award" ? null : s.kind === "lineup" ? (
+          {s.kind === "cards" || s.kind === "stats" || s.kind === "result" || s.kind === "award" || s.kind === "image" ? null : s.kind === "lineup" ? (
             <>
               <div>
                 <p className="text-[11px] text-white/50 mb-1.5">Lag</p>
@@ -635,21 +685,21 @@ export default function MediaApp() {
             <div className="grid grid-cols-4 gap-1.5">
               {MEDIA_BACKGROUNDS.map((b) => (
                 <button key={b.id} onClick={() => update({ background: b.id, useOwnPhoto: false })} title={b.name}
-                  className={`relative rounded-lg overflow-hidden border-2 aspect-[4/5] ${s.background === b.id && !ownActive ? "border-emerald-400" : "border-white/10 opacity-70 hover:opacity-100"}`}>
+                  className={`relative rounded-lg overflow-hidden border-2 aspect-[4/5] ${s.background === b.id && (!ownActive || s.kind === "image") ? "border-emerald-400" : "border-white/10 opacity-70 hover:opacity-100"}`}>
                   <img src={b.url} alt="" className="w-full h-full object-cover" />
                   <span className="absolute inset-x-0 bottom-0 text-[10px] bg-black/60 text-white/85 py-0.5 text-center truncate px-1">{b.name}</span>
                 </button>
               ))}
-              {/* Egen bild: tom ruta med rött streck tills en bild valts */}
-              <button onClick={() => (photo ? update({ useOwnPhoto: true }) : fileRef.current?.click())} title={photo ? "Egen bild" : "Välj en egen bild"}
+              {/* Egen bild: tom ruta med rött streck tills en bild valts (inte i mallen Bild – där är bilden innehållet) */}
+              {s.kind !== "image" && <button onClick={() => (photo ? update({ useOwnPhoto: true }) : fileRef.current?.click())} title={photo ? "Egen bild" : "Välj en egen bild"}
                 className={`relative rounded-lg overflow-hidden border-2 aspect-[4/5] bg-[#151515] ${ownActive ? "border-emerald-400" : "border-white/10 opacity-80 hover:opacity-100"}`}>
                 {photo ? <img src={photo.src} alt="" className="w-full h-full object-cover" /> : (
                   <svg viewBox="0 0 40 50" preserveAspectRatio="none" className="absolute inset-0 w-full h-full"><line x1="2" y1="48" x2="38" y2="2" stroke="#ef4444" strokeWidth="1.5" /></svg>
                 )}
                 <span className="absolute inset-x-0 bottom-0 text-[10px] bg-black/60 text-white/85 py-0.5 text-center truncate px-1">Egen bild</span>
-              </button>
+              </button>}
             </div>
-            {ownActive && (
+            {ownActive && s.kind !== "image" && (
               <div className="mt-2 space-y-1.5">
                 <label className="block text-[11px] text-white/50">Mörka bilden
                   <input type="range" min={0} max={1} step={0.01} value={s.photoDim} onChange={(e) => update({ photoDim: Number(e.target.value) })} className="w-full accent-emerald-400" />

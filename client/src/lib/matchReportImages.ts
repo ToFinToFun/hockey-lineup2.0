@@ -49,6 +49,8 @@ export interface ReportData {
   /** Egen bild (Media) – ersätter bakgrunden och mörkas enligt photoDim */
   photo?: HTMLImageElement | null;
   photoDim?: number;
+  /** Media: 4:5 (standard) eller 9:16 */
+  format?: PostFormat;
 }
 
 /** Lagets färg i rapporten: rapportens egen (motståndare) eller klubbens. */
@@ -86,41 +88,62 @@ export function fit(ctx: CanvasRenderingContext2D, text: string, max: number) {
   return `${t.trimEnd()}…`;
 }
 
-export function canvas(): [HTMLCanvasElement, CanvasRenderingContext2D] {
-  const c = canvasEnv().createCanvas(IG_W, IG_H);
+/** Bildformat: flödet 4:5 eller Story/Reel 9:16 */
+export type PostFormat = "feed" | "story";
+export const STORY_H = 1920;
+/**
+ * I 9:16 ritas bakgrunden på hela höjden och 4:5-innehållet (1350 px) läggs
+ * här – inom Instagrams säkra yta (fritt för profilraden upptill och
+ * bildtext/knappar nertill).
+ */
+export const STORY_TOP = 240;
+export const frameHeight = (format?: PostFormat) => (format === "story" ? STORY_H : IG_H);
+
+export function canvas(h: number = IG_H): [HTMLCanvasElement, CanvasRenderingContext2D] {
+  const c = canvasEnv().createCanvas(IG_W, h);
   const ctx = c.getContext("2d");
   if (!ctx) throw new Error("Canvas stöds inte");
   return [c, ctx];
 }
 
+/** Hela bildens storlek (4:5 eller 9:16) */
+const size = (ctx: CanvasRenderingContext2D) => ({ W: ctx.canvas?.width ?? IG_W, H: ctx.canvas?.height ?? IG_H });
+
+/** 9:16: flytta ritningen så att 4:5-innehållet hamnar i den säkra ytan (anropas efter bakgrunden). */
+export function contentArea(ctx: CanvasRenderingContext2D) {
+  if (size(ctx).H > IG_H) ctx.translate(0, STORY_TOP);
+}
+
 export function backdrop(ctx: CanvasRenderingContext2D, bg: HTMLImageElement | null, dim = 0.62) {
+  const { W, H } = size(ctx);
   ctx.fillStyle = "#0b1410";
-  ctx.fillRect(0, 0, IG_W, IG_H);
+  ctx.fillRect(0, 0, W, H);
   if (bg) {
-    const s = Math.max(IG_W / bg.width, IG_H / bg.height);
-    ctx.drawImage(bg, (IG_W - bg.width * s) / 2, (IG_H - bg.height * s) / 2, bg.width * s, bg.height * s);
+    const s = Math.max(W / bg.width, H / bg.height);
+    ctx.drawImage(bg, (W - bg.width * s) / 2, (H - bg.height * s) / 2, bg.width * s, bg.height * s);
   }
   ctx.fillStyle = `rgba(0,0,0,${dim})`;
-  ctx.fillRect(0, 0, IG_W, IG_H);
+  ctx.fillRect(0, 0, W, H);
   // Mörkare nertill för texten
-  const g = ctx.createLinearGradient(0, IG_H * 0.55, 0, IG_H);
+  const g = ctx.createLinearGradient(0, H * 0.55, 0, H);
   g.addColorStop(0, "rgba(0,0,0,0)");
   g.addColorStop(1, "rgba(0,0,0,0.55)");
   ctx.fillStyle = g;
-  ctx.fillRect(0, 0, IG_W, IG_H);
+  ctx.fillRect(0, 0, W, H);
 }
 
 /** Egen bild som bakgrund: täcker allt, mörkas enligt reglaget (0–1) och mest nertill. */
 export function photoBackdrop(ctx: CanvasRenderingContext2D, photo: HTMLImageElement, dim = 0.5) {
-  const s = Math.max(IG_W / photo.width, IG_H / photo.height);
-  ctx.drawImage(photo, (IG_W - photo.width * s) / 2, (IG_H - photo.height * s) / 2, photo.width * s, photo.height * s);
+  const { W, H } = size(ctx);
+  const s = Math.max(W / photo.width, H / photo.height);
+  ctx.drawImage(photo, (W - photo.width * s) / 2, (H - photo.height * s) / 2, photo.width * s, photo.height * s);
   ctx.fillStyle = `rgba(0,0,0,${0.15 + dim * 0.6})`;
-  ctx.fillRect(0, 0, IG_W, IG_H);
-  const g = ctx.createLinearGradient(0, IG_H * 0.5, 0, IG_H);
+  ctx.fillRect(0, 0, W, H);
+  const g = ctx.createLinearGradient(0, H * 0.5, 0, H);
   g.addColorStop(0, "rgba(0,0,0,0)");
   g.addColorStop(1, `rgba(0,0,0,${0.3 + dim * 0.4})`);
   ctx.fillStyle = g;
-  ctx.fillRect(0, 0, IG_W, IG_H);
+  ctx.fillRect(0, 0, W, H);
 }
 
 export function header(ctx: CanvasRenderingContext2D, title: string, dateLine: string) {
@@ -210,9 +233,10 @@ export async function renderResultImage(d: ReportData): Promise<HTMLCanvasElemen
   const [bg, lw, lg, ...sp] = await Promise.all([
     tryLoad(d.background), tryLoad(d.logoWhite), tryLoad(d.logoGreen), tryLoad(d.sponsor?.logo),
   ]);
-  const [c, ctx] = canvas();
+  const [c, ctx] = canvas(frameHeight(d.format));
   if (d.photo) photoBackdrop(ctx, d.photo, d.photoDim ?? 0.5);
   else backdrop(ctx, bg);
+  contentArea(ctx);
   header(ctx, fit(ctx, (d.title?.trim() || "Slutresultat").toUpperCase(), IG_W - 120), d.dateLine);
 
   const whiteWon = d.whiteScore > d.greenScore;

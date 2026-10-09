@@ -8,7 +8,8 @@
  * Teman (standard, jul, nyår, påsk) byter accentfärg och lägger till dekor.
  */
 import { clubHeading, club, teamLogo } from "@shared/club";
-import { IG_W, IG_H, HEAD, BODY, tryLoad, ensureFonts, fit, canvas, backdrop, presentedBy, photoBackdrop } from "@/lib/matchReportImages";
+import { IG_W, IG_H, HEAD, BODY, tryLoad, ensureFonts, fit, canvas, backdrop, presentedBy, photoBackdrop, contentArea, frameHeight, type PostFormat } from "@/lib/matchReportImages";
+export type { PostFormat };
 import { roundRect } from "@/lib/canvas";
 import { teamColor, teamInitials } from "@shared/teams";
 import { POSITION_COLORS } from "@/lib/positionColors";
@@ -63,6 +64,8 @@ export interface MediaCommon {
   /** Liten rad under klubbnamnet, t.ex. "Tisdag 29/9 · Arenan 20:00" */
   dateLine: string;
   sponsor: { name: string; logo: string | null } | null;
+  /** 4:5 (standard) eller 9:16 (Story/Reel) */
+  format?: PostFormat;
 }
 
 export interface LineupPlayerRow { pos: string; name: string; number?: string; captain?: string }
@@ -123,7 +126,16 @@ export interface AwardPostData extends MediaCommon {
   places: Array<{ place: 1 | 2 | 3; name: string; value: string; card: HTMLCanvasElement | null }>;
 }
 
-export type MediaPostData = LineupPostData | TextPostData | CardsPostData | StatsPostData | ResultPostData | AwardPostData;
+/** Bild: valfri uppladdad bild i ram (som hockeykorten), fria rubriker och valfri info-rad */
+export interface ImagePostData extends MediaCommon {
+  kind: "image";
+  title: string;
+  subtitle: string;
+  info: string;
+  image: HTMLImageElement | null;
+}
+
+export type MediaPostData = LineupPostData | TextPostData | CardsPostData | StatsPostData | ResultPostData | AwardPostData | ImagePostData;
 
 /** Lagens loggor från klubbens inställningar */
 const LOGO = { get white() { return teamLogo("white"); }, get green() { return teamLogo("green"); } };
@@ -156,17 +168,20 @@ export function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxW: num
  */
 function decorate(ctx: CanvasRenderingContext2D, overlay: MediaOverlay) {
   if (overlay === "none") return;
+  // Hela bilden (även 9:16), oavsett var innehållet ligger
+  const W = ctx.canvas?.width ?? IG_W, H = ctx.canvas?.height ?? IG_H;
   let seed = 7;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   const between = (a: number, b: number) => a + rnd() * (b - a);
   // Kanterna: övre 28 % eller nedre 18 % (sällan mitt i bilden)
-  const edgeY = () => (rnd() < 0.6 ? between(0, IG_H * 0.28) : between(IG_H * 0.82, IG_H));
+  const edgeY = () => (rnd() < 0.6 ? between(0, H * 0.28) : between(H * 0.82, H));
   ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
 
   if (overlay === "snow") {
     // Stora, oskarpa flingor nära kameran (djup)
     for (let i = 0; i < 12; i++) {
-      const x = rnd() * IG_W, y = edgeY(), r = between(18, 38);
+      const x = rnd() * W, y = edgeY(), r = between(18, 38);
       const g = ctx.createRadialGradient(x, y, 0, x, y, r);
       const a = between(0.1, 0.2);
       g.addColorStop(0, `rgba(255,255,255,${a})`); g.addColorStop(0.6, `rgba(255,255,255,${a * 0.5})`); g.addColorStop(1, "rgba(255,255,255,0)");
@@ -177,7 +192,7 @@ function decorate(ctx: CanvasRenderingContext2D, overlay: MediaOverlay) {
     for (let i = 0; i < 150; i++) {
       const depth = rnd(); // 0 = långt bort, 1 = nära
       const r = 2 + depth * depth * 10;
-      const x = rnd() * IG_W, y = edgeY();
+      const x = rnd() * W, y = edgeY();
       const g = ctx.createRadialGradient(x, y, 0, x, y, r);
       const a = 0.35 + (1 - depth) * 0.45;
       g.addColorStop(0, `rgba(255,255,255,${a})`);
@@ -188,7 +203,7 @@ function decorate(ctx: CanvasRenderingContext2D, overlay: MediaOverlay) {
     }
     // Några snöstjärnor
     for (let i = 0; i < 7; i++) {
-      const x = rnd() * IG_W, y = edgeY(), r = between(9, 16), rot = rnd() * Math.PI;
+      const x = rnd() * W, y = edgeY(), r = between(9, 16), rot = rnd() * Math.PI;
       ctx.save();
       ctx.translate(x, y); ctx.rotate(rot);
       ctx.strokeStyle = "rgba(255,255,255,0.75)";
@@ -207,7 +222,7 @@ function decorate(ctx: CanvasRenderingContext2D, overlay: MediaOverlay) {
   } else if (overlay === "leaves") {
     const cols = [["#f59e0b", "#b45309"], ["#ea580c", "#9a3412"], ["#facc15", "#ca8a04"], ["#dc2626", "#7f1d1d"]];
     for (let i = 0; i < 20; i++) {
-      const x = rnd() * IG_W, y = edgeY(), r = between(14, 34), rot = rnd() * Math.PI * 2;
+      const x = rnd() * W, y = edgeY(), r = between(14, 34), rot = rnd() * Math.PI * 2;
       const [c1, c2] = cols[i % cols.length];
       ctx.save();
       ctx.translate(x, y); ctx.rotate(rot);
@@ -238,7 +253,7 @@ function decorate(ctx: CanvasRenderingContext2D, overlay: MediaOverlay) {
     const bursts = [[0.17, 0.11, "#facc15"], [0.82, 0.08, "#ffffff"], [0.55, 0.19, "#34d399"], [0.9, 0.27, "#fb923c"]] as const;
     ctx.globalCompositeOperation = "lighter";
     for (const [fx, fy, col] of bursts) {
-      const cx = fx * IG_W, cy = fy * IG_H, R = between(130, 210), rays = 40;
+      const cx = fx * W, cy = fy * H, R = between(130, 210), rays = 40;
       ctx.save();
       ctx.shadowColor = col; ctx.shadowBlur = 8;
       ctx.lineCap = "round";
@@ -278,7 +293,7 @@ function decorate(ctx: CanvasRenderingContext2D, overlay: MediaOverlay) {
   } else if (overlay === "eggs") {
     const cols = ["#f9a8d4", "#a5b4fc", "#86efac", "#fde68a", "#fdba74", "#c4b5fd"];
     for (let i = 0; i < 11; i++) {
-      const x = rnd() * IG_W, y = rnd() < 0.75 ? between(IG_H * 0.85, IG_H * 0.98) : between(IG_H * 0.03, IG_H * 0.15);
+      const x = rnd() * W, y = rnd() < 0.75 ? between(H * 0.85, H * 0.98) : between(H * 0.03, H * 0.15);
       const r = between(22, 38), rot = between(-0.5, 0.5), col = cols[i % cols.length];
       ctx.save();
       ctx.translate(x, y); ctx.rotate(rot);
@@ -301,20 +316,20 @@ function decorate(ctx: CanvasRenderingContext2D, overlay: MediaOverlay) {
     }
   } else if (overlay === "sun") {
     // Varmt motljus uppe till höger, mjuk dis och svaga linsreflexer
-    const sx = IG_W * 0.9, sy = IG_H * 0.05;
-    const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, IG_W * 0.9);
+    const sx = W * 0.9, sy = H * 0.05;
+    const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, W * 0.9);
     g.addColorStop(0, "rgba(255,226,150,0.55)");
     g.addColorStop(0.25, "rgba(255,190,100,0.22)");
     g.addColorStop(0.6, "rgba(255,170,90,0.06)");
     g.addColorStop(1, "rgba(255,170,90,0)");
-    ctx.fillStyle = g; ctx.fillRect(0, 0, IG_W, IG_H);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     const core = ctx.createRadialGradient(sx, sy, 0, sx, sy, 70);
     core.addColorStop(0, "rgba(255,250,230,0.9)"); core.addColorStop(1, "rgba(255,250,230,0)");
     ctx.fillStyle = core; ctx.beginPath(); ctx.arc(sx, sy, 70, 0, Math.PI * 2); ctx.fill();
     // Reflexer längs diagonalen mot nedre vänstra hörnet
     const flares = [[0.22, 34, 0.1], [0.38, 18, 0.14], [0.55, 52, 0.06], [0.72, 12, 0.16], [0.86, 80, 0.05]] as const;
     for (const [t, r, a] of flares) {
-      const fx = sx + (IG_W * 0.1 - sx) * t, fy = sy + (IG_H * 0.9 - sy) * t;
+      const fx = sx + (W * 0.1 - sx) * t, fy = sy + (H * 0.9 - sy) * t;
       const fg = ctx.createRadialGradient(fx, fy, 0, fx, fy, r);
       fg.addColorStop(0, `rgba(255,220,160,${a})`); fg.addColorStop(0.7, `rgba(255,200,140,${a * 0.6})`); fg.addColorStop(1, "rgba(255,200,140,0)");
       ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(fx, fy, r, 0, Math.PI * 2); ctx.fill();
@@ -375,9 +390,10 @@ export function lineupHeights(groups: LineupGroup[], k: number) {
 
 async function renderLineup(d: LineupPostData): Promise<HTMLCanvasElement> {
   const [bg, logo, sp] = await Promise.all([(d.photo ? Promise.resolve(null) : tryLoad(bgUrl(d.background))), tryLoad(d.logo !== undefined ? d.logo : LOGO[d.team]), tryLoad(d.sponsor?.logo)]);
-  const [c, ctx] = canvas();
+  const [c, ctx] = canvas(frameHeight(d.format));
   if (d.photo) photoBackdrop(ctx, d.photo, d.photoDim ?? 0.5); else backdrop(ctx, bg, dimFor(d.background, 0.6));
   decorate(ctx, d.overlay);
+  contentArea(ctx);
 
   // Liten rad överst: rubrik och datum
   ctx.textAlign = "center";
@@ -546,25 +562,27 @@ async function renderLineup(d: LineupPostData): Promise<HTMLCanvasElement> {
 
 async function renderText(d: TextPostData): Promise<HTMLCanvasElement> {
   const [bg, sp] = await Promise.all([d.photo ? Promise.resolve(null) : (d.photo ? Promise.resolve(null) : tryLoad(bgUrl(d.background))), tryLoad(d.sponsor?.logo)]);
-  const [c, ctx] = canvas();
+  const [c, ctx] = canvas(frameHeight(d.format));
   const accent = accentColor();
   if (d.photo) {
     // Egen bild täcker allt, mörkas mest nertill där texten står
     const p = d.photo;
-    const sc = Math.max(IG_W / p.width, IG_H / p.height);
-    ctx.drawImage(p, (IG_W - p.width * sc) / 2, (IG_H - p.height * sc) / 2, p.width * sc, p.height * sc);
+    const W = c.width, H = c.height;
+    const sc = Math.max(W / p.width, H / p.height);
+    ctx.drawImage(p, (W - p.width * sc) / 2, (H - p.height * sc) / 2, p.width * sc, p.height * sc);
     const dim = d.photoDim ?? 0.5;
     ctx.fillStyle = `rgba(0,0,0,${0.15 + dim * 0.35})`;
-    ctx.fillRect(0, 0, IG_W, IG_H);
-    const g = ctx.createLinearGradient(0, IG_H * 0.35, 0, IG_H);
+    ctx.fillRect(0, 0, W, H);
+    const g = ctx.createLinearGradient(0, H * 0.35, 0, H);
     g.addColorStop(0, "rgba(0,0,0,0)");
     g.addColorStop(1, `rgba(0,0,0,${0.5 + dim * 0.4})`);
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, IG_W, IG_H);
+    ctx.fillRect(0, 0, W, H);
   } else {
     backdrop(ctx, bg, dimFor(d.background, 0.62));
   }
   decorate(ctx, d.overlay);
+  contentArea(ctx);
   clubHeader(ctx, d.dateLine, accent);
 
   // Texten nedre halvan (med egen bild) eller centrerad (på arenan)
@@ -704,9 +722,10 @@ const PLACE_LABEL: Record<1 | 2 | 3, string> = { 1: "1:a", 2: "2:a", 3: "3:e" };
 
 async function renderAward(d: AwardPostData): Promise<HTMLCanvasElement> {
   const [bg, sp] = await Promise.all([(d.photo ? Promise.resolve(null) : tryLoad(bgUrl(d.background))), tryLoad(d.sponsor?.logo)]);
-  const [c, ctx] = canvas();
+  const [c, ctx] = canvas(frameHeight(d.format));
   if (d.photo) photoBackdrop(ctx, d.photo, d.photoDim ?? 0.5); else backdrop(ctx, bg, dimFor(d.background, 0.62));
   decorate(ctx, d.overlay);
+  contentArea(ctx);
   const title = `${d.emoji ? d.emoji + " " : ""}${d.title}`;
   const top = titleBlock(ctx, title, d.subtitle, d.dateLine) + 30;
   const bottom = d.sponsor ? IG_H - 200 : IG_H - 90;
@@ -746,9 +765,10 @@ async function renderAward(d: AwardPostData): Promise<HTMLCanvasElement> {
 
 async function renderCards(d: CardsPostData): Promise<HTMLCanvasElement> {
   const [bg, sp] = await Promise.all([(d.photo ? Promise.resolve(null) : tryLoad(bgUrl(d.background))), tryLoad(d.sponsor?.logo)]);
-  const [c, ctx] = canvas();
+  const [c, ctx] = canvas(frameHeight(d.format));
   if (d.photo) photoBackdrop(ctx, d.photo, d.photoDim ?? 0.5); else backdrop(ctx, bg, dimFor(d.background, 0.62));
   decorate(ctx, d.overlay);
+  contentArea(ctx);
   const top = titleBlock(ctx, d.title, d.subtitle, d.dateLine) + 10;
   const bottom = d.sponsor ? IG_H - 180 : IG_H - 60;
   cardSlots(d.cards.length, top, bottom).forEach((slot, i) => {
@@ -771,11 +791,78 @@ async function renderCards(d: CardsPostData): Promise<HTMLCanvasElement> {
   return c;
 }
 
+/** Var bilden ryms (exporteras för test): så stor som möjligt med bibehållna proportioner, centrerad. */
+export function imageSlot(imgW: number, imgH: number, top: number, bottom: number, maxW = IG_W - 100): { x: number; y: number; w: number; h: number } {
+  const areaH = Math.max(1, bottom - top);
+  const s = Math.min(maxW / imgW, areaH / imgH);
+  const w = imgW * s, h = imgH * s;
+  return { x: (IG_W - w) / 2, y: top + (areaH - h) / 2, w, h };
+}
+
+async function renderImage(d: ImagePostData): Promise<HTMLCanvasElement> {
+  const [bg, sp] = await Promise.all([tryLoad(bgUrl(d.background)), tryLoad(d.sponsor?.logo)]);
+  const [c, ctx] = canvas(frameHeight(d.format));
+  backdrop(ctx, bg, dimFor(d.background, 0.66));
+  decorate(ctx, d.overlay);
+  contentArea(ctx);
+  const accent = accentColor();
+  const top = titleBlock(ctx, d.title, d.subtitle, d.dateLine) + 24;
+  const infoH = d.info ? 76 + 28 : 0;
+  const bottom = (d.sponsor ? IG_H - 235 : IG_H - 80) - infoH;
+  const img = d.image;
+  const slot = img ? imageSlot(img.width, img.height, top, bottom) : imageSlot(4, 5, top, bottom);
+  const r = 22, border = 8;
+  if (img) {
+    // Ram som hockeykorten: ljus kant, rundade hörn och skugga
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 34; ctx.shadowOffsetY = 12;
+    ctx.fillStyle = "#f4f4f2";
+    roundRect(ctx, slot.x - border, slot.y - border, slot.w + border * 2, slot.h + border * 2, r + border);
+    ctx.fill();
+    ctx.restore();
+    ctx.save();
+    roundRect(ctx, slot.x, slot.y, slot.w, slot.h, r);
+    ctx.clip();
+    ctx.drawImage(img, slot.x, slot.y, slot.w, slot.h);
+    ctx.restore();
+    // Tunn accentlinje längst ned i ramen
+    ctx.fillStyle = accent;
+    ctx.fillRect(slot.x + slot.w / 2 - 60, slot.y + slot.h + border / 2 - 2, 120, 4);
+  } else {
+    ctx.save();
+    ctx.setLineDash([16, 12]);
+    ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = 3;
+    roundRect(ctx, slot.x, slot.y, slot.w, slot.h, r);
+    ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = "rgba(255,255,255,0.55)"; ctx.font = `500 34px ${BODY}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("Ladda upp en bild", IG_W / 2, slot.y + slot.h / 2);
+    ctx.textBaseline = "alphabetic";
+  }
+  if (d.info) {
+    const y = slot.y + slot.h + border + 28;
+    ctx.font = `700 40px ${HEAD}`;
+    ctx.letterSpacing = "4px";
+    const text = fit(ctx, d.info.toUpperCase(), IG_W - 200);
+    const w = ctx.measureText(text).width + 70;
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    roundRect(ctx, IG_W / 2 - w / 2, y, w, 76, 38); ctx.fill();
+    ctx.strokeStyle = accent; ctx.lineWidth = 3;
+    roundRect(ctx, IG_W / 2 - w / 2, y, w, 76, 38); ctx.stroke();
+    ctx.fillStyle = accent; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(text, IG_W / 2 + 2, y + 39);
+    ctx.textBaseline = "alphabetic"; ctx.letterSpacing = "0px";
+  }
+  presentedBy(ctx, d.sponsor ? { name: d.sponsor.name, img: sp } : null, IG_H - 150);
+  return c;
+}
+
 async function renderStats(d: StatsPostData): Promise<HTMLCanvasElement> {
   const [bg, sp] = await Promise.all([(d.photo ? Promise.resolve(null) : tryLoad(bgUrl(d.background))), tryLoad(d.sponsor?.logo)]);
-  const [c, ctx] = canvas();
+  const [c, ctx] = canvas(frameHeight(d.format));
   if (d.photo) photoBackdrop(ctx, d.photo, d.photoDim ?? 0.5); else backdrop(ctx, bg, dimFor(d.background, 0.66));
   decorate(ctx, d.overlay);
+  contentArea(ctx);
   const top = titleBlock(ctx, d.title, d.subtitle, d.dateLine) + 10;
   const bottom = d.sponsor ? IG_H - 180 : IG_H - 60;
   const rows = d.rows.slice(0, 10);
@@ -850,9 +937,10 @@ export async function renderMediaPost(d: MediaPostData): Promise<HTMLCanvasEleme
   if (d.kind === "cards") return renderCards(d);
   if (d.kind === "award") return renderAward(d);
   if (d.kind === "stats") return renderStats(d);
+  if (d.kind === "image") return renderImage(d);
   if (d.kind === "result") {
     const { renderResultImage } = await import("@/lib/matchReportImages");
-    const c = await renderResultImage({ ...d.report, background: bgUrl(d.background), photo: d.photo ?? null, photoDim: d.photoDim, sponsor: d.sponsor ?? d.report.sponsor });
+    const c = await renderResultImage({ ...d.report, background: bgUrl(d.background), photo: d.photo ?? null, photoDim: d.photoDim, sponsor: d.sponsor ?? d.report.sponsor, format: d.format });
     decorate(c.getContext("2d")!, d.overlay);
     return c;
   }
