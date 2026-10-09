@@ -11,6 +11,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { ArrowLeft, Upload, Loader2, Download, Share2, Copy, Check, Shuffle, Film, RefreshCw, X, ImageIcon } from "lucide-react";
+import { goalsOldestFirst } from "@shared/goalOrder";
 import { peekVideoStill, clearVideoStill, stillFromImage, type VideoStill } from "@/lib/videoStill";
 import { VIDEO_TIMING, STILL_POSITIONS, DEFAULT_STILL_POSITION, addedDuration, videoSegments, type StillPosition } from "@shared/videoTimeline";
 // Media i dolt läge: ritar ett sparat inlägg till bilden
@@ -46,7 +47,7 @@ const { still: STILL_DEFAULT, stillMin: STILL_MIN, stillMax: STILL_MAX } = VIDEO
 export function goalsWithScore(m: ReportMatch | undefined) {
   if (!m) return [];
   let w = 0, g = 0;
-  return [...(m.goalHistory ?? [])].reverse().map((goal, i) => {
+  return goalsOldestFirst<NonNullable<ReportMatch["goalHistory"]>[number]>(m.goalHistory).map((goal, i) => {
     if (goal.team === "white") w++; else g++;
     return { index: i, team: goal.team, scorer: goal.scorer ?? "", assist: goal.assist ?? "", score: `${w}–${g}` };
   });
@@ -248,7 +249,7 @@ export default function VideoApp() {
   };
   const sideName = (t: Side) => sideStyle(t).name;
   const goals = useMemo(() => goalsWithScore(match), [match]);
-  const goal = goals.find((g) => g.index === goalIdx) ?? goals[goals.length - 1];
+  const goal = goals.find((g) => g.index === goalIdx) ?? goals.at(-1); // goalsWithScore är i tidsordning: senaste målet
   const stars = useMemo(() => {
     if (!match) return [];
     const cands = starCandidates({ teamWhiteScore: match.teamWhiteScore, teamGreenScore: match.teamGreenScore, goalHistory: match.goalHistory, lineup: match.lineup });

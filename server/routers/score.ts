@@ -1,3 +1,4 @@
+import { goalsOldestFirst, winningGoalIndex } from "../../shared/goalOrder";
 import { isTeamAWhite as teamAIsWhite, normalizeTeamKey } from "../../shared/teams";
 import { normalizeGoalType } from "../playerHistory";
 import { appUrl } from "../clubConfig";
@@ -479,33 +480,10 @@ export const scoreRouter = router({
 
         // GWG calculation
         if (!isDraw) {
-          const winnerTeam = isWhiteWin ? "white" : "green";
-          const loserScore = isWhiteWin ? match.teamGreenScore : match.teamWhiteScore;
-          const chronologicalGoals = [...goals].reverse();
-          let winnerGoalCount = 0;
-          for (const goal of chronologicalGoals) {
-            if (!goal.scorer) continue;
-            const scorerEntry = Object.entries(lineupEntries).find(([, p]) => {
-              const pl = p as any;
-              const key = pl?.number ? `${pl.name} #${pl.number}` : pl?.name;
-              return key === goal.scorer;
-            });
-            if (!scorerEntry) continue;
-            const scorerSlotId = scorerEntry[0];
-            let scorerTeam: "white" | "green";
-            if (scorerSlotId.startsWith("team-a")) {
-              scorerTeam = isTeamAWhite ? "white" : "green";
-            } else {
-              scorerTeam = isTeamAWhite ? "green" : "white";
-            }
-            if (scorerTeam === winnerTeam) {
-              if (winnerGoalCount === loserScore && playerMap[goal.scorer]) {
-                playerMap[goal.scorer].gwg++;
-                break;
-              }
-              winnerGoalCount++;
-            }
-          }
+          // Gemensam regel och ordning: shared/goalOrder.ts
+          const gi = winningGoalIndex(goals, match.teamWhiteScore, match.teamGreenScore);
+          const gwgGoal = gi >= 0 ? goalsOldestFirst<{ scorer?: string }>(goals)[gi] : undefined;
+          if (gwgGoal?.scorer && playerMap[gwgGoal.scorer]) playerMap[gwgGoal.scorer].gwg++;
         }
       }
     }

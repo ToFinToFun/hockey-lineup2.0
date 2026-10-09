@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.71.2 – 2026-10-09
+
+- Målens ordning på ett ställe: shared/goalOrder.ts beskriver regeln (senaste målet först i goalHistory) och har de enda funktionerna för tidsordning, första/sista mål och matchvinnande mål. Alla ställen som tidigare vände listan själva (statistik, rekord, Kul statistik, matchrapport, stjärnor, Score Tracker, matchhistorik, Video) använder dem.
+- Matchvinnande mål räknas likadant överallt (på målets lag). Tidigare räknade spelarstatistiken på målskyttens plats i laget och hoppade över mål utan målskytt.
+- Nytt test larmar om någon kod vänder goalHistory eller plockar första/sista mål på egen hand. CLAUDE.md beskriver regeln.
+
 ## 2.71.1 – 2026-10-09
 
 - Statistik → Speltid: sorteras på speltid per match (kolumnen "Tid/match").

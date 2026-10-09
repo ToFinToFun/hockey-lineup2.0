@@ -124,6 +124,7 @@ function assemble(
       const reg = registry.get(p.playerId);
       lineup[p.slot] = { id: p.playerId, name: reg?.name ?? "Okänd spelare", number: reg?.number ?? "", position: reg?.position ?? p.position };
     }
+    // seq = plats i goalHistory: 0 = SENASTE målet (se shared/goalOrder.ts) – ordningen återskapas exakt
     const goalHistory = [...data.goals]
       .sort((a, b) => a.seq - b.seq)
       .map((g) => ({

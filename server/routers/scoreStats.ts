@@ -1,3 +1,4 @@
+import { goalsOldestFirst, firstGoal, winningGoalIndex } from "../../shared/goalOrder";
 import { isTeamAWhite as teamAIsWhite, normalizeTeamKey, teamName, teamGenitive } from "../../shared/teams";
 import { listOpponents } from "../opponents";
 import { iceTimeFor, iceTimeRows } from "../iceTimeStats";
@@ -46,23 +47,9 @@ function findGwgScorer(
   whiteScore: number,
   greenScore: number
 ): string | null {
-  if (whiteScore === greenScore) return null;
-  const winningTeam = whiteScore > greenScore ? "white" : "green";
-  const loserScore = Math.min(whiteScore, greenScore);
-  const chronologicalGoals = [...goals].reverse();
-  let winnerGoalCount = 0;
-  for (const goal of chronologicalGoals) {
-    const goalTeam = goal.team?.toLowerCase();
-    const isWinnerGoal =
-      normalizeTeamKey(goalTeam) === winningTeam;
-    if (isWinnerGoal) {
-      if (winnerGoalCount === loserScore) {
-        return goal.scorer || null;
-      }
-      winnerGoalCount++;
-    }
-  }
-  return null;
+  // Gemensam regel och ordning: shared/goalOrder.ts
+  const i = winningGoalIndex(goals, whiteScore, greenScore);
+  return i >= 0 ? goalsOldestFirst<{ scorer?: string }>(goals)[i].scorer || null : null;
 }
 
 /** Extract player team and position from lineup slot */
@@ -123,8 +110,7 @@ export function computeExtraRecords(
     if (m.teamWhiteScore === m.teamGreenScore) continue;
     const winner: "white" | "green" = m.teamWhiteScore > m.teamGreenScore ? "white" : "green";
     let w = 0, l = 0, worst = 0;
-    // Målen sparas med det senaste först – vändningen räknas i tidsordning
-    for (const g of [...((Array.isArray(m.goalHistory) ? m.goalHistory : []) as Array<{ team?: string }>)].reverse()) {
+    for (const g of goalsOldestFirst<{ team?: string }>(m.goalHistory)) {
       const k = normalizeTeamKey(g.team);
       if (!k) continue;
       if (k === winner) w++; else l++;
@@ -139,8 +125,7 @@ export function computeExtraRecords(
   for (const m of matches) {
     if (!m.matchStartTime) continue;
     const st = new Date(m.matchStartTime);
-    const goals = (Array.isArray(m.goalHistory) ? m.goalHistory : []) as Array<{ timestamp?: string; scorer?: string }>;
-    const g = goals[goals.length - 1];
+    const g = firstGoal<{ timestamp?: string; scorer?: string }>(m.goalHistory);
     const t = g?.timestamp?.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
     if (!t) continue;
     let sec = (Number(t[1]) * 3600 + Number(t[2]) * 60 + Number(t[3] ?? 0)) - (st.getHours() * 3600 + st.getMinutes() * 60 + st.getSeconds());
@@ -148,7 +133,7 @@ export function computeExtraRecords(
     // Mål före start eller orimligt: starttiden stämmer inte. Exakt 0 s = starttiden
     // sattes från första målet (ingen träning hittades) – säger inget om hur snabbt det kom
     if (sec <= 0 || sec > 120 * 60) continue;
-    if (!fastest || sec < fastest.sec) fastest = { sec, min: Math.floor(sec / 60), who: (g.scorer ?? "").trim() || "Okänd", m };
+    if (!fastest || sec < fastest.sec) fastest = { sec, min: Math.floor(sec / 60), who: (g?.scorer ?? "").trim() || "Okänd", m };
   }
   if (fastest) out.push({ key: "fastest", label: "Snabbaste målet", value: fastest.min === 0 ? "Under en minut" : `Efter ${fastest.min} min`, who: fastest.who, detail: short(fastest.m.name), matchId: fastest.m.id });
   // Längsta vinstsvit per lag (matcherna i tidsordning)

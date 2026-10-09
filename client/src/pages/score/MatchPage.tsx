@@ -4,6 +4,7 @@
  * Mirrors the native app's Match tab
  */
 
+import { winningGoalIndex, storageIndex } from "@shared/goalOrder";
 import { isOpponentPlayerId, opponentPlayerId } from "@shared/matchSetup";
 import { useState, useEffect, useCallback, useMemo, useRef, type CSSProperties } from "react";
 import { IMAGES, COLORS, STORAGE_KEY, type GoalEvent, type MatchState } from "@/lib/scoreConstants";
@@ -759,29 +760,12 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
         {goalHistory.length > 0 && (
           <div className="flex-1 bg-[#2a2a2a]/80 rounded-3xl p-4 border border-[#3a3a3a] backdrop-blur-sm overflow-y-auto">
             {(() => {
-              // Determine GWG index in the live match (goalHistory is newest-first)
-              // Reverse to chronological, find GWG, then map back to original index
-              const chronological = [...goalHistory].reverse();
-              let gwgOriginalIndex = -1;
-              if (teamWhiteScore !== teamGreenScore) {
-                const winningTeam = teamWhiteScore > teamGreenScore ? 'white' : 'green';
-                const loserScoreVal = Math.min(teamWhiteScore, teamGreenScore);
-                let winnerGoalCount = 0;
-                for (let ci = 0; ci < chronological.length; ci++) {
-                  const gt = chronological[ci].team?.toLowerCase();
-                  const isWinner = (winningTeam === 'white' && (gt === 'white' || gt === 'vita' || gt === 'vit')) ||
-                                  (winningTeam === 'green' && (gt === 'green' || gt === 'gröna' || gt === 'grön'));
-                  if (isWinner) {
-                    if (winnerGoalCount === loserScoreVal) {
-                      // ci in chronological = (goalHistory.length - 1 - ci) in original
-                      gwgOriginalIndex = goalHistory.length - 1 - ci;
-                      break;
-                    }
-                    winnerGoalCount++;
-                  }
-                }
-              }
+              // goalHistory är senaste först (visas så här). Matchvinnande mål och
+              // ordningen: shared/goalOrder.ts
+              const gwgChrono = winningGoalIndex(goalHistory, teamWhiteScore, teamGreenScore);
+              const gwgOriginalIndex = gwgChrono >= 0 ? storageIndex(goalHistory.length, gwgChrono) : -1;
               return goalHistory.map((goal, index) => {
+              // Ställningen efter målet: räkna från första målet (sist i listan) fram till detta
               let ws2 = 0, gs2 = 0;
               for (let i = goalHistory.length - 1; i >= index; i--) {
                 if (goalHistory[i].team === "white") ws2++;

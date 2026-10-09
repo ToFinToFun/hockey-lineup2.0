@@ -5,6 +5,7 @@
  */
 import { matchMinutes } from "../shared/iceTime";
 import { isTeamAWhite, normalizeTeamKey } from "../shared/teams";
+import { goalsOldestFirst, firstGoal, lastGoal } from "../shared/goalOrder";
 
 type Goal = { team?: string; scorer?: string; assist?: string; scorerId?: string; assistId?: string; timestamp?: string };
 type MatchLike = {
@@ -43,8 +44,7 @@ export function computeFunStats(matches: MatchLike[], registry: Map<string, stri
     const players = Object.entries(slots).filter(([k, p]) => !/-gk-/.test(k) && p?.id && registry.has(p.id)).map(([, p]) => p) as Array<{ id: string; name?: string }>;
     if (!players.length) continue;
     const byName = new Map(players.map((p) => [bare(p.name), p.id]));
-    // Målen sparas med det senaste först – i tidsordning här
-    const goals = [...((Array.isArray(m.goalHistory) ? m.goalHistory : []) as Goal[])].reverse();
+    const goals = goalsOldestFirst<Goal>(m.goalHistory); // i tidsordning (shared/goalOrder.ts)
     const sid = (g: Goal) => g.scorerId ?? (bare(g.scorer) ? byName.get(bare(g.scorer)) : undefined);
     const aid = (g: Goal) => g.assistId ?? (bare(g.assist) ? byName.get(bare(g.assist)) : undefined);
     const scored = new Set<string>(), pointed = new Set<string>();
@@ -54,8 +54,9 @@ export function computeFunStats(matches: MatchLike[], registry: Map<string, stri
       if (a) pointed.add(a);
     }
     // Första och sista målet i matchen
-    const first = goals[0] ? sid(goals[0]) : undefined;
-    const last = goals.length ? sid(goals[goals.length - 1]) : undefined;
+    const fg = firstGoal<Goal>(m.goalHistory), lg = lastGoal<Goal>(m.goalHistory);
+    const first = fg ? sid(fg) : undefined;
+    const last = lg ? sid(lg) : undefined;
     if (first && registry.has(first)) row(first).firstGoals++;
     if (last && registry.has(last)) row(last).lastGoals++;
     // Sena mål: de sista 10 minuterna (kräver starttid)

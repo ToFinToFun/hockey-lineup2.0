@@ -1,4 +1,5 @@
 import { matchSides, type SideInfo } from "@/lib/matchSides";
+import { goalsOldestFirst, goalsForStorage, winningGoalIndex } from "@shared/goalOrder";
 import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { club } from "@shared/club";
 import { trpc } from "@/lib/trpc";
@@ -232,7 +233,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
     setEditMinutes(String((match as { plannedMinutes?: number | null }).plannedMinutes ?? ""));
     // Sparas nyast först (som Score Tracker visar). Här redigeras i tidsordning: första målet överst.
     const gh = (match.goalHistory as GoalEvent[] | null) ?? [];
-    setEditGoals([...gh].reverse().map(g => ({ ...g })));
+    setEditGoals(goalsOldestFirst<GoalEvent>(gh).map(g => ({ ...g })));
     setEditDialog(matchId);
   };
 
@@ -426,7 +427,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
       teamWhiteScore: whiteCount,
       teamGreenScore: greenCount,
       // Tillbaka till lagringsordningen: nyast först
-      goalHistory: [...editGoals].reverse(),
+      goalHistory: goalsForStorage(editGoals),
       location: editLocation.trim(),
       plannedMinutes: editMinutes.trim() ? Math.min(240, Math.max(10, Number(editMinutes))) : null,
     });
@@ -773,28 +774,9 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                   </h3>
                   <div className="space-y-1.5">
                     {(() => {
-                      const reversed = [...goalHistory].reverse();
-                      // Determine GWG index: in a non-draw, the (loserScore+1)th goal by the winning team
-                      const whiteScore = selectedMatchData.teamWhiteScore;
-                      const greenScore = selectedMatchData.teamGreenScore;
-                      let gwgGoalIndex = -1;
-                      if (whiteScore !== greenScore) {
-                        const winningTeam = whiteScore > greenScore ? 'white' : 'green';
-                        const loserScore = Math.min(whiteScore, greenScore);
-                        let winnerGoalCount = 0;
-                        for (let gi = 0; gi < reversed.length; gi++) {
-                          const gt = reversed[gi].team?.toLowerCase();
-                          const isWinner = (winningTeam === 'white' && (gt === 'white' || gt === 'vita' || gt === 'vit')) ||
-                                          (winningTeam === 'green' && (gt === 'green' || gt === 'gröna' || gt === 'grön'));
-                          if (isWinner) {
-                            if (winnerGoalCount === loserScore) {
-                              gwgGoalIndex = gi;
-                              break;
-                            }
-                            winnerGoalCount++;
-                          }
-                        }
-                      }
+                      // Tidsordning (första målet överst) och matchvinnande mål: shared/goalOrder.ts
+                      const reversed = goalsOldestFirst<GoalEvent>(goalHistory);
+                      const gwgGoalIndex = winningGoalIndex(goalHistory, selectedMatchData.teamWhiteScore, selectedMatchData.teamGreenScore);
                       let ws = 0, gs = 0;
                       return reversed.map((goal, i) => {
                         if (goal.team === "white") ws++; else gs++;

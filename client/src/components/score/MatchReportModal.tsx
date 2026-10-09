@@ -11,6 +11,7 @@ import { starCandidates, autoStars, starLine, starStat, type StarCandidate } fro
 import { X, Download, Copy, Share2, Loader2, Check, Star, RotateCcw, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useSponsors, logoForName, randomSponsorName } from "@/lib/sponsors";
+import { goalsOldestFirst, winningGoalIndex } from "@shared/goalOrder";
 import { renderResultImage, renderGoalsImage, type ReportData, type ReportGoal } from "@/lib/matchReportImages";
 import { starCardSettings, renderStarPost } from "@/lib/starCards";
 import { elapsedMinutes } from "@shared/matchTiming";
@@ -74,12 +75,9 @@ export function buildReportData(
   const whiteName = external ? ourName : cap(aWhite ? wrap.teamAName : wrap.teamBName, teamName("white"));
   const greenName = external ? (opponent?.name ?? cap(wrap.teamBName, "Motståndare")) : cap(aWhite ? wrap.teamBName : wrap.teamAName, teamName("green"));
 
-  const chrono = [...(match.goalHistory ?? [])].reverse();
-  // Matchvinnande mål: vinnarlagets mål nummer (förlorarens mål + 1)
-  const winner = match.teamWhiteScore > match.teamGreenScore ? "white" : match.teamGreenScore > match.teamWhiteScore ? "green" : null;
-  const loserScore = Math.min(match.teamWhiteScore, match.teamGreenScore);
-  let winnerCount = 0;
-  const gwgIndex = winner ? chrono.findIndex((g) => g.team === winner && winnerCount++ === loserScore) : -1;
+  // Tidsordning och matchvinnande mål: shared/goalOrder.ts
+  const chrono = goalsOldestFirst<RawGoal>(match.goalHistory);
+  const gwgIndex = winningGoalIndex(match.goalHistory, match.teamWhiteScore, match.teamGreenScore);
   // Äldre matcher fick starttiden från första målet – då vet vi inte riktig start (visa klockslag)
   const firstMinute = chrono.length ? elapsedMinutes(chrono[0].timestamp, match.matchStartTime ?? null) : null;
   const startKnown = !!match.matchStartTime && firstMinute !== 0;

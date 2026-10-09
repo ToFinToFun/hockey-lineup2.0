@@ -1,3 +1,4 @@
+import { goalsOldestFirst, winningGoalIndex } from "@shared/goalOrder";
 /**
  * Stars of the Game (NHL-stil): tre stjärnor per match.
  *
@@ -102,20 +103,17 @@ export function starCandidates(match: {
     return null;
   };
 
-  const chrono = [...match.goalHistory].reverse();
-  const loser = Math.min(match.teamWhiteScore, match.teamGreenScore);
-  let winnerGoals = 0;
-  for (const g of chrono) {
-    if (g.other === "Självmål") continue;
+  // Tidsordning och matchvinnande mål: shared/goalOrder.ts
+  const chrono = goalsOldestFirst<(typeof match.goalHistory)[number]>(match.goalHistory);
+  const gwgAt = winningGoalIndex(match.goalHistory, match.teamWhiteScore, match.teamGreenScore);
+  chrono.forEach((g, i) => {
+    if (g.other === "Självmål") return;
     const s = find(g.scorerId, g.scorer, g.team);
     if (s) s.goals++;
     const a = find(g.assistId, g.assist, g.team);
     if (a) a.assists++;
-    if (winner && g.team === winner) {
-      if (winnerGoals === loser && s) s.gwg = true;
-      winnerGoals++;
-    }
-  }
+    if (i === gwgAt && s) s.gwg = true;
+  });
 
   for (const c of byKey.values()) {
     const won = winner === c.team;

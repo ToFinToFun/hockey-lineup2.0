@@ -202,6 +202,7 @@ export type MatchResult = MatchRow & {
     teamBName: string;
     lineup: Record<string, { id: string; name: string; number: string; position: string }>;
   } | null;
+  /** Senaste målet FÖRST (index 0). Tidsordning: shared/goalOrder.ts */
   goalHistory: Array<{
     team: "white" | "green";
     scorer?: string;
