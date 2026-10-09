@@ -227,6 +227,8 @@ export const sponsors = mysqlTable("sponsors", {
   /** Inaktiva visas inte och väljs inte, men finns kvar i statistiken. */
   active: boolean("active").default(true).notNull(),
   sortOrder: int("sortOrder").default(0).notNull(),
+  /** Kort annonstext i Stålbladet (Media i tidningsstil), t.ex. "Vi får regionen att röra sig." */
+  slogan: varchar("slogan", { length: 120 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

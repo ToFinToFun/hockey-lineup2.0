@@ -7,6 +7,15 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.73.0 – 2026-10-09
+
+- Stålbladet som en riktig tidning: nya mallarna Förstasida, Artikel och Intervju, med fri text (rubrik, citatrubrik, ingress, brödtext, citat i marginalen, bildtext och byline).
+- Intervju: en rad som slutar med ? blir en fråga i fetstil, svaret på raden under.
+- Förstasidan: tre puffar längst ner med egen bild, rutor för senaste matchen, nästa match (laget.se) och Resultatbörsen med de senaste matcherna. Rutorna kan slås av och på.
+- Artikeln ligger som ett tidningsark på vald bakgrund, med resultattavla för senaste matchen.
+- Sponsorerna syns som vanliga annonser (utan "presenteras av"), en eller två beroende på sida. Ny valfri annonstext per sponsor under Sponsorer.
+- Den gamla artikelmallen är ersatt av den nya; löpsedeln finns kvar.
+
 ## 2.72.0 – 2026-10-09
 
 - Media → Stålbladet: klubbens egen påhittade lokaltidning.

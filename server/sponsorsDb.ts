@@ -92,6 +92,7 @@ export async function listSponsors(now: Date = new Date()): Promise<SponsorList>
       logo: row.logo ?? null,
       active: row.active,
       sortOrder: row.sortOrder,
+      slogan: row.slogan ?? null,
       counts: counts(row, goalsNow, newsNow),
       previous: counts(row, goalsPrev, newsPrev),
     })),
@@ -104,19 +105,19 @@ async function nameTaken(name: string, exceptId?: number): Promise<boolean> {
   return rows.some((r) => norm(r.name) === norm(name) && r.id !== exceptId);
 }
 
-export async function createSponsor(input: { name: string; logo: string | null; active: boolean }) {
+export async function createSponsor(input: { name: string; logo: string | null; active: boolean; slogan?: string | null }) {
   const db = await requireDb();
   const name = input.name.trim();
   if (await nameTaken(name)) throw new Error(`Det finns redan en sponsor som heter "${name}"`);
   const [{ max }] = await db.select({ max: sql<number>`coalesce(max(${sponsors.sortOrder}), 0)` }).from(sponsors);
-  await db.insert(sponsors).values({ name, logo: input.logo, active: input.active, sortOrder: Number(max) + 1 });
+  await db.insert(sponsors).values({ name, logo: input.logo, active: input.active, sortOrder: Number(max) + 1, slogan: input.slogan?.trim() || null });
 }
 
 /**
  * Uppdatera en sponsor. `logo: undefined` lämnar loggan orörd, `null` tar bort den.
  * Byter sponsorn namn uppdateras även målen, så att räknare och historik följer med.
  */
-export async function updateSponsor(input: { id: number; name?: string; logo?: string | null; active?: boolean }) {
+export async function updateSponsor(input: { id: number; name?: string; logo?: string | null; active?: boolean; slogan?: string | null }) {
   const db = await requireDb();
   const [current] = await db.select().from(sponsors).where(eq(sponsors.id, input.id)).limit(1);
   if (!current) throw new Error("Sponsorn finns inte");
@@ -129,6 +130,7 @@ export async function updateSponsor(input: { id: number; name?: string; logo?: s
   }
   if (input.logo !== undefined) set.logo = input.logo;
   if (input.active !== undefined) set.active = input.active;
+  if (input.slogan !== undefined) set.slogan = input.slogan?.trim() || null;
   if (Object.keys(set).length === 0) return;
 
   await db.transaction(async (tx) => {

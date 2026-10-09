@@ -1,0 +1,1 @@
+ALTER TABLE `sponsors` ADD `slogan` varchar(120);

@@ -135,9 +135,10 @@ export interface ImagePostData extends MediaCommon {
   image: HTMLImageElement | null;
 }
 
-export type { BillPostData, ArticlePostData } from "@/lib/pressImages";
+export type { BillPostData } from "@/lib/pressImages";
+export type { PressPageData } from "@/lib/pressPages";
 export type MediaPostData = LineupPostData | TextPostData | CardsPostData | StatsPostData | ResultPostData | AwardPostData | ImagePostData
-  | import("@/lib/pressImages").BillPostData | import("@/lib/pressImages").ArticlePostData;
+  | import("@/lib/pressImages").BillPostData | import("@/lib/pressPages").PressPageData;
 
 /** Lagens loggor från klubbens inställningar */
 const LOGO = { get white() { return teamLogo("white"); }, get green() { return teamLogo("green"); } };
@@ -940,11 +941,12 @@ export async function renderMediaPost(d: MediaPostData): Promise<HTMLCanvasEleme
   if (d.kind === "award") return renderAward(d);
   if (d.kind === "stats") return renderStats(d);
   if (d.kind === "image") return renderImage(d);
-  if (d.kind === "bill" || d.kind === "article") {
+  if (d.kind === "bill" || d.kind === "front" || d.kind === "article" || d.kind === "interview") {
     // Stålbladet (tidningsstil) – egna typsnitt
     const press = await import("@/lib/pressImages");
     await press.ensurePressFonts();
-    return d.kind === "bill" ? press.renderBill(d) : press.renderArticle(d);
+    if (d.kind === "bill") return press.renderBill(d);
+    return (await import("@/lib/pressPages")).renderPressPage(d);
   }
   if (d.kind === "result") {
     const { renderResultImage } = await import("@/lib/matchReportImages");
@@ -952,5 +954,5 @@ export async function renderMediaPost(d: MediaPostData): Promise<HTMLCanvasEleme
     decorate(c.getContext("2d")!, d.overlay);
     return c;
   }
-  return renderText(d);
+  return renderText(d as TextPostData);
 }

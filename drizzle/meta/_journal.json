@@ -190,6 +190,13 @@
       "when": 1791191409210,
       "tag": "0026_match_planned_minutes",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1791556451903,
+      "tag": "0027_sponsor_slogan",
+      "breakpoints": true
     }
   ]
 }

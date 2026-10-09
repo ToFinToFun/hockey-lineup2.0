@@ -653,7 +653,7 @@ export const appRouter = router({
     save: moduleProcedure("media")
       .input(z.object({
         id: z.number().int().positive().optional(),
-        type: z.enum(["lineup", "text", "cards", "stats", "result", "award", "image", "bill", "article"]),
+        type: z.enum(["lineup", "text", "cards", "stats", "result", "award", "image", "bill", "front", "article", "interview"]),
         title: z.string().trim().min(1).max(120),
         settings: z.record(z.string(), z.unknown()),
         caption: z.string().max(3000),
@@ -661,7 +661,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         if (input.photoBase64 && !input.photoBase64.startsWith("/9j/")) throw new TRPCError({ code: "BAD_REQUEST", message: "Bilden måste vara JPEG" });
-        if (JSON.stringify(input.settings).length > 60_000) throw new TRPCError({ code: "BAD_REQUEST", message: "För mycket data i inlägget" });
+        if (JSON.stringify(input.settings).length > 200_000) throw new TRPCError({ code: "BAD_REQUEST", message: "För mycket data i inlägget" });
         return { id: await saveMediaPost(input) };
       }),
     delete: moduleProcedure("media")
@@ -702,7 +702,7 @@ export const appRouter = router({
     list: publicProcedure.query(() => listSponsors()),
 
     create: adminProcedure
-      .input(z.object({ name: z.string().trim().min(1).max(120), logo: logoSchema.nullable(), active: z.boolean().default(true) }))
+      .input(z.object({ name: z.string().trim().min(1).max(120), logo: logoSchema.nullable(), active: z.boolean().default(true), slogan: z.string().trim().max(120).nullable().optional() }))
       .mutation(async ({ input }) => {
         await createSponsor(input);
         return { success: true };
@@ -715,6 +715,8 @@ export const appRouter = router({
           name: z.string().trim().min(1).max(120).optional(),
           logo: logoSchema.nullable().optional(),
           active: z.boolean().optional(),
+          /** Annonstext i Stålbladet */
+          slogan: z.string().trim().max(120).nullable().optional(),
         })
       )
       .mutation(async ({ input }) => {

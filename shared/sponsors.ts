@@ -24,6 +24,8 @@ export interface Sponsor {
   logo: string | null;
   active: boolean;
   sortOrder: number;
+  /** Kort annonstext i Stålbladet (valfri) */
+  slogan?: string | null;
   /** Innevarande säsong */
   counts: SponsorCounts;
   /** Förra säsongen (för statistik) */

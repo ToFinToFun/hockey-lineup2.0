@@ -105,6 +105,7 @@ export function SponsorsPanel() {
 
 function SponsorEditor({ sponsor, onClose, onSaved }: { sponsor: Sponsor | null; onClose: () => void; onSaved: () => void }) {
   const [name, setName] = useState(sponsor?.name ?? "");
+  const [slogan, setSlogan] = useState(sponsor?.slogan ?? "");
   // undefined = oförändrad, null = ingen logga, string = ny logga
   const [logo, setLogo] = useState<string | null | undefined>(undefined);
   const [file, setFile] = useState<File | null>(null);
@@ -151,10 +152,10 @@ function SponsorEditor({ sponsor, onClose, onSaved }: { sponsor: Sponsor | null;
     setError(null);
     try {
       if (sponsor) {
-        await update.mutateAsync({ id: sponsor.id, name: trimmed, ...(logo !== undefined ? { logo } : {}) });
+        await update.mutateAsync({ id: sponsor.id, name: trimmed, slogan: slogan.trim() || null, ...(logo !== undefined ? { logo } : {}) });
         toast.success("Sponsorn sparad");
       } else {
-        await create.mutateAsync({ name: trimmed, logo: logo ?? null, active: true });
+        await create.mutateAsync({ name: trimmed, logo: logo ?? null, active: true, slogan: slogan.trim() || null });
         toast.success("Sponsorn tillagd");
       }
       onSaved();
@@ -197,6 +198,13 @@ function SponsorEditor({ sponsor, onClose, onSaved }: { sponsor: Sponsor | null;
           {sponsor && name.trim() !== sponsor.name && name.trim() && (
             <p className="text-[10px] text-white/40 mt-1">Registrerade mål byter också namn, så räknarna följer med.</p>
           )}
+        </div>
+
+        <div>
+          <label htmlFor="sponsor-slogan" className="block text-[11px] text-white/50 mb-1">Annonstext i Stålbladet (valfri)</label>
+          <input id="sponsor-slogan" value={slogan} onChange={(e) => setSlogan(e.target.value)} maxLength={120}
+            placeholder="T.ex. Vi får regionen att röra sig." className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm" />
+          <p className="text-[10px] text-white/40 mt-1">Visas i sponsorns annons i Media → Stålbladet, som i en tidning.</p>
         </div>
 
         <div className="space-y-2">
