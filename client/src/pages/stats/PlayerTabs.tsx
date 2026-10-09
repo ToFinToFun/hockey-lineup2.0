@@ -85,12 +85,12 @@ export function SkatersTab({ stats, input, ratings, onPlayerClick }: { stats: { 
           name={(r) => r.name}
           sub={(r) => <PositionSplit byPos={r.byPos} total={r.minutes} />}
           onRowClick={(r) => onPlayerClick(r.name)}
-          defaultSort="p60"
+          defaultSort="snitt"
           empty="Inga matcher under perioden."
           columns={[
             { key: "m", label: "M", title: "Matcher", value: (r) => r.matches },
             { key: "tid", label: "Tid", value: (r) => r.minutes, render: (r) => formatMinutes(r.minutes), className: "text-right" },
-            { key: "snitt", label: "Snitt", title: "Minuter per match", value: (r) => r.perMatch, render: (r) => `${r.perMatch}′` },
+            { key: "snitt", label: "Tid/match", title: "Speltid per match (minuter)", value: (r) => r.perMatch, render: (r) => `${r.perMatch}′` },
             { key: "p60", label: "P/60", title: "Poäng per 60 minuter (efter minst 30 min)", value: (r) => r.p60 },
           ]}
         />

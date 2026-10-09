@@ -7,6 +7,13 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.71.1 – 2026-10-09
+
+- Statistik → Speltid: sorteras på speltid per match (kolumnen "Tid/match").
+- Mål per match (trend): luft ovanför staplarna så att antalet alltid syns.
+- Rekorden (lagrekord, spelarrekord och övriga) går att klicka – öppnar matchen i matchhistoriken.
+- Snabbaste målet: matcher där starttiden sattes från första målet (ingen träning hittades) räknas inte.
+
 ## 2.71.0 – 2026-10-09
 
 Buggrättningar och förbättringar från veckans lista.

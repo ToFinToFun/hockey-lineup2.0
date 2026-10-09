@@ -100,7 +100,7 @@ const dateRangeInput = z
 // ─── Score Stats Router ─────────────────────────────────────────────
 
 interface MonthlyGoalie { month: string; playerName: string; gkMatches: number; gkWins: number; ga60: number | null; shutouts: number }
-export interface ExtraRecord { key: string; label: string; value: string; who: string; detail: string }
+export interface ExtraRecord { key: string; label: string; value: string; who: string; detail: string; matchId?: number }
 
 /**
  * Fler rekord (exporteras för test): flest mål av ett lag i en match, största
@@ -108,7 +108,7 @@ export interface ExtraRecord { key: string; label: string; value: string; who: s
  * och lägst insläppta per 60 min (målvakt, minst 3 matcher i mål).
  */
 export function computeExtraRecords(
-  matches: Array<{ name: string; teamWhiteScore: number; teamGreenScore: number; goalHistory: unknown; matchStartTime?: Date | string | null; createdAt?: Date | string | null }>,
+  matches: Array<{ id?: number; name: string; teamWhiteScore: number; teamGreenScore: number; goalHistory: unknown; matchStartTime?: Date | string | null; createdAt?: Date | string | null }>,
   ice: Array<{ name: string; gkMatches: number; shutouts: number; ga60: number | null }>
 ): ExtraRecord[] {
   const out: ExtraRecord[] = [];
@@ -116,7 +116,7 @@ export function computeExtraRecords(
   // Flest mål av ett lag i en match
   let most: { n: number; team: "white" | "green"; m: (typeof matches)[number] } | null = null;
   for (const m of matches) for (const [team, n] of [["white", m.teamWhiteScore], ["green", m.teamGreenScore]] as const) if (!most || n > most.n) most = { n, team, m };
-  if (most && most.n > 0) out.push({ key: "team_goals", label: "Flest mål av ett lag", value: `${most.n} mål`, who: teamName(most.team), detail: `${short(most.m.name)} · ${most.m.teamWhiteScore}–${most.m.teamGreenScore}` });
+  if (most && most.n > 0) out.push({ key: "team_goals", label: "Flest mål av ett lag", value: `${most.n} mål`, who: teamName(most.team), detail: `${short(most.m.name)} · ${most.m.teamWhiteScore}–${most.m.teamGreenScore}`, matchId: most.m.id });
   // Största vändningen: största underläge som vinnande lag vände
   let comeback: { n: number; team: "white" | "green"; m: (typeof matches)[number] } | null = null;
   for (const m of matches) {
@@ -132,7 +132,7 @@ export function computeExtraRecords(
     }
     if (worst < 0 && (!comeback || -worst > comeback.n)) comeback = { n: -worst, team: winner, m };
   }
-  if (comeback) out.push({ key: "comeback", label: "Största vändningen", value: `Från ${comeback.n} måls underläge`, who: teamName(comeback.team), detail: `${short(comeback.m.name)} · ${comeback.m.teamWhiteScore}–${comeback.m.teamGreenScore}` });
+  if (comeback) out.push({ key: "comeback", label: "Största vändningen", value: `Från ${comeback.n} måls underläge`, who: teamName(comeback.team), detail: `${short(comeback.m.name)} · ${comeback.m.teamWhiteScore}–${comeback.m.teamGreenScore}`, matchId: comeback.m.id });
   // Snabbaste målet: matchens första mål (målen sparas med det senaste först),
   // räknat i sekunder från matchstart så att 0:40 slår 0:55
   let fastest: { sec: number; min: number; who: string; m: (typeof matches)[number] } | null = null;
@@ -145,10 +145,12 @@ export function computeExtraRecords(
     if (!t) continue;
     let sec = (Number(t[1]) * 3600 + Number(t[2]) * 60 + Number(t[3] ?? 0)) - (st.getHours() * 3600 + st.getMinutes() * 60 + st.getSeconds());
     if (sec < -3600) sec += 86400; // efter midnatt
-    if (sec < 0 || sec > 120 * 60) continue; // mål före start eller orimligt: starttiden stämmer inte
+    // Mål före start eller orimligt: starttiden stämmer inte. Exakt 0 s = starttiden
+    // sattes från första målet (ingen träning hittades) – säger inget om hur snabbt det kom
+    if (sec <= 0 || sec > 120 * 60) continue;
     if (!fastest || sec < fastest.sec) fastest = { sec, min: Math.floor(sec / 60), who: (g.scorer ?? "").trim() || "Okänd", m };
   }
-  if (fastest) out.push({ key: "fastest", label: "Snabbaste målet", value: fastest.min === 0 ? "Under en minut" : `Efter ${fastest.min} min`, who: fastest.who, detail: short(fastest.m.name) });
+  if (fastest) out.push({ key: "fastest", label: "Snabbaste målet", value: fastest.min === 0 ? "Under en minut" : `Efter ${fastest.min} min`, who: fastest.who, detail: short(fastest.m.name), matchId: fastest.m.id });
   // Längsta vinstsvit per lag (matcherna i tidsordning)
   const ordered = [...matches].sort((a, b) => new Date(a.matchStartTime ?? a.createdAt ?? 0).getTime() - new Date(b.matchStartTime ?? b.createdAt ?? 0).getTime());
   for (const team of ["white", "green"] as const) {
@@ -880,13 +882,13 @@ export const scoreStatsRouter = router({
         topScorers: [] as { name: string; goals: number; assists: number; gwg: number; points: number; team: string; matches: number }[],
         starLeaders: [] as import("../starStats").StarCount[],
         recentForm: [] as { name: string; whiteScore: number; greenScore: number }[],
-        biggestWinWhite: null as { name: string; whiteScore: number; greenScore: number } | null,
-        biggestWinGreen: null as { name: string; whiteScore: number; greenScore: number } | null,
-        highestScoringMatch: null as { name: string; whiteScore: number; greenScore: number; totalGoals: number } | null,
+        biggestWinWhite: null as { name: string; matchId: number; whiteScore: number; greenScore: number } | null,
+        biggestWinGreen: null as { name: string; matchId: number; whiteScore: number; greenScore: number } | null,
+        highestScoringMatch: null as { name: string; matchId: number; whiteScore: number; greenScore: number; totalGoals: number } | null,
         goalTypes: [] as { type: string; count: number }[],
-        playerRecordGoals: null as { playerName: string; goals: number; matchName: string } | null,
-        playerRecordAssists: null as { playerName: string; assists: number; matchName: string } | null,
-        playerRecordPoints: null as { playerName: string; points: number; goals: number; assists: number; matchName: string } | null,
+        playerRecordGoals: null as { playerName: string; goals: number; matchName: string; matchId: number } | null,
+        playerRecordAssists: null as { playerName: string; assists: number; matchName: string; matchId: number } | null,
+        playerRecordPoints: null as { playerName: string; points: number; goals: number; assists: number; matchName: string; matchId: number } | null,
         monthlyMvp: [] as { month: string; playerName: string; goals: number; assists: number; points: number; gwg: number; matches: number }[],
         monthlyGoalie: [] as MonthlyGoalie[],
         extraRecords: [] as ExtraRecord[],
@@ -898,13 +900,13 @@ export const scoreStatsRouter = router({
     const playerStats: Record<string, { goals: number; assists: number; gwg: number; team: string; matches: number }> = {};
     const goalTypes: Record<string, number> = {};
 
-    let biggestWinWhite: { name: string; whiteScore: number; greenScore: number; diff: number } | null = null;
-    let biggestWinGreen: { name: string; whiteScore: number; greenScore: number; diff: number } | null = null;
-    let highestScoringMatch: { name: string; whiteScore: number; greenScore: number; totalGoals: number } | null = null;
+    let biggestWinWhite: { name: string; matchId: number; whiteScore: number; greenScore: number; diff: number } | null = null;
+    let biggestWinGreen: { name: string; matchId: number; whiteScore: number; greenScore: number; diff: number } | null = null;
+    let highestScoringMatch: { name: string; matchId: number; whiteScore: number; greenScore: number; totalGoals: number } | null = null;
 
-    let playerRecordGoals: { playerName: string; goals: number; matchName: string } | null = null;
-    let playerRecordAssists: { playerName: string; assists: number; matchName: string } | null = null;
-    let playerRecordPoints: { playerName: string; points: number; goals: number; assists: number; matchName: string } | null = null;
+    let playerRecordGoals: { playerName: string; goals: number; matchName: string; matchId: number } | null = null;
+    let playerRecordAssists: { playerName: string; assists: number; matchName: string; matchId: number } | null = null;
+    let playerRecordPoints: { playerName: string; points: number; goals: number; assists: number; matchName: string; matchId: number } | null = null;
 
     const monthlyPlayerStats: Record<string, Record<string, { goals: number; assists: number; gwg: number; matches: Set<number> }>> = {};
 
@@ -920,16 +922,16 @@ export const scoreStatsRouter = router({
 
       const totalGoals = match.teamWhiteScore + match.teamGreenScore;
       if (!highestScoringMatch || totalGoals > highestScoringMatch.totalGoals) {
-        highestScoringMatch = { name: match.name, whiteScore: match.teamWhiteScore, greenScore: match.teamGreenScore, totalGoals };
+        highestScoringMatch = { name: match.name, matchId: match.id, whiteScore: match.teamWhiteScore, greenScore: match.teamGreenScore, totalGoals };
       }
 
       const whiteDiff = match.teamWhiteScore - match.teamGreenScore;
       if (whiteDiff > 0 && (!biggestWinWhite || whiteDiff > biggestWinWhite.diff)) {
-        biggestWinWhite = { name: match.name, whiteScore: match.teamWhiteScore, greenScore: match.teamGreenScore, diff: whiteDiff };
+        biggestWinWhite = { name: match.name, matchId: match.id, whiteScore: match.teamWhiteScore, greenScore: match.teamGreenScore, diff: whiteDiff };
       }
       const greenDiff = match.teamGreenScore - match.teamWhiteScore;
       if (greenDiff > 0 && (!biggestWinGreen || greenDiff > biggestWinGreen.diff)) {
-        biggestWinGreen = { name: match.name, whiteScore: match.teamWhiteScore, greenScore: match.teamGreenScore, diff: greenDiff };
+        biggestWinGreen = { name: match.name, matchId: match.id, whiteScore: match.teamWhiteScore, greenScore: match.teamGreenScore, diff: greenDiff };
       }
       }
 
@@ -966,12 +968,12 @@ export const scoreStatsRouter = router({
 
         for (const [player, g] of Object.entries(matchPlayerGoals)) {
           if (!playerRecordGoals || g > playerRecordGoals.goals) {
-            playerRecordGoals = { playerName: player, goals: g, matchName: match.name };
+            playerRecordGoals = { playerName: player, goals: g, matchName: match.name, matchId: match.id };
           }
         }
         for (const [player, a] of Object.entries(matchPlayerAssists)) {
           if (!playerRecordAssists || a > playerRecordAssists.assists) {
-            playerRecordAssists = { playerName: player, assists: a, matchName: match.name };
+            playerRecordAssists = { playerName: player, assists: a, matchName: match.name, matchId: match.id };
           }
         }
         const allPlayers = Array.from(new Set([...Object.keys(matchPlayerGoals), ...Object.keys(matchPlayerAssists)]));
@@ -980,7 +982,7 @@ export const scoreStatsRouter = router({
           const a = matchPlayerAssists[player] || 0;
           const pts = g + a;
           if (!playerRecordPoints || pts > playerRecordPoints.points) {
-            playerRecordPoints = { playerName: player, points: pts, goals: g, assists: a, matchName: match.name };
+            playerRecordPoints = { playerName: player, points: pts, goals: g, assists: a, matchName: match.name, matchId: match.id };
           }
         }
 
@@ -1051,8 +1053,8 @@ export const scoreStatsRouter = router({
       topScorers, recentForm,
       // Matchens stjärnor per spelare (samma som i matchrapporterna)
       starLeaders: starCounts(matches as never),
-      biggestWinWhite: biggestWinWhite ? { name: biggestWinWhite.name, whiteScore: biggestWinWhite.whiteScore, greenScore: biggestWinWhite.greenScore } : null,
-      biggestWinGreen: biggestWinGreen ? { name: biggestWinGreen.name, whiteScore: biggestWinGreen.whiteScore, greenScore: biggestWinGreen.greenScore } : null,
+      biggestWinWhite: biggestWinWhite ? { name: biggestWinWhite.name, matchId: biggestWinWhite.matchId, whiteScore: biggestWinWhite.whiteScore, greenScore: biggestWinWhite.greenScore } : null,
+      biggestWinGreen: biggestWinGreen ? { name: biggestWinGreen.name, matchId: biggestWinGreen.matchId, whiteScore: biggestWinGreen.whiteScore, greenScore: biggestWinGreen.greenScore } : null,
       highestScoringMatch, playerRecordGoals, playerRecordAssists, playerRecordPoints,
       goalTypes: Object.entries(goalTypes).map(([type, count]) => ({ type, count })).sort((a, b) => b.count - a.count),
       monthlyMvp, monthlyGoalie, extraRecords,

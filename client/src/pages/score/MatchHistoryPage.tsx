@@ -94,7 +94,11 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
       toast.error("Kunde inte uppdatera matchen", { description: "Försök igen.", duration: 3000 });
     },
   });
-  const [selectedMatch, setSelectedMatch] = useState<number | null>(null);
+  // Länk från statistiken (rekord): /history?match=ID öppnar matchen direkt
+  const [selectedMatch, setSelectedMatch] = useState<number | null>(() => {
+    const id = Number(new URLSearchParams(typeof window !== "undefined" ? window.location.search : "").get("match"));
+    return Number.isInteger(id) && id > 0 ? id : null;
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [resultFilter, setResultFilter] = useState<ResultFilter>("all");
   const [monthFilter, setMonthFilter] = useState<string>("all");

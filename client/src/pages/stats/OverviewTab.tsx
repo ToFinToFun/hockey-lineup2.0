@@ -4,6 +4,10 @@
 import { HockeyGoal } from "@/components/score/HockeyIcons";
 import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { useMemo } from "react";
+import { useLocation } from "wouter";
+
+/** Till matchen i matchhistoriken */
+const matchHref = (id: number | undefined) => (id ? `/history?match=${id}` : null);
 import { Trophy, Target, TrendingUp, Flame, Activity, Users } from "lucide-react";
 
 interface OverviewTabProps {
@@ -105,7 +109,8 @@ function GoalTrendChart({ data }: { data: { label: string; white: number; green:
 
   return (
     <div className="overflow-x-auto -mx-1 px-1">
-      <svg width={chartWidth} height={chartHeight + 28} viewBox={`0 0 ${chartWidth} ${chartHeight + 28}`}>
+      {/* 16 px luft överst så att antalet ovanför den högsta stapeln syns */}
+      <svg width={chartWidth} height={chartHeight + 44} viewBox={`0 -16 ${chartWidth} ${chartHeight + 44}`}>
         {[0.25, 0.5, 0.75, 1].map((pct) => (
           <line
             key={pct}
@@ -240,6 +245,8 @@ function PirTopList({ pirData, onPlayerClick }: { pirData: any[]; onPlayerClick:
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 export default function OverviewTab({ stats, pirData, onPlayerClick }: OverviewTabProps) {
+  const [, setLocation] = useLocation();
+  const goMatch = (id: number | undefined) => { const h = matchHref(id); if (h) setLocation(h); };
   const totalGoals = (stats?.totalGoalsWhite ?? 0) + (stats?.totalGoalsGreen ?? 0);
   const avgGoals = stats?.totalMatches ? (totalGoals / stats.totalMatches).toFixed(1) : "0";
 
@@ -400,35 +407,38 @@ export default function OverviewTab({ stats, pirData, onPlayerClick }: OverviewT
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {stats.playerRecordGoals && (
               <button
-                onClick={() => onPlayerClick(stats.playerRecordGoals.playerName)}
+                onClick={() => (stats.playerRecordGoals.matchId ? goMatch(stats.playerRecordGoals.matchId) : onPlayerClick(stats.playerRecordGoals.playerName))}
+                title="Visa matchen"
                 className="bg-[#0a0a0a] rounded-lg p-3 border border-[#2a2a2a] text-left hover:border-[#0a7ea4]/30 transition-colors"
               >
                 <p className="text-[#687076] text-[10px] uppercase tracking-wider">Flest mål</p>
                 <p className="text-amber-400 font-bold text-lg mt-1">{stats.playerRecordGoals.goals} mål</p>
                 <p className="text-[#9BA1A6] text-xs mt-0.5 truncate">{stats.playerRecordGoals.playerName}</p>
-                <p className="text-[#687076] text-[10px] truncate">{stats.playerRecordGoals.matchName}</p>
+                <p className="text-[#687076] text-[10px] truncate underline decoration-dotted">{stats.playerRecordGoals.matchName}</p>
               </button>
             )}
             {stats.playerRecordAssists && (
               <button
-                onClick={() => onPlayerClick(stats.playerRecordAssists.playerName)}
+                onClick={() => (stats.playerRecordAssists.matchId ? goMatch(stats.playerRecordAssists.matchId) : onPlayerClick(stats.playerRecordAssists.playerName))}
+                title="Visa matchen"
                 className="bg-[#0a0a0a] rounded-lg p-3 border border-[#2a2a2a] text-left hover:border-[#0a7ea4]/30 transition-colors"
               >
                 <p className="text-[#687076] text-[10px] uppercase tracking-wider">Flest assist</p>
                 <p className="text-[#0a7ea4] font-bold text-lg mt-1">{stats.playerRecordAssists.assists} assist</p>
                 <p className="text-[#9BA1A6] text-xs mt-0.5 truncate">{stats.playerRecordAssists.playerName}</p>
-                <p className="text-[#687076] text-[10px] truncate">{stats.playerRecordAssists.matchName}</p>
+                <p className="text-[#687076] text-[10px] truncate underline decoration-dotted">{stats.playerRecordAssists.matchName}</p>
               </button>
             )}
             {stats.playerRecordPoints && (
               <button
-                onClick={() => onPlayerClick(stats.playerRecordPoints.playerName)}
+                onClick={() => (stats.playerRecordPoints.matchId ? goMatch(stats.playerRecordPoints.matchId) : onPlayerClick(stats.playerRecordPoints.playerName))}
+                title="Visa matchen"
                 className="bg-[#0a0a0a] rounded-lg p-3 border border-[#2a2a2a] text-left hover:border-[#0a7ea4]/30 transition-colors"
               >
                 <p className="text-[#687076] text-[10px] uppercase tracking-wider">Flest poäng</p>
                 <p className="text-emerald-400 font-bold text-lg mt-1">{stats.playerRecordPoints.points} poäng</p>
                 <p className="text-[#9BA1A6] text-xs mt-0.5 truncate">{stats.playerRecordPoints.playerName}</p>
-                <p className="text-[#687076] text-[10px] truncate">{stats.playerRecordPoints.matchName}</p>
+                <p className="text-[#687076] text-[10px] truncate underline decoration-dotted">{stats.playerRecordPoints.matchName}</p>
               </button>
             )}
           </div>
@@ -477,40 +487,41 @@ export default function OverviewTab({ stats, pirData, onPlayerClick }: OverviewT
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {stats.biggestWinWhite && (
-              <div className="bg-[#0a0a0a] rounded-lg p-3 border border-[#2a2a2a]">
+              <button onClick={() => goMatch(stats.biggestWinWhite.matchId)} title="Visa matchen" className="bg-[#0a0a0a] rounded-lg p-3 border border-[#2a2a2a] text-left hover:border-[#0a7ea4]/30">
                 <p className="text-[#687076] text-[10px] uppercase tracking-wider">{teamGenitive("white")} största vinst</p>
                 <p className="text-white font-bold text-sm mt-1">
                   {stats.biggestWinWhite.whiteScore}-{stats.biggestWinWhite.greenScore}
                 </p>
-                <p className="text-[#687076] text-[10px] mt-0.5 truncate">{stats.biggestWinWhite.name}</p>
-              </div>
+                <p className="text-[#687076] text-[10px] mt-0.5 truncate underline decoration-dotted">{stats.biggestWinWhite.name}</p>
+              </button>
             )}
             {stats.biggestWinGreen && (
-              <div className="bg-[#0a0a0a] rounded-lg p-3 border border-[#2a2a2a]">
+              <button onClick={() => goMatch(stats.biggestWinGreen.matchId)} title="Visa matchen" className="bg-[#0a0a0a] rounded-lg p-3 border border-[#2a2a2a] text-left hover:border-[#0a7ea4]/30">
                 <p className="text-[#687076] text-[10px] uppercase tracking-wider">{teamGenitive("green")} största vinst</p>
                 <p className="text-emerald-400 font-bold text-sm mt-1">
                   {stats.biggestWinGreen.whiteScore}-{stats.biggestWinGreen.greenScore}
                 </p>
-                <p className="text-[#687076] text-[10px] mt-0.5 truncate">{stats.biggestWinGreen.name}</p>
-              </div>
+                <p className="text-[#687076] text-[10px] mt-0.5 truncate underline decoration-dotted">{stats.biggestWinGreen.name}</p>
+              </button>
             )}
             {(stats.extraRecords ?? []).map((r: any) => (
-              <div key={r.key} className="bg-[#0a0a0a] rounded-lg p-3 border border-[#2a2a2a]">
+              <button key={r.key} onClick={() => goMatch(r.matchId)} disabled={!r.matchId} title={r.matchId ? "Visa matchen" : undefined}
+                className="bg-[#0a0a0a] rounded-lg p-3 border border-[#2a2a2a] text-left enabled:hover:border-[#0a7ea4]/30">
                 <p className="text-[#687076] text-[10px] uppercase tracking-wider">{r.label}</p>
                 <p className="text-amber-300 font-bold text-sm mt-1">{r.value}</p>
                 <p className="text-[#9BA1A6] text-xs mt-0.5 truncate">{r.who}</p>
-                {r.detail && <p className="text-[#687076] text-[10px] truncate">{r.detail}</p>}
-              </div>
+                {r.detail && <p className={`text-[#687076] text-[10px] truncate ${r.matchId ? "underline decoration-dotted" : ""}`}>{r.detail}</p>}
+              </button>
             ))}
             {stats.highestScoringMatch && (
-              <div className="bg-[#0a0a0a] rounded-lg p-3 border border-[#2a2a2a]">
+              <button onClick={() => goMatch(stats.highestScoringMatch.matchId)} title="Visa matchen" className="bg-[#0a0a0a] rounded-lg p-3 border border-[#2a2a2a] text-left hover:border-[#0a7ea4]/30">
                 <p className="text-[#687076] text-[10px] uppercase tracking-wider">Flest mål i en match</p>
                 <p className="text-[#0a7ea4] font-bold text-sm mt-1">
                   {stats.highestScoringMatch.whiteScore}-{stats.highestScoringMatch.greenScore} (
                   {stats.highestScoringMatch.whiteScore + stats.highestScoringMatch.greenScore} mål)
                 </p>
-                <p className="text-[#687076] text-[10px] mt-0.5 truncate">{stats.highestScoringMatch.name}</p>
-              </div>
+                <p className="text-[#687076] text-[10px] mt-0.5 truncate underline decoration-dotted">{stats.highestScoringMatch.name}</p>
+              </button>
             )}
           </div>
         </div>
