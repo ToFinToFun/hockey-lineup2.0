@@ -8,6 +8,7 @@ import type { Player } from "@/lib/players";
 
 afterEach(cleanup);
 vi.mock("./PlayerPhoto", () => ({ PlayerPhoto: () => null }));
+vi.mock("./CardThumb", () => ({ CardThumb: () => null }));
 
 const p = (id: string, name: string, position: Player["position"], extra: Partial<Player> = {}): Player =>
   ({ id, name, number: "", position, teamColor: null, captainRole: null, ...extra }) as Player;

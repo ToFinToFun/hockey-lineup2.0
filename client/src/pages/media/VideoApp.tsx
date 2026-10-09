@@ -19,7 +19,7 @@ import { trpc } from "@/lib/trpc";
 import { useSponsors, pickLeastShown, type Sponsor } from "@/lib/sponsors";
 import { starCandidates, autoStars, type StarCandidate } from "@/lib/starsOfGame";
 import type { ReportMatch } from "@/components/score/MatchReportModal";
-import { renderCard, DEFAULT_SETTINGS as CARD_DEFAULTS, type CardSettings } from "@shared/cardRender";
+import { renderCard, defaultCardFor, DEFAULT_SETTINGS as CARD_DEFAULTS, type CardSettings } from "@shared/cardRender";
 import { cellsFor } from "@shared/cardStats";
 import { teamName, teamColor } from "@shared/teams";
 import { POSITION_LABELS, type Position } from "@/lib/players";
@@ -369,10 +369,14 @@ export default function VideoApp() {
     const load = (src: string) => new Promise<HTMLImageElement | null>((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
     (async () => {
       const card = savedCards.data?.find((c) => c.playerId === playerId);
-      if (card) {
-        const v = new Date(card.updatedAt).getTime();
-        const [photo, mask] = await Promise.all([load(`/api/players/${encodeURIComponent(playerId)}/card-source?v=${v}`), load(`/api/players/${encodeURIComponent(playerId)}/card-mask?v=${v}`)]);
-        let settings: CardSettings = { ...CARD_DEFAULTS, ...(card.settings as Partial<CardSettings>) };
+      // Alla har ett hockeykort: eget (sparat) eller standardkortet i lagets färg utan foto
+      const reg = registry.data?.find((p) => p.id === playerId);
+      if (card || reg) {
+        const v = card ? new Date(card.updatedAt).getTime() : 0;
+        const [photo, mask] = card
+          ? await Promise.all([load(`/api/players/${encodeURIComponent(playerId)}/card-source?v=${v}`), load(`/api/players/${encodeURIComponent(playerId)}/card-mask?v=${v}`)])
+          : [null, null];
+        let settings: CardSettings = card ? { ...CARD_DEFAULTS, ...(card.settings as Partial<CardSettings>) } : { ...defaultCardFor(reg as never), blankPhoto: true };
         // Kortet visar samma statistik som valts för videon (kortet i registret ändras inte)
         if (settings.statsMode !== "none") {
           settings = stats
@@ -387,7 +391,7 @@ export default function VideoApp() {
       if (!cancelled) setPicture(img ? { image: img, isCard: false } : null);
     })().catch(() => undefined);
     return () => { cancelled = true; };
-  }, [playerId, savedCards.data, statsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [playerId, savedCards.data, registry.data, statsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const data: VideoGraphicsData = {
     format, kind, team: side, heading, headline, subline, dateLine,
@@ -535,7 +539,7 @@ export default function VideoApp() {
       <header className="sticky top-0 z-20 bg-[#0a0a0a]/95 backdrop-blur border-b border-white/5">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
           <Link href="/media" className="text-white/60 hover:text-white" aria-label="Tillbaka"><ArrowLeft size={20} /></Link>
-          <h1 className="text-lg font-bold flex-1" style={{ fontFamily: "'Oswald', sans-serif" }}>Media · Video</h1>
+          <h1 className="text-lg font-bold flex-1" style={{ fontFamily: "'Oswald', sans-serif" }}><Link href="/" title="Till startsidan">Media</Link> · <Link href="/media/video">Video</Link></h1>
         </div>
       </header>
 

@@ -91,12 +91,12 @@ export function autoNewsPhase(now: Date, start: Date, minutesBefore: number): "w
 }
 
 // Evenemanget hämtas från laget.se högst var 20:e minut
-let eventCache: { at: number; date?: string; time?: string; location?: string } | null = null;
+let eventCache: { at: number; date?: string; time?: string; endTime?: string; location?: string } | null = null;
 /** laget.se:s nästa evenemang (utan matchens egna dag/tid) – cachas 20 min */
 export async function lagetEvent() {
   if (!eventCache || Date.now() - eventCache.at > 20 * 60_000) {
     const r = await fetchAttendance();
-    eventCache = { at: Date.now(), date: r.eventDate || undefined, time: r.eventTime, location: r.eventLocation };
+    eventCache = { at: Date.now(), date: r.eventDate || undefined, time: r.eventTime, endTime: r.eventEndTime, location: r.eventLocation };
   }
   return eventCache;
 }
@@ -104,12 +104,12 @@ export async function lagetEvent() {
 export async function nextEvent() {
   if (!eventCache || Date.now() - eventCache.at > 20 * 60_000) {
     const r = await fetchAttendance();
-    eventCache = { at: Date.now(), date: r.eventDate || undefined, time: r.eventTime, location: r.eventLocation };
+    eventCache = { at: Date.now(), date: r.eventDate || undefined, time: r.eventTime, endTime: r.eventEndTime, location: r.eventLocation };
   }
   // Mot andra lag: matchens egna dag/tid/plats (Lineup → Match) går före laget.se
   const { withExternalEvent } = await import("./matchEvent");
-  const o = await withExternalEvent({ eventDate: eventCache.date, eventTime: eventCache.time, eventLocation: eventCache.location });
-  return { at: eventCache.at, date: o.eventDate || undefined, time: o.eventTime, location: o.eventLocation };
+  const o = await withExternalEvent({ eventDate: eventCache.date, eventTime: eventCache.time, eventEndTime: eventCache.endTime, eventLocation: eventCache.location });
+  return { at: eventCache.at, date: o.eventDate || undefined, time: o.eventTime, endTime: o.eventEndTime, location: o.eventLocation };
 }
 
 const weekdayLine = (iso: string) => {

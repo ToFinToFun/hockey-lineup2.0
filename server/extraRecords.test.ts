@@ -3,7 +3,8 @@ import { computeExtraRecords } from "./routers/scoreStats";
 
 const m = (name: string, w: number, g: number, goals: string[], start = "2026-10-01T18:00:00.000Z") => ({
   name: `${name} ${w}-${g}`, teamWhiteScore: w, teamGreenScore: g, matchStartTime: start, createdAt: start,
-  goalHistory: goals.map((t, i) => ({ team: t.split("@")[0], timestamp: t.split("@")[1] ?? `20:${String(10 + i).padStart(2, "0")}:00`, scorer: `S${i}` })),
+  // Målen anges i tidsordning men sparas som i appen: det senaste först
+  goalHistory: goals.map((t, i) => ({ team: t.split("@")[0], timestamp: t.split("@")[1] ?? `20:${String(10 + i).padStart(2, "0")}:00`, scorer: `S${i}` })).reverse(),
 });
 
 describe("fler rekord", () => {

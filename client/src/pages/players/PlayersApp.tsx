@@ -205,7 +205,7 @@ export default function PlayersApp() {
     <div className="min-h-[100dvh] bg-[#0a0a0a] text-white">
       <header className="sticky top-0 z-20 bg-[#0a0a0a]/95 backdrop-blur border-b border-white/5 px-4 py-3 flex items-center gap-3">
         <Link href="/" className="text-white/60 hover:text-white"><ArrowLeft size={20} /></Link>
-        <h1 className="text-lg font-bold flex-1" style={{ fontFamily: "'Oswald', sans-serif" }}>Spelare</h1>
+        <h1 className="text-lg font-bold flex-1" style={{ fontFamily: "'Oswald', sans-serif" }}><Link href="/" title="Till startsidan">Spelare</Link></h1>
         <button onClick={exportCsv} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-white/5 border border-white/10"><Download size={14} /> Exportera</button>
         {isAdmin && <button onClick={() => fileRef.current?.click()} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-white/5 border border-white/10"><Upload size={14} /> Importera</button>}
         <input ref={fileRef} type="file" accept=".csv,text/csv,.txt" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); e.target.value = ""; }} />

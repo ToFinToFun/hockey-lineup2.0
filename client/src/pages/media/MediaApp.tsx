@@ -29,7 +29,7 @@ import { setVideoStill, type VideoStill } from "@/lib/videoStill";
 import { type CardSettings } from "@shared/cardRender";
 import { renderPlayerCard } from "@/lib/savedCardImage";
 import { cellsFor, defaultStatsTitle } from "@shared/cardStats";
-import { STAT_CATEGORIES, STAT_PERIODS, periodRange, statRows, type StatCategory, type StatPeriod } from "./mediaStats";
+import { STAT_CATEGORIES, STAT_PERIODS, periodRange, statRows, goalieRows, isGoalieCategory, type StatCategory, type StatPeriod } from "./mediaStats";
 
 type Kind = "lineup" | "text" | "cards" | "stats" | "result" | "award" | "image";
 
@@ -200,7 +200,10 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
   const featuresM = useFeatures();
   const extInput = featuresM.opponents && s.statIncludeExternal ? { includeExternal: true } : {};
   const rangeInput = range.from ? { from: range.from, to: range.to, ...extInput } : { ...extInput };
-  const statsQ = trpc.scoreStats.seasonStats.useQuery(rangeInput, { enabled: s.kind === "stats" && s.statCategory !== "awards" });
+  const goalieCat = s.kind === "stats" && isGoalieCategory(s.statCategory);
+  const statsQ = trpc.scoreStats.seasonStats.useQuery(rangeInput, { enabled: s.kind === "stats" && s.statCategory !== "awards" && !goalieCat });
+  const gkIceQ = trpc.scoreStats.iceTime.useQuery(rangeInput, { enabled: goalieCat });
+  const gkFunQ = trpc.scoreStats.goalieFun.useQuery(rangeInput, { enabled: goalieCat && s.statCategory === "gk_streak" });
   const awardsQ = trpc.scoreStats.seasonAwards.useQuery(rangeInput, { enabled: (s.kind === "stats" && s.statCategory === "awards") || s.kind === "award" });
 
   // ─── Utmärkelse: vinnarnas hockeykort (sparade eller standardkort) ───
@@ -226,7 +229,9 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
     return () => { cancelled = true; };
   }, [awardKey, s.kind, registry.data, savedCards.data]); // eslint-disable-line react-hooks/exhaustive-deps
   const statCat = STAT_CATEGORIES.find((c) => c.id === s.statCategory)!;
-  const rows = useMemo(() => statRows(s.statCategory, statsQ.data as never, awardsQ.data?.awards as never, s.statLimit), [s.statCategory, s.statLimit, statsQ.data, awardsQ.data]);
+  const rows = useMemo(() => isGoalieCategory(s.statCategory)
+    ? goalieRows(s.statCategory, gkIceQ.data as never, gkFunQ.data as never, s.statLimit)
+    : statRows(s.statCategory, statsQ.data as never, awardsQ.data?.awards as never, s.statLimit), [s.statCategory, s.statLimit, statsQ.data, awardsQ.data, gkIceQ.data, gkFunQ.data]);
 
   // ─── Spelarkort: rita valda spelares sparade kort med aktuell statistik ───
   const [cardCanvases, setCardCanvases] = useState<HTMLCanvasElement[]>([]);
@@ -385,7 +390,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
   const knownCardPlayers = s.cardPlayers.filter((id) => registry.data?.some((p) => p.id === id)).slice(0, 4).length;
   const headlessReady = headless && postId === renderPostId && !photoLoading && (
     s.kind === "cards" ? !!savedCards.data && !!registry.data && cardCanvases.length >= knownCardPlayers
-    : s.kind === "stats" ? !statsQ.isFetching && !awardsQ.isFetching && !periodsQ.isLoading
+    : s.kind === "stats" ? !statsQ.isFetching && !awardsQ.isFetching && !gkIceQ.isFetching && !gkFunQ.isFetching && !periodsQ.isLoading
     : s.kind === "award" ? awardsQ.isSuccess && !!registry.data && !!savedCards.data && (!award || awardCards.length > 0)
     : s.kind === "result" ? matchesQ.isSuccess && !opponentsForResult.isLoading
     : true);
@@ -506,7 +511,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
       <header className="sticky top-0 z-20 bg-[#0a0a0a]/95 backdrop-blur border-b border-white/5">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
           <Link href="/" className="text-white/60 hover:text-white" aria-label="Tillbaka"><ArrowLeft size={20} /></Link>
-          <h1 className="text-lg font-bold flex-1" style={{ fontFamily: "'Oswald', sans-serif" }}>Media</h1>
+          <h1 className="text-lg font-bold flex-1" style={{ fontFamily: "'Oswald', sans-serif" }}><Link href="/" title="Till startsidan">Media</Link></h1>
         </div>
       </header>
 
@@ -683,7 +688,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
               </div>
               <label className="block text-[11px] text-white/50">Rubrik<input value={s.title} onChange={(e) => update({ title: e.target.value })} maxLength={40} className={input} /></label>
               <label className="block text-[11px] text-white/50">Underrubrik<input value={s.subtitle} onChange={(e) => update({ subtitle: e.target.value })} maxLength={60} placeholder={range.label} className={input} /></label>
-              {(statsQ.isLoading || awardsQ.isLoading) && <p className="text-[11px] text-white/40 flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> Hämtar statistik …</p>}
+              {(statsQ.isFetching || awardsQ.isFetching || gkIceQ.isFetching || gkFunQ.isFetching) && <p className="text-[11px] text-white/40 flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> Hämtar statistik …</p>}
             </>
           )}
           {s.kind === "cards" || s.kind === "stats" || s.kind === "result" || s.kind === "award" || s.kind === "image" ? null : s.kind === "lineup" ? (

@@ -15,6 +15,7 @@ import { getPositionBadgeColor, ALL_POSITIONS, positionName } from "@/lib/player
 import { useState, useRef, Fragment } from "react";
 import { PortalDropdown } from "./PortalDropdown";
 import { PlayerPhoto } from "./PlayerPhoto";
+import { CardThumb } from "./CardThumb";
 import { useForwardColor } from "@/hooks/useForwardColor";
 import { usePirSettings } from "@/hooks/usePirEnabled";
 
@@ -688,7 +689,8 @@ export function PlayerStatsSection({ player }: { player: Player }) {
   const cols = ["Matcher", "Mål", "Assist", "Poäng", "Vinst"];
   return (
     <div className="pt-2 border-t border-white/10 flex gap-3 items-start">
-      <PlayerPhoto playerId={player.id} />
+      {/* Hockeykortet är spelarens bild (sparat kort eller standardkortet) */}
+      <CardThumb playerId={player.id} height={76} fallback={<PlayerPhoto playerId={player.id} editable={false} />} />
       <div className="flex-1 min-w-0">
       <p className="text-white/40 text-[10px] mb-1">Statistik</p>
       {rows.length === 0 ? (

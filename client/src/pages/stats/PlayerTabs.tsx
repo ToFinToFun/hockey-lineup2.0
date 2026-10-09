@@ -16,6 +16,7 @@ type Outputs = inferRouterOutputs<AppRouter>;
 type Rating = Outputs["pir"]["getRatings"][number];
 type IceRow = Outputs["scoreStats"]["iceTime"][number];
 type FunRow = Outputs["scoreStats"]["funStats"][number];
+type GoalieFunRow = Outputs["scoreStats"]["goalieFun"][number];
 type Input = { from?: string; to?: string; includeExternal?: boolean } | undefined;
 
 interface Scorer { name: string; number?: string; goals: number; assists: number; points: number; gwg: number; matches?: number }
@@ -84,7 +85,7 @@ export function SkatersTab({ stats, input, ratings, onPlayerClick }: { stats: { 
           name={(r) => r.name}
           sub={(r) => <PositionSplit byPos={r.byPos} total={r.minutes} />}
           onRowClick={(r) => onPlayerClick(r.name)}
-          defaultSort="tid"
+          defaultSort="p60"
           empty="Inga matcher under perioden."
           columns={[
             { key: "m", label: "M", title: "Matcher", value: (r) => r.matches },
@@ -97,7 +98,7 @@ export function SkatersTab({ stats, input, ratings, onPlayerClick }: { stats: { 
 
       <PirTable ratings={ratings} role="outfield" onPlayerClick={onPlayerClick} />
 
-      <StatSection title="Kul statistik" icon={<PartyPopper size={14} className="text-pink-400" />} hint="1:a = gjorde matchens första mål. Sista = matchens sista mål. Sent = mål de sista 10 minuterna. Torka = längsta svit av matcher utan mål (Nu = pågående). 0 p = matcher utan poäng.">
+      <StatSection title="Kul statistik" icon={<PartyPopper size={14} className="text-pink-400" />} hint="1:a = gjorde matchens första mål. Sista = matchens sista mål. Sent = mål de sista 10 minuterna. Torka = längsta svit av matcher utan mål, Nu = pågående. 0 p = matcher utan poäng, 0 p nu = pågående svit utan poäng. Matcher i mål räknas inte (målvakterna har egna sviter).">
         <StatTable<FunRow>
           rows={(fun.data ?? []).filter((r) => r.matches > 0)}
           rowKey={(r) => r.id}
@@ -111,6 +112,7 @@ export function SkatersTab({ stats, input, ratings, onPlayerClick }: { stats: { 
             { key: "drought", label: "Torka", title: "Längsta svit av matcher utan mål", value: (r) => r.longestDrought },
             { key: "now", label: "Nu", title: "Pågående svit av matcher utan mål", value: (r) => r.currentDrought },
             { key: "zero", label: "0 p", title: "Matcher utan poäng", value: (r) => r.pointless },
+            { key: "zeroNow", label: "0 p nu", title: "Pågående svit av matcher utan poäng", value: (r) => r.currentPointless },
           ]}
         />
       </StatSection>
@@ -121,6 +123,7 @@ export function SkatersTab({ stats, input, ratings, onPlayerClick }: { stats: { 
 
 export function GoaliesTab({ input, ratings, onPlayerClick }: { input: Input; ratings: Rating[] | undefined; onPlayerClick: (name: string) => void }) {
   const ice = trpc.scoreStats.iceTime.useQuery(input ?? {});
+  const goalieFun = trpc.scoreStats.goalieFun.useQuery(input ?? {});
   const goalies = (ice.data ?? []).filter((r) => r.byPos.MV > 0);
   return (
     <div className="space-y-8">
@@ -131,7 +134,7 @@ export function GoaliesTab({ input, ratings, onPlayerClick }: { input: Input; ra
           name={(r) => r.name}
           nameLabel="Målvakt"
           onRowClick={(r) => onPlayerClick(r.name)}
-          defaultSort="v"
+          defaultSort="ga60"
           empty="Inga målvakter under perioden."
           columns={[
             { key: "m", label: "M", title: "Matcher i mål", value: (r) => r.gkMatches },
@@ -140,6 +143,26 @@ export function GoaliesTab({ input, ratings, onPlayerClick }: { input: Input; ra
             { key: "ga", label: "Insl.", title: "Insläppta mål", value: (r) => r.ga, render: (r) => (Number.isInteger(r.ga) ? r.ga : r.ga.toFixed(1)), lowerIsBetter: true },
             { key: "ga60", label: "/60", title: "Insläppta per 60 minuter i mål", value: (r) => r.ga60, lowerIsBetter: true },
             { key: "so", label: "Nollor", title: "Hållna nollor", value: (r) => r.shutouts },
+          ]}
+        />
+      </StatSection>
+      <StatSection title="Sviter" icon={<PartyPopper size={14} className="text-pink-400" />} hint="Längsta svit av matcher i rad med högst 1, 2 eller 3 insläppta mål. Nu = pågående svit med högst 2. Vinster = flest vinster i rad i mål (Nu = pågående). Delar två målvakter på målet räknas lagets insläppta för båda.">
+        <StatTable<GoalieFunRow>
+          rows={goalieFun.data ?? []}
+          rowKey={(r) => r.id}
+          name={(r) => r.name}
+          nameLabel="Målvakt"
+          onRowClick={(r) => onPlayerClick(r.name)}
+          defaultSort="max2"
+          empty="Inga målvakter under perioden."
+          columns={[
+            { key: "m", label: "M", title: "Matcher i mål", value: (r) => r.gkMatches },
+            { key: "max1", label: "≤1", title: "Längsta svit med högst 1 insläppt", value: (r) => r.max1 },
+            { key: "max2", label: "≤2", title: "Längsta svit med högst 2 insläppta", value: (r) => r.max2 },
+            { key: "max3", label: "≤3", title: "Längsta svit med högst 3 insläppta", value: (r) => r.max3 },
+            { key: "now2", label: "Nu ≤2", title: "Pågående svit med högst 2 insläppta", value: (r) => r.current2 },
+            { key: "wins", label: "Vinster", title: "Flest vinster i rad i mål", value: (r) => r.winStreak },
+            { key: "winsNow", label: "Nu", title: "Pågående vinstsvit i mål", value: (r) => r.currentWins },
           ]}
         />
       </StatSection>

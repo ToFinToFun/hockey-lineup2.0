@@ -440,14 +440,11 @@ export const appRouter = router({
         if (JSON.stringify(input.settings).length > 20_000) throw new TRPCError({ code: "BAD_REQUEST", message: "För många inställningar" });
         if (input.maskBase64 && !input.maskBase64.startsWith("iVBOR")) throw new TRPCError({ code: "BAD_REQUEST", message: "Masken måste vara PNG" });
         await saveCard(input.playerId, input.settings, input.sourceBase64, input.liveProfile, input.maskBase64);
-        // Profilkortet ritas direkt så att beskedet stämmer (tar under en sekund)
-        let profileUpdated = false;
-        if (input.liveProfile) {
-          profileUpdated = await refreshLiveProfile(input.playerId, true).catch((err) => {
-            console.error("[cards.save] profilkort:", err);
-            return false;
-          });
-        }
+        // Kortet är spelarens bild: ritas direkt (tar under en sekund)
+        const profileUpdated = await refreshLiveProfile(input.playerId, true).catch((err) => {
+          console.error("[cards.save] profilkort:", err);
+          return false;
+        });
         return { success: true, profileUpdated };
       }),
     delete: moduleProcedure("cards")
@@ -1352,17 +1349,21 @@ setLiveAutoEndHandler(async (s) => {
   const { doc } = await getLineupSnapshot();
   const state = lock ? lock.doc : doc;
   const start = new Date(s.matchStartTime ?? s.startedAt);
-  const lag = await lagetEvent().catch(() => null);
-  const sameDay = lag?.date && lag.date === `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+  const { enrichMatchTime } = await import("./recentEvents");
+  const timing = await enrichMatchTime({
+    name: matchName(start, s.whiteScore, s.greenScore), teamWhiteScore: s.whiteScore, teamGreenScore: s.greenScore,
+    matchStartTime: start, matchEndTime: new Date(s.updatedAt), location: null, plannedMinutes: null,
+  });
   const id = await saveMatch({
     reviewStatus: "pending", reviewedAt: null,
-    name: matchName(start, s.whiteScore, s.greenScore),
+    name: timing.name,
     teamWhiteScore: s.whiteScore, teamGreenScore: s.greenScore,
     goalHistory: s.goals as never,
-    matchStartTime: start,
-    location: sameDay ? lag?.location ?? null : null,
+    matchStartTime: timing.matchStartTime,
+    location: timing.location,
+    plannedMinutes: timing.plannedMinutes,
     opponentId: state.setup?.mode === "external" ? state.setup.opponentId ?? null : null,
-    matchEndTime: new Date(s.updatedAt),
+    matchEndTime: timing.matchEndTime,
     lineup: state as never,
   });
   await setMatchReport(id, { live: { viewers: s.uniqueViewers, hearts: s.hearts, unfinished: true } } as never);

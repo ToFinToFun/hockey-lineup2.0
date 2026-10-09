@@ -191,6 +191,7 @@ export function autoDistribute(
       gkToReserve.push(gk);
     }
   }
+  const reserveOverflow: TaggedPlayer[] = [];
 
   // Distribute reserve GKs: add as 2nd goalkeeper to teams that only have 1
   const reserveOrder = doShuffle ? shuffleArray(gkToReserve) : [...gkToReserve];
@@ -209,7 +210,8 @@ export function autoDistribute(
       teamBGoalkeepers.push(gk);
       allAssignedGk.add(gk.player.id);
     }
-    // If both teams already have 2 GKs, this pure GK stays unplaced → remaining
+    else reserveOverflow.push({ player: gk.player, posType: "flex" });
+    // Båda lagen har redan 2 målvakter: alla anmälda ska ut – spelar ute i stället
   }
 
   // ── Step 3: Fördela utespelare mellan lagen ──
@@ -221,7 +223,7 @@ export function autoDistribute(
   //      flyttas spelare med lagfärg (aldrig C) från det större laget.
   //   3. Position – resten fördelas så att backar/centrar/forwards blir jämnt.
   //   4. PIR – byten inom samma position tills lagen är så jämna som möjligt.
-  const allOutfield = [...outfield, ...gkToOutfield];
+  const allOutfield = [...outfield, ...gkToOutfield, ...reserveOverflow];
   const isCaptainC = (t: TaggedPlayer) => t.player.captainRole === "C";
 
   // I slumpa-läge är bara C låst; i auto-läge placeras alla med lagfärg i sitt lag först.
@@ -523,6 +525,30 @@ export function autoDistribute(
   fillTeam(teamASlots, teamAGoalkeepers, teamAOutfield);
   fillTeam(teamBSlots, teamBGoalkeepers, teamBOutfield);
 
+  // ── Step 5h: Säkerhetsnät – alla anmälda ska ut (före alla andra regler) ──
+  // Den som ändå blev över placeras på en ledig plats (helst rätt typ) i laget
+  // med minst spelare; finns ingen ledig plats utökas formationen upp till max.
+  const configs = { "team-a": teamAConfig, "team-b": teamBConfig } as Record<"team-a" | "team-b", TeamConfig>;
+  const teamSize = (prefix: string) => Object.keys(lineup).filter((k) => k.startsWith(prefix)).length;
+  const slotType = (p: Player): Slot["type"] => (p.position === "MV" ? "goalkeeper" : p.position === "B" ? "defense" : "forward");
+  for (const p of registered.filter((x) => !placed.has(x.id))) {
+    const order: Array<"team-a" | "team-b"> = p.teamColor === "white" ? ["team-a", "team-b"] : p.teamColor === "green" ? ["team-b", "team-a"]
+      : teamSize("team-a") <= teamSize("team-b") ? ["team-a", "team-b"] : ["team-b", "team-a"];
+    let done = false;
+    for (const prefix of order) {
+      for (let grow = 0; grow < 8 && !done; grow++) {
+        const free = createTeamSlots(prefix, configs[prefix]).filter((s) => !lineup[s.id] && (s.type !== "goalkeeper" || p.position === "MV"));
+        const pick = free.find((s) => s.type === slotType(p)) ?? free.find((s) => s.type !== "goalkeeper");
+        if (pick) { lineup[pick.id] = p; placed.add(p.id); done = true; break; }
+        const c = configs[prefix];
+        if (c.forwardLines < 4 && (c.forwardLines * 3 <= c.defensePairs * 2 * 1.5 || c.defensePairs >= 4)) configs[prefix] = { ...c, forwardLines: c.forwardLines + 1 };
+        else if (c.defensePairs < 4) configs[prefix] = { ...c, defensePairs: c.defensePairs + 1 };
+        else break; // laget är fullt
+      }
+      if (done) break;
+    }
+  }
+
   // ── Step 6: Trim empty groups from config ──
   // If a defense pair or forward line has zero players placed, reduce the config
   function trimConfig(config: TeamConfig, slots: Slot[]): TeamConfig {
@@ -556,8 +582,10 @@ export function autoDistribute(
     };
   }
 
-  const trimmedTeamAConfig = trimConfig(teamAConfig, teamASlots);
-  const trimmedTeamBConfig = trimConfig(teamBConfig, teamBSlots);
+  const fullA = configs["team-a"], fullB = configs["team-b"];
+  const fullASlots = createTeamSlots("team-a", fullA), fullBSlots = createTeamSlots("team-b", fullB);
+  const trimmedTeamAConfig = trimConfig(fullA, fullASlots);
+  const trimmedTeamBConfig = trimConfig(fullB, fullBSlots);
 
   // If config was trimmed, we need to rebuild slots and re-map lineup entries
   // to the new slot IDs (since trimming may remove slot groups)
@@ -616,15 +644,22 @@ export function autoDistribute(
     for (let i = 0; i < newWingSlots.length && i < allWings.length; i++) {
       lineup[newWingSlots[i].id] = allWings[i];
     }
+    // Ingen får tappas: den som inte fick plats ovan tar en ledig utespelarplats
+    const now = new Set(Object.values(lineup).map((p) => p.id));
+    for (const p of [...oldDefPlayers, ...oldFwdPlayers, ...oldGkPlayers].filter((p) => !now.has(p.id))) {
+      const free = newSlots.find((s) => !lineup[s.id] && (s.type !== "goalkeeper" || p.position === "MV"));
+      if (free) { lineup[free.id] = p; now.add(p.id); }
+    }
 
     return newSlots;
   }
 
-  rebuildIfNeeded(teamAConfig, trimmedTeamAConfig, teamASlots, "team-a");
-  rebuildIfNeeded(teamBConfig, trimmedTeamBConfig, teamBSlots, "team-b");
+  rebuildIfNeeded(fullA, trimmedTeamAConfig, fullASlots, "team-a");
+  rebuildIfNeeded(fullB, trimmedTeamBConfig, fullBSlots, "team-b");
 
-  // Remaining: players that didn't get placed
-  const remaining = registered.filter(p => !placed.has(p.id));
+  // Remaining: de som inte står i laget (räknat på det färdiga laget)
+  const inLineup = new Set(Object.values(lineup).map((p) => p.id));
+  const remaining = registered.filter(p => !inLineup.has(p.id));
 
   return { lineup, remaining, teamAConfig: trimmedTeamAConfig, teamBConfig: trimmedTeamBConfig };
 }

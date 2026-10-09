@@ -60,12 +60,13 @@ export function StatTable<T>({ rows, columns, name, nameLabel = "Spelare", rowKe
 
   return (
     <div className="rounded-xl bg-[#161616] border border-white/10 overflow-hidden">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overscroll-x-contain">
         <table className="w-full text-xs">
           <thead>
             <tr className="text-white/40 text-[10px] border-b border-white/5">
-              <th className="w-7 pl-3 py-2 text-left font-medium">#</th>
-              <th className="text-left font-medium py-2">{nameLabel}</th>
+              {/* # och namn står kvar när en bred tabell scrollas i sidled (mobil) */}
+              <th className="w-7 pl-3 py-2 text-left font-medium sticky left-0 z-10 bg-[#161616]">#</th>
+              <th className="text-left font-medium py-2 sticky left-7 z-10 bg-[#161616] shadow-[6px_0_6px_-6px_rgba(0,0,0,0.6)]">{nameLabel}</th>
               {columns.map((c) => {
                 const active = sort.key === c.key;
                 return (
@@ -83,8 +84,8 @@ export function StatTable<T>({ rows, columns, name, nameLabel = "Spelare", rowKe
             {shown.map((r, i) => (
               <tr key={rowKey(r)} onClick={onRowClick ? () => onRowClick(r) : undefined}
                 className={`border-b border-white/[0.03] last:border-0 ${onRowClick ? "cursor-pointer hover:bg-white/[0.03]" : ""}`}>
-                <td className={`pl-3 py-1.5 tabular-nums ${i === 0 ? "text-amber-300" : i === 1 ? "text-slate-300" : i === 2 ? "text-orange-300" : "text-white/35"}`}>{i + 1}</td>
-                <td className="py-1.5 pr-2">
+                <td className={`pl-3 py-1.5 tabular-nums sticky left-0 z-10 bg-[#161616] ${i === 0 ? "text-amber-300" : i === 1 ? "text-slate-300" : i === 2 ? "text-orange-300" : "text-white/35"}`}>{i + 1}</td>
+                <td className="py-1.5 pr-2 sticky left-7 z-10 bg-[#161616] shadow-[6px_0_6px_-6px_rgba(0,0,0,0.6)]">
                   <span className="block text-white/90 truncate max-w-[10rem] sm:max-w-[16rem]">{name(r)}</span>
                   {sub && <div className="mt-1 w-28 sm:w-40">{sub(r)}</div>}
                 </td>

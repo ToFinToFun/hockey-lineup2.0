@@ -7,6 +7,21 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.71.0 – 2026-10-09
+
+Buggrättningar och förbättringar från veckans lista.
+
+- Auto: alla anmälda placeras alltid ut (före andra regler) så länge lagen inte är fulla – säkerhetsnät som lägger den som blivit över på en ledig plats och utökar formationen vid behov; fler rena målvakter än målvaktsplatser spelar ute. Testas med 5 000 slumpade trupper.
+- Matchens tid, plats och längd fylls i av servern när matchen sparas – även när den som sparar inte är inloggad (Score Tracker är öppen för alla och kunde inte läsa laget.se) eller sparar efter träningen. Servern minns de senaste evenemangen från laget.se. Score Tracker visar träningens tid och plats för alla.
+- Statistik: målen räknades i fel ordning (de sparas med det senaste först) – Snabbaste målet, Största vändningen och matchens första/sista mål i Kul statistik är rättade.
+- Kul statistik: matcher i mål räknas inte i utespelarnas sviter; ny kolumn "0 p nu" (pågående svit utan poäng). Mål utan namn räknas inte längre på spelare utan namn.
+- Målvakter: nya sviter – flest matcher i rad med högst 1/2/3 insläppta, pågående svit och vinster i rad.
+- Standardsortering: Speltid på P/60, Målvakter på insläppta/60.
+- Mobil: svep i en tabell byter inte längre flik; namnkolumnen står kvar när en bred tabell scrollas.
+- Media → Statistik: målvaktslistor (insläppta/60, vinster, nollor, svit ≤2 insläppta).
+- Hockeykortet är spelarens bild: "Som profilbild" borttagen – ett sparat kort är alltid bilden och uppdateras automatiskt; utan sparat kort används standardkortet (även i Lineup och Video).
+- Rubrikerna (Media, Spelare, Hockeykort, Matchhistorik, Statistik, Inställningar) går att klicka för att komma tillbaka.
+
 ## 2.70.0 – 2026-10-09
 
 - Video: bilden från Media kan placeras Först (standard), Efter introt, Efter klippet eller Sist.

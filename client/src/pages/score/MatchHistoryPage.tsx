@@ -437,7 +437,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
         <button onClick={onBack} aria-label="Tillbaka" className="text-white/60 hover:text-white transition-colors">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-white font-bold text-lg" style={{ fontFamily: "'Oswald', sans-serif" }}>
+        <h1 className="text-white font-bold text-lg cursor-pointer" style={{ fontFamily: "'Oswald', sans-serif" }} onClick={onBack} title="Tillbaka">
           {selectionMode ? `${selectedIds.size} valda` : "Matchhistorik"}
         </h1>
         <div className="ml-auto flex items-center gap-2">

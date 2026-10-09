@@ -37,7 +37,8 @@ export async function getCardRow(playerId: string) {
 
 export async function listLiveProfileIds(): Promise<string[]> {
   const db = await requireDb();
-  return (await db.select({ id: playerCards.playerId }).from(playerCards).where(eq(playerCards.liveProfile, true))).map((r) => r.id);
+  // Hockeykortet är profilbilden: alla sparade kort hålls uppdaterade
+  return (await db.select({ id: playerCards.playerId }).from(playerCards)).map((r) => r.id);
 }
 
 export async function setRenderedHash(playerId: string, hash: string | null) {
@@ -62,13 +63,14 @@ export async function getCardSource(playerId: string): Promise<{ image: Buffer; 
  * maskBase64: undefined = oförändrad, null = ta bort friläggningen, sträng = ny mask.
  * Nytt foto utan ny mask tar bort den gamla masken (den hör till det gamla fotot).
  */
-export async function saveCard(playerId: string, settings: Record<string, unknown>, sourceBase64?: string, liveProfile?: boolean, maskBase64?: string | null) {
+export async function saveCard(playerId: string, settings: Record<string, unknown>, sourceBase64?: string, _liveProfile?: boolean, maskBase64?: string | null) {
   const db = await requireDb();
+  const liveProfile = true; // ett sparat kort är alltid spelarens bild
   // Ny ritning behövs alltid efter en ändring (renderedHash nollas)
   const mask = maskBase64 !== undefined ? { mask: maskBase64 } : sourceBase64 ? { mask: null } : {};
   const extra = { ...(liveProfile !== undefined ? { liveProfile } : {}), ...mask, renderedHash: null };
   if (sourceBase64) {
-    await db.insert(playerCards).values({ playerId, source: sourceBase64, settings, liveProfile: liveProfile ?? false, mask: maskBase64 ?? null })
+    await db.insert(playerCards).values({ playerId, source: sourceBase64, settings, liveProfile, mask: maskBase64 ?? null })
       .onDuplicateKeyUpdate({ set: { source: sourceBase64, settings, updatedAt: new Date(), ...extra } });
     return;
   }
@@ -79,7 +81,10 @@ export async function saveCard(playerId: string, settings: Record<string, unknow
 
 export async function deleteCard(playerId: string) {
   const db = await requireDb();
+  const row = await getCardRow(playerId);
   await db.delete(playerCards).where(eq(playerCards.playerId, playerId));
+  // Profilbilden var det ritade kortet: ta bort den så att standardkortet visas
+  if (row?.renderedHash) await import("./playerPhotos").then((m) => m.deletePlayerPhoto(playerId)).catch(() => undefined);
 }
 
 /** Statistiken för kortet: innevarande säsong (från 1 augusti), slutspel, försäsong, totalt och form. */

@@ -62,7 +62,7 @@ export default function SettingsApp() {
             <Link href="/" className="text-white/60 hover:text-white" aria-label="Tillbaka"><ArrowLeft size={20} /></Link>
           )}
           <h1 className="text-lg font-bold flex-1 truncate" style={{ fontFamily: "'Oswald', sans-serif" }}>
-            {current ? <><span className="text-white/45 font-normal">Inställningar · </span>{current.label}</> : "Inställningar"}
+            {current ? <><Link href="/installningar" className="text-white/45 font-normal" title="Till inställningarna">Inställningar · </Link>{current.label}</> : <Link href="/" title="Till startsidan">Inställningar</Link>}
           </h1>
         </div>
       </header>

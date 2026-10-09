@@ -9,7 +9,7 @@ import { getLineupSnapshot } from "./lineupSync";
 import { getOpponent } from "./opponents";
 import type { MatchSetup } from "../shared/matchSetup";
 
-export interface EventFields { eventTitle?: string; eventDate?: string; eventTime?: string; eventLocation?: string; noEvent?: boolean }
+export interface EventFields { eventTitle?: string; eventDate?: string; eventTime?: string; eventEndTime?: string; eventLocation?: string; noEvent?: boolean }
 
 /** Ren funktion (exporteras för test): lägger matchens egna dag/tid/plats över evenemanget */
 /**
@@ -34,6 +34,8 @@ export function applyExternalEvent<T extends EventFields>(att: T, setup: MatchSe
     ...att,
     eventDate: date,
     eventTime: setup.time ?? (setup.date && setup.date !== att.eventDate ? undefined : att.eventTime),
+    // Träningens sluttid gäller bara när tiden är laget.se:s egen
+    eventEndTime: setup.time || (setup.date && setup.date !== att.eventDate) ? undefined : att.eventEndTime,
     eventLocation: setup.location ?? (setup.date && setup.date !== att.eventDate ? undefined : att.eventLocation),
     eventTitle: opponentName ? `Match mot ${opponentName}` : att.eventTitle,
     noEvent: date ? false : att.noEvent,

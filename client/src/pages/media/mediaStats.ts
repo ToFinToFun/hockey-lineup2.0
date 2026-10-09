@@ -6,7 +6,7 @@ import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/
 import type { StatsRow } from "@/lib/mediaImages";
 
 export type StatPeriod = "season" | "playoff" | "preseason" | "month" | "week" | "all";
-export type StatCategory = "points" | "goals" | "assists" | "gwg" | "matches" | "awards" | "records";
+export type StatCategory = "points" | "goals" | "assists" | "gwg" | "matches" | "awards" | "records" | "gk_ga60" | "gk_wins" | "gk_shutouts" | "gk_streak";
 
 export const STAT_PERIODS: Array<{ id: StatPeriod; name: string }> = [
   { id: "season", name: "Säsong" }, { id: "playoff", name: "Slutspel" }, { id: "preseason", name: "Försäsong" },
@@ -20,7 +20,34 @@ export const STAT_CATEGORIES: Array<{ id: StatCategory; name: string; title: str
   { id: "matches", name: "Matcher", title: "Flest matcher", valueLabel: "GP" },
   { id: "awards", name: "Utmärkelser", title: "Utmärkelser", valueLabel: "" },
   { id: "records", name: "Rekord", title: "Rekord", valueLabel: "" },
+  // Målvakter
+  { id: "gk_ga60", name: "MV insläppta/60", title: "Målvaktsligan", valueLabel: "/60" },
+  { id: "gk_wins", name: "MV vinster", title: "Flest vinster i mål", valueLabel: "V" },
+  { id: "gk_shutouts", name: "MV nollor", title: "Hållna nollor", valueLabel: "SO" },
+  { id: "gk_streak", name: "MV svit", title: "Längsta svit ≤2 insläppta", valueLabel: "Matcher" },
 ];
+export const isGoalieCategory = (c: StatCategory) => c.startsWith("gk_");
+
+interface GoalieIce { name: string; gkMatches: number; gkWins: number; shutouts: number; ga: number; ga60: number | null; byPos: { MV: number } }
+interface GoalieFun { name: string; gkMatches: number; max2: number; current2: number }
+const dec = (n: number) => String(Math.round(n * 100) / 100).replace(".", ",");
+
+/** Målvakternas topplistor (exporteras för test): /60 kräver minst 30 min i mål, lägst först. */
+export function goalieRows(cat: StatCategory, ice: GoalieIce[] | undefined, fun: GoalieFun[] | undefined, limit: number): StatsRow[] {
+  const gks = (ice ?? []).filter((r) => r.gkMatches > 0);
+  const sub = (r: { gkMatches: number }) => `${r.gkMatches} ${r.gkMatches === 1 ? "match" : "matcher"} i mål`;
+  let list: Array<{ name: string; v: number; value: string; sub: string }>;
+  if (cat === "gk_ga60") list = gks.filter((r) => r.ga60 != null).map((r) => ({ name: r.name, v: -(r.ga60 as number), value: dec(r.ga60 as number), sub: `${sub(r)} · ${Number.isInteger(r.ga) ? r.ga : dec(r.ga)} insläppta` }));
+  else if (cat === "gk_wins") list = gks.filter((r) => r.gkWins > 0).map((r) => ({ name: r.name, v: r.gkWins, value: String(r.gkWins), sub: sub(r) }));
+  else if (cat === "gk_shutouts") list = gks.filter((r) => r.shutouts > 0).map((r) => ({ name: r.name, v: r.shutouts, value: String(r.shutouts), sub: sub(r) }));
+  else list = (fun ?? []).filter((r) => r.max2 > 0).map((r) => ({ name: r.name, v: r.max2, value: String(r.max2), sub: `${sub(r)}${r.current2 ? ` · pågående ${r.current2}` : ""}` }));
+  list.sort((a, b) => b.v - a.v);
+  let rank = 0, prev = NaN;
+  return list.slice(0, limit).map((r, i) => {
+    if (r.v !== prev) { rank = i + 1; prev = r.v; }
+    return { rank: String(rank), name: r.name, sub: r.sub, value: r.value };
+  });
+}
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 

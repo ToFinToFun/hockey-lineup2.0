@@ -1,7 +1,7 @@
 import { isTeamAWhite as teamAIsWhite, normalizeTeamKey, teamName, teamGenitive } from "../../shared/teams";
 import { listOpponents } from "../opponents";
 import { iceTimeFor, iceTimeRows } from "../iceTimeStats";
-import { computeFunStats } from "../funStats";
+import { computeFunStats, computeGoalieFun } from "../funStats";
 import { listPlayers } from "../playersDb";
 import { iceTimeBySlot, matchMinutes, slotKind, type IcePos } from "../../shared/iceTime";
 import { normalizeGoalType } from "../playerHistory";
@@ -123,7 +123,8 @@ export function computeExtraRecords(
     if (m.teamWhiteScore === m.teamGreenScore) continue;
     const winner: "white" | "green" = m.teamWhiteScore > m.teamGreenScore ? "white" : "green";
     let w = 0, l = 0, worst = 0;
-    for (const g of (Array.isArray(m.goalHistory) ? m.goalHistory : []) as Array<{ team?: string }>) {
+    // Målen sparas med det senaste först – vändningen räknas i tidsordning
+    for (const g of [...((Array.isArray(m.goalHistory) ? m.goalHistory : []) as Array<{ team?: string }>)].reverse()) {
       const k = normalizeTeamKey(g.team);
       if (!k) continue;
       if (k === winner) w++; else l++;
@@ -132,17 +133,20 @@ export function computeExtraRecords(
     if (worst < 0 && (!comeback || -worst > comeback.n)) comeback = { n: -worst, team: winner, m };
   }
   if (comeback) out.push({ key: "comeback", label: "Största vändningen", value: `Från ${comeback.n} måls underläge`, who: teamName(comeback.team), detail: `${short(comeback.m.name)} · ${comeback.m.teamWhiteScore}–${comeback.m.teamGreenScore}` });
-  // Snabbaste målet (minuter från matchstart till första målet)
-  let fastest: { min: number; who: string; m: (typeof matches)[number] } | null = null;
+  // Snabbaste målet: matchens första mål (målen sparas med det senaste först),
+  // räknat i sekunder från matchstart så att 0:40 slår 0:55
+  let fastest: { sec: number; min: number; who: string; m: (typeof matches)[number] } | null = null;
   for (const m of matches) {
     if (!m.matchStartTime) continue;
     const st = new Date(m.matchStartTime);
-    const g = ((Array.isArray(m.goalHistory) ? m.goalHistory : []) as Array<{ timestamp?: string; scorer?: string }>)[0];
-    const t = g?.timestamp?.match(/^(\d{1,2}):(\d{2})/);
+    const goals = (Array.isArray(m.goalHistory) ? m.goalHistory : []) as Array<{ timestamp?: string; scorer?: string }>;
+    const g = goals[goals.length - 1];
+    const t = g?.timestamp?.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
     if (!t) continue;
-    const min = ((Number(t[1]) * 60 + Number(t[2])) - (st.getHours() * 60 + st.getMinutes()) + 1440) % 1440;
-    if (min > 120) continue;
-    if (!fastest || min < fastest.min) fastest = { min, who: (g.scorer ?? "").trim() || "Okänd", m };
+    let sec = (Number(t[1]) * 3600 + Number(t[2]) * 60 + Number(t[3] ?? 0)) - (st.getHours() * 3600 + st.getMinutes() * 60 + st.getSeconds());
+    if (sec < -3600) sec += 86400; // efter midnatt
+    if (sec < 0 || sec > 120 * 60) continue; // mål före start eller orimligt: starttiden stämmer inte
+    if (!fastest || sec < fastest.sec) fastest = { sec, min: Math.floor(sec / 60), who: (g.scorer ?? "").trim() || "Okänd", m };
   }
   if (fastest) out.push({ key: "fastest", label: "Snabbaste målet", value: fastest.min === 0 ? "Under en minut" : `Efter ${fastest.min} min`, who: fastest.who, detail: short(fastest.m.name) });
   // Längsta vinstsvit per lag (matcherna i tidsordning)
@@ -171,13 +175,20 @@ export const scoreStatsRouter = router({
    * position, snitt per match och poäng per 60 minuter.
    */
   /** Rolig statistik: första/sista/sena mål, måltorka och matcher utan poäng (server/funStats.ts). */
-  funStats: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
+  funStats: moduleProcedure("media", "cards", "stats", "players", "matches", "report").input(dateRangeInput).query(async ({ input }) => {
     const matches = filterMatchesByDate(await getAllMatchResults({ includeExternal: input?.includeExternal }), input?.from, input?.to);
     const registry = new Map((await listPlayers()).map((p) => [p.id, p.name]));
     return computeFunStats(matches as never, registry);
   }),
 
-  iceTime: adminProcedure.input(dateRangeInput).query(async ({ input }) => {
+  /** Målvakternas sviter: matcher i rad med högst 1/2/3 insläppta och vinster i rad (server/funStats.ts). */
+  goalieFun: moduleProcedure("media", "cards", "stats", "players", "matches", "report").input(dateRangeInput).query(async ({ input }) => {
+    const matches = filterMatchesByDate(await getAllMatchResults({ includeExternal: input?.includeExternal }), input?.from, input?.to);
+    const registry = new Map((await listPlayers()).map((p) => [p.id, p.name]));
+    return computeGoalieFun(matches as never, registry);
+  }),
+
+  iceTime: moduleProcedure("media", "cards", "stats", "players", "matches", "report").input(dateRangeInput).query(async ({ input }) => {
     const matches = filterMatchesByDate(await getAllMatchResults({ includeExternal: input?.includeExternal }), input?.from, input?.to)
       // Bara en hall (Statistik → Hallar)
       .filter((m) => !input?.venue || (m as { location?: string | null }).location === input.venue);

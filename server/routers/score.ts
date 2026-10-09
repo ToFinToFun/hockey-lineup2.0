@@ -10,6 +10,7 @@ import { isOpponentPlayerId, opponentPlayerDbId } from "../../shared/matchSetup"
 import { setStoredOpponentLineup } from "../opponentLinks";
 import { saveNewOpponentScorers } from "../opponents";
 import { lastLiveStats } from "../liveMatch";
+import { enrichMatchTime } from "../recentEvents";
 import { notifyLater, mailLayout } from "../notifications";
 import { ENV } from "../_core/env";
 import { TRPCError } from "@trpc/server";
@@ -145,6 +146,16 @@ export const scoreRouter = router({
       }),
   }),
 
+  /**
+   * Träningen som en match som avslutas nu hör till (dag, tid, sluttid, plats) –
+   * öppen för alla, så att Score Tracker visar rätt starttid även utan inloggning.
+   */
+  matchEvent: publicProcedure.query(async () => {
+    const { candidateEvents, pickEvent } = await import("../recentEvents");
+    const ev = pickEvent(await candidateEvents(), null, new Date());
+    return ev ? { eventDate: ev.date, eventTime: ev.time, eventEndTime: ev.endTime ?? undefined, eventLocation: ev.location ?? undefined } : null;
+  }),
+
   match: router({
     save: publicProcedure
       .input(
@@ -183,19 +194,29 @@ export const scoreRouter = router({
           throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "För många sparade matcher, vänta en stund" });
         }
         const reviewStatus = ctx.session?.role === "admin" ? "approved" : "pending";
+        // Tid, plats och längd från träningen på laget.se – även när den som sparar inte kan läsa laget.se
+        const timing = await enrichMatchTime({
+          name: input.name,
+          teamWhiteScore: input.teamWhiteScore,
+          teamGreenScore: input.teamGreenScore,
+          matchStartTime: input.matchStartTime ? new Date(input.matchStartTime) : null,
+          matchEndTime: input.matchEndTime ? new Date(input.matchEndTime) : new Date(),
+          location: input.location || null,
+          plannedMinutes: input.plannedMinutes ?? null,
+        });
         await saveMatch({
           // Styrelsens matcher godkänns direkt, övriga väntar på granskning.
           reviewStatus,
           reviewedAt: ctx.session?.role === "admin" ? new Date() : null,
-          name: input.name,
+          name: timing.name,
           teamWhiteScore: input.teamWhiteScore,
           teamGreenScore: input.teamGreenScore,
           goalHistory: input.goalHistory ?? null,
-          matchStartTime: input.matchStartTime ? new Date(input.matchStartTime) : null,
-          location: input.location || null,
+          matchStartTime: timing.matchStartTime,
+          location: timing.location,
           opponentId: input.opponentId ?? null,
-          plannedMinutes: input.plannedMinutes ?? null,
-          matchEndTime: input.matchEndTime ? new Date(input.matchEndTime) : new Date(),
+          plannedMinutes: timing.plannedMinutes,
+          matchEndTime: timing.matchEndTime,
           createdAt: input.createdAt ? new Date(input.createdAt) : undefined,
           lineup: input.lineup ?? null,
         });

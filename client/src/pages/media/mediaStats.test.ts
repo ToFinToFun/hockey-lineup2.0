@@ -46,3 +46,20 @@ describe("Media – layouter", () => {
     expect(four.right).toBeGreaterThan(three.right);
   });
 });
+
+import { goalieRows } from "./mediaStats";
+describe("målvakter i Media", () => {
+  const ice = [
+    { name: "Gun", gkMatches: 4, gkWins: 3, shutouts: 1, ga: 6, ga60: 1.5, byPos: { MV: 240 } },
+    { name: "Hans", gkMatches: 3, gkWins: 1, shutouts: 0, ga: 9, ga60: 3, byPos: { MV: 180 } },
+    { name: "Ida", gkMatches: 1, gkWins: 0, shutouts: 0, ga: 1, ga60: null, byPos: { MV: 20 } },
+  ];
+  it("insläppta/60: lägst först, de utan tillräckligt med tid i mål är inte med", () => {
+    expect(goalieRows("gk_ga60", ice, [], 10).map((r) => `${r.rank} ${r.name} ${r.value}`)).toEqual(["1 Gun 1,5", "2 Hans 3"]);
+  });
+  it("vinster, nollor och svit", () => {
+    expect(goalieRows("gk_wins", ice, [], 10).map((r) => r.name)).toEqual(["Gun", "Hans"]);
+    expect(goalieRows("gk_shutouts", ice, [], 10).map((r) => r.name)).toEqual(["Gun"]);
+    expect(goalieRows("gk_streak", ice, [{ name: "Hans", gkMatches: 3, max2: 2, current2: 1 }], 10)[0]).toMatchObject({ name: "Hans", value: "2", sub: "3 matcher i mål · pågående 1" });
+  });
+});

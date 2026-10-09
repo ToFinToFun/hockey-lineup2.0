@@ -78,13 +78,18 @@ export default function StatsApp() {
   // Swipe support for mobile (horizontal only, doesn't block vertical scroll)
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
+  /** Svepet började i en tabell eller något som scrollar i sidled: byt inte flik */
+  const inScroller = useRef(false);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartX.current = e.changedTouches[0].clientX;
     touchStartY.current = e.changedTouches[0].clientY;
+    // I tabeller och sidledsscrollande rader byts aldrig flik (man scrollar/läser där)
+    inScroller.current = !!(e.target as HTMLElement | null)?.closest?.("table, .overflow-x-auto");
   }, []);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (inScroller.current) return;
     const dx = touchStartX.current - e.changedTouches[0].clientX;
     const dy = touchStartY.current - e.changedTouches[0].clientY;
     // Only trigger tab switch for clearly horizontal swipes
@@ -161,8 +166,10 @@ export default function StatsApp() {
             <div className="flex items-center gap-2">
               <img src={IMAGES.teamWhiteLogo} alt="" className="w-6 h-6 object-contain opacity-60" />
               <h1
-                className="text-base sm:text-lg font-bold tracking-tight"
+                className="text-base sm:text-lg font-bold tracking-tight cursor-pointer"
                 style={{ fontFamily: "'Oswald', sans-serif" }}
+                onClick={() => setLocation("/")}
+                title="Till startsidan"
               >
                 STATISTIK
               </h1>

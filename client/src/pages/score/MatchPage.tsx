@@ -334,7 +334,8 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
   const saveMatchMutation = trpc.score.match.save.useMutation();
 
   // Starttid från dagens träning på laget.se (hämtas när Avsluta öppnas), annars uppskattad
-  const eventQuery = trpc.laget.attendance.useQuery(undefined, { enabled: endMatchModalVisible, staleTime: 10 * 60_000, retry: false, refetchOnWindowFocus: false });
+  // Träningen (dag, tid, plats) – öppen för alla; servern fyller dessutom i det som saknas när matchen sparas
+  const eventQuery = trpc.score.matchEvent.useQuery(undefined, { enabled: endMatchModalVisible, staleTime: 5 * 60_000, retry: 1, refetchOnWindowFocus: false });
   const resolvedStart = () => resolveMatchStart(eventQuery.data ?? null, matchStartTime ?? null);
   const getMatchName = () => matchName(resolvedStart().start, teamWhiteScore, teamGreenScore);
 

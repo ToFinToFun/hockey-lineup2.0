@@ -11,7 +11,7 @@ import { useFeatures } from "@/contexts/ClubContext";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { ArrowLeft, Upload, Download, Share2, Save, UserSquare2, Wand2, Loader2, Trash2, Search, Check, Scissors } from "lucide-react";
+import { ArrowLeft, Upload, Download, Share2, Save, Wand2, Loader2, Trash2, Search, Check, Scissors } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { CARD_SKINS, cardLogos } from "@shared/cardSkins";
 import { club } from "@shared/club";
@@ -62,7 +62,6 @@ export default function CardsApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const savedIds = useMemo(() => new Set((saved.data ?? []).map((c) => c.playerId)), [saved.data]);
-  const isLive = !!saved.data?.find((c) => c.playerId === playerId)?.liveProfile;
   const player = players.data?.find((p) => p.id === playerId) ?? null;
   const list = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -247,42 +246,12 @@ export default function CardsApp() {
     if (!photo) return toast.error("Ladda upp ett foto först");
     setBusy("save");
     try {
-      await saveCard.mutateAsync({ playerId, settings: settings as unknown as Record<string, unknown>, sourceBase64: newSource ?? undefined, liveProfile: isLive || undefined, maskBase64: newMask });
+      await saveCard.mutateAsync({ playerId, settings: settings as unknown as Record<string, unknown>, sourceBase64: newSource ?? undefined, maskBase64: newMask });
       setNewSource(null);
       setNewMask(undefined);
-      toast.success("Kortet är sparat på spelaren", {
-        description: isLive ? "Profilbilden är uppdaterad." : "Öppna spelaren igen för att få kortet med senaste statistiken.",
+      toast.success("Kortet är sparat – det är nu spelarens bild", {
+        description: "Används överallt och uppdateras automatiskt efter varje godkänd match.",
       });
-    } catch (e) {
-      toast.error("Kunde inte spara", { description: (e as Error).message });
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  /** Kortet som profilbild – servern ritar om det automatiskt när statistiken ändras. */
-  const toggleProfile = async () => {
-    if (!playerId) return;
-    if (!photo) return toast.error("Ladda upp ett foto först");
-    const next = !isLive;
-    setBusy("profile");
-    try {
-      const res = await saveCard.mutateAsync({
-        playerId,
-        settings: settings as unknown as Record<string, unknown>,
-        sourceBase64: newSource ?? undefined,
-        liveProfile: next,
-        maskBase64: newMask,
-      });
-      setNewSource(null);
-      setNewMask(undefined);
-      if (next) {
-        toast.success(res.profileUpdated ? "Kortet är spelarens profilbild" : "Kortet är sparat som profilbild", {
-          description: "Uppdateras automatiskt efter varje godkänd match.",
-        });
-      } else {
-        toast.success("Profilbilden uppdateras inte längre", { description: "Nuvarande bild står kvar." });
-      }
     } catch (e) {
       toast.error("Kunde inte spara", { description: (e as Error).message });
     } finally {
@@ -340,7 +309,7 @@ export default function CardsApp() {
       <header className="sticky top-0 z-20 bg-[#0a0a0a]/95 backdrop-blur border-b border-white/5">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
           <button onClick={() => setLocation("/")} aria-label="Tillbaka" className="text-white/60 hover:text-white"><ArrowLeft size={20} /></button>
-          <h1 className="text-lg font-bold flex-1" style={{ fontFamily: "'Oswald', sans-serif" }}>Hockeykort</h1>
+          <h1 className="text-lg font-bold flex-1 cursor-pointer" style={{ fontFamily: "'Oswald', sans-serif" }} onClick={() => setLocation("/")} title="Till startsidan">Hockeykort</h1>
         </div>
       </header>
 
@@ -357,16 +326,14 @@ export default function CardsApp() {
                 <button onClick={() => void choosePlayer(p.id)}
                   className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm ${p.id === playerId ? "bg-emerald-500/15 text-white" : "text-white/75 hover:bg-white/[0.04]"}`}>
                   <span className="flex-1 min-w-0 truncate">{p.name}{p.number ? <span className="text-white/35"> #{p.number}</span> : null}</span>
-                  {saved.data?.find((c) => c.playerId === p.id)?.liveProfile ? (
-                    <span title="Profilbild som uppdateras automatiskt" className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-400/20 text-emerald-300">Profil</span>
-                  ) : savedIds.has(p.id) ? (
-                    <span title="Har sparat kort" className="text-[10px] px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300">Kort</span>
+                  {savedIds.has(p.id) ? (
+                    <span title="Har eget kort (spelarens bild överallt)" className="text-[10px] px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300">Kort</span>
                   ) : null}
                 </button>
               </li>
             ))}
           </ul>
-          <p className="text-[10px] text-white/35">"Kort" = sparat foto som byggs om med senaste statistiken. "Profil" = kortet är profilbild och uppdateras automatiskt efter varje godkänd match.</p>
+          <p className="text-[10px] text-white/35">Hockeykortet är spelarens bild överallt. "Kort" = eget kort med foto (uppdateras automatiskt efter varje godkänd match); övriga har standardkortet i lagets färg.</p>
         </section>
 
         {/* Förhandsvisning */}
@@ -399,7 +366,7 @@ export default function CardsApp() {
             </button>
           </div>
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); e.target.value = ""; }} />
-          <div className="grid grid-cols-2 gap-2 pt-1">
+          <div className="grid grid-cols-3 gap-2 pt-1">
             <button onClick={() => void download()} disabled={!!busy} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-sm disabled:opacity-40">
               {busy === "download" ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} Ladda ned
             </button>
@@ -407,13 +374,8 @@ export default function CardsApp() {
               {busy === "share" ? <Loader2 size={14} className="animate-spin" /> : <Share2 size={14} />} Dela
             </button>
             <button onClick={() => void saveToPlayer()} disabled={!playerId || !photo || !!busy} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-200 text-sm disabled:opacity-40"
-              title={playerId ? "Spara foto och val på spelaren (ersätter tidigare kort)" : "Välj en spelare först"}>
-              {busy === "save" ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Spara på spelaren
-            </button>
-            <button onClick={() => void toggleProfile()} disabled={!playerId || !photo || !!busy}
-              title={isLive ? "Sluta uppdatera profilbilden (nuvarande bild står kvar)" : "Spara kortet och använd det som profilbild – uppdateras efter varje godkänd match"}
-              className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm disabled:opacity-40 ${isLive ? "bg-emerald-500/20 border border-emerald-400/50 text-emerald-200" : "bg-white/5 border border-white/15 text-white/80"}`}>
-              {busy === "profile" ? <Loader2 size={14} className="animate-spin" /> : <UserSquare2 size={14} />} {isLive ? "Profilbild ✓" : "Som profilbild"}
+              title={playerId ? "Spara kortet på spelaren – det blir spelarens bild överallt (ersätter tidigare kort)" : "Välj en spelare först"}>
+              {busy === "save" ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Spara
             </button>
           </div>
           {playerId && savedIds.has(playerId) && (

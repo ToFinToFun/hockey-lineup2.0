@@ -754,6 +754,8 @@ export async function fetchAttendance(): Promise<AttendanceResult> {
     }
 
     const { registered, declined } = extractAttendeesFromModal(resp.data);
+    // Kom ihåg evenemanget – matcher som sparas efteråt hittar det även när laget.se visar nästa
+    void import("./recentEvents").then((m) => m.rememberEvent({ date: eid.eventDate, time: eventInfo?.eventTime || editDetails.time, endTime: editDetails.endTime, location: editDetails.location })).catch(() => undefined);
 
     return {
       eventTitle: eid.eventTitle || "Träning",
