@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.69.1 – 2026-10-09
+
+- Tester: servertesterna körs en fil i taget (de delar databasen och Lineups dokument och kunde skriva över varandra i CI), "Ändrad"-testet tål att databasen avrundar till hela sekunder, CI låst till Ubuntu 24.04.
+
 ## 2.69.0 – 2026-10-09
 
 - Media: alla mallar kan göras i både Flöde 4:5 och Story/Reel 9:16. I 9:16 fyller bakgrunden hela bilden och innehållet ligger inom Instagrams säkra yta. Valet sparas med inlägget.

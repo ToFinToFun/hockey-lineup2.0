@@ -16,6 +16,11 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["server/**/*.test.ts", "server/**/*.spec.ts", "client/src/**/*.test.ts", "client/src/**/*.test.tsx", "shared/**/*.test.ts", "test/**/*.test.ts"],
+    projects: [
+      // Servertesterna delar databasen (bl.a. Lineups enda dokument) och körs därför
+      // en fil i taget – parallellt kunde de skriva över varandras uppställning.
+      { extends: true, test: { name: "server", include: ["server/**/*.test.ts", "server/**/*.spec.ts", "test/**/*.test.ts"], fileParallelism: false } },
+      { extends: true, test: { name: "klient", include: ["client/src/**/*.test.ts", "client/src/**/*.test.tsx", "shared/**/*.test.ts"] } },
+    ],
   },
 });

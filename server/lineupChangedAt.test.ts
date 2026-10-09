@@ -15,7 +15,8 @@ describe.skipIf(!process.env.DATABASE_URL)("Lineup: Ändrad …", () => {
     // Omladdning från databasen ändrar inte tiden
     resetLineupCacheForTests();
     const sec = (d: Date | null | undefined) => Math.floor((d?.getTime() ?? 0) / 1000);
-    expect(sec(await getLineupChangedAt())).toBe(sec(t1)); // databasen sparar hela sekunder
+    // Databasen sparar hela sekunder (avrundat), så högst en sekunds skillnad
+    expect(Math.abs(sec(await getLineupChangedAt()) - sec(t1))).toBeLessThanOrEqual(1);
     // Flytt ger ny tid
     await applyLineupPatch(`ca-2-${Date.now()}`, [{ t: "slot", slot: "team-a-fwd-2-c", player: null }, { t: "slot", slot: "team-a-fwd-2-lw", player: P("ca1") }]);
     expect((await getLineupChangedAt())!.getTime()).toBeGreaterThan(t1!.getTime());
