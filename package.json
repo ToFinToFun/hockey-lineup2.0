@@ -1,6 +1,6 @@
 {
   "name": "hockey-lineup",
-  "version": "2.69.2",
+  "version": "2.69.3",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -44,7 +44,7 @@
     "lucide-react": "^0.453.0",
     "mysql2": "^3.24.4",
     "next-themes": "^0.4.6",
-    "nodemailer": "^6",
+    "nodemailer": "^10.0.16",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "sonner": "^2.0.8",
