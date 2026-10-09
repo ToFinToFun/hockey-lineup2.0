@@ -26,6 +26,8 @@ jobs:
             if ! git rev-parse -q --verify "refs/tags/$ver" >/dev/null; then
               echo "Taggar $ver → $sha"
               git tag "$ver" "$sha"
+              # GitHub nekar taggar på commits med andra workflow-filer än nu (token utan
+              # workflows-rättighet) – de hoppas över i stället för att stoppa resten
+              git push origin "refs/tags/$ver" || echo "::warning::$ver kunde inte pushas (äldre workflow-filer) – skapa den i GitHub vid behov"
             fi
           done
-          git push origin --tags
