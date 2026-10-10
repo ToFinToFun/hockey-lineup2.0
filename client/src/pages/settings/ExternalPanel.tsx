@@ -73,7 +73,7 @@ export function ExternalPanel() {
             <span className="text-white/45">SHL-tabellen</span><span>{s.tableRows ? `${s.tableRows} lag · ${time(s.tableFetchedAt)}` : "inte hämtad än"}</span>
             <span className="text-white/45">Dagens matcher</span><span>{s.matchesFetchedAt ? `${s.matchesToday} st · ${time(s.matchesFetchedAt)}` : "inte hämtade än"}</span>
             <span className="text-white/45">Säsongens schema</span><span>{s.seasonFetchedAt ? time(s.seasonFetchedAt) : "inte hämtat än"}</span>
-            <span className="text-white/45">Hockey i Norrbotten</span><span>{s.local ? `${s.local.rows.map((r) => `${r.team} (${r.league})`).join(", ") || "inga lag hittade"} · ${time(s.local.fetchedAt)}` : "inte hämtat än"}</span>
+            <span className="text-white/45">Norrbotten utanför SHL</span><span>{s.local ? `${s.local.rows.map((r) => `${r.team} (${r.league})`).join(", ") || "inga lag i Hockeyallsvenskan/SDHL"} · ${time(s.local.fetchedAt)}` : "inte hämtat än"}<span className="block text-[10px] text-white/35">Luleå i SHL har en egen ruta (tabellen och matcherna ovan).</span></span>
           </div>
           <label className="flex items-center gap-2"><input type="checkbox" checked={s.enabled} onChange={(e) => set.mutate({ enabled: e.target.checked })} /> Hämta automatiskt</label>
           <label className="flex items-center gap-2">Max anrop per dygn
