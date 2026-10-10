@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.76.2 – 2026-10-10
+
+- Löpsedeln: ingen bild som standard – inte heller när den skapas automatiskt som första bild till en artikel eller intervju. Valet "Bild på löpsedeln" slår på den, och "Bildens läge" flyttar utsnittet upp eller ner (standard är övre delen, där ansiktena brukar vara).
+- Löpsedeln: mer luft mellan rubrikraderna så att Å, Ä och Ö inte krockar med raden ovanför.
+
 ## 2.76.1 – 2026-10-10
 
 - Hockeykort: ny knapp "Ladda ned bilden utan ram" – bara fotot med samma utsnitt som i kortet, i fotots egen upplösning (utan ram, text och friläggning).

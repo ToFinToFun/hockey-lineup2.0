@@ -91,6 +91,9 @@ interface Settings {
   byline?: string;
   /** Bild på löpsedeln/artikeln (egen bild eller vald bakgrund) */
   pressPhoto?: boolean;
+  /** Löpsedeln: bild (av som standard, även när löpsedeln är första bild) och dess läge */
+  billPhoto?: boolean;
+  billPhotoY?: number;
   /** Äldre artiklar (v2.72) */
   pressFacts?: boolean;
   /** Tidningssidorna: citatrubrik, textrutans rubrik, citat i marginalen */
@@ -509,6 +512,19 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
     };
   };
 
+  // Löpsedeln: egen bildinställning (äldre sparade löpsedlar använde pressPhoto)
+  const billPhotoOn = s.billPhoto ?? (s.kind === "bill" ? !!s.pressPhoto : false);
+  const billPhotoControls = () => (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <button onClick={() => update({ billPhoto: !billPhotoOn })} className={chip(billPhotoOn)}>{billPhotoOn ? "✓ " : ""}Bild på löpsedeln</button>
+      {billPhotoOn && (
+        <label className="flex-1 min-w-[160px] text-[11px] text-white/50">Bildens läge (upp–ner)
+          <input type="range" min={0} max={1} step={0.05} value={s.billPhotoY ?? 0.3} onChange={(e) => update({ billPhotoY: Number(e.target.value) })} className="w-full accent-emerald-400" />
+        </label>
+      )}
+    </div>
+  );
+
   // Bilden som ska ritas (formatet kan väljas separat, t.ex. för videon)
   const buildData = (format: PostFormat): MediaPostData => {
       // Mallen Bild: den uppladdade bilden ritas i ramen, inte som bakgrund
@@ -519,7 +535,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
         : s.kind === "award" ? { ...common, kind: "award", title: s.title || award?.title || "Utmärkelse", emoji: award?.emoji ?? "", subtitle: s.subtitle || range.label, places: awardCards }
         : s.kind === "result" ? (reportData ? { ...common, kind: "result", report: reportData } : { ...common, kind: "text", title: "Inga matcher än", body: "", info: "" })
         : s.kind === "image" ? { ...common, kind: "image", title: s.title, subtitle: s.subtitle, info: s.info, image: photo }
-        : s.kind === "bill" ? { kind: "bill", format, dateLine: s.dateLine, sponsor, style: s.pressStyle ?? "yellow", kicker: s.kicker ?? "", headline: s.title, sub: s.subtitle, photo: s.pressPhoto ? pressImg : null }
+        : s.kind === "bill" ? { kind: "bill", format, dateLine: s.dateLine, sponsor, style: s.pressStyle ?? "yellow", kicker: s.kicker ?? "", headline: s.title, sub: s.subtitle, photo: billPhotoOn ? pressImg : null, photoY: s.billPhotoY }
         : isPressPage(s.kind) ? pageData(format)
         : { ...common, kind: "text", title: s.title, body: s.body, info: s.info };
   };
@@ -528,7 +544,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
   /** Löpsedel eller förstasida av samma text och bild, först i karusellen */
   const coverData = (fmt: PostFormat): MediaPostData | null => {
     if (!isPressPage(s.kind) || !s.pressCover) return null;
-    if (s.pressCover === "bill") return { kind: "bill", format: fmt, dateLine: s.dateLine, sponsor, kicker: s.kicker ?? "", headline: s.title, sub: s.subtitle, photo: s.pressPhoto !== false ? pressImg : null };
+    if (s.pressCover === "bill") return { kind: "bill", format: fmt, dateLine: s.dateLine, sponsor, kicker: s.kicker ?? "", headline: s.title, sub: s.subtitle, photo: billPhotoOn ? pressImg : null, photoY: s.billPhotoY };
     return {
       // Texten börjar på förstasidan och fortsätter på nästa bild (artikeln/intervjun)
       ...pageData(fmt), kind: "front", pullQuote: "", pullQuoteBy: "", teasers: [],
@@ -889,6 +905,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
                     ))}
                   </div>
                 )}
+                {(s.kind === "article" || s.kind === "interview") && s.pressCover === "bill" && <div className="mt-2">{billPhotoControls()}</div>}
                 <p className="text-[10px] text-white/35 mt-1">Byt stil när du vill – texten och bilden följer med. Spara som nytt för att ha flera stilar av samma text. Första bild ger en karusell: löpsedeln eller förstasidan först, sedan {s.kind === "interview" ? "intervjun" : "artikeln"}.</p>
               </div>
               <label className="block text-[11px] text-white/50">Match
@@ -914,7 +931,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
                 <div>
                   <p className="text-[11px] text-white/50 mb-1.5">Löpsedel</p>
                   <div className="flex flex-wrap gap-1.5">
-                    <button onClick={() => update({ pressPhoto: !s.pressPhoto })} className={chip(!!s.pressPhoto)}>{s.pressPhoto ? "✓ " : ""}Bild</button>
+                    {billPhotoControls()}
                   </div>
                 </div>
               )}

@@ -31,6 +31,8 @@ export interface BillPostData extends PressCommon {
   headline: string;
   sub: string;
   photo?: HTMLImageElement | null;
+  /** Vilken del av bilden som syns (0 = överkant, 1 = nederkant; standard 0,3 – ansikten brukar sitta högt) */
+  photoY?: number;
 }
 
 /** Bryt text i rader (ord för ord) */
@@ -70,11 +72,12 @@ export function paper(ctx: CanvasRenderingContext2D, color: string, grain = 0.05
 }
 
 /** Bild som fyller rutan (beskärs) */
-export function cover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number) {
+export function cover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number, focusY = 0.5) {
   const s = Math.max(w / img.width, h / img.height);
   ctx.save();
   ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
-  ctx.drawImage(img, x + (w - img.width * s) / 2, y + (h - img.height * s) / 2, img.width * s, img.height * s);
+  // focusY: vilken del av bilden som syns när den beskärs på höjden (0 = överkant, 1 = nederkant)
+  ctx.drawImage(img, x + (w - img.width * s) / 2, y + (h - img.height * s) * Math.min(1, Math.max(0, focusY)), img.width * s, img.height * s);
   ctx.restore();
 }
 
@@ -342,7 +345,7 @@ export async function renderBill(d: BillPostData): Promise<HTMLCanvasElement> {
   if (d.kicker) y += kickerTag(ctx, d.kicker, M, y, 44, PRESS.red).h + 30;
 
   // Rubriken så stor som möjligt (egna radbrytningar följs), blocket centreras i ytan
-  const LH = 1.0;
+  const LH = 1.13; // luft för ringen i Å och prickarna i Ä/Ö
   const limit = d.sponsor ? IG_H - 230 : IG_H - 60;
   const photoH = d.photo ? 330 : 0;
   const subReserve = d.sub ? 140 : 0;
@@ -367,7 +370,7 @@ export async function renderBill(d: BillPostData): Promise<HTMLCanvasElement> {
   if (d.photo) {
     y += 36;
     const h = Math.min(photoH, limit - y);
-    if (h > 120) cover(ctx, d.photo, M, y, IG_W - 2 * M, h);
+    if (h > 120) cover(ctx, d.photo, M, y, IG_W - 2 * M, h, d.photoY ?? 0.3);
   }
   if (d.sponsor) pressAd(ctx, d.sponsor, sp, M, IG_H - 200, IG_W - 2 * M, 170);
   return c;
