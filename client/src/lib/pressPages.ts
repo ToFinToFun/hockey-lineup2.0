@@ -643,13 +643,14 @@ const GAP = 18;
 function stack(defs: BoxDef[], x: number, w: number, top: number, bottom: number, reserveFirstAd = true): { placed: Array<{ b: Box; y: number; h: number }>; rest: BoxDef[] } {
   const placed: Array<{ b: Box; y: number; h: number }> = [];
   const rest: BoxDef[] = [];
-  const firstAd = reserveFirstAd && defs.some((d) => d.id === "ad0") ? defs.find((d) => d.id === "ad0")!.make(w) : undefined;
+  const adDef = reserveFirstAd ? defs.find((d) => d.id.startsWith("ad")) : undefined;
+  const firstAd = adDef ? adDef.make(w) : undefined;
   const reserve = firstAd ? (firstAd.minH ?? firstAd.h) + GAP : 0;
   let y = top;
   defs.forEach((def, i) => {
     const adPlacedYet = placed.some((p) => p.b === firstAd);
-    const room = bottom - y - (firstAd && !adPlacedYet && def.id !== "ad0" ? reserve : 0);
-    const b = def.id === "ad0" && firstAd ? firstAd : def.make(w, room);
+    const room = bottom - y - (firstAd && !adPlacedYet && def !== adDef ? reserve : 0);
+    const b = def === adDef && firstAd ? firstAd : def.make(w, room);
     const need = b.flex ? b.minH ?? b.h : b.h;
     const adPlaced = placed.some((p) => p.b === firstAd);
     const limit = b === firstAd || adPlaced || !firstAd ? bottom : bottom - reserve;
@@ -844,6 +845,8 @@ export async function renderPressPages(d: PressPageData): Promise<HTMLCanvasElem
   drawStack(side, SIDE_X, SIDE_W);
   let rest = side.rest;
   if (!cont && rest.length && bottom - mainFree >= 140) rest = twoCols(rest, M, MAIN_W, mainFree, bottom);
+  // Annonserna som syntes på sidan 1 – sida 2 får en annan
+  const shownOnP1 = new Set(defs.filter((dd) => !rest.includes(dd)).map((dd) => dd.id));
 
   // Puffarna längst ner (förstasidan)
   if (teasers.length) {
@@ -875,7 +878,9 @@ export async function renderPressPages(d: PressPageData): Promise<HTMLCanvasElem
     y2 += Math.max(kick.h, 30) + 12;
     c2.fillRect(M, y2, W, 1.5);
     y2 += 16;
-    const restDefs = boxDefs(c2, d, logos).filter((b) => rest.some((r) => r.id === b.id) && b.id !== "portrait");
+    const restDefs = boxDefs(c2, d, logos).filter((b) => rest.some((r) => r.id === b.id) && b.id !== "portrait" && !b.id.startsWith("ad"));
+    const nextAd = d.ads.findIndex((_, i) => !shownOnP1.has(`ad${i}`));
+    if (nextAd >= 0) restDefs.push(adBox(c2, d.ads[nextAd], logos[nextAd] ?? null, nextAd));
     const wide = restDefs.length === 0;
     const r2: Region = wide ? { x: M, y: y2, w: W, h: BOTTOM - y2, cols: 3 } : { x: M, y: y2, w: MAIN_W, h: BOTTOM - y2, cols: 2 };
     const restParas = linesToParas(lines.slice(end1));
@@ -896,7 +901,7 @@ export async function renderPressPages(d: PressPageData): Promise<HTMLCanvasElem
       c2.fillText("(TEXTEN ÄR FÖR LÅNG)", r2.x + r2.w, BOTTOM + 18);
     }
     if (!wide) {
-      const s2 = stack(restDefs, SIDE_X, SIDE_W, y2, BOTTOM, false);
+      const s2 = stack(restDefs, SIDE_X, SIDE_W, y2, BOTTOM, true);
       drawStack(s2, SIDE_X, SIDE_W);
       const free = y2 + bal + 22;
       if (s2.rest.length && BOTTOM - free >= 140) twoCols(s2.rest, M, MAIN_W, free, BOTTOM);

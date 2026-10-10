@@ -449,13 +449,26 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
     });
   }, [s.kind, resultMatches, opponentsForResult.data]);
 
+  /**
+   * Annonserna i tidningen: vald annons, annons 2 och sedan övriga sponsorer i
+   * fast ordning per inlägg – så att varje sida (och första bilden) får en egen.
+   */
+  const adList = useMemo(() => {
+    const toAd = (sp: (typeof sponsors)[number]) => ({ name: sp.name, logo: sp.logo ?? null, slogan: sp.slogan ?? null });
+    const byName = (n: string | null | undefined) => (n ? sponsors.find((x) => x.name === n) : undefined);
+    const first = [byName(s.sponsorName), byName(s.sponsor2Name)].filter(Boolean) as typeof sponsors;
+    const seed = [...(s.title || "x")].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);
+    const others = sponsors.filter((sp) => sp.active && !first.some((f) => f.name === sp.name))
+      .map((sp) => ({ sp, k: [...sp.name].reduce((h, ch) => (h * 33 + ch.charCodeAt(0) + seed) >>> 0, 5) % 9973 }))
+      .sort((a, b) => a.k - b.k).map((x) => x.sp);
+    const unique = [...new Map([...first, ...others].map((sp) => [sp.name, sp])).values()];
+    // "Ingen annons" = inga annonser alls i tidningen
+    return s.sponsorName ? unique.slice(0, 4).map(toAd) : [];
+  }, [sponsors, s.sponsorName, s.sponsor2Name, s.title]);
+
   /** Tidningssidan (förstasida, artikel, intervju) */
-  const pageData = (format: PostFormat): PressPageData => {
-    const ad = (name: string | null | undefined) => {
-      const sp = name ? sponsors.find((x) => x.name === name) : undefined;
-      return sp ? { name: sp.name, logo: sp.logo ?? null, slogan: sp.slogan ?? null } : null;
-    };
-    const ads = [ad(s.sponsorName), s.sponsor2Name !== s.sponsorName ? ad(s.sponsor2Name) : null].filter(Boolean) as PressPageData["ads"];
+  const pageData = (format: PostFormat, adOffset = 0): PressPageData => {
+    const ads = adList.slice(adOffset).concat(adList.slice(0, adOffset));
     const r = reportData;
     const latest = s.pressLatest && r && resultMatch ? {
       home: r.whiteName, away: r.greenName, homeScore: r.whiteScore, awayScore: r.greenScore,
@@ -544,7 +557,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
   /** Löpsedel eller förstasida av samma text och bild, först i karusellen */
   const coverData = (fmt: PostFormat): MediaPostData | null => {
     if (!isPressPage(s.kind) || !s.pressCover) return null;
-    if (s.pressCover === "bill") return { kind: "bill", format: fmt, dateLine: s.dateLine, sponsor, kicker: s.kicker ?? "", headline: s.title, sub: s.subtitle, photo: billPhotoOn ? pressImg : null, photoY: s.billPhotoY };
+    if (s.pressCover === "bill") return { kind: "bill", format: fmt, dateLine: s.dateLine, sponsor: adList[0] ?? null, kicker: s.kicker ?? "", headline: s.title, sub: s.subtitle, photo: billPhotoOn ? pressImg : null, photoY: s.billPhotoY };
     return {
       // Texten börjar på förstasidan och fortsätter på nästa bild (artikeln/intervjun)
       ...pageData(fmt), kind: "front", pullQuote: "", pullQuoteBy: "", teasers: [],
@@ -552,7 +565,9 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
   };
   const renderAll = async (fmt: PostFormat) => {
     const cover = coverData(fmt);
-    const [coverPages, pages] = await Promise.all([cover ? renderMediaPages(cover) : Promise.resolve([]), renderMediaPages(buildData(fmt))]);
+    // Med första bild: artikeln börjar på nästa annons, så att ingen sida får samma
+    const main = cover && isPressPage(s.kind) ? { ...pageData(fmt, 1) } : buildData(fmt);
+    const [coverPages, pages] = await Promise.all([cover ? renderMediaPages(cover) : Promise.resolve([]), renderMediaPages(main)]);
     return [...coverPages.slice(0, 1), ...pages];
   };
 
