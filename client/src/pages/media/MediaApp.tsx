@@ -1154,12 +1154,12 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
                 </button>
               ))}
               {/* Egen bild: tom ruta med rött streck tills en bild valts (inte i mallen Bild – där är bilden innehållet) */}
-              {s.kind !== "image" && <button onClick={() => (photo ? update({ useOwnPhoto: true }) : fileRef.current?.click())} title={photo ? "Egen bild" : "Välj en egen bild"}
+              {s.kind !== "image" && <button onClick={() => (photo && !ownActive ? update({ useOwnPhoto: true }) : fileRef.current?.click())} title={photo ? (ownActive ? "Byt bild" : "Egen bild") : "Välj en egen bild"}
                 className={`relative rounded-lg overflow-hidden border-2 aspect-[4/5] bg-[#151515] ${ownActive ? "border-emerald-400" : "border-white/10 opacity-80 hover:opacity-100"}`}>
                 {photo ? <img src={photo.src} alt="" className="w-full h-full object-cover" /> : (
                   <svg viewBox="0 0 40 50" preserveAspectRatio="none" className="absolute inset-0 w-full h-full"><line x1="2" y1="48" x2="38" y2="2" stroke="#ef4444" strokeWidth="1.5" /></svg>
                 )}
-                <span className="absolute inset-x-0 bottom-0 text-[10px] bg-black/60 text-white/85 py-0.5 text-center truncate px-1">Egen bild</span>
+                <span className="absolute inset-x-0 bottom-0 text-[10px] bg-black/60 text-white/85 py-0.5 text-center truncate px-1">{ownActive ? "Byt bild" : "Egen bild"}</span>
               </button>}
             </div>
             {ownActive && s.kind !== "image" && (

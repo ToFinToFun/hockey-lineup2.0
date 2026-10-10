@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.76.1 – 2026-10-10
+
+- Hockeykort: ny knapp "Ladda ned bilden utan ram" – bara fotot med samma utsnitt som i kortet, i fotots egen upplösning (utan ram, text och friläggning).
+- Media: rutan med egen bild går att trycka på igen för att byta bild (heter "Byt bild" när den är vald).
+
 ## 2.76.0 – 2026-10-10
 
 - Stålbladet: välj stil (Löpsedel, Förstasida, Artikel, Intervju) för samma text och bild – allt som skrivits följer med när stilen byts. Spara som nytt för att ha flera stilar av samma text.

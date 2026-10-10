@@ -228,6 +228,26 @@ export default function CardsApp() {
     }
   };
 
+  /** Bara fotot – samma utsnitt som i kortet, utan ram och text, i fotots egen upplösning */
+  const downloadPhoto = async () => {
+    if (!photo) return;
+    setBusy("photo");
+    try {
+      const r = photoSourceRect(photo.width, photo.height, CARD_W - 40, 1050 - 40, settings.photo);
+      const c = document.createElement("canvas");
+      c.width = Math.round(r.sw); c.height = Math.round(r.sh);
+      c.getContext("2d")!.drawImage(photo, r.sx, r.sy, r.sw, r.sh, 0, 0, c.width, c.height);
+      const blob = await new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("Kunde inte skapa bilden"))), "image/jpeg", 0.92));
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${fileBase()}-bild.jpg`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const share = async () => {
     setBusy("share");
     try {
@@ -378,6 +398,10 @@ export default function CardsApp() {
               {busy === "save" ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Spara
             </button>
           </div>
+          <button onClick={() => void downloadPhoto()} disabled={!photo || !!busy} title="Bara fotot, med samma utsnitt som i kortet"
+            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 border border-white/10 text-sm disabled:opacity-40">
+            {busy === "photo" ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} Ladda ned bilden utan ram
+          </button>
           {playerId && savedIds.has(playerId) && (
             <button onClick={() => void removeSaved()} className="w-full flex items-center justify-center gap-1.5 text-[11px] text-red-300/70 hover:text-red-300 pt-1">
               <Trash2 size={12} /> Ta bort kortet – återgå till standardkortet
