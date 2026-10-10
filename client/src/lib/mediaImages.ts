@@ -597,7 +597,23 @@ async function renderText(d: TextPostData): Promise<HTMLCanvasElement> {
   const bodyLines = d.body ? wrapLines(ctx, d.body, IG_W - 160, 7) : [];
   const titleH = titleLines.length * 108;
   const bodyH = bodyLines.length * 52;
-  const infoH = d.info ? 90 : 0;
+  // Info-raden (t.ex. "Tisdag 13/10 · Coop Arena C-hallen 22:15"): en eller två rader,
+  // bryts helst vid " · " och annars mellan ord – aldrig avklippt med …
+  ctx.font = `700 40px ${HEAD}`;
+  ctx.letterSpacing = "4px";
+  const infoMax = IG_W - 200;
+  let infoLines: string[] = [];
+  if (d.info) {
+    const t = d.info.toUpperCase();
+    if (ctx.measureText(t).width <= infoMax) infoLines = [t];
+    else {
+      const parts = t.split(" · ");
+      const half = parts.length > 1 ? [parts.slice(0, Math.ceil(parts.length / 2)).join(" · "), parts.slice(Math.ceil(parts.length / 2)).join(" · ")] : [];
+      infoLines = half.length && half.every((l) => ctx.measureText(l).width <= infoMax) ? half : wrapLines(ctx, t, infoMax, 2);
+    }
+  }
+  ctx.letterSpacing = "0px";
+  const infoH = infoLines.length ? 76 + (infoLines.length - 1) * 48 + 14 : 0;
   const bottomLimit = d.sponsor ? IG_H - 190 : IG_H - 90;
   const total = titleH + (bodyLines.length ? 30 + bodyH : 0) + (infoH ? 36 + infoH : 0);
   let y = d.photo ? bottomLimit - total : Math.max(250, (250 + bottomLimit) / 2 - total / 2);
@@ -610,7 +626,11 @@ async function renderText(d: TextPostData): Promise<HTMLCanvasElement> {
     ctx.letterSpacing = "0px";
     ctx.font = `500 38px ${BODY}`;
     const bodyW = Math.max(0, ...bodyLines.map((l) => ctx.measureText(l).width));
-    const bw = Math.min(IG_W - 80, Math.max(widest, bodyW, 420) + 110);
+    ctx.font = `700 40px ${HEAD}`;
+    ctx.letterSpacing = "4px";
+    const infoW = Math.max(0, ...infoLines.map((l) => ctx.measureText(l).width + 70));
+    ctx.letterSpacing = "0px";
+    const bw = Math.min(IG_W - 80, Math.max(widest + 110, bodyW + 110, 530, infoW + 60));
     const bx = IG_W / 2 - bw / 2, by = y - 36, bh = total + 72;
     ctx.save();
     ctx.shadowColor = "rgba(0,0,0,0.55)";
@@ -650,18 +670,19 @@ async function renderText(d: TextPostData): Promise<HTMLCanvasElement> {
     y += 36;
     ctx.font = `700 40px ${HEAD}`;
     ctx.letterSpacing = "4px";
-    const text = fit(ctx, d.info.toUpperCase(), IG_W - 200);
-    const w = ctx.measureText(text).width + 70;
+    const lines = infoLines.map((l) => fit(ctx, l, infoMax));
+    const w = Math.max(...lines.map((l) => ctx.measureText(l).width)) + 70;
+    const ph = 76 + (lines.length - 1) * 48;
     ctx.fillStyle = "rgba(0,0,0,0.5)";
-    roundRect(ctx, IG_W / 2 - w / 2, y, w, 76, 38);
+    roundRect(ctx, IG_W / 2 - w / 2, y, w, ph, 38);
     ctx.fill();
     ctx.strokeStyle = accent;
     ctx.lineWidth = 3;
-    roundRect(ctx, IG_W / 2 - w / 2, y, w, 76, 38);
+    roundRect(ctx, IG_W / 2 - w / 2, y, w, ph, 38);
     ctx.stroke();
     ctx.fillStyle = accent;
     ctx.textBaseline = "middle";
-    ctx.fillText(text, IG_W / 2 + 2, y + 39);
+    lines.forEach((l, i) => ctx.fillText(l, IG_W / 2 + 2, y + 39 + i * 48));
     ctx.textBaseline = "alphabetic";
     ctx.letterSpacing = "0px";
   }
