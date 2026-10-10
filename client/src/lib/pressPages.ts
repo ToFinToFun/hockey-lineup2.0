@@ -65,6 +65,8 @@ export interface PressPageData extends PressCommon {
   shlGames?: { title: string; rows: ShlGameRow[]; source: string; updated: string } | null;
   ads: PressAd[];
   issue: { nr: number; year: number };
+  /** Hockey i Norrbotten (Hockeyallsvenskan, SDHL): senaste och nästa per lag */
+  local?: { rows: Array<{ league: string; team: string; last: string | null; next: string | null }>; source: string; updated: string } | null;
   /** Förstasida som första bild: rad efter utdraget, t.ex. "Läs hela intervjun på nästa bild ›" */
   readMore?: string;
 }
@@ -622,6 +624,49 @@ function teaserCell(ctx: CanvasRenderingContext2D, t: PressTeaser, x: number, y:
   if (t.page) label(ctx, t.page.toUpperCase(), tx, y + h - 16, INK, 13);
 }
 
+/** Hockey i Norrbotten: ett block per lag med serie, senaste och nästa */
+function localBox(ctx: CanvasRenderingContext2D, l: NonNullable<PressPageData["local"]>): BoxDef {
+  return {
+    id: "local",
+    make: (w) => {
+      const rowH = 22;
+      const blockH = (r: (typeof l.rows)[number]) => 26 + (r.last ? rowH : 0) + (r.next ? rowH : 0) + 8;
+      const h = 36 + 8 + l.rows.reduce((n, r) => n + blockH(r), 0) + 22;
+      return {
+        id: "local", h,
+        draw: (x, y) => {
+          frame(ctx, x, y, w, h);
+          header(ctx, "Hockey i Norrbotten", x, y, w);
+          let ry = y + 36 + 8;
+          l.rows.forEach((r, i) => {
+            if (i) { ctx.fillStyle = RULE; ctx.fillRect(x + 12, ry - 4, w - 24, 1); }
+            ctx.fillStyle = BLUE;
+            ctx.font = `700 18px ${HEAD}`;
+            ctx.textAlign = "left";
+            ctx.textBaseline = "top";
+            ctx.fillText(fit(ctx, r.team.toUpperCase(), w - 130), x + 12, ry);
+            ctx.fillStyle = MUTED;
+            ctx.font = `600 12px ${HEAD}`;
+            ctx.letterSpacing = "1px";
+            ctx.textAlign = "right";
+            ctx.fillText(r.league.toUpperCase(), x + w - 12, ry + 4);
+            ctx.letterSpacing = "0px";
+            ry += 26;
+            ctx.textAlign = "left";
+            ctx.fillStyle = INK;
+            ctx.font = `400 15px ${SERIF_BODY}`;
+            if (r.last) { ctx.fillText(fit(ctx, r.last, w - 24), x + 12, ry); ry += rowH; }
+            ctx.fillStyle = MUTED;
+            if (r.next) { ctx.fillText(fit(ctx, r.next, w - 24), x + 12, ry); ry += rowH; }
+            ry += 8;
+          });
+          sourceLine(ctx, `Källa: ${l.source} · ${l.updated}`, x + 12, y + h - 9, w - 24);
+        },
+      };
+    },
+  };
+}
+
 /** Rutorna i turordning: det viktigaste först */
 function boxDefs(ctx: CanvasRenderingContext2D, d: PressPageData, logos: Array<HTMLImageElement | null>): BoxDef[] {
   const defs: BoxDef[] = [];
@@ -629,13 +674,14 @@ function boxDefs(ctx: CanvasRenderingContext2D, d: PressPageData, logos: Array<H
   if (d.pullQuote) defs.push(quoteBox(ctx, d.pullQuote, d.pullQuoteBy));
   if (d.focus && (d.focus.last || d.focus.next)) defs.push(focusBox(ctx, d.focus));
   if (d.ads[0]) defs.push(adBox(ctx, d.ads[0], logos[0] ?? null, 0));
+  if (d.local?.rows.length) defs.push(localBox(ctx, d.local));
   if (d.shlGames?.rows.length) defs.push(gamesBox(ctx, d.shlGames));
   if (d.shlTable?.rows.length) defs.push(tableBox(ctx, d.shlTable));
   if (d.latest) defs.push(latestBox(ctx, d.latest));
   if (d.next) defs.push(nextBox(ctx, d.next));
   if (d.results.length) defs.push(resultsBox(ctx, d.results));
   // Andra annonsen bara utan SHL – då får tabellen och matcherna platsen
-  const shl = !!(d.focus || d.shlGames?.rows.length || d.shlTable?.rows.length);
+  const shl = !!(d.focus || d.local?.rows.length || d.shlGames?.rows.length || d.shlTable?.rows.length);
   if (d.ads[1] && !shl) defs.push(adBox(ctx, d.ads[1], logos[1] ?? null, 1));
   return defs;
 }

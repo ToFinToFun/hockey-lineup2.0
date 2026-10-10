@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.78.0 – 2026-10-10
+
+- Stålbladet: ny ruta "Hockey i Norrbotten" med lagen från Norrbotten i Hockeyallsvenskan och SDHL – senaste resultat (vinst/förlust/oavgjort) och nästa match. På som standard, kan slås av.
+- Servern hämtar Hockeyallsvenskans och SDHL:s scheman var tolfte timme (några anrop per serie, inom dygnstaket). Inställningar → Externa källor visar vilka lag som hittades.
+
 ## 2.77.0 – 2026-10-10
 
 - Stålbladet: när förstasidan är första bild visar den bara början av texten (hela stycken, en fråga alltid med sitt svar) och "Läs hela intervjun/artikeln på nästa bild ›". Ytan som blir över fylls med "Luleå i SHL" i stort format, SHL-matcher, tabellen och en annons.

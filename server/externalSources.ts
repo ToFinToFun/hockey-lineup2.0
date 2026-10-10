@@ -10,7 +10,8 @@
  * Dokumentation: https://highlightly.net/hockey-api/documentation/
  */
 import { getConfigValue, setConfigValue } from "./scoreDb";
-import { canCall, focusSummary, isFocus, lastRound, matchRow, refreshAfter, shlSeason, standingRow, FOCUS_TEAM, type FocusSummary, type ShlCache, type ShlMatch, type UsageState } from "@shared/shl";
+import type { LocalTeamRow } from "@shared/shl";
+import { canCall, focusSummary, isFocus, lastRound, localTeams, matchRow, refreshAfter, shlSeason, standingRow, FOCUS_TEAM, type FocusSummary, type ShlCache, type ShlMatch, type UsageState } from "@shared/shl";
 
 const CONFIG_KEY = "external_sources";
 const USAGE_KEY = "external_usage";
@@ -70,6 +71,7 @@ export async function externalStatus() {
     tableFetchedAt: cache.table?.fetchedAt ?? null, tableRows: cache.table?.rows.length ?? 0,
     matchesFetchedAt: cache.matches?.fetchedAt ?? null, matchesToday: cache.matches?.rows.length ?? 0,
     seasonFetchedAt: (await readJson<SeasonCache | null>(SEASON_KEY, null))?.fetchedAt ?? null,
+    local: await readJson<{ fetchedAt: string; rows: LocalTeamRow[]; leagues: string[] } | null>(LOCAL_KEY, null),
     source: SOURCE_NAME,
   };
 }
@@ -131,6 +133,7 @@ async function leagueId(c: ExternalConfig): Promise<number> {
 
 /** Svenska serier hos källan – för att se vad som går att använda (Boden, Piteå, SDHL …) */
 const LEAGUES_KEY = "external_leagues";
+const LOCAL_KEY = "external_local";
 export interface LeagueInfo { id: number; name: string; seasons: number[] }
 export async function fetchLeagues(): Promise<{ leagues: LeagueInfo[]; fetchedAt: string }> {
   const c = await getExternalConfig();
@@ -187,6 +190,25 @@ export async function refreshShl(force = false): Promise<{ table: boolean; match
       await setConfigValue(SEASON_KEY, JSON.stringify(next));
       done.matches = true;
     }
+    // Hockey i Norrbotten: Hockeyallsvenskan och SDHL (var tolfte timme, några anrop per serie)
+    const local = await readJson<{ fetchedAt: string; rows: LocalTeamRow[]; leagues: string[] } | null>(LOCAL_KEY, null);
+    if (force || age(local?.fetchedAt) >= 12 * 60) {
+      const saved = (await savedLeagues()) ?? (await fetchLeagues().catch(() => null));
+      const wanted = (saved?.leagues ?? []).filter((l) => /hockeyallsvenskan|^allsvenskan|sdhl/i.test(l.name));
+      const rows: LocalTeamRow[] = [];
+      const season = shlSeason(now);
+      for (const lg of wanted) {
+        const all: ShlMatch[] = [];
+        for (let offset = 0; offset < 600; offset += 100) {
+          const res = await call<{ data: Parameters<typeof matchRow>[0][] }>(c, "/matches", { leagueId: lg.id, season, timezone: "Europe/Stockholm", limit: 100, offset });
+          all.push(...res.data.map(matchRow));
+          if (res.data.length < 100) break;
+        }
+        rows.push(...localTeams(all, /sdhl/i.test(lg.name) ? "SDHL" : "Hockeyallsvenskan", now));
+      }
+      await setConfigValue(LOCAL_KEY, JSON.stringify({ fetchedAt: now.toISOString(), rows, leagues: wanted.map((l) => l.name) }));
+      done.matches = true;
+    }
     // Tabellen
     if (force || age(cache.table?.fetchedAt) >= refreshAfter("table", hour, cache.matches?.rows ?? [], now)) {
       const season = shlSeason(now);
@@ -209,7 +231,7 @@ export async function refreshShl(force = false): Promise<{ table: boolean; match
 }
 
 /** Det sparade, för tidningen (och senare andra delar av appen) */
-export async function getShl(): Promise<{ configured: boolean; source: string; table: ShlCache["table"]; today: ShlMatch[]; todayFetchedAt: string | null; lastRound: { day: string; rows: ShlMatch[] } | null; focus: FocusSummary | null; seasonFetchedAt: string | null }> {
+export async function getShl(): Promise<{ configured: boolean; source: string; table: ShlCache["table"]; today: ShlMatch[]; todayFetchedAt: string | null; lastRound: { day: string; rows: ShlMatch[] } | null; focus: FocusSummary | null; seasonFetchedAt: string | null; local: { fetchedAt: string; rows: LocalTeamRow[]; leagues: string[] } | null }> {
   const [c, cache, last, season] = await Promise.all([getExternalConfig(), readJson<ShlCache>(CACHE_KEY, { table: null, matches: null }), readJson<{ day: string; rows: ShlMatch[] } | null>(LAST_ROUND_KEY, null), readJson<SeasonCache | null>(SEASON_KEY, null)]);
   const day = stockholm().day;
   const fresh = cache.matches && stockholm(new Date(cache.matches.fetchedAt)).day === day;
@@ -218,7 +240,8 @@ export async function getShl(): Promise<{ configured: boolean; source: string; t
   const rounds = [last && last.rows?.length ? last : null, season?.lastRound ?? null].filter(Boolean) as Array<{ day: string; rows: ShlMatch[] }>;
   const round = rounds.sort((a, b) => b.day.localeCompare(a.day))[0] ?? null;
   const focus = season || today.length ? focusSummary(season?.focus ?? [], today, cache.table?.rows, FOCUS_TEAM) : null;
-  return { configured: !!c.apiKey, source: SOURCE_NAME, table: cache.table, today, todayFetchedAt: fresh ? cache.matches!.fetchedAt : null, lastRound: round, focus, seasonFetchedAt: season?.fetchedAt ?? null };
+  const local = await readJson<{ fetchedAt: string; rows: LocalTeamRow[]; leagues: string[] } | null>(LOCAL_KEY, null);
+  return { configured: !!c.apiKey, source: SOURCE_NAME, table: cache.table, today, todayFetchedAt: fresh ? cache.matches!.fetchedAt : null, lastRound: round, focus, seasonFetchedAt: season?.fetchedAt ?? null, local };
 }
 
 export function startExternalSchedule() {

@@ -123,3 +123,21 @@ export function lastRound(season: ShlMatch[], dayOf: (iso: string) => string): {
   const day = done.map((m) => dayOf(m.date)).sort().pop()!;
   return { day, rows: season.filter((m) => dayOf(m.date) === day).sort((a, b) => a.date.localeCompare(b.date)) };
 }
+
+/** Lag i Norrbotten (för rutan "Hockey i Norrbotten" – Hockeyallsvenskan, SDHL m.fl.) */
+export const NORRBOTTEN = /lule|boden|pite|kalix|kiruna|älvsby|alvsby|haparanda|gällivare|gallivare/i;
+
+export interface LocalTeamRow { league: string; team: string; last: ShlMatch | null; next: ShlMatch | null }
+
+/** Senaste (eller pågående) och nästa match för varje Norrbottenslag i en serie */
+export function localTeams(matches: ShlMatch[], league: string, now = new Date()): LocalTeamRow[] {
+  const teams = new Set<string>();
+  for (const m of matches) for (const t of [m.home, m.away]) if (NORRBOTTEN.test(t)) teams.add(t);
+  return [...teams].sort((a, b) => a.localeCompare(b, "sv")).map((team) => {
+    const games = matches.filter((m) => m.home === team || m.away === team).sort((a, b) => a.date.localeCompare(b.date));
+    const live = games.find((m) => m.status === "live") ?? null;
+    const played = games.filter((m) => m.status === "finished" && m.homeScore != null);
+    const next = games.find((m) => m.status === "scheduled" && +new Date(m.date) > +now - 3 * 3600_000) ?? null;
+    return { league, team, last: live ?? played[played.length - 1] ?? null, next };
+  }).filter((r) => r.last || r.next);
+}

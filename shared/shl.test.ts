@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canCall, focusSummary, lastRound, matchRow, refreshAfter, shlSeason, shortTeam, standingRow } from "./shl";
+import { canCall, focusSummary, lastRound, localTeams, matchRow, refreshAfter, shlSeason, shortTeam, standingRow } from "./shl";
 
 describe("SHL från extern källa", () => {
   it("svenska kortnamn", () => {
@@ -68,5 +68,19 @@ describe("Luleå i fokus", () => {
   });
   it("senaste omgången", () => {
     expect(lastRound(season, (iso) => iso.slice(0, 10))).toMatchObject({ day: "2026-10-03", rows: [{ id: 2 }, { id: 5 }] });
+  });
+});
+
+describe("Hockey i Norrbotten", () => {
+  const m = (id: number, date: string, home: string, away: string, hs: number | null, as: number | null, status: "finished" | "scheduled") => ({ id, date, home, away, homeScore: hs, awayScore: as, status, statusText: "" });
+  it("senaste och nästa för lag i Norrbotten", () => {
+    const rows = localTeams([
+      m(1, "2026-10-01T17:00:00Z", "Bodens", "Västerås", 2, 3, "finished"),
+      m(2, "2026-10-08T17:00:00Z", "Mora", "Bodens", 1, 4, "finished"),
+      m(3, "2026-10-12T17:00:00Z", "Bodens", "AIK", null, null, "scheduled"),
+      m(4, "2026-10-08T17:00:00Z", "Mora", "AIK", 1, 1, "finished"),
+    ], "Hockeyallsvenskan", new Date("2026-10-10T12:00:00Z"));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ team: "Bodens", last: { id: 2 }, next: { id: 3 } });
   });
 });

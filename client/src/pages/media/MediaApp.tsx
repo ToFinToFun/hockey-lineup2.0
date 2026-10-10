@@ -113,6 +113,8 @@ interface Settings {
   pressShlGames?: boolean;
   /** Luleå i SHL (senaste/nästa match, form och tabellplats) – på om inget annat valts */
   pressFocus?: boolean;
+  /** Hockey i Norrbotten (Hockeyallsvenskan, SDHL) – på om inget annat valts */
+  pressLocal?: boolean;
   /** Artikel/intervju: löpsedel eller förstasida som första bild (karusell) */
   pressCover?: "bill" | "front" | null;
 }
@@ -511,6 +513,20 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
       form: f.form, pos: f.pos, pts: f.pts, gp: f.gp,
       source: shlData.source, updated: hhmm(shlData.todayFetchedAt ?? shlData.seasonFetchedAt ?? shlData.table?.fetchedAt ?? new Date().toISOString()),
     } : null;
+    // Hockey i Norrbotten: "Senast: 4–1 mot Mora (tor 8/10)" / "Nästa: AIK hemma, lör 15:00"
+    const vs = (m: { home: string; away: string }, team: string) => (m.home === team ? `${m.away} hemma` : `${m.home} borta`);
+    const local = s.pressLocal !== false && shlData?.local?.rows.length ? {
+      source: shlData.source, updated: hhmm(shlData.local.fetchedAt),
+      rows: shlData.local.rows.map((r) => {
+        const last = r.last && r.last.homeScore != null ? (() => {
+          const own = r.last.home === r.team ? r.last.homeScore! : r.last.awayScore!;
+          const opp = r.last.home === r.team ? r.last.awayScore! : r.last.homeScore!;
+          const tag = r.last.status === "live" ? "Pågår" : own > opp ? "Vinst" : own < opp ? "Förlust" : "Oavgjort";
+          return `${tag} ${own}–${opp} mot ${r.last.home === r.team ? r.last.away : r.last.home}${r.last.status === "live" ? "" : ` (${dayStr(r.last.date)})`}`;
+        })() : null;
+        return { league: r.league, team: r.league === "SDHL" ? `${r.team} (dam)` : r.team, last, next: r.next ? `Nästa: ${vs(r.next, r.team)}, ${dayStr(r.next.date, true)}` : null };
+      }),
+    } : null;
     return {
       kind: s.kind as PressPageData["kind"], format, dateLine: s.dateLine, sponsor: null,
       kicker: s.kicker ?? "", headline: s.title, quoteHead: s.quoteHead ?? "", ingress: s.subtitle, body: s.body,
@@ -520,7 +536,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
       teasers: s.kind === "front" ? (s.teasers ?? []).map((t, i) => ({ kicker: t.kicker, title: t.title, sub: t.sub, page: t.page, image: teaserImgs[i] ?? null })) : [],
       latest, next,
       results: s.pressResults ? pressResults : [],
-      shlTable, shlGames, focus,
+      shlTable, shlGames, focus, local,
       ads, issue: issueOf(),
     };
   };
@@ -1002,6 +1018,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
                       <button onClick={() => update({ pressResults: !s.pressResults })} className={chip(!!s.pressResults)}>{s.pressResults ? "✓ " : ""}Våra matcher</button>
                       {([
                         ["pressFocus", "Luleå i SHL", !!shlQ.data?.focus],
+                        ["pressLocal", "Hockey i Norrbotten", !!shlQ.data?.local?.rows.length],
                         ["pressShlGames", "SHL-matcher", !!(shlQ.data?.today.length || shlQ.data?.lastRound)],
                         ["pressShlTable", "SHL-tabellen", !!shlQ.data?.table],
                       ] as const).map(([k, name, has]) => {
