@@ -65,6 +65,8 @@ export interface PressPageData extends PressCommon {
   shlGames?: { title: string; rows: ShlGameRow[]; source: string; updated: string } | null;
   ads: PressAd[];
   issue: { nr: number; year: number };
+  /** Förstasida som första bild: rad efter utdraget, t.ex. "Läs hela intervjun på nästa bild ›" */
+  readMore?: string;
 }
 
 const { ink: INK, muted: MUTED, rule: RULE, blue: BLUE, red: RED } = PRESS;
@@ -676,7 +678,7 @@ function drawStack(s: { placed: Array<{ b: Box; y: number; h: number }> }, x: nu
 }
 
 /** Två spalter med rutor (under texten när det blir plats över, eller på sida 2) */
-function twoCols(defs: BoxDef[], x: number, w: number, top: number, bottom: number): BoxDef[] {
+function twoCols(defs: BoxDef[], x: number, w: number, top: number, bottom: number): { rest: BoxDef[]; y: number } {
   const cw = (w - GUTTER) / 2;
   const cols = [{ x, y: top }, { x: x + cw + GUTTER, y: top }];
   const rest: BoxDef[] = [];
@@ -688,7 +690,7 @@ function twoCols(defs: BoxDef[], x: number, w: number, top: number, bottom: numb
     if (c.y + h <= bottom + 0.5) { b.draw(c.x, c.y, cw, h); c.y += h + GAP; }
     else rest.push(d);
   }
-  return rest;
+  return { rest, y: Math.max(cols[0].y, cols[1].y) };
 }
 
 // ─── Sidorna ─────────────────────────────────────────────────────────────────
@@ -816,7 +818,8 @@ export async function renderPressPages(d: PressPageData): Promise<HTMLCanvasElem
   // Texten: största storleken där allt ryms, annars fortsättning på sida 2
   const titleH = d.boxTitle ? 40 : 0;
   const textTop = my + (boxed ? 16 : 0) + titleH;
-  const textMaxH = bottom - textTop - (boxed ? 16 : 0);
+  const moreH = d.readMore ? 34 : 0;
+  const textMaxH = bottom - textTop - (boxed ? 16 : 0) - moreH;
   let px = BODY_MAX, lines: Line[] = [], cont = false;
   for (; px >= BODY_MIN; px--) {
     lines = layoutLines(ctx, paras, colW, px);
@@ -826,7 +829,7 @@ export async function renderPressPages(d: PressPageData): Promise<HTMLCanvasElem
   const lh = lhOf(px);
   const textH = cont ? textMaxH : balancedHeight(lines, 0, 2, lh, textMaxH);
   if (boxed) {
-    const bh = textH + titleH + 32;
+    const bh = textH + titleH + 32 + moreH;
     ctx.fillStyle = "#e9ecf0";
     ctx.fillRect(M, my, MAIN_W, bh);
     ctx.fillStyle = BLUE;
@@ -837,16 +840,36 @@ export async function renderPressPages(d: PressPageData): Promise<HTMLCanvasElem
     fitText(ctx, d.boxTitle.toUpperCase(), M + padX, my + (boxed ? 14 : 0), textW, 32, (p) => `700 ${p}px ${HEAD}`, 28, 18);
   }
   const end1 = lines.length ? drawLines(ctx, lines, 0, { x: M + padX, y: textTop, w: textW, h: textH, cols: 2 }, px, lh, cont ? { more: "x" } : {}) : 0;
-  const mainFree = textTop + textH + (boxed ? 16 : 0) + 22;
+  if (d.readMore) {
+    ctx.fillStyle = RED;
+    ctx.font = `700 19px ${HEAD}`;
+    ctx.letterSpacing = "1px";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "top";
+    ctx.fillText(d.readMore.toUpperCase(), M + padX + textW, textTop + textH + 6);
+    ctx.letterSpacing = "0px";
+  }
+  let mainFree = textTop + textH + moreH + (boxed ? 16 : 0) + 22;
+  // Förstasidan: "Luleå i SHL" stort i huvudspalten när det finns plats under texten
+  let focusInMain = false;
+  if (front && d.focus && (d.focus.last || d.focus.next)) {
+    const fb = focusBox(ctx, d.focus).make(MAIN_W);
+    if (bottom - mainFree >= fb.h) { fb.draw(M, mainFree, MAIN_W, fb.h); mainFree += fb.h + GAP + 4; focusInMain = true; }
+  }
 
   // Sidospalten, sedan rutor under texten om det blev plats över
-  const defs = boxDefs(ctx, d, logos);
+  const defs = boxDefs(ctx, d, logos).filter((b) => !(focusInMain && b.id === "focus"));
   const side = stack(defs, SIDE_X, SIDE_W, sideStart, bottom);
   drawStack(side, SIDE_X, SIDE_W);
   let rest = side.rest;
-  if (!cont && rest.length && bottom - mainFree >= 140) rest = twoCols(rest, M, MAIN_W, mainFree, bottom);
+  if (!cont && rest.length && bottom - mainFree >= 140) { const r = twoCols(rest, M, MAIN_W, mainFree, bottom); rest = r.rest; mainFree = Math.max(mainFree, r.y); }
   // Annonserna som syntes på sidan 1 – sida 2 får en annan
   const shownOnP1 = new Set(defs.filter((dd) => !rest.includes(dd)).map((dd) => dd.id));
+  // Förstasidan: blir det yta över i huvudspalten får den en stor annons (en annan sponsor)
+  if (front && !cont && bottom - mainFree >= 150) {
+    const i = d.ads.findIndex((_, k) => !shownOnP1.has(`ad${k}`));
+    if (i >= 0) { pressAd(ctx, d.ads[i], logos[i] ?? null, M, mainFree, MAIN_W, Math.min(320, bottom - mainFree)); shownOnP1.add(`ad${i}`); }
+  }
 
   // Puffarna längst ner (förstasidan)
   if (teasers.length) {

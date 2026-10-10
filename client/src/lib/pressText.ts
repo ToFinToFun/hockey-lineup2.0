@@ -176,3 +176,32 @@ export function splitPasted(raw: string): { headline: string; ingress: string; b
   while (i < lines.length && !lines[i].trim()) i++;
   return { headline, ingress: ing.join(" "), body: lines.slice(i).join("\n").replace(/\n{3,}/g, "\n\n").trim() };
 }
+
+/**
+ * Utdrag för förstasidan (när den är första bild): hela stycken upp till ungefär
+ * `max` tecken. En fråga tas aldrig med utan sitt svar. Är första stycket för
+ * långt kortas det vid en mening.
+ */
+export function excerpt(text: string, max = 520): string {
+  const blocks = text.replace(/\r\n?/g, "\n").split(/\n[ \t]*\n/).map((b) => b.trim()).filter(Boolean);
+  const out: string[] = [];
+  let len = 0;
+  for (let i = 0; i < blocks.length; i++) {
+    const b = blocks[i];
+    const isQuestion = /\?["”»)]?$/.test(b) && !/^[–—-]/.test(b);
+    const unit = isQuestion && blocks[i + 1] && !/\?["”»)]?$/.test(blocks[i + 1]) ? [b, blocks[i + 1]] : [b];
+    const add = unit.join("\n\n").length;
+    if (out.length && len + add > max) break;
+    out.push(...unit);
+    len += add + 2;
+    i += unit.length - 1;
+    if (len >= max) break;
+  }
+  let res = out.join("\n\n");
+  if (res.length > max * 1.6) {
+    const cut = res.slice(0, max);
+    const dot = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
+    res = (dot > 0 ? cut.slice(0, dot + 1) : cut.replace(/\s+\S*$/, "")) + " …";
+  }
+  return res;
+}

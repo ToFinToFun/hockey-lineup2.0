@@ -27,7 +27,7 @@ import { prepareSourcePhoto } from "@/lib/cardPhoto";
 import { renderMediaPages, MEDIA_OVERLAYS, MEDIA_BACKGROUNDS, overlayFromTheme, type MediaOverlay, type MediaBackground, type LineupGroup, type MediaPostData, type PostFormat, type PressPageData } from "@/lib/mediaImages";
 import { setVideoStill, type VideoStill } from "@/lib/videoStill";
 import { PRESS_NAME, issueOf, type BillStyle } from "@/lib/pressImages";
-import { pressFacts, headlineSuggestions, articleText, cleanName, splitPasted } from "@/lib/pressText";
+import { pressFacts, headlineSuggestions, articleText, cleanName, splitPasted, excerpt } from "@/lib/pressText";
 import { type CardSettings } from "@shared/cardRender";
 import { renderPlayerCard } from "@/lib/savedCardImage";
 import { cellsFor, defaultStatsTitle } from "@shared/cardStats";
@@ -559,8 +559,10 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
     if (!isPressPage(s.kind) || !s.pressCover) return null;
     if (s.pressCover === "bill") return { kind: "bill", format: fmt, dateLine: s.dateLine, sponsor: adList[0] ?? null, kicker: s.kicker ?? "", headline: s.title, sub: s.subtitle, photo: billPhotoOn ? pressImg : null, photoY: s.billPhotoY };
     return {
-      // Texten börjar på förstasidan och fortsätter på nästa bild (artikeln/intervjun)
+      // Förstasidan lockar: bara början av texten, resten i artikeln/intervjun på nästa bild.
+      // Ytan som blir över fylls med Luleå i SHL, matcher, tabell och en annons.
       ...pageData(fmt), kind: "front", pullQuote: "", pullQuoteBy: "", teasers: [],
+      body: excerpt(s.body, 380), readMore: `Läs hela ${s.kind === "interview" ? "intervjun" : "artikeln"} på nästa bild ›`,
     };
   };
   const renderAll = async (fmt: PostFormat) => {

@@ -7,6 +7,14 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.77.0 – 2026-10-10
+
+- Stålbladet: när förstasidan är första bild visar den bara början av texten (hela stycken, en fråga alltid med sitt svar) och "Läs hela intervjun/artikeln på nästa bild ›". Ytan som blir över fylls med "Luleå i SHL" i stort format, SHL-matcher, tabellen och en annons.
+- Stålbladet: olika annonser på karusellens sidor (första bilden, artikeln/intervjun och sida 2). "Ingen annons" ger inga annonser alls.
+- Stålbladet: rubrikförslagen vid oavgjort skriver inte "vann med" (t.ex. "Vita och Gröna delade på poängen – 6–6"), och "sköt sönder" används bara när hattrickskytten var i vinnande lag.
+- Media, Text/Nästa träning: info-raden (dag, plats och tid) bryts på två rader i stället för att klippas.
+- Inställningar → Externa källor: "Hämta serier" visar vilka svenska serier källan har – för att se om Boden, Piteå och damhockeyn kan komma med i tidningen.
+
 ## 2.76.2 – 2026-10-10
 
 - Löpsedeln: ingen bild som standard – inte heller när den skapas automatiskt som första bild till en artikel eller intervju. Valet "Bild på löpsedeln" slår på den, och "Bildens läge" flyttar utsnittet upp eller ner (standard är övre delen, där ansiktena brukar vara).

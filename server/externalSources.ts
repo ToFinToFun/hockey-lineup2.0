@@ -129,6 +129,21 @@ async function leagueId(c: ExternalConfig): Promise<number> {
   return shl.id;
 }
 
+/** Svenska serier hos källan – för att se vad som går att använda (Boden, Piteå, SDHL …) */
+const LEAGUES_KEY = "external_leagues";
+export interface LeagueInfo { id: number; name: string; seasons: number[] }
+export async function fetchLeagues(): Promise<{ leagues: LeagueInfo[]; fetchedAt: string }> {
+  const c = await getExternalConfig();
+  if (!c.apiKey) throw new Error("Ingen API-nyckel");
+  const res = await call<{ data: Array<{ id: number; name: string; seasons?: Array<{ season: number }> }> }>(c, "/leagues", { countryCode: "SE", limit: 100 });
+  const leagues = res.data.map((l) => ({ id: l.id, name: l.name, seasons: (l.seasons ?? []).map((x) => x.season).sort((a, b) => b - a).slice(0, 3) }))
+    .sort((a, b) => a.name.localeCompare(b.name, "sv"));
+  const out = { leagues, fetchedAt: new Date().toISOString() };
+  await setConfigValue(LEAGUES_KEY, JSON.stringify(out));
+  return out;
+}
+export const savedLeagues = () => readJson<{ leagues: LeagueInfo[]; fetchedAt: string } | null>(LEAGUES_KEY, null);
+
 let running = false;
 
 /**

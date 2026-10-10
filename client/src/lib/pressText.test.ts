@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pressFacts, headlineSuggestions, articleText, cleanName, splitPasted } from "./pressText";
+import { pressFacts, headlineSuggestions, articleText, cleanName, splitPasted, excerpt } from "./pressText";
 
 const report = (goals: Array<[string, string, number, boolean?]>, w: number, g: number) => ({
   whiteName: "Vita", greenName: "Gröna", whiteScore: w, greenScore: g, dateLine: "Tisdag 6/10",
@@ -73,5 +73,19 @@ Hej Hampus! Har Vita svårt att prestera utan sin lagkapten?
   });
   it("börjar texten med en fråga blir allt brödtext", () => {
     expect(splitPasted("Hur mår du?\n– Bra")).toEqual({ headline: "", ingress: "", body: "Hur mår du?\n– Bra" });
+  });
+});
+
+describe("excerpt (förstasidan som första bild)", () => {
+  it("hela stycken och fråga tillsammans med svaret", () => {
+    const t = "Fråga ett om säsongen?\n\n– Svar ett med lite text.\n\nFråga två?\n\n– Svar två " + "x ".repeat(300);
+    expect(excerpt(t, 60)).toBe("Fråga ett om säsongen?\n\n– Svar ett med lite text.");
+  });
+  it("kort text blir hel", () => {
+    expect(excerpt("Ett stycke.\n\nTvå stycken.", 500)).toBe("Ett stycke.\n\nTvå stycken.");
+  });
+  it("ett för långt första stycke kortas vid en mening", () => {
+    const r = excerpt("Första meningen är här. " + "Ord ".repeat(400), 100);
+    expect(r).toBe("Första meningen är här. …");
   });
 });

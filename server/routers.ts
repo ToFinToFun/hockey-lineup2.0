@@ -42,7 +42,7 @@ import { DEFAULT_PIR_THRESHOLDS, PIR_THRESHOLD_LIMITS, sanitizeThresholds } from
 import { positionAndTeamHistory } from "./positionHistory";
 import { nextEvent, eventStart, lagetEvent } from "./autoNews";
 import { withExternalEvent, externalIsNext } from "./matchEvent";
-import { externalStatus, setExternalConfig, refreshShl, getShl } from "./externalSources";
+import { externalStatus, setExternalConfig, refreshShl, getShl, fetchLeagues, savedLeagues } from "./externalSources";
 import { NOTIFICATION_TYPES, getRecipients, setRecipients, smtpConfigured, sendTestMail, notifyLater, mailLayout, type NotificationType } from "./notifications";
 import type { LineupOp } from "../shared/lineupDoc";
 import {
@@ -683,6 +683,8 @@ export const appRouter = router({
       .mutation(async ({ input }) => { await setExternalConfig(input); return externalStatus(); }),
     refresh: adminProcedure.mutation(async () => ({ ...(await refreshShl(true)), status: await externalStatus() })),
     shl: moduleProcedure("media").query(() => getShl()),
+    leagues: adminProcedure.query(() => savedLeagues()),
+    fetchLeagues: adminProcedure.mutation(() => fetchLeagues()),
   }),
   notifications: router({
     get: adminProcedure.query(async () => ({

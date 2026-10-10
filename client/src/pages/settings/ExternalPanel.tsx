@@ -27,6 +27,11 @@ export function ExternalPanel() {
     onError: (e) => toast.error("Kunde inte hämta", { description: e.message }),
   });
   const [key, setKey] = useState("");
+  const leaguesQ = trpc.external.leagues.useQuery(undefined, { enabled: !!q.data?.configured });
+  const fetchLeagues = trpc.external.fetchLeagues.useMutation({
+    onSuccess: (r) => { utils.external.leagues.setData(undefined, r); void utils.external.status.invalidate(); toast.success(`${r.leagues.length} svenska serier hittades`); },
+    onError: (e) => toast.error("Kunde inte hämta serierna", { description: e.message }),
+  });
   const s = q.data;
   if (q.isLoading || !s) return <div className="flex justify-center py-8"><Loader2 className="animate-spin text-white/40" /></div>;
   const input = "w-full rounded-lg bg-white/5 border border-white/10 text-white text-sm px-3 py-2";
@@ -77,6 +82,25 @@ export function ExternalPanel() {
           <button onClick={() => refresh.mutate()} disabled={refresh.isPending} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 border border-white/15 text-sm disabled:opacity-40">
             {refresh.isPending ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Hämta nu (ca 6 anrop)
           </button>
+          <div className="pt-2 border-t border-white/10 space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-white/60">Svenska serier hos {s.source}</p>
+              <button onClick={() => fetchLeagues.mutate()} disabled={fetchLeagues.isPending} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/15 text-[11px] disabled:opacity-40">
+                {fetchLeagues.isPending ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} Hämta serier (1 anrop)
+              </button>
+            </div>
+            {leaguesQ.data ? (
+              <>
+                <p className="text-[10px] text-white/40">Hämtat {time(leaguesQ.data.fetchedAt)} · markerade är de som kan ge Boden, Piteå och Luleå/MSSK (damer).</p>
+                <ul className="max-h-56 overflow-y-auto space-y-0.5">
+                  {leaguesQ.data.leagues.map((l) => {
+                    const hit = /allsvenskan|ettan|division 1|sdhl|dam|women|j20/i.test(l.name);
+                    return <li key={l.id} className={`flex justify-between gap-2 ${hit ? "text-emerald-200" : "text-white/55"}`}><span>{hit ? "✓ " : ""}{l.name}</span><span className="text-white/35">{l.seasons[0] ?? ""}</span></li>;
+                  })}
+                </ul>
+              </>
+            ) : <p className="text-[10px] text-white/40">Visar vilka serier som finns – så ser vi om Boden, Piteå och damhockeyn går att ta med i tidningen.</p>}
+          </div>
         </div>
       )}
     </div>
