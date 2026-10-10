@@ -26,6 +26,20 @@ describe("Stålbladet – texter från matchen", () => {
     expect(t.body).toMatch(/presenterades av Polar/);
     expect(headlineSuggestions(f).some((h) => h.kicker === "NOLLAN")).toBe(true);
   });
+  it("hattrick i oavgjord match: ingen 'vann med', ingen 'sköt sönder'", () => {
+    const g: Array<[string, string, number]> = [["white", "Johan Andman", 5], ["green", "Bo", 8], ["white", "Johan Andman", 20], ["green", "Bo", 25], ["white", "Johan Andman", 40], ["green", "Cia", 50]];
+    const f = pressFacts(report(g, 3, 3), 60);
+    for (let seed = 0; seed < 6; seed++) {
+      const h = headlineSuggestions(f, seed).find((x) => x.kicker === "HATTRICK")!;
+      expect(h.sub).toBe("Vita och Gröna delade på poängen – 3–3");
+      expect(h.headline).not.toMatch(/sköt sönder/);
+      for (const x of headlineSuggestions(f, seed)) expect(x.sub).not.toMatch(/vann med/);
+    }
+  });
+  it("hattrick i förlorande lag: inte 'sköt sönder' motståndaren", () => {
+    const f = pressFacts(report([["green", "Cia", 3], ["green", "Cia", 9], ["green", "Cia", 30], ["white", "Anna #7", 33], ["white", "Bo", 40], ["white", "Anna #7", 45], ["white", "Bo", 58]], 4, 3), 60);
+    for (let seed = 0; seed < 6; seed++) expect(headlineSuggestions(f, seed).find((x) => x.kicker === "HATTRICK")!.headline).not.toMatch(/sköt sönder/);
+  });
   it("oavgjort och namn utan nummer", () => {
     const f = pressFacts(report([["white", "Anna #7", 4], ["green", "Bo", 30]], 1, 1));
     expect(f.draw).toBe(true);

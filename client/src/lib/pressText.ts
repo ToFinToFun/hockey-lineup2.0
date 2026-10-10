@@ -15,8 +15,8 @@ export interface PressFacts {
   diff: number;
   /** Största underläge som vinnaren hämtade in (0 = ingen vändning) */
   comebackFrom: number;
-  /** Spelare med minst tre mål */
-  hattricks: Array<{ name: string; goals: number }>;
+  /** Spelare med minst tre mål (och lagets namn) */
+  hattricks: Array<{ name: string; goals: number; team: string }>;
   topScorer: { name: string; goals: number; assists: number } | null;
   /** Förloraren gjorde inga mål */
   shutout: boolean;
@@ -48,8 +48,10 @@ export function pressFacts(r: ReportData, plannedMinutes?: number | null): Press
   let w = 0, l = 0, worst = 0;
   if (!draw) for (const g of r.goals) { if (g.team === winTeam) w++; else l++; worst = Math.min(worst, w - l); }
   const goalsBy = new Map<string, { goals: number; assists: number }>();
+  const teamOf = new Map<string, string>();
   for (const g of r.goals) {
     const s = cleanName(g.scorer), a = cleanName(g.assist);
+    if (s && !/självmål/i.test(g.scorer ?? "")) teamOf.set(s, g.team === "white" ? r.whiteName : r.greenName);
     if (s && !/självmål/i.test(g.scorer ?? "")) goalsBy.set(s, { goals: (goalsBy.get(s)?.goals ?? 0) + 1, assists: goalsBy.get(s)?.assists ?? 0 });
     if (a) goalsBy.set(a, { goals: goalsBy.get(a)?.goals ?? 0, assists: (goalsBy.get(a)?.assists ?? 0) + 1 });
   }
@@ -60,7 +62,7 @@ export function pressFacts(r: ReportData, plannedMinutes?: number | null): Press
   return {
     draw, winner, loser, winnerScore, loserScore, score: `${winnerScore}–${loserScore}`, diff: winnerScore - loserScore,
     comebackFrom: -worst,
-    hattricks: ranked.filter(([, v]) => v.goals >= 3).map(([name, v]) => ({ name, goals: v.goals })),
+    hattricks: ranked.filter(([, v]) => v.goals >= 3).map(([name, v]) => ({ name, goals: v.goals, team: teamOf.get(name) ?? "" })),
     topScorer: ranked[0] && (ranked[0][1].goals || ranked[0][1].assists) ? { name: ranked[0][0], ...ranked[0][1] } : null,
     shutout: !draw && loserScore === 0,
     gwg: gwgGoal && cleanName(gwgGoal.scorer) ? { name: cleanName(gwgGoal.scorer), minute: gwgGoal.minute ?? null } : null,
@@ -83,6 +85,8 @@ export interface Headline { kicker: string; headline: string; sub: string }
 export function headlineSuggestions(f: PressFacts, seed = 0): Headline[] {
   const out: Headline[] = [];
   const W = f.winner, L = f.loser;
+  /** Resultatraden – vid oavgjort ingen "vann" */
+  const result = f.draw ? `${W} och ${L} delade på poängen – ${f.score}` : `${W} vann med ${f.score}`;
   if (f.draw) {
     out.push({ kicker: "SPORT", headline: pick([`Ingen vinnare – ${f.score} i rysaren`, `Delad pott när ${W} mötte ${L}`, `${f.score} – och ingen fick jubla`], seed, 1), sub: f.first ? `${f.first.name} öppnade målskyttet` : "Jämnt hela vägen" });
   }
@@ -90,7 +94,15 @@ export function headlineSuggestions(f: PressFacts, seed = 0): Headline[] {
     out.push({ kicker: "VÄNDNINGEN", headline: pick([`${W} vände ${num(f.comebackFrom)} måls underläge`, `Comebacken! ${W} reste sig`, `Från ${num(f.comebackFrom)} måls underläge till seger`], seed, 2), sub: f.gwg ? `${f.gwg.name} blev matchhjälte` : `${W} vann med ${f.score}` });
   }
   for (const h of f.hattricks.slice(0, 1)) {
-    out.push({ kicker: "HATTRICK", headline: pick([`${first(h.name)} sköt sönder ${L}`, `${h.goals} mål – ${last(h.name)} ostoppbar`, `${h.name}s kväll`], seed, 3), sub: `${W} vann med ${f.score}` });
+    // "Sköt sönder" bara när målskytten var i det vinnande laget
+    const onWinner = !f.draw && h.team === W;
+    const opp = h.team === W ? L : W;
+    const heads = onWinner
+      ? [`${first(h.name)} sköt sönder ${L}`, `${h.goals} mål – ${last(h.name)} ostoppbar`, `${h.name}s kväll`]
+      : f.draw
+        ? [`${h.goals} mål – ${last(h.name)} ostoppbar`, `${h.name}s kväll`, `${first(h.name)} höll ${h.team || "laget"} kvar i matchen`]
+        : [`${h.goals} mål räckte inte för ${h.team || first(h.name)}`, `${h.name}s kväll – trots förlusten`, `${last(h.name)} ensam mot ${opp}`];
+    out.push({ kicker: "HATTRICK", headline: pick(heads, seed, 3), sub: result });
   }
   if (!f.draw && f.lateWinner && f.gwg) {
     out.push({ kicker: "DRAMAT", headline: pick([`Avgörandet i slutminuterna`, `${first(f.gwg.name)} sänkte ${L} sent`, `Rysare – ${W} vann i slutet`], seed, 4), sub: `${f.gwg.name} avgjorde${f.gwg.minute != null ? ` i minut ${f.gwg.minute}` : ""}` });
@@ -99,7 +111,7 @@ export function headlineSuggestions(f: PressFacts, seed = 0): Headline[] {
     out.push({ kicker: "KROSSEN", headline: pick([`${W} körde över ${L}`, `Uppvisning – ${f.score}`, `${L} utan chans`], seed, 5), sub: f.topScorer ? `${f.topScorer.name} ledde vägen med ${f.topScorer.goals + f.topScorer.assists} poäng` : `${W} vann med ${f.score}` });
   }
   if (f.shutout) {
-    out.push({ kicker: "NOLLAN", headline: pick([`${W} höll nollan`, `Stängt – ${L} mållöst`, `Muren höll hela vägen`], seed, 6), sub: `${W} vann med ${f.score}` });
+    out.push({ kicker: "NOLLAN", headline: pick([`${W} höll nollan`, `Stängt – ${L} mållöst`, `Muren höll hela vägen`], seed, 6), sub: result });
   }
   if (!f.draw) {
     out.push({ kicker: "SPORT", headline: pick([`${W} vann mot ${L}`, `Seger för ${W} – ${f.score}`, `${W} tog hem kvällen`], seed, 7), sub: f.gwg ? `${f.gwg.name} gjorde det avgörande målet` : f.topScorer ? `${f.topScorer.name} bäst på isen` : "" });
