@@ -7,6 +7,13 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.76.0 – 2026-10-10
+
+- Stålbladet: välj stil (Löpsedel, Förstasida, Artikel, Intervju) för samma text och bild – allt som skrivits följer med när stilen byts. Spara som nytt för att ha flera stilar av samma text.
+- Artikel och intervju kan få löpsedeln eller förstasidan som första bild (karusell): tidningen "bläddras upp" i samma Instagraminlägg. Används också som bild före videoklipp.
+- Bildtexten visar antal tecken och varnar i rött när Instagrams gräns på 2 200 tecken passeras.
+- Löpsedeln fyller bara i rubrik från matchen när den är tom – skriven text skrivs aldrig över.
+
 ## 2.75.1 – 2026-10-10
 
 - Media: klicka på förhandsvisningen för att förstora (alla sidor under varandra, tryck på bilden för dubbel storlek) – för korrläsning.

@@ -24,7 +24,7 @@ import { useSponsors, logoForName, randomSponsorName } from "@/lib/sponsors";
 import { createTeamSlots, groupSlots, type TeamConfig } from "@/lib/lineup";
 import type { Player } from "@/lib/players";
 import { prepareSourcePhoto } from "@/lib/cardPhoto";
-import { renderMediaPost, renderMediaPages, MEDIA_OVERLAYS, MEDIA_BACKGROUNDS, overlayFromTheme, type MediaOverlay, type MediaBackground, type LineupGroup, type MediaPostData, type PostFormat, type PressPageData } from "@/lib/mediaImages";
+import { renderMediaPages, MEDIA_OVERLAYS, MEDIA_BACKGROUNDS, overlayFromTheme, type MediaOverlay, type MediaBackground, type LineupGroup, type MediaPostData, type PostFormat, type PressPageData } from "@/lib/mediaImages";
 import { setVideoStill, type VideoStill } from "@/lib/videoStill";
 import { PRESS_NAME, issueOf, type BillStyle } from "@/lib/pressImages";
 import { pressFacts, headlineSuggestions, articleText, cleanName, splitPasted } from "@/lib/pressText";
@@ -110,6 +110,8 @@ interface Settings {
   pressShlGames?: boolean;
   /** Luleå i SHL (senaste/nästa match, form och tabellplats) – på om inget annat valts */
   pressFocus?: boolean;
+  /** Artikel/intervju: löpsedel eller förstasida som första bild (karusell) */
+  pressCover?: "bill" | "front" | null;
 }
 
 const BASE: Omit<Settings, "kind"> = {
@@ -289,7 +291,8 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
   // Nytt inlägg: fyll i rubrik och text från matchen (en gång per match – allt går att ändra)
   const pressFilledFor = useRef<string>("");
   useEffect(() => {
-    if (!press || postId !== null || !resultMatch || s.kind !== "bill") return;
+    // Bara en tom löpsedel – skrivna texter (även från en annan stil) skrivs aldrig över
+    if (!press || postId !== null || !resultMatch || s.kind !== "bill" || s.title.trim() || s.subtitle.trim()) return;
     const key = `${s.kind}:${resultMatch.id}`;
     if (pressFilledFor.current === key) return;
     pressFilledFor.current = key;
@@ -522,11 +525,26 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
   };
   const format: PostFormat = s.format ?? "feed";
 
+  /** Löpsedel eller förstasida av samma text och bild, först i karusellen */
+  const coverData = (fmt: PostFormat): MediaPostData | null => {
+    if (!isPressPage(s.kind) || !s.pressCover) return null;
+    if (s.pressCover === "bill") return { kind: "bill", format: fmt, dateLine: s.dateLine, sponsor, kicker: s.kicker ?? "", headline: s.title, sub: s.subtitle, photo: s.pressPhoto !== false ? pressImg : null };
+    return {
+      // Texten börjar på förstasidan och fortsätter på nästa bild (artikeln/intervjun)
+      ...pageData(fmt), kind: "front", pullQuote: "", pullQuoteBy: "", teasers: [],
+    };
+  };
+  const renderAll = async (fmt: PostFormat) => {
+    const cover = coverData(fmt);
+    const [coverPages, pages] = await Promise.all([cover ? renderMediaPages(cover) : Promise.resolve([]), renderMediaPages(buildData(fmt))]);
+    return [...coverPages.slice(0, 1), ...pages];
+  };
+
   // Förhandsvisning
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(async () => {
-      const pages = await renderMediaPages(buildData(format));
+      const pages = await renderAll(format);
       if (cancelled || !canvasRef.current) return;
       setPageCount(pages.length);
       // Sida 2 och framåt (tidningssidor där texten fortsätter)
@@ -540,6 +558,18 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
     }, 120);
     return () => { cancelled = true; clearTimeout(t); };
   }, [s, photo, sponsor?.name, sponsor?.logo, cardCanvases, rows, range.label, reportData, awardCards, award?.title, bgImg, press, teaserImgs, pressResults, event.data, sponsors, shlQ.data, previewPage]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Byt tidningsstil: allt som skrivits följer med, nya fält får stilens standard */
+  const DEFAULT_KICKERS = ["", "Lokalsport", "Intervju", "SPORT", "Matchreferat"];
+  const switchStyle = (kind: Kind) => {
+    setPreviewPage(0);
+    setS((prev) => {
+      const d = NEW[kind] as unknown as Record<string, unknown>;
+      const fill = Object.fromEntries(Object.entries(d).filter(([k]) => (prev as unknown as Record<string, unknown>)[k] === undefined));
+      const kicker = DEFAULT_KICKERS.includes(prev.kicker ?? "") ? (NEW[kind].kicker ?? "") : prev.kicker;
+      return { ...prev, ...fill, kind, kicker, pressCover: isPressPage(kind) ? prev.pressCover ?? null : null } as Settings;
+    });
+  };
 
   const startNew = (kind: Kind) => {
     setPostId(null);
@@ -622,7 +652,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
   const finishHeadless = async () => {
     if (renderedRef.current || postId !== renderPostId) return;
     renderedRef.current = true;
-    const [feed, reel] = await Promise.all([renderMediaPost(buildData("feed")), renderMediaPost(buildData("story"))]);
+    const [feed, reel] = await Promise.all([renderAll("feed").then((p) => p[0]), renderAll("story").then((p) => p[0])]);
     onRendered?.({ title: titleFor(), feed: feed.toDataURL("image/png"), reel: reel.toDataURL("image/png") });
   };
 
@@ -717,7 +747,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
   const useInVideo = async () => {
     setToVideo(true);
     try {
-      const [feed, reel] = await Promise.all([renderMediaPost(buildData("feed")), renderMediaPost(buildData("story"))]);
+      const [feed, reel] = await Promise.all([renderAll("feed").then((p) => p[0]), renderAll("story").then((p) => p[0])]);
       setVideoStill({ title: titleFor(), feed: feed.toDataURL("image/png"), reel: reel.toDataURL("image/png") });
       navigate("/media/video");
     } catch (e) {
@@ -796,7 +826,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
           {pageCount > 1 && (
             <div className="flex items-center justify-center gap-1.5">
               {Array.from({ length: pageCount }, (_, i) => <button key={i} onClick={() => setPreviewPage(i)} className={chip(Math.min(previewPage, pageCount - 1) === i)}>Sida {i + 1}</button>)}
-              <span className="text-[10px] text-amber-200/80 ml-1">Texten fortsätter på sida 2 – laddas ned och delas som karusell.</span>
+              <span className="text-[10px] text-amber-200/80 ml-1">{s.pressCover && isPressPage(s.kind) ? "Karusell" : "Texten fortsätter på sida 2"} – laddas ned och delas som karusell.</span>
             </div>
           )}
           {zoomUrls && (
@@ -844,6 +874,23 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
           )}
           {isPress(s.kind) && (
             <>
+              <div>
+                <p className="text-[11px] text-white/50 mb-1.5">Stil – samma text och bild</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {([["bill", "Löpsedel"], ["front", "Förstasida"], ["article", "Artikel"], ["interview", "Intervju"]] as const).map(([k, name]) => (
+                    <button key={k} onClick={() => switchStyle(k)} className={chip(s.kind === k)}>{name}</button>
+                  ))}
+                </div>
+                {(s.kind === "article" || s.kind === "interview") && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    <span className="text-[11px] text-white/50 mr-1">Första bild:</span>
+                    {([[null, "Ingen"], ["bill", "Löpsedel"], ["front", "Förstasida"]] as const).map(([k, name]) => (
+                      <button key={name} onClick={() => update({ pressCover: k })} className={chip((s.pressCover ?? null) === k)}>{name}</button>
+                    ))}
+                  </div>
+                )}
+                <p className="text-[10px] text-white/35 mt-1">Byt stil när du vill – texten och bilden följer med. Spara som nytt för att ha flera stilar av samma text. Första bild ger en karusell: löpsedeln eller förstasidan först, sedan {s.kind === "interview" ? "intervjun" : "artikeln"}.</p>
+              </div>
               <label className="block text-[11px] text-white/50">Match
                 <select value={s.matchId === 0 ? 0 : resultMatch?.id ?? ""} onChange={(e) => { pressFilledFor.current = ""; update({ matchId: Number(e.target.value) }); }} className={input}>
                   <option value={0} className="text-black">Ingen match – bara egen text</option>
@@ -1160,7 +1207,10 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
             </div>
             <textarea id="media-caption" value={caption} onChange={(e) => { setCaptionEdited(true); setCaption(e.target.value); }} rows={7}
               className="w-full rounded-lg bg-white/5 border border-white/10 text-white text-xs px-3 py-2" />
-            <p className="text-[10px] text-white/35 mt-1">Hashtags från Matchrapporten läggs till automatiskt. Texten kopieras när du delar.</p>
+            <p className={`text-[10px] mt-1 ${caption.length > 2200 ? "text-red-300" : "text-white/35"}`}>
+              {caption.length > 2200 ? `${caption.length} av max 2 200 tecken – Instagram tar inte emot så lång text. Korta texten. ` : `${caption.length} / 2 200 tecken. `}
+              Hashtags från Matchrapporten läggs till automatiskt. Texten kopieras när du delar.
+            </p>
           </div>
         </section>
       </main>
