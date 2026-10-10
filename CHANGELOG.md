@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.75.1 – 2026-10-10
+
+- Media: klicka på förhandsvisningen för att förstora (alla sidor under varandra, tryck på bilden för dubbel storlek) – för korrläsning.
+- Stålbladet: hela texten (rubrik, ingress och brödtext) läggs i bildtexten till Instagram, eftersom tidningssidan är svår att läsa i telefonen. Kortas med … vid Instagrams gräns på 2 200 tecken.
+
 ## 2.75.0 – 2026-10-09
 
 - Stålbladet med riktigt tidningshuvud: överrad (tidningen, avdelningar, datum och nummer), namnet i stor tryckstil med lätt slitage och ett städ som symbol (Stålstaden), avdelningsrad med "Vi bevakar Stålstaden". Marinblå profil, tidningspapper.

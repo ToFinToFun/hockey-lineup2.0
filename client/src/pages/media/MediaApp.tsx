@@ -186,7 +186,16 @@ function defaultCaption(s: Settings, tags: string[]): string {
     const lines = s.groups.map((g) => `${g.label}: ${g.players.map((p) => `${p.name}${p.number ? ` #${p.number}` : ""}`).join(", ")}`);
     return [`${s.title || "Dagens lag"} – ${s.teamName} ${s.team === "green" ? "💚" : "🤍"}`, s.dateLine, "", ...lines, s.sponsorName ? `\nPresenteras av ${s.sponsorName}` : "", "", tagLine].filter((l, i, a) => !(l === "" && a[i - 1] === "")).join("\n").trim();
   }
-  if (isPress(s.kind)) return [[s.title.replace(/\s*\n\s*/g, " "), s.quoteHead ? `”${s.quoteHead}”` : ""].filter(Boolean).join(" "), s.subtitle, tagLine].filter(Boolean).join("\n\n");
+  if (isPress(s.kind)) {
+    // Tidningssidorna: hela texten i bildtexten (bilden är svår att läsa i telefonen).
+    // Instagram tillåter 2 200 tecken – texten kortas med … om den inte ryms.
+    const head = [s.title.replace(/\s*\n\s*/g, " "), s.quoteHead ? `”${s.quoteHead}”` : ""].filter(Boolean).join(" ");
+    const body = isPressPage(s.kind) ? s.body.replace(/\r\n?/g, "\n").replace(/\n{3,}/g, "\n\n").trim() : "";
+    const fixed = [head, s.subtitle, tagLine].filter(Boolean).join("\n\n");
+    const room = 2200 - fixed.length - 4;
+    const text = body.length > room ? `${body.slice(0, Math.max(0, room - 1)).replace(/\s+\S*$/, "")}…` : body;
+    return [head, s.subtitle, text, tagLine].filter(Boolean).join("\n\n");
+  }
   if (s.kind === "stats" || s.kind === "cards" || s.kind === "image") {
     return [s.title, s.subtitle, s.kind === "image" ? s.info : "", s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tagLine].filter(Boolean).join("\n\n");
   }
@@ -667,6 +676,15 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
   };
 
   const fileName = () => `${club().fileSlug}-${titleFor().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "")}.jpg`;
+  // Förstoring för korrläsning: alla sidor i full storlek
+  const [zoomUrls, setZoomUrls] = useState<string[] | null>(null);
+  const [zoomBig, setZoomBig] = useState(false);
+  const openZoom = async () => {
+    const list = allBlobs();
+    if (list.length) setZoomUrls(list.map((b) => URL.createObjectURL(b)));
+    else if (canvasRef.current) setZoomUrls([canvasRef.current.toDataURL("image/jpeg", 0.92)]);
+  };
+  const closeZoom = () => { zoomUrls?.forEach((u) => u.startsWith("blob:") && URL.revokeObjectURL(u)); setZoomUrls(null); setZoomBig(false); };
   const allBlobs = () => (blob ? [blob, ...(pageCount > 1 ? extraBlobs : [])] : []);
   const pageName = (i: number, n: number) => (n > 1 ? fileName().replace(/\.jpg$/, `-${i + 1}.jpg`) : fileName());
   const download = () => {
@@ -774,14 +792,25 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
             <button onClick={() => update({ format: "feed" })} className={chip(format === "feed")}>Flöde 4:5</button>
             <button onClick={() => update({ format: "story" })} className={chip(format === "story")}>Story/Reel 9:16</button>
           </div>
-          <canvas ref={canvasRef} className={`w-full h-auto rounded-xl shadow-2xl bg-black ${format === "story" ? "aspect-[9/16] max-w-[300px] mx-auto block" : "aspect-[4/5]"}`} aria-label="Förhandsvisning" />
+          <canvas ref={canvasRef} onClick={() => void openZoom()} title="Klicka för att förstora" className={`cursor-zoom-in w-full h-auto rounded-xl shadow-2xl bg-black ${format === "story" ? "aspect-[9/16] max-w-[300px] mx-auto block" : "aspect-[4/5]"}`} aria-label="Förhandsvisning" />
           {pageCount > 1 && (
             <div className="flex items-center justify-center gap-1.5">
               {Array.from({ length: pageCount }, (_, i) => <button key={i} onClick={() => setPreviewPage(i)} className={chip(Math.min(previewPage, pageCount - 1) === i)}>Sida {i + 1}</button>)}
               <span className="text-[10px] text-amber-200/80 ml-1">Texten fortsätter på sida 2 – laddas ned och delas som karusell.</span>
             </div>
           )}
-          <p className="text-[10px] text-white/35 text-center">{format === "story" ? "9:16 (1080×1920) – innehållet ligger inom Instagrams säkra yta för Story och Reels." : "4:5 (1080×1350) – samma format som matchrapporten."}</p>
+          {zoomUrls && (
+            <div className="fixed inset-0 z-50 bg-black overflow-auto" onClick={closeZoom}>
+              <div className="sticky top-0 flex items-center justify-between px-4 py-2 bg-black/80 text-xs text-white/70">
+                <span>{zoomUrls.length > 1 ? `${zoomUrls.length} sidor · ` : ""}Tryck på bilden för dubbel storlek</span>
+                <button onClick={closeZoom} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/10 border border-white/15 text-white"><X size={14} /> Stäng</button>
+              </div>
+              <div className={`${zoomBig ? "w-[200%] max-w-[2160px]" : "max-w-[1080px] mx-auto"} p-2 space-y-3`}>
+                {zoomUrls.map((u, i) => <img key={u} src={u} alt={`Sida ${i + 1}`} className={`w-full h-auto rounded-lg ${zoomBig ? "cursor-zoom-out" : "cursor-zoom-in"}`} onClick={(e) => { e.stopPropagation(); setZoomBig(!zoomBig); }} />)}
+              </div>
+            </div>
+          )}
+          <p className="text-[10px] text-white/35 text-center">Klicka på bilden för att förstora. {format === "story" ? "9:16 (1080×1920) – innehållet ligger inom Instagrams säkra yta för Story och Reels." : "4:5 (1080×1350) – samma format som matchrapporten."}</p>
           <div className="grid grid-cols-3 gap-2">
             <button onClick={download} disabled={!blob} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-sm disabled:opacity-40"><Download size={14} /> Ladda ned</button>
             <button onClick={() => void share()} disabled={!blob || !!busy} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-gradient-to-r from-fuchsia-500 to-orange-400 text-white text-sm font-semibold disabled:opacity-40">
