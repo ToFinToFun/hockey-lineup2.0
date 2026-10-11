@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.78.1 – 2026-10-11
+
+- Auto/Slumpa: blir det fler backar än backplatser och en center- eller kantplats står tom, flyttas en back som också kan spela den positionen (hybrid eller historik) dit, och den som blev över tar backplatsen. Ex: B/C blir center i stället för att B/MV hamnar där. Bytet sker bara inom samma lag och fungerar likadant mellan alla positioner (B, C, F). Lagkapten/assisterande flyttas bara om ingen annan passar.
+- Auto: en spelare som placerats som center behåller centerplatsen när tomma kedjor tas bort.
+- Inställningar → Externa källor: tydligare rad för Norrbotten utanför SHL.
+
 ## 2.78.0 – 2026-10-10
 
 - Stålbladet: ny ruta "Hockey i Norrbotten" med lagen från Norrbotten i Hockeyallsvenskan och SDHL – senaste resultat (vinst/förlust/oavgjort) och nästa match. På som standard, kan slås av.

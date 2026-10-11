@@ -78,6 +78,14 @@ function fitRank(p: Player, group: "C" | "F" | "B"): number {
   return 9;
 }
 
+/** a < b, jämfört element för element (första skillnaden avgör). */
+function lexLess(a: number[], b: number[]): boolean {
+  for (let k = 0; k < Math.min(a.length, b.length); k++) {
+    if (a[k] !== b[k]) return a[k] < b[k];
+  }
+  return false;
+}
+
 /** Sort priority: C first, then A, then others */
 function captainSortKey(p: Player): number {
   if (p.captainRole === "C") return 0;
@@ -506,6 +514,48 @@ export function autoDistribute(
       }
     }
 
+    // ── 5f2: Byte via hybridspelare ──
+    // Står en plats fortfarande tom och ingen som blivit över passar där, men en
+    // redan placerad spelare kan spela den positionen (hybrid/historik) och någon
+    // som blivit över passar på hans plats: flytta honom och låt den andra ta platsen.
+    // Ex: tre backar på två backplatser, B/C på back, B/MV över → B/C blir center.
+    // Rör bara utespelarplatser i samma lag, så lagfärg/antal/PIR påverkas inte.
+    const slotGroup = (s: Slot): "C" | "F" | "B" => (s.type === "defense" ? "B" : s.role === "c" ? "C" : "F");
+    const primaryGroup = (p: Player): "C" | "F" | "B" | null =>
+      p.position === "B" ? "B" : p.position === "C" ? "C" : p.position === "F" ? "F" : null;
+    /** -1 = ordinarie position, 0–2 = alternativ (se fitRank), 9 = passar inte. */
+    const fitFor = (p: Player, g: "C" | "F" | "B") => (primaryGroup(p) === g ? -1 : fitRank(p, g));
+    const outfieldSlots = [...centerSlots, ...wingSlots, ...defSlots];
+    for (const empty of outfieldSlots) {
+      if (lineup[empty.id]) continue;
+      const g = slotGroup(empty);
+      const leftover = allUnplaced.filter(t => !placed.has(t.player.id));
+      if (leftover.length === 0) break;
+      if (leftover.some(t => fitFor(t.player, g) < 9)) continue; // passande reserv finns – tas i 5g
+      let best: { from: Slot; mover: Player; filler: TaggedPlayer; key: number[] } | null = null;
+      for (const from of outfieldSlots) {
+        const mover = lineup[from.id];
+        if (!mover || from === empty) continue;
+        const g2 = slotGroup(from);
+        if (g2 === g) continue;
+        const moverFit = fitRank(mover, g);
+        if (moverFit >= 9) continue;
+        for (const filler of leftover) {
+          const fillerFit = fitFor(filler.player, g2);
+          if (fillerFit >= 9) continue;
+          // Bäst: flyttaren passar bäst på nya platsen, ersättaren bäst på den gamla,
+          // och hellre en vanlig spelare än lagkapten/assisterande som flyttas.
+          const key = [moverFit, fillerFit, -captainSortKey(mover)];
+          if (!best || lexLess(key, best.key)) best = { from, mover, filler, key };
+        }
+      }
+      if (best) {
+        lineup[empty.id] = best.mover;
+        lineup[best.from.id] = best.filler.player;
+        placed.add(best.filler.player.id);
+      }
+    }
+
     // 5g: Fill remaining empty slots with any unplaced players (generic overflow)
     let stillUnplaced = allUnplaced.filter(t => !placed.has(t.player.id));
     if (doShuffle) stillUnplaced = shuffleArray(stillUnplaced);
@@ -609,6 +659,8 @@ export function autoDistribute(
     const oldGkPlayers = originalSlots.filter(s => s.type === "goalkeeper" && lineup[s.id]).map(s => lineup[s.id]);
     const oldDefPlayers = originalSlots.filter(s => s.type === "defense" && lineup[s.id]).map(s => lineup[s.id]);
     const oldFwdPlayers = originalSlots.filter(s => s.type === "forward" && lineup[s.id]).map(s => lineup[s.id]);
+    // Den som redan stod som center (t.ex. en back/center via hybridbyte) förblir center.
+    const oldCenterSlotPlayers = originalSlots.filter(s => s.role === "c" && lineup[s.id]).map(s => lineup[s.id]);
 
     // Remove old entries
     for (const s of originalSlots) {
@@ -631,7 +683,11 @@ export function autoDistribute(
     }
 
     // For forwards, separate centers and wings
-    const oldCenterPlayers = oldFwdPlayers.filter(p => p.position === "C" || (p.mostPlayedPosition === "C" && p.position !== "F"));
+    const oldCenterPlayers = [
+      ...oldCenterSlotPlayers,
+      ...oldFwdPlayers.filter(p => !oldCenterSlotPlayers.includes(p) &&
+        (p.position === "C" || (p.mostPlayedPosition === "C" && p.position !== "F"))),
+    ];
     const oldWingPlayers = oldFwdPlayers.filter(p => !oldCenterPlayers.includes(p));
 
     for (let i = 0; i < newCenterSlots.length && i < oldCenterPlayers.length; i++) {
