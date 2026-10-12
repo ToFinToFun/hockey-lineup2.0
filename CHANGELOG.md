@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.78.2 – 2026-10-12
+
+- Rätt logotyp för Vita (vit tröja med gröna detaljer). Används överallt där Vitas logga visas: Lineup, Score Tracker, delningslänkar, nyhetsbild, matchrapport, hockeykort och Media. En logga som laddats upp under Inställningar → Klubb går fortfarande före.
+- Appens cache för bilder förnyas så att telefoner med appen installerad hämtar den nya loggan direkt.
+
 ## 2.78.1 – 2026-10-11
 
 - Auto/Slumpa: blir det fler backar än backplatser och en center- eller kantplats står tom, flyttas en back som också kan spela den positionen (hybrid eller historik) dit, och den som blev över tar backplatsen. Ex: B/C blir center i stället för att B/MV hamnar där. Bytet sker bara inom samma lag och fungerar likadant mellan alla positioner (B, C, F). Lagkapten/assisterande flyttas bara om ingen annan passar.

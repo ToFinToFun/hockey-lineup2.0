@@ -6,7 +6,7 @@
 // - Bilder, ljud, ikoner, typsnitt: cache först, uppdateras i bakgrunden.
 // - API-anrop (/api/*) hanteras aldrig här; appen sköter sin egen offline-data.
 
-const VERSION = 'v6';
+const VERSION = 'v7';
 const SHELL_CACHE = `stal-shell-${VERSION}`;
 const ASSET_CACHE = `stal-assets-${VERSION}`;
 const NETWORK_TIMEOUT_MS = 3000;
