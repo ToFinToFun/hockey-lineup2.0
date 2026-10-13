@@ -32,6 +32,13 @@ export function onRegistryChange(fn: (source: "app" | "external") => void) {
   listeners.add(fn);
 }
 
+const renameListeners = new Set<(renames: Array<{ id: string; oldNames: string[] }>) => void>();
+
+/** Anropas med spelarnas gamla namn/etiketter när namn eller nummer ändrats i appen. */
+export function onPlayersRenamed(fn: (renames: Array<{ id: string; oldNames: string[] }>) => void) {
+  renameListeners.add(fn);
+}
+
 function changed(source: "app" | "external") {
   cache = null;
   version++;
@@ -95,14 +102,20 @@ export async function updatePlayers(changes: Array<{ id: string; fields: PlayerF
   if (!db) throw new Error("Databasen är inte tillgänglig");
   const map = await load();
   let any = false;
+  const renames: Array<{ id: string; oldNames: string[] }> = [];
   for (const { id, fields } of changes) {
-    if (!map.has(id)) continue;
+    const before = map.get(id);
+    if (!before) continue;
     const set = cleanFields(fields);
     if (Object.keys(set).length === 0) continue;
     await db.update(players).set(set).where(eq(players.id, id));
     any = true;
+    const nameChanged = "name" in set && set.name !== before.name;
+    const numberChanged = "number" in set && set.number !== before.number;
+    if (nameChanged || numberChanged) renames.push({ id, oldNames: [...new Set([before.name, labelOf(before)])] });
   }
   if (any) await afterWrite();
+  if (renames.length) for (const fn of renameListeners) fn(renames);
 }
 
 export async function updatePlayer(id: string, fields: PlayerFields): Promise<PlayerRow | undefined> {

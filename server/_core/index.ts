@@ -6,6 +6,7 @@ try {
 }
 // Svensk tid för allt som räknas i lokal tid (träningstider, tidsinställda nyheter, säsonger)
 process.env.TZ ||= "Europe/Stockholm";
+import { linkUnlinkedGoals } from "../scoreDb";
 import express from "express";
 import helmet from "helmet";
 import { createServer } from "http";
@@ -217,6 +218,8 @@ async function startServer() {
     // Profilkort som följer statistiken: kontroll efter start och sedan var sjätte timme
     // Engångsrättning: återställ lag för spelarna från 29/9 (körs bara en gång)
     void runOneTimeFixes();
+    // Mål/assist som bara sparats med namn kopplas till rätt spelar-ID
+    setTimeout(() => void linkUnlinkedGoals(), 10_000);
     startLiveProfileSchedule();
     // Automatisk nyhet till laget.se (gör bara något om den är påslagen)
     startAutoNewsSchedule();

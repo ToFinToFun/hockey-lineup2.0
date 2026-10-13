@@ -22,7 +22,10 @@ interface GoalEvent {
   team: "white" | "green";
   timestamp: string;
   scorer?: string;
+  /** Spelarens ID – saknas när bara ett namn sparats */
+  scorerId?: string;
   assist?: string;
+  assistId?: string;
   other?: string;
   sponsor?: string;
 }
@@ -797,6 +800,13 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                               </span>
                               {goal.assist && (
                                 <span className="text-[#687076] text-xs ml-1">({goal.assist})</span>
+                              )}
+                              {isAdmin && !(selectedMatchData.opponentId != null && goal.team === "green") &&
+                                ((goal.scorer && !goal.scorerId) || (goal.assist && !goal.assistId)) && (
+                                <span className="text-[10px] ml-1 px-1.5 py-0.5 rounded font-semibold text-amber-300 border border-amber-400/40"
+                                  title="Namnet är inte kopplat till någon spelare i registret och räknas inte i statistiken. Redigera matchen och välj spelaren i listan.">
+                                  ej kopplad
+                                </span>
                               )}
                               {goal.other === "Straff" && (
                                 <span className="text-[10px] ml-1 px-1.5 py-0.5 rounded font-bold tracking-wide" style={{ backgroundColor: '#1a1a1a', color: '#ffffff', border: '1px solid #555', boxShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>Straff</span>

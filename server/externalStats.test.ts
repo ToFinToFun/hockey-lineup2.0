@@ -63,3 +63,42 @@ describe.skipIf(!process.env.DATABASE_URL)("statistik per hall", () => {
     for (const old of (await c.score.match.list()).filter((m: { name: string }) => m.name.startsWith("hall-"))) await c.score.match.delete({ id: (old as { id: number }).id });
   });
 });
+
+describe.skipIf(!process.env.DATABASE_URL)("statistik per spelar-ID", () => {
+  it("mål med bara namn (felstavat / utanför uppställningen) kopplas, och namnbyte följer med", async () => {
+    const { updatePlayer } = await import("./playersDb");
+    const { linkUnlinkedGoals } = await import("./scoreDb");
+    const c = appRouter.createCaller(admin as never);
+    if (!(await listPlayers()).some((p) => p.id === "id-stat-1")) await createPlayer({ id: "id-stat-1", name: "Idstat Felstavad", number: "88" });
+    else await updatePlayer("id-stat-1", { name: "Idstat Felstavad", number: "88" });
+    const day = { from: "2034-02-01", to: "2034-02-03" };
+    for (const old of (await c.score.match.list()).filter((m: { name: string }) => m.name.startsWith("idstat-"))) await c.score.match.delete({ id: (old as { id: number }).id });
+    const inLineup = { teamAName: "VITA", teamBName: "GRÖNA", lineup: { "team-a-fwd-1-c": { id: "id-stat-1", name: "Idstat Felstavad", number: "88", position: "C" } } };
+    // Match 1: i uppställningen, ett mål med ID och ett med bara en annan felstavning
+    await c.score.match.save({
+      name: "idstat-1", teamWhiteScore: 2, teamGreenScore: 0, lineup: inLineup,
+      matchStartTime: new Date(2034, 1, 1, 20).toISOString(), matchEndTime: new Date(2034, 1, 1, 21).toISOString(),
+      goalHistory: [
+        { team: "white", scorer: "Idstat Felstavad #88", scorerId: "id-stat-1", timestamp: "20:30:00" },
+        { team: "white", scorer: "Idstatt Felstavat", timestamp: "20:10:00" },
+      ],
+    } as never);
+    // Match 2: spelade utan uppställning, assist med bara namn
+    await c.score.match.save({
+      name: "idstat-2", teamWhiteScore: 1, teamGreenScore: 0,
+      matchStartTime: new Date(2034, 1, 2, 20).toISOString(), matchEndTime: new Date(2034, 1, 2, 21).toISOString(),
+      goalHistory: [{ team: "white", scorer: "Någon Gäst", assist: "Idstat Felstavad", timestamp: "20:10:00" }],
+    } as never);
+    // Namnbyte efteråt (som när namnet rättas för laget.se)
+    await updatePlayer("id-stat-1", { name: "Idstat Rättad" });
+    await linkUnlinkedGoals();
+
+    const s = await c.scoreStats.seasonStats(day);
+    const rows = s.topScorers.filter((p: { name: string }) => p.name.startsWith("Idstat"));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ name: "Idstat Rättad #88", goals: 2, assists: 1, points: 3, matches: 2 });
+    expect(s.topScorers.find((p: { name: string }) => p.name === "Någon Gäst")?.goals).toBe(1); // gäst kvar som text
+
+    for (const old of (await c.score.match.list()).filter((m: { name: string }) => m.name.startsWith("idstat-"))) await c.score.match.delete({ id: (old as { id: number }).id });
+  });
+});

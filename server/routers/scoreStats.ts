@@ -3,7 +3,7 @@ import { isTeamAWhite as teamAIsWhite, normalizeTeamKey, teamName, teamGenitive 
 import { listOpponents } from "../opponents";
 import { iceTimeFor, iceTimeRows } from "../iceTimeStats";
 import { computeFunStats, computeGoalieFun } from "../funStats";
-import { listPlayers } from "../playersDb";
+import { listPlayers, normalizeName } from "../playersDb";
 import { iceTimeBySlot, matchMinutes, slotKind, type IcePos } from "../../shared/iceTime";
 import { normalizeGoalType } from "../playerHistory";
 /**
@@ -50,6 +50,32 @@ function findGwgScorer(
   // Gemensam regel och ordning: shared/goalOrder.ts
   const i = winningGoalIndex(goals, whiteScore, greenScore);
   return i >= 0 ? goalsOldestFirst<{ scorer?: string }>(goals)[i].scorer || null : null;
+}
+
+/** Statistiknyckel för en spelare: spelar-ID, eller namnet om målet saknar koppling. */
+function statKey(id: string | undefined, label: string | undefined): string | null {
+  if (id) return `id:${id}`;
+  return label?.trim() ? `namn:${normalizeName(label)}` : null;
+}
+
+/** Nyckeln för matchvinnande målets skytt (samma regel som findGwgScorer). */
+function findGwgKey(
+  goals: Array<{ team: string; scorer?: string; scorerId?: string; other?: string }>,
+  whiteScore: number,
+  greenScore: number
+): string | null {
+  const i = winningGoalIndex(goals, whiteScore, greenScore);
+  if (i < 0) return null;
+  const g = goalsOldestFirst<{ scorer?: string; scorerId?: string }>(goals)[i];
+  return statKey(g.scorerId, g.scorer);
+}
+
+/** Spelarna i matchens uppställning (efter rättning utifrån målen), som statistiknycklar. */
+function playedKeys(match: { lineup?: unknown }): Set<string> {
+  const wrap = match.lineup as { lineup?: Record<string, { id?: string } | null> } | null | undefined;
+  const out = new Set<string>();
+  for (const p of Object.values(wrap?.lineup ?? {})) if (p?.id) out.add(`id:${p.id}`);
+  return out;
 }
 
 /** Extract player team and position from lineup slot */
@@ -894,6 +920,10 @@ export const scoreStatsRouter = router({
     let playerRecordPoints: { playerName: string; points: number; goals: number; assists: number; matchName: string; matchId: number } | null = null;
 
     const monthlyPlayerStats: Record<string, Record<string, { goals: number; assists: number; gwg: number; matches: Set<number> }>> = {};
+    // Allt räknas per spelar-ID (namnbyten slår igenom); namnet hämtas från senaste målet/registret.
+    const nameOf = new Map<string, string>();
+    const played = new Map<string, number>();
+    const monthlyPlayed = new Map<string, Map<string, Set<number>>>();
 
     for (const match of matches) {
       // Lagsiffror (Vita/Gröna) bara för internmatcher – externa räknas bara för spelarna
@@ -920,45 +950,58 @@ export const scoreStatsRouter = router({
       }
       }
 
-      const goals = match.goalHistory as Array<{ team: string; scorer?: string; assist?: string; other?: string }> | null;
+      const goals = match.goalHistory as Array<{ team: string; scorer?: string; scorerId?: string; assist?: string; assistId?: string; other?: string }> | null;
+      const matchDateForPlayed = match.createdAt ? new Date(match.createdAt) : null;
+      const playedHere = playedKeys(match);
+      for (const g of Array.isArray(goals) ? goals : []) {
+        for (const k of [statKey(g.scorerId, g.scorer), statKey(g.assistId, g.assist)]) if (k) playedHere.add(k);
+      }
+      for (const k of playedHere) {
+        played.set(k, (played.get(k) ?? 0) + 1);
+        if (matchDateForPlayed) {
+          const mk = `${matchDateForPlayed.getFullYear()}-${String(matchDateForPlayed.getMonth() + 1).padStart(2, "0")}`;
+          if (!monthlyPlayed.has(mk)) monthlyPlayed.set(mk, new Map());
+          const mm = monthlyPlayed.get(mk)!;
+          if (!mm.has(k)) mm.set(k, new Set());
+          mm.get(k)!.add(match.id);
+        }
+      }
       if (goals && Array.isArray(goals)) {
         const matchPlayerGoals: Record<string, number> = {};
         const matchPlayerAssists: Record<string, number> = {};
 
         for (const goal of goals) {
-          if (goal.scorer) {
-            if (!playerStats[goal.scorer]) playerStats[goal.scorer] = { goals: 0, assists: 0, gwg: 0, team: goal.team, matches: 0 };
-            playerStats[goal.scorer].goals++;
-            matchPlayerGoals[goal.scorer] = (matchPlayerGoals[goal.scorer] || 0) + 1;
+          const sk = statKey(goal.scorerId, goal.scorer);
+          const ak = statKey(goal.assistId, goal.assist);
+          if (sk) {
+            if (goal.scorer) nameOf.set(sk, goal.scorer);
+            if (!playerStats[sk]) playerStats[sk] = { goals: 0, assists: 0, gwg: 0, team: goal.team, matches: 0 };
+            playerStats[sk].goals++;
+            matchPlayerGoals[sk] = (matchPlayerGoals[sk] || 0) + 1;
           }
-          if (goal.assist) {
-            if (!playerStats[goal.assist]) playerStats[goal.assist] = { goals: 0, assists: 0, gwg: 0, team: goal.team, matches: 0 };
-            playerStats[goal.assist].assists++;
-            matchPlayerAssists[goal.assist] = (matchPlayerAssists[goal.assist] || 0) + 1;
+          if (ak) {
+            if (goal.assist) nameOf.set(ak, goal.assist);
+            if (!playerStats[ak]) playerStats[ak] = { goals: 0, assists: 0, gwg: 0, team: goal.team, matches: 0 };
+            playerStats[ak].assists++;
+            matchPlayerAssists[ak] = (matchPlayerAssists[ak] || 0) + 1;
           }
           const key = normalizeGoalType(goal.other);
           if (key) goalTypes[key] = (goalTypes[key] || 0) + 1;
         }
 
-        // Track matches played per player
-        const matchPlayers = new Set([...Object.keys(matchPlayerGoals), ...Object.keys(matchPlayerAssists)]);
-        for (const player of matchPlayers) {
-          if (playerStats[player]) playerStats[player].matches++;
-        }
-
-        const gwgScorer = findGwgScorer(goals, match.teamWhiteScore, match.teamGreenScore);
+        const gwgScorer = findGwgKey(goals, match.teamWhiteScore, match.teamGreenScore);
         if (gwgScorer && playerStats[gwgScorer]) {
           playerStats[gwgScorer].gwg++;
         }
 
         for (const [player, g] of Object.entries(matchPlayerGoals)) {
           if (!playerRecordGoals || g > playerRecordGoals.goals) {
-            playerRecordGoals = { playerName: player, goals: g, matchName: match.name, matchId: match.id };
+            playerRecordGoals = { playerName: nameOf.get(player) ?? player, goals: g, matchName: match.name, matchId: match.id };
           }
         }
         for (const [player, a] of Object.entries(matchPlayerAssists)) {
           if (!playerRecordAssists || a > playerRecordAssists.assists) {
-            playerRecordAssists = { playerName: player, assists: a, matchName: match.name, matchId: match.id };
+            playerRecordAssists = { playerName: nameOf.get(player) ?? player, assists: a, matchName: match.name, matchId: match.id };
           }
         }
         const allPlayers = Array.from(new Set([...Object.keys(matchPlayerGoals), ...Object.keys(matchPlayerAssists)]));
@@ -967,7 +1010,7 @@ export const scoreStatsRouter = router({
           const a = matchPlayerAssists[player] || 0;
           const pts = g + a;
           if (!playerRecordPoints || pts > playerRecordPoints.points) {
-            playerRecordPoints = { playerName: player, points: pts, goals: g, assists: a, matchName: match.name, matchId: match.id };
+            playerRecordPoints = { playerName: nameOf.get(player) ?? player, points: pts, goals: g, assists: a, matchName: match.name, matchId: match.id };
           }
         }
 
@@ -1006,12 +1049,13 @@ export const scoreStatsRouter = router({
             bestGoals = stats.goals; bestAssists = stats.assists; bestMatches = stats.matches.size;
           }
         }
-        return { month, playerName: bestPlayer, goals: bestGoals, assists: bestAssists, points: bestPoints, gwg: bestGwg, matches: bestMatches };
+        const playedInMonth = monthlyPlayed.get(month)?.get(bestPlayer)?.size;
+        return { month, playerName: nameOf.get(bestPlayer) ?? bestPlayer, goals: bestGoals, assists: bestAssists, points: bestPoints, gwg: bestGwg, matches: Math.max(playedInMonth ?? 0, bestMatches) };
       })
       .sort((a, b) => b.month.localeCompare(a.month));
 
     const topScorers = Object.entries(playerStats)
-      .map(([name, stats]) => ({ name, goals: stats.goals, assists: stats.assists, gwg: stats.gwg, points: stats.goals + stats.assists, team: stats.team, matches: stats.matches }))
+      .map(([key, stats]) => ({ name: nameOf.get(key) ?? key, id: key.startsWith("id:") ? key.slice(3) : undefined, goals: stats.goals, assists: stats.assists, gwg: stats.gwg, points: stats.goals + stats.assists, team: stats.team, matches: played.get(key) ?? 0 }))
       .sort((a, b) => b.points - a.points || b.goals - a.goals || b.assists - a.assists || b.gwg - a.gwg);
 
     const recentForm = matches.slice(0, 20).map(m => ({ name: m.name, whiteScore: m.teamWhiteScore, greenScore: m.teamGreenScore }));

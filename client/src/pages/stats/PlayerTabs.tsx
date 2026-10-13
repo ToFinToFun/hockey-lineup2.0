@@ -19,7 +19,7 @@ type FunRow = Outputs["scoreStats"]["funStats"][number];
 type GoalieFunRow = Outputs["scoreStats"]["goalieFun"][number];
 type Input = { from?: string; to?: string; includeExternal?: boolean } | undefined;
 
-interface Scorer { name: string; number?: string; goals: number; assists: number; points: number; gwg: number; matches?: number }
+interface Scorer { name: string; id?: string; number?: string; goals: number; assists: number; points: number; gwg: number; matches?: number }
 
 const bareName = (n: string) => n.replace(/\s*#\d*\s*$/, "").trim().toLowerCase();
 
@@ -62,7 +62,7 @@ export function SkatersTab({ stats, input, ratings, onPlayerClick }: { stats: { 
       <StatSection title="Poängliga" icon={<Trophy size={14} className="text-amber-400" />} hint="Sp = matcher, M = mål, A = assist, P = poäng, GWG = matchvinnande mål, ★ = stjärnpoäng (★★★ = 3, ★★ = 2, ★ = 1).">
         <StatTable<Scorer>
           rows={scorers}
-          rowKey={(r) => r.name}
+          rowKey={(r) => r.id ?? r.name}
           name={(r) => r.name}
           onRowClick={(r) => onPlayerClick(r.name)}
           defaultSort="p"

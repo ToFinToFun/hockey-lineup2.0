@@ -7,6 +7,13 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.79.0 – 2026-10-13
+
+- Statistik: Poängligan räknar per spelar-ID i stället för namn, så ett namn- eller nummerbyte aldrig delar upp eller tappar en spelares poäng. Rekord och månadens spelare räknas likadant.
+- Poängligan: "Sp" är nu spelade matcher (uppställningen, rättad utifrån målen) – tidigare bara matcher där spelaren gjorde poäng.
+- Mål och assist som bara sparats med ett namn (t.ex. en gammal felstavning eller en spelare som inte stod i uppställningen) kopplas automatiskt till rätt spelare: vid uppstart, när en match sparas eller ändras och när en spelare byter namn eller nummer. Försiktigt – exakt namn, laget.se-namn, tröjnummer eller tydligt liknande stavning bland matchens spelare i samma lag. Gäster och motståndare lämnas som text, och originaltexten sparas kvar. Varje koppling skrivs i serverloggen.
+- Matchhistorik: mål där namnet inte är kopplat till någon spelare märks "ej kopplad" (bara för styrelsen). Redigera matchen och välj spelaren i listan för att koppla det.
+
 ## 2.78.2 – 2026-10-12
 
 - Rätt logotyp för Vita (vit tröja med gröna detaljer). Används överallt där Vitas logga visas: Lineup, Score Tracker, delningslänkar, nyhetsbild, matchrapport, hockeykort och Media. En logga som laddats upp under Inställningar → Klubb går fortfarande före.

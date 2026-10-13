@@ -4,9 +4,10 @@
 
 import { isTeamAWhite, defaultTeamNames } from "../shared/teams";
 import { correctLineupFromGoals } from "./lineupCorrection";
-import { eq, inArray, desc } from "drizzle-orm";
+import { eq, inArray, desc, and, or, isNull, isNotNull } from "drizzle-orm";
 import { getDb, tableChecksum } from "./db";
-import { getRegistryMap, onRegistryChange, labelOf, normalizeName } from "./playersDb";
+import { getRegistryMap, onRegistryChange, onPlayersRenamed, labelOf, normalizeName } from "./playersDb";
+import { findGoalLinks, type GoalLink, type Rename } from "./goalLinking";
 import {
   matchResults, matchPlayers, matchGoals, appConfig,
   type MatchRow, type MatchResult, type PlayerRow,
@@ -62,6 +63,66 @@ function invalidateMatches() {
   matchCacheVersion++;
 }
 onRegistryChange(invalidateMatches);
+
+// ─── Mål utan spelar-ID ─────────────────────────────────────────────
+// Kopplas till rätt spelare automatiskt (se goalLinking.ts): vid uppstart, efter
+// att en match sparats/ändrats och när en spelare bytt namn eller nummer.
+
+let linking: Promise<GoalLink[]> = Promise.resolve([]);
+
+/** Mål/assist som bara har en text – sådant som inte räknas på någon spelare. */
+export async function getUnlinkedGoals() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(matchGoals).where(or(
+    and(isNull(matchGoals.scorerId), isNotNull(matchGoals.scorerName)),
+    and(isNull(matchGoals.assistId), isNotNull(matchGoals.assistName)),
+  ));
+}
+
+async function runGoalLinking(renames?: Rename[]): Promise<GoalLink[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const goals = (await getUnlinkedGoals()).filter((g) => (!g.scorerId && g.scorerName?.trim()) || (!g.assistId && g.assistName?.trim()));
+  if (goals.length === 0) return [];
+  const matchIds = [...new Set(goals.map((g) => g.matchId))];
+  const [participants, matchRows, registry] = await Promise.all([
+    db.select().from(matchPlayers).where(inArray(matchPlayers.matchId, matchIds)),
+    db.select({ id: matchResults.id, opponentId: matchResults.opponentId }).from(matchResults).where(inArray(matchResults.id, matchIds)),
+    getRegistryMap(),
+  ]);
+  const links = findGoalLinks({
+    goals,
+    participants,
+    players: [...registry.values()],
+    renames,
+    externalMatchIds: new Set(matchRows.filter((m) => m.opponentId != null).map((m) => m.id)),
+  });
+  if (links.length === 0) return [];
+  await db.transaction(async (tx) => {
+    for (const l of links) {
+      // Bara om raden fortfarande saknar ID (ingen skriver över en manuell koppling)
+      const col = l.field === "scorerId" ? matchGoals.scorerId : matchGoals.assistId;
+      await tx.update(matchGoals).set({ [l.field]: l.playerId }).where(and(eq(matchGoals.id, l.goalId), isNull(col)));
+    }
+  });
+  for (const l of links) {
+    const p = registry.get(l.playerId);
+    console.log(`[mål] Match ${l.matchId}: ${l.field === "scorerId" ? "målskytt" : "assist"} "${l.name}" kopplad till ${p ? labelOf(p) : l.playerId} (${l.how})`);
+  }
+  invalidateMatches();
+  return links;
+}
+
+/** Kör kopplingen (en i taget). Fel stoppar aldrig det som anropade. */
+export function linkUnlinkedGoals(renames?: Rename[]): Promise<GoalLink[]> {
+  linking = linking.catch(() => []).then(() => runGoalLinking(renames)).catch((err) => {
+    console.error("[mål] Kunde inte koppla mål till spelare:", err);
+    return [];
+  });
+  return linking;
+}
+onPlayersRenamed((renames) => void linkUnlinkedGoals(renames));
 
 async function matchChecksum(): Promise<string | null> {
   const sums = await Promise.all([tableChecksum("match_results"), tableChecksum("match_players"), tableChecksum("match_goals")]);
@@ -245,6 +306,7 @@ export async function saveMatch(input: MatchInput): Promise<number> {
     return matchId;
   });
   invalidateMatches();
+  if (input.goalHistory?.length) void linkUnlinkedGoals();
   return id;
 }
 
@@ -274,6 +336,7 @@ export async function updateMatch(
     }
   });
   invalidateMatches();
+  if (data.goalHistory?.length) void linkUnlinkedGoals();
 }
 
 /** Godkända matcher – det enda som räknas i statistik och PIR. */
