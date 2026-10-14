@@ -1190,7 +1190,23 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
             {/* Starttid: träningens start. Äldre matcher fick tiden från första målet och visas som okänd. */}
             <div>
               <label className="text-[#9BA1A6] text-xs font-medium block mb-1">Starttid</label>
-              <input type="time" value={editStart} onChange={(e) => setEditStart(e.target.value)}
+              <input
+                value={editStart}
+                inputMode="numeric"
+                placeholder="20:15"
+                maxLength={5}
+                onChange={(e) => {
+                  // Bara siffror, kolon sätts automatiskt: "2015" → "20:15"
+                  const d = e.target.value.replace(/\D/g, "").slice(0, 4);
+                  setEditStart(d.length > 2 ? `${d.slice(0, 2)}:${d.slice(2)}` : d);
+                }}
+                onBlur={() => {
+                  const m = editStart.match(/^(\d{1,2}):?(\d{2})?$/);
+                  if (!m) return;
+                  const h = Math.min(23, Number(m[1]));
+                  const min = Math.min(59, Number(m[2] ?? 0));
+                  setEditStart(`${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`);
+                }}
                 className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-[#ECEDEE] text-sm" />
               <p className="text-[10px] text-white/35 mt-1">
                 {editStartOrig ? "Från laget.se. Ändra bara om den är fel." : "Okänd – starttiden sattes från första målet. Fyll i träningens start (t.ex. 20:15) så räknas matchen i Snabbaste målet och målens minut visas."}

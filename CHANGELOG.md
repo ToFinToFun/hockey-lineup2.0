@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.80.1 – 2026-10-14
+
+- Matchhistorik → Redigera → Starttid: vanligt sifferfält i stället för tidsväljare, som inte gick att använda i mobilen. Skriv t.ex. 2015 så blir det 20:15.
+
 ## 2.80.0 – 2026-10-14
 
 - Matchhistorik → Redigera: ny rad **Starttid**. Äldre matcher som fick starttiden från första målet visas som okända och kan få träningens riktiga start (t.ex. 20:15). Då räknas de i Snabbaste målet och matchrapporten visar målens minut. Matchens datum ändras inte, och ett automatiskt matchnamn får den nya tiden.
