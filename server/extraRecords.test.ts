@@ -23,4 +23,16 @@ describe("fler rekord", () => {
     expect(by.shutouts).toMatchObject({ who: "Målis", value: "2 nollor" });
     expect(by.ga60).toMatchObject({ who: "Målis" });
   });
+
+  it("snabbaste målet räknar inte matcher där starttiden sattes från första målet", () => {
+    const start = new Date(2026, 9, 1, 20, 0).toISOString();
+    // Starttid med sekunder = klockan när första målet registrerades, inte träningens start
+    const fromGoal = new Date(2026, 9, 1, 20, 14, 37).toISOString();
+    const recs = computeExtraRecords([
+      m("A", 1, 0, ["white@20:05:00"], start),
+      m("B", 2, 0, ["white@20:14:59", "white@20:20:00"], fromGoal),
+    ], []);
+    const fastest = recs.find((r) => r.key === "fastest");
+    expect(fastest).toMatchObject({ value: "Efter 5 min", detail: "A" });
+  });
 });

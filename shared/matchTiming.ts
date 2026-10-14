@@ -63,6 +63,17 @@ export function matchName(start: Date, white: number, green: number): string {
  * ("22:27:10"); passerar det midnatt räknas det till nästa dygn. null om det
  * inte går (saknad start eller orimligt värde).
  */
+/**
+ * Kommer starttiden från träningens schemalagda tid (laget.se, hela minuter)?
+ * Äldre matcher fick starttiden från klockan när första målet registrerades – den har
+ * nästan alltid sekunder, och då säger målens minut inget om hur snabbt de kom.
+ */
+export function isScheduledStart(start: Date | string | null | undefined): boolean {
+  if (!start) return false;
+  const d = new Date(start);
+  return !Number.isNaN(d.getTime()) && d.getSeconds() === 0 && d.getMilliseconds() === 0;
+}
+
 export function elapsedMinutes(goalClock: string | undefined, start: Date | string | null | undefined): number | null {
   if (!goalClock || !start) return null;
   const s = typeof start === "string" ? new Date(start) : start;

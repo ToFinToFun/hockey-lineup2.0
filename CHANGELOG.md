@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.79.1 – 2026-10-14
+
+- Snabbaste målet: matcher där starttiden sattes från klockan vid första målet (äldre matcher, innan träningens starttid lästes in) räknas inte längre. Bara matcher med träningens schemalagda starttid (hela minuter från laget.se) räknas. Samma kontroll avgör om matchrapporten visar målens minut.
+
 ## 2.79.0 – 2026-10-13
 
 - Statistik: Poängligan räknar per spelar-ID i stället för namn, så ett namn- eller nummerbyte aldrig delar upp eller tappar en spelares poäng. Rekord och månadens spelare räknas likadant.

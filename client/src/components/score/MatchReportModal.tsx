@@ -14,7 +14,7 @@ import { useSponsors, logoForName, randomSponsorName } from "@/lib/sponsors";
 import { goalsOldestFirst, winningGoalIndex } from "@shared/goalOrder";
 import { renderResultImage, renderGoalsImage, type ReportData, type ReportGoal } from "@/lib/matchReportImages";
 import { starCardSettings, renderStarPost } from "@/lib/starCards";
-import { elapsedMinutes } from "@shared/matchTiming";
+import { elapsedMinutes, isScheduledStart } from "@shared/matchTiming";
 import type { CardSettings } from "@shared/cardRender";
 
 interface RawGoal {
@@ -80,7 +80,7 @@ export function buildReportData(
   const gwgIndex = winningGoalIndex(match.goalHistory, match.teamWhiteScore, match.teamGreenScore);
   // Äldre matcher fick starttiden från första målet – då vet vi inte riktig start (visa klockslag)
   const firstMinute = chrono.length ? elapsedMinutes(chrono[0].timestamp, match.matchStartTime ?? null) : null;
-  const startKnown = !!match.matchStartTime && firstMinute !== 0;
+  const startKnown = isScheduledStart(match.matchStartTime) && firstMinute !== 0;
   const goals: ReportGoal[] = chrono.map((g, i) => ({
     gwg: i === gwgIndex,
     team: g.team,

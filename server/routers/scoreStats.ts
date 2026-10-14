@@ -1,4 +1,5 @@
 import { goalsOldestFirst, firstGoal, winningGoalIndex } from "../../shared/goalOrder";
+import { isScheduledStart } from "../../shared/matchTiming";
 import { isTeamAWhite as teamAIsWhite, normalizeTeamKey, teamName, teamGenitive } from "../../shared/teams";
 import { listOpponents } from "../opponents";
 import { iceTimeFor, iceTimeRows } from "../iceTimeStats";
@@ -149,8 +150,9 @@ export function computeExtraRecords(
   // räknat i sekunder från matchstart så att 0:40 slår 0:55
   let fastest: { sec: number; min: number; who: string; m: (typeof matches)[number] } | null = null;
   for (const m of matches) {
-    if (!m.matchStartTime) continue;
-    const st = new Date(m.matchStartTime);
+    // Bara matcher med träningens riktiga starttid (inte satt från första målet)
+    if (!isScheduledStart(m.matchStartTime)) continue;
+    const st = new Date(m.matchStartTime!);
     const g = firstGoal<{ timestamp?: string; scorer?: string }>(m.goalHistory);
     const t = g?.timestamp?.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
     if (!t) continue;
