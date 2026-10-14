@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.81.0 – 2026-10-14
+
+- Grund för kopplingen till sajten (stalstadens.se): en intern port som bara startar med `INTEGRATION_KEY` (minst 32 tecken, samma i båda) och bara nås inifrån serverns nätverk. Inget synkas än – alla områden (sponsorer, lag och positioner, spelare, närvaro och statistik) är avstängda.
+- Inställningar → App: **Visa synkstatus (sajten)** visar om nyckeln är inställd och har knappen **Testa anslutning**.
+
 ## 2.80.1 – 2026-10-14
 
 - Matchhistorik → Redigera → Starttid: vanligt sifferfält i stället för tidsväljare, som inte gick att använda i mobilen. Skriv t.ex. 2015 så blir det 20:15.

@@ -30,6 +30,7 @@ import { serveStatic, setupVite } from "./vite";
 import { sseManager } from "../sse";
 import crypto from "crypto";
 import { assertRequiredEnv } from "./env";
+import { startIntegrationServer } from "../integration";
 import { readFileSync } from "fs";
 import path from "path";
 
@@ -226,6 +227,8 @@ async function startServer() {
     startAutoLineupSchedule();
     // SHL-tabell och matcher (bara med API-nyckel under Inställningar → Externa källor)
     startExternalSchedule();
+    // Intern port för sajten (bara med INTEGRATION_KEY; allt avstängt tills vidare)
+    startIntegrationServer(APP_VERSION);
     console.log(`Stålstadens v${APP_VERSION} kör på port ${port}`);
   });
 }

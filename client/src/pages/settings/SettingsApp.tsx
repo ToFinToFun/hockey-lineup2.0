@@ -21,6 +21,7 @@ import { PirPanel } from "./PirPanel";
 import { PeriodsPanel } from "./PeriodsPanel";
 import { SponsorsPanel } from "../sponsors/SponsorsApp";
 import { DatabaseInfo } from "@/components/auth/DatabaseInfo";
+import { SyncStatus } from "@/components/auth/SyncStatus";
 
 const TABS = [
   { id: "klubb", label: "Klubb", hint: "Namn, lag, färger och loggor", icon: Shield },
@@ -159,6 +160,7 @@ function AboutPanel() {
       </div>
       <div className="rounded-xl bg-white/[0.03] border border-white/10 p-3">
         <DatabaseInfo />
+        <SyncStatus />
       </div>
     </div>
   );
