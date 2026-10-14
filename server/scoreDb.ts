@@ -320,7 +320,7 @@ export async function setMatchReport(id: number, report: { stars?: string[]; spo
 
 export async function updateMatch(
   id: number,
-  data: Partial<Pick<MatchInput, "name" | "teamWhiteScore" | "teamGreenScore" | "goalHistory" | "matchEndTime" | "createdAt" | "location" | "plannedMinutes">>
+  data: Partial<Pick<MatchInput, "name" | "teamWhiteScore" | "teamGreenScore" | "goalHistory" | "matchStartTime" | "matchEndTime" | "createdAt" | "location" | "plannedMinutes">>
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

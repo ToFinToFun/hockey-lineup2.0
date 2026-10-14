@@ -312,6 +312,8 @@ export const scoreRouter = router({
             sponsor: z.string().max(120).optional(),
             timestamp: z.string().max(40).default(""),
           })).max(200).optional(),
+          /** Starttid (ISO). Rättas i efterhand för äldre matcher som fick starttiden från första målet. */
+          matchStartTime: z.string().max(40).optional(),
           matchEndTime: z.string().optional(),
           createdAt: z.string().optional(),
           /** Plats (tom sträng tar bort den) */
@@ -321,7 +323,9 @@ export const scoreRouter = router({
         })
       )
       .mutation(async ({ input }) => {
-        const { id, matchEndTime, createdAt, location, ...data } = input;
+        const { id, matchStartTime, matchEndTime, createdAt, location, ...data } = input;
+        const start = matchStartTime ? new Date(matchStartTime) : undefined;
+        if (start && Number.isNaN(start.getTime())) throw new TRPCError({ code: "BAD_REQUEST", message: "Ogiltig starttid" });
         // Mot motståndare: namn som lagts till vid redigering sparas också som lagets spelare
         if (data.goalHistory) {
           const m = await getMatchResultById(id).catch(() => null);
@@ -329,6 +333,7 @@ export const scoreRouter = router({
         }
         await updateMatch(id, {
           ...data,
+          matchStartTime: start,
           matchEndTime: matchEndTime ? new Date(matchEndTime) : undefined,
           createdAt: createdAt ? new Date(createdAt) : undefined,
           ...(location !== undefined ? { location: location || null } : {}),

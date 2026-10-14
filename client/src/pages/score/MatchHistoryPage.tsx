@@ -2,6 +2,7 @@ import { matchSides, type SideInfo } from "@/lib/matchSides";
 import { goalsOldestFirst, goalsForStorage, winningGoalIndex } from "@shared/goalOrder";
 import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { club } from "@shared/club";
+import { isScheduledStart } from "@shared/matchTiming";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import { IMAGES } from "@/lib/scoreConstants";
@@ -156,6 +157,9 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
   const [editName, setEditName] = useState("");
   const [editLocation, setEditLocation] = useState("");
   const [editMinutes, setEditMinutes] = useState("");
+  // Starttid "HH:MM" (tom = okänd). Matchens datum ändras inte.
+  const [editStart, setEditStart] = useState("");
+  const [editStartOrig, setEditStartOrig] = useState("");
 
   const [editGoals, setEditGoals] = useState<GoalEvent[]>([]);
 
@@ -234,6 +238,10 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
     setEditName(match.name);
     setEditLocation((match as { location?: string | null }).location ?? "");
     setEditMinutes(String((match as { plannedMinutes?: number | null }).plannedMinutes ?? ""));
+    const st = (match as { matchStartTime?: Date | string | null }).matchStartTime;
+    const hhmm = st && isScheduledStart(st) ? new Date(st).toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" }) : "";
+    setEditStart(hhmm);
+    setEditStartOrig(hhmm);
     // Sparas nyast först (som Score Tracker visar). Här redigeras i tidsordning: första målet överst.
     const gh = (match.goalHistory as GoalEvent[] | null) ?? [];
     setEditGoals(goalsOldestFirst<GoalEvent>(gh).map(g => ({ ...g })));
@@ -423,7 +431,18 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
     const whiteCount = editGoals.filter(g => g.team === 'white').length;
     const greenCount = editGoals.filter(g => g.team === 'green').length;
     // Auto-update the score suffix in the match name (e.g. "25-01-15 Onsdag 19:00 3-2" → "25-01-15 Onsdag 19:00 4-2")
-    const updatedName = editName.replace(/\d+-\d+\s*$/, `${whiteCount}-${greenCount}`);
+    let updatedName = editName.replace(/\d+-\d+\s*$/, `${whiteCount}-${greenCount}`);
+    // Ändrad starttid: samma datum, ny tid (hela minuter = räknas som träningens starttid)
+    let matchStartTime: string | undefined;
+    if (editStart !== editStartOrig && /^\d{2}:\d{2}$/.test(editStart)) {
+      const m = matches?.find((x) => x.id === editDialog) as { matchStartTime?: Date | string | null; matchEndTime?: Date | string | null; createdAt: Date | string } | undefined;
+      const day = new Date((m?.matchStartTime ?? m?.matchEndTime ?? m?.createdAt ?? Date.now()) as string);
+      const [hh, mm] = editStart.split(":").map(Number);
+      const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hh, mm, 0, 0);
+      matchStartTime = start.toISOString();
+      // Automatiskt namn ("26-10-14 Tisdag 20:15 3-2") följer med
+      updatedName = updatedName.replace(/^(\d{2}-\d{2}-\d{2} \S+ )\d{2}:\d{2}( \d+-\d+)$/, `$1${editStart}$2`);
+    }
     await updateMutation.mutateAsync({
       id: editDialog,
       name: updatedName,
@@ -433,6 +452,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
       goalHistory: goalsForStorage(editGoals),
       location: editLocation.trim(),
       plannedMinutes: editMinutes.trim() ? Math.min(240, Math.max(10, Number(editMinutes))) : null,
+      ...(matchStartTime ? { matchStartTime } : {}),
     });
     setEditDialog(null);
     setSelectedMatch(null);
@@ -1165,6 +1185,16 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
               <input value={editLocation} onChange={(e) => setEditLocation(e.target.value)} maxLength={120} placeholder={knownLocations[0] ? `T.ex. ${knownLocations[0]}` : "Hall"}
                 list="known-venues" className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-[#ECEDEE] text-sm" />
               <datalist id="known-venues">{knownLocations.map((v) => <option key={v} value={v} />)}</datalist>
+            </div>
+
+            {/* Starttid: träningens start. Äldre matcher fick tiden från första målet och visas som okänd. */}
+            <div>
+              <label className="text-[#9BA1A6] text-xs font-medium block mb-1">Starttid</label>
+              <input type="time" value={editStart} onChange={(e) => setEditStart(e.target.value)}
+                className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2.5 text-[#ECEDEE] text-sm" />
+              <p className="text-[10px] text-white/35 mt-1">
+                {editStartOrig ? "Från laget.se. Ändra bara om den är fel." : "Okänd – starttiden sattes från första målet. Fyll i träningens start (t.ex. 20:15) så räknas matchen i Snabbaste målet och målens minut visas."}
+              </p>
             </div>
 
             {/* Matchlängd: utsatt tid (träningens längd) – används för speltiden */}
