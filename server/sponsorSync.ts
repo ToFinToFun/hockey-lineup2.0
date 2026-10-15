@@ -14,7 +14,7 @@
 import { asc, eq, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import { sponsors, type SponsorRow } from "../drizzle/schema";
-import { updateSponsor } from "./sponsorsDb";
+import { listSponsors, updateSponsor } from "./sponsorsDb";
 import { getConfigValue, setConfigValue } from "./scoreDb";
 import { siteRequest, siteImage, integrationConfigured } from "./integration";
 
@@ -374,4 +374,20 @@ export async function linkSponsors(links: { appId: number; siteId: number | null
     }
   });
   console.log(`[integration] sponsorer ihopparade: ${links.map((l) => `${l.appId}→${l.siteId ?? "-"}`).join(", ")}`);
+}
+
+/** Räknarna till sajten: bara ihopparade sponsorer, nycklade på sajtens id. */
+export async function sponsorCounts() {
+  const db = await requireDb();
+  const [list, links] = await Promise.all([
+    listSponsors(),
+    db.select({ id: sponsors.id, siteId: sponsors.siteId }).from(sponsors),
+  ]);
+  const siteIdOf = new Map(links.map((l) => [l.id, l.siteId]));
+  return {
+    season: { label: list.season.label, previousLabel: list.season.previousLabel },
+    sponsors: list.sponsors
+      .filter((s) => siteIdOf.get(s.id) != null)
+      .map((s) => ({ siteId: siteIdOf.get(s.id)!, name: s.name, counts: s.counts, previous: s.previous })),
+  };
 }

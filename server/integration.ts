@@ -7,7 +7,7 @@
 import express, { type NextFunction, type Request, type Response } from "express";
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import { linkSponsors, scheduleSponsorSync, sponsorMode, sponsorSyncState, syncSponsors } from "./sponsorSync";
+import { linkSponsors, scheduleSponsorSync, sponsorCounts, sponsorMode, sponsorSyncState, syncSponsors } from "./sponsorSync";
 
 export const INTEGRATION_API_VERSION = 1;
 
@@ -76,6 +76,15 @@ export function startIntegrationServer(appVersion: string): void {
       if (req.body?.domain !== "sponsors") return res.status(400).json({ error: "okänt område" });
       await syncSponsors();
       res.json(await sponsorSyncState());
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  // Visningsräknare per sponsor, denna och förra säsongen (samma siffror som appens sponsorsida)
+  app.get("/internal/v1/sponsors/counts", async (_req, res, next) => {
+    try {
+      res.json(await sponsorCounts());
     } catch (e) {
       next(e);
     }

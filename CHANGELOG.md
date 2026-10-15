@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.83.0 – 2026-10-15
+
+- Sajten (stalstadens.se) kan läsa sponsorernas räknare – mål, lagnyheter och videor, denna och förra säsongen – och visar dem i sin sponsorlista. Gäller bara ihopparade sponsorer när sponsorsynken inte är avstängd.
+
 ## 2.82.0 – 2026-10-15
 
 - Sponsorer kan styras från sajten (stalstadens.se). Ihopparning, skuggläge och påslag görs i sajtens Synkstatus; i appen händer inget förrän synken slås på där.
