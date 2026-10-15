@@ -8,7 +8,7 @@
 import { useRef, useState } from "react";
 import { Redirect } from "wouter";
 import { toast } from "sonner";
-import { Plus, X, Loader2, ChevronUp, ChevronDown, Trash2, ImageOff, Upload } from "lucide-react";
+import { Plus, X, Loader2, ChevronUp, ChevronDown, Trash2, ImageOff, Upload, ExternalLink } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useSponsors, type Sponsor } from "@/lib/sponsors";
 import { processLogo, type LogoOptions } from "@/lib/logoProcess";
@@ -20,7 +20,8 @@ export default function SponsorsApp() {
 
 /** Sponsorregistret – visas under Inställningar. */
 export function SponsorsPanel() {
-  const { sponsors, season, query } = useSponsors();
+  const { sponsors, season, managedBySite, query } = useSponsors();
+  const locked = !!managedBySite;
   const utils = trpc.useUtils();
   const refresh = () => utils.sponsors.list.invalidate();
   const [editing, setEditing] = useState<Sponsor | "new" | null>(null);
@@ -38,14 +39,27 @@ export function SponsorsPanel() {
             Sponsorerna visas i Score Tracker (en per mål), i matchrapporten och som matchsponsor i nyheten till laget.se.
             Den som visats minst väljs automatiskt. Räknarna nollas 1 juni.
           </p>
-          <button
-            onClick={() => setEditing("new")}
-            disabled={!loaded}
-            className="shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 disabled:opacity-50"
-          >
-            <Plus size={14} /> Ny sponsor
-          </button>
+          {!locked && (
+            <button
+              onClick={() => setEditing("new")}
+              disabled={!loaded}
+              className="shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 disabled:opacity-50"
+            >
+              <Plus size={14} /> Ny sponsor
+            </button>
+          )}
         </div>
+
+        {managedBySite && (
+          <div className="rounded-xl border border-sky-400/25 bg-sky-500/10 px-3 py-2.5 text-xs text-sky-100 flex items-center gap-3">
+            <p className="flex-1">Sponsorerna styrs från stalstadens.se: namn, logga, ordning och vilka som är aktiva. Ändringar där syns här inom några sekunder.</p>
+            {managedBySite.adminUrl && (
+              <a href={managedBySite.adminUrl} target="_blank" rel="noreferrer" className="shrink-0 inline-flex items-center gap-1 text-sky-300 hover:text-sky-200">
+                Ändra på sajten <ExternalLink size={12} />
+              </a>
+            )}
+          </div>
+        )}
 
         {query.isLoading && <div className="flex justify-center py-10"><Loader2 className="animate-spin text-white/40" /></div>}
         {query.error && !loaded && <p className="text-red-300 text-sm">Sponsorerna kunde inte hämtas: {query.error.message}</p>}
@@ -61,11 +75,11 @@ export function SponsorsPanel() {
             {sponsors.map((s, i) => (
               <div key={s.id} className={`grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 items-center px-3 py-2.5 border-b border-white/5 last:border-0 ${s.active ? "" : "opacity-45"}`}>
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex flex-col">
+                  <div className={`flex flex-col ${locked ? "invisible" : ""}`}>
                     <button aria-label="Flytta upp" disabled={i === 0 || move.isPending} onClick={() => move.mutate({ id: s.id, direction: "up" })} className="text-white/30 hover:text-white disabled:opacity-20"><ChevronUp size={14} /></button>
                     <button aria-label="Flytta ner" disabled={i === sponsors.length - 1 || move.isPending} onClick={() => move.mutate({ id: s.id, direction: "down" })} className="text-white/30 hover:text-white disabled:opacity-20"><ChevronDown size={14} /></button>
                   </div>
-                  <button onClick={() => setEditing(s)} className="flex items-center gap-3 min-w-0 text-left">
+                  <button onClick={() => !locked && setEditing(s)} disabled={locked} className="flex items-center gap-3 min-w-0 text-left disabled:cursor-default">
                     <div className="w-24 h-10 shrink-0 rounded-md bg-[#1b1f1d] border border-white/10 flex items-center justify-center p-1">
                       {s.logo ? <img src={s.logo} alt="" className="max-w-full max-h-full object-contain" /> : <span className="text-[11px] font-bold truncate px-1" style={{ fontFamily: "'Oswald', sans-serif" }}>{s.name}</span>}
                     </div>
@@ -86,8 +100,9 @@ export function SponsorsPanel() {
                   </div>
                   <button
                     onClick={() => update.mutate({ id: s.id, active: !s.active })}
-                    className={`ml-1 text-[10px] px-2 py-1 rounded border ${s.active ? "border-emerald-400/30 text-emerald-300" : "border-white/15 text-white/50"}`}
-                    title={s.active ? "Pausa sponsorn" : "Aktivera sponsorn"}
+                    disabled={locked}
+                    className={`ml-1 text-[10px] px-2 py-1 rounded border disabled:cursor-default ${s.active ? "border-emerald-400/30 text-emerald-300" : "border-white/15 text-white/50"}`}
+                    title={locked ? "Styrs från sajten" : s.active ? "Pausa sponsorn" : "Aktivera sponsorn"}
                   >
                     {s.active ? "Aktiv" : "Pausad"}
                   </button>
@@ -98,7 +113,7 @@ export function SponsorsPanel() {
         )}
       </div>
 
-      {editing && <SponsorEditor sponsor={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={refresh} />}
+      {editing && !locked && <SponsorEditor sponsor={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={refresh} />}
     </div>
   );
 }

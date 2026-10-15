@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.82.0 – 2026-10-15
+
+- Sponsorer kan styras från sajten (stalstadens.se). Ihopparning, skuggläge och påslag görs i sajtens Synkstatus; i appen händer inget förrän synken slås på där.
+- När synken är på hämtar appen namn (sajtens kortnamn), logga, ordning och vilka som är aktiva inom några sekunder efter en ändring och var 5:e minut. Inaktiva eller raderade sponsorer pausas, tas aldrig bort, så räknarna finns kvar. Vid namnbyte följer registrerade mål med.
+- Inställningar → Sponsorer är då skrivskyddad, med länk till sajten. Stängs synken av blir den redigerbar igen.
+
 ## 2.81.0 – 2026-10-14
 
 - Grund för kopplingen till sajten (stalstadens.se): en intern port som bara startar med `INTEGRATION_KEY` (minst 32 tecken, samma i båda) och bara nås inifrån serverns nätverk. Inget synkas än – alla områden (sponsorer, lag och positioner, spelare, närvaro och statistik) är avstängda.

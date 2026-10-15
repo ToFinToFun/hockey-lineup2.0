@@ -31,6 +31,7 @@ import { sseManager } from "../sse";
 import crypto from "crypto";
 import { assertRequiredEnv } from "./env";
 import { startIntegrationServer } from "../integration";
+import { startSponsorSync } from "../sponsorSync";
 import { readFileSync } from "fs";
 import path from "path";
 
@@ -229,6 +230,8 @@ async function startServer() {
     startExternalSchedule();
     // Intern port för sajten (bara med INTEGRATION_KEY; allt avstängt tills vidare)
     startIntegrationServer(APP_VERSION);
+    // Sponsorer från sajten (gör inget förrän synken slås på där)
+    startSponsorSync();
     console.log(`Stålstadens v${APP_VERSION} kör på port ${port}`);
   });
 }

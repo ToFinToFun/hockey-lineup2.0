@@ -47,7 +47,9 @@ export function useSponsors() {
   }, [query.data]);
 
   const sponsors = useMemo(() => query.data?.sponsors ?? readCache() ?? FALLBACK, [query.data]);
-  return { sponsors, season: query.data?.season, query };
+  /** Styrs sponsorerna från sajten är appens sponsorsida skrivskyddad. */
+  const managedBySite = query.data?.managedBySite ?? null;
+  return { sponsors, season: query.data?.season, managedBySite, query };
 }
 
 /** Logga för ett sponsornamn (t.ex. sparat på ett mål), om sponsorn har en. */

@@ -1,5 +1,6 @@
 import { isTeamAWhite, defaultTeamNames } from "../shared/teams";
 import { TRPCError } from "@trpc/server";
+import { sponsorsManagedBySite } from "./sponsorSync";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, lineupProcedure, adminProcedure, moduleProcedure, lineupOrModuleProcedure, router } from "./_core/trpc";
 import { authRouter } from "./routers/auth";
@@ -172,6 +173,11 @@ const newsExistsCache = new Map<number, { exists: boolean | null; at: number }>(
 type PlayerRecord = { matches: number; wins: number; draws: number; losses: number; goals: number; assists: number };
 
 /** Logga: PNG som data-URL, redan skalad i webbläsaren (max ca 1,5 MB). */
+/** Styrs sponsorerna från sajten går de inte att ändra här. */
+function assertSponsorsEditable() {
+  if (sponsorsManagedBySite()) throw new TRPCError({ code: "FORBIDDEN", message: "Sponsorerna styrs från stalstadens.se – ändra dem där." });
+}
+
 const logoSchema = z
   .string()
   .max(2_000_000, "Loggan är för stor")
@@ -711,11 +717,12 @@ export const appRouter = router({
 
   sponsors: router({
     /** Alla sponsorer med logga och visningar denna och förra säsongen. Öppen – Score Tracker behöver den. */
-    list: publicProcedure.query(() => listSponsors()),
+    list: publicProcedure.query(async () => ({ ...(await listSponsors()), managedBySite: sponsorsManagedBySite() })),
 
     create: adminProcedure
       .input(z.object({ name: z.string().trim().min(1).max(120), logo: logoSchema.nullable(), active: z.boolean().default(true), slogan: z.string().trim().max(120).nullable().optional() }))
       .mutation(async ({ input }) => {
+        assertSponsorsEditable();
         await createSponsor(input);
         return { success: true };
       }),
@@ -732,6 +739,7 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input }) => {
+        assertSponsorsEditable();
         await updateSponsor(input);
         return { success: true };
       }),
@@ -739,6 +747,7 @@ export const appRouter = router({
     move: adminProcedure
       .input(z.object({ id: z.number().int(), direction: z.enum(["up", "down"]) }))
       .mutation(async ({ input }) => {
+        assertSponsorsEditable();
         await moveSponsor(input.id, input.direction);
         return { success: true };
       }),
@@ -746,6 +755,7 @@ export const appRouter = router({
     delete: adminProcedure
       .input(z.object({ id: z.number().int() }))
       .mutation(async ({ input }) => {
+        assertSponsorsEditable();
         await deleteSponsor(input.id);
         return { success: true };
       }),

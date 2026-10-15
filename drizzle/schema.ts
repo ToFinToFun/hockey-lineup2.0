@@ -229,6 +229,10 @@ export const sponsors = mysqlTable("sponsors", {
   sortOrder: int("sortOrder").default(0).notNull(),
   /** Kort annonstext i Stålbladet (Media i tidningsstil), t.ex. "Vi får regionen att röra sig." */
   slogan: varchar("slogan", { length: 120 }),
+  /** Sponsorns id på sajten (stalstadens.se) när sponsorerna synkas därifrån. Null = bara i appen. */
+  siteId: int("siteId").unique(),
+  /** Vilken version av sajtens logga som hämtats (byts när loggan ändras där) */
+  logoVersion: varchar("logoVersion", { length: 32 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

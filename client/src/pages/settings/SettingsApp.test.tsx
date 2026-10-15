@@ -38,7 +38,7 @@ vi.mock("@/lib/trpc", () => {
         set: { useMutation: m }, test: { useMutation: m },
       },
       settings: { testLagetSeConnection: { useMutation: m } },
-      system: { database: { useQuery: () => q(undefined) } },
+      system: { database: { useQuery: () => q(undefined) }, integration: { useQuery: () => q(undefined) }, integrationPing: { useMutation: m } },
     },
   };
 });
