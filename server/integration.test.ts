@@ -33,6 +33,14 @@ describe("integration med sajten", () => {
     expect(Object.values(body.modes).every(m => m === "off")).toBe(true);
   });
 
+  it("begreppen till sajten: appens lag och positioner med #rrggbb-färger", () => {
+    const t = mod.currentTerms();
+    expect(Object.keys(t.teams)).toEqual(["white", "green", "waivers"]);
+    expect(Object.keys(t.positions)).toEqual(["MV", "B", "C", "F", "IB"]);
+    expect(t.positions.F).toEqual({ name: "Forward", shortName: "F", color: "#06b6d4" });
+    for (const x of [...Object.values(t.teams), ...Object.values(t.positions)]) expect(x.color).toMatch(/^#[0-9a-f]{6}$/i);
+  });
+
   it("utan sajtens adress säger pingen vad som saknas", async () => {
     expect(await mod.pingSite()).toEqual({ ok: false, error: "SITE_INTERNAL_URL saknas" });
   });

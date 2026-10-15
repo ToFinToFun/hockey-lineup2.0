@@ -7,6 +7,8 @@
 import express, { type NextFunction, type Request, type Response } from "express";
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
+import { club } from "../shared/club";
+import { POSITION_BASE_COLORS, POSITION_NAMES, WAIVERS } from "../shared/positions";
 import { linkSponsors, scheduleSponsorSync, sponsorCounts, sponsorMode, sponsorSyncState, syncSponsors } from "./sponsorSync";
 
 export const INTEGRATION_API_VERSION = 1;
@@ -70,6 +72,11 @@ export function startIntegrationServer(appVersion: string): void {
     res.json({ ok: true });
   });
 
+  // Begrepp: lagens och positionernas namn, förkortning och färg (sajtens medlemsregister använder dem)
+  app.get("/internal/v1/terms", (_req, res) => {
+    res.json(currentTerms());
+  });
+
   // Synka nu och svara med läget efteråt (används av sajtens Synkstatus)
   app.post("/internal/v1/sync", async (req, res, next) => {
     try {
@@ -126,6 +133,32 @@ export interface PingResult {
   ms?: number;
   error?: string;
   remote?: { service?: string; version?: string; apiVersion?: number };
+}
+
+/** "#abc" → "#aabbcc"; annat än hex blir grått (sajten kräver #rrggbb). */
+function hex6(c: string): string {
+  const v = c.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) return v;
+  if (/^#[0-9a-fA-F]{3}$/.test(v)) return `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}`;
+  return "#8c8c8c";
+}
+
+export function currentTerms() {
+  const t = club().teams;
+  const team = (k: "white" | "green") => ({ name: t[k].name.slice(0, 40), shortName: t[k].shortName.slice(0, 10), color: hex6(t[k].color) });
+  const pos = (k: keyof typeof POSITION_NAMES) => ({ name: POSITION_NAMES[k], shortName: k, color: POSITION_BASE_COLORS[k] });
+  return {
+    teams: { white: team("white"), green: team("green"), waivers: { ...WAIVERS } },
+    positions: { MV: pos("MV"), B: pos("B"), C: pos("C"), F: pos("F"), IB: pos("IB") },
+  };
+}
+
+/** Säger till sajten att något ändrats. Sajten hämtar själv; annars tar avstämningen var 5:e minut det. */
+export function notifySite(domain: IntegrationDomain): void {
+  if (!integrationConfigured()) return;
+  void siteRequest("POST", "/internal/v1/notify", { domain }).catch((e) =>
+    console.warn(`[integration] kunde inte meddela sajten (${domain}):`, (e as Error).message),
+  );
 }
 
 /** Anrop till sajtens interna API. Kastar fel med en begriplig text. */

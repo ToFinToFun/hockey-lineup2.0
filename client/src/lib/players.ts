@@ -1,15 +1,11 @@
 // Hockey Lineup App – Spelardata från laget.se Stålstadens A-lag Herrar
 // Positioner: MV=Målvakt, B=Back, F=Forward, C=Center, IB=Ice Box
 
-export type Position = "MV" | "B" | "F" | "C" | "IB";
+import { POSITION_NAMES, type PositionCode } from "@shared/positions";
 
-export const POSITION_LABELS: Record<Position, string> = {
-  MV: "Målvakt",
-  B: "Back",
-  F: "Forward",
-  C: "Center",
-  IB: "Ice Box",
-};
+export type Position = PositionCode;
+
+export const POSITION_LABELS: Record<Position, string> = POSITION_NAMES;
 
 /** Namn för hovring/skärmläsare – även platsernas LW/RW/RES. */
 export function positionName(code: string): string {

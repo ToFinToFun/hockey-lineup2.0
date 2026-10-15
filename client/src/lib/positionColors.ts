@@ -2,15 +2,13 @@
  * Positionsfärger – samma överallt (Lineup, Score Tracker, delad länk).
  * Motsvarar .pos-badge-* i index.css.
  */
+import { POSITION_BASE_COLORS } from "@shared/positions";
+
 export const POSITION_COLORS: Record<string, string> = {
-  MV: "#f97316", // orange
-  RES: "#f97316",
-  B: "#3b82f6", // blå
-  C: "#8b5cf6", // lila
-  LW: "#06b6d4", // turkos
-  RW: "#06b6d4",
-  F: "#06b6d4",
-  IB: "#a8b8c8", // isblå
+  ...POSITION_BASE_COLORS,
+  RES: POSITION_BASE_COLORS.MV,
+  LW: POSITION_BASE_COLORS.F,
+  RW: POSITION_BASE_COLORS.F,
 };
 
 /** Färger för en platsrad: kant och bricka i positionsfärgen, svag bakgrundston. */

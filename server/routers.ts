@@ -1,6 +1,7 @@
 import { isTeamAWhite, defaultTeamNames } from "../shared/teams";
 import { TRPCError } from "@trpc/server";
 import { sponsorsManagedBySite } from "./sponsorSync";
+import { notifySite } from "./integration";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, lineupProcedure, adminProcedure, moduleProcedure, lineupOrModuleProcedure, router } from "./_core/trpc";
 import { authRouter } from "./routers/auth";
@@ -486,7 +487,12 @@ export const appRouter = router({
           green: z.object({ name: z.string().trim().max(20).optional(), shortName: z.string().trim().max(6).optional(), color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional() }).optional(),
         }).optional(),
       }))
-      .mutation(async ({ input }) => ({ club: await saveClubOverrides(input) })),
+      .mutation(async ({ input }) => {
+        const saved = await saveClubOverrides(input);
+        // Lagnamn och färger används även i sajtens medlemsregister
+        notifySite("terms");
+        return { club: saved };
+      }),
     /** Ladda upp en logga (PNG/JPEG, base64) – ersätter profilens fil. */
     setLogo: adminProcedure
       .input(z.object({ key: z.enum(CLUB_ASSET_KEYS), base64: z.string().max(MAX_CLUB_ASSET_BASE64, "Bilden är för stor").regex(/^[A-Za-z0-9+/=]+$/) }))

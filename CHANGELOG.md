@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.84.0 – 2026-10-15
+
+- Sajtens medlemsregister använder appens lag och positioner: namn, förkortning och färg hämtas från appen (Vita, Gröna, Waivers · MV, B, C, F, IB). Ändras ett lagnamn eller en lagfärg under Inställningar → Klubb syns det i registret inom några sekunder (när synken av lag och positioner är på i sajtens Synkstatus).
+- Positionernas namn och färger finns nu på ett ställe (shared/positions.ts) för både appen och kopplingen. Inget ändras i hur de ser ut.
+
 ## 2.83.0 – 2026-10-15
 
 - Sajten (stalstadens.se) kan läsa sponsorernas räknare – mål, lagnyheter och videor, denna och förra säsongen – och visar dem i sin sponsorlista. Gäller bara ihopparade sponsorer när sponsorsynken inte är avstängd.
