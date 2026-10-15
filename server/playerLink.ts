@@ -223,3 +223,30 @@ export async function removeUnlinkedPlayer(playerId: string) {
   if (await hasHistory(playerId)) throw new Error("Spelaren har matcher i historiken. Inaktivera eller slå ihop i stället, så att målen och statistiken finns kvar.");
   await deletePlayers([playerId]);
 }
+
+/**
+ * Matcher och spelade positioner per säsong för kopplade spelare (till sajtens register).
+ * LW/RW räknas som F. Bara kopplade spelare skickas, nycklade på medlemmens id.
+ */
+export async function statsForSite() {
+  const { seasonHistory, seasonOf } = await import("./playerHistory");
+  const { getAllMatchResults } = await import("./scoreDb");
+  const all = seasonHistory(await getAllMatchResults());
+  const now = new Date();
+  const current = seasonOf(now);
+  const previous = seasonOf(new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()));
+  const pick = (lines: { season: string; matches: number; positions: Record<string, number> }[] | undefined, season: string) => {
+    const l = lines?.find((x) => x.season === season);
+    if (!l) return { matches: 0, positions: { MV: 0, B: 0, C: 0, F: 0 } };
+    const p = l.positions;
+    return { matches: l.matches, positions: { MV: p.MV ?? 0, B: p.B ?? 0, C: p.C ?? 0, F: (p.LW ?? 0) + (p.RW ?? 0) } };
+  };
+  const byMember: Record<string, { current: ReturnType<typeof pick>; previous: ReturnType<typeof pick> }> = {};
+  for (const p of await listPlayers()) {
+    const memberId = memberIdOf(p.externalId);
+    if (memberId === null) continue;
+    const lines = all.get(p.id);
+    byMember[memberId] = { current: pick(lines, current), previous: pick(lines, previous) };
+  }
+  return { season: current, previousSeason: previous, byMember };
+}

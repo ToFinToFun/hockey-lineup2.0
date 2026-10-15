@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.87.0 – 2026-10-15
+
+- Sajtens medlemsregister kan läsa matcher och spelade positioner (MV, B, C, F) per säsong för spelare som är kopplade till registret – samma siffror som statistiken här.
+
 ## 2.86.0 – 2026-10-15
 
 - Spelare kopplade till sajtens medlemsregister (när spelarsynken är På på sajten):

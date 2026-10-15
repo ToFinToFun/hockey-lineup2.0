@@ -9,7 +9,7 @@ import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { club } from "../shared/club";
 import { POSITION_BASE_COLORS, POSITION_NAMES, WAIVERS } from "../shared/positions";
-import { applyMembership, createForMember, linkPlayer, playersForSite, updateHockeyFields } from "./playerLink";
+import { applyMembership, createForMember, linkPlayer, playersForSite, statsForSite, updateHockeyFields } from "./playerLink";
 import { linkSponsors, scheduleSponsorSync, sponsorCounts, sponsorMode, sponsorSyncState, syncSponsors } from "./sponsorSync";
 
 export const INTEGRATION_API_VERSION = 1;
@@ -91,6 +91,8 @@ export function startIntegrationServer(appVersion: string): void {
     fn(req, res).catch((e: Error) => (e instanceof z.ZodError ? res.status(400).json({ error: "ogiltiga uppgifter" }) : /finns inte|kan inte|redan/.test(e.message) ? res.status(400).json({ error: e.message }) : next(e)));
 
   app.get("/internal/v1/players", wrap(async (_req, res) => res.json(await playersForSite())));
+  // Matcher och spelade positioner per säsong (kopplade spelare)
+  app.get("/internal/v1/players/stats", wrap(async (_req, res) => res.json(await statsForSite())));
 
   app.post("/internal/v1/players/create", wrap(async (req, res) => {
     const b = hockey.extend({ memberId: z.number().int().positive(), name: z.string().trim().min(1).max(120), isMember: z.boolean() }).parse(req.body);
