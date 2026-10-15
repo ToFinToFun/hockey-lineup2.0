@@ -7,6 +7,7 @@ import { teamLogo, club, clubHeading } from "@shared/club";
 import { trpc } from "@/lib/trpc";
 import { posGroup } from "@/lib/altPosition";
 import { POSITION_COLORS } from "@/lib/positionColors";
+import { useNameTone } from "@/lib/memberMarking";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { X, Trash2 } from "lucide-react";
@@ -70,6 +71,7 @@ export function DraggablePlayerCard({
   slotType,
   iceTimeMinutes,
 }: PlayerCardProps) {
+  const nameTone = useNameTone(player.isMember);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: player.id, data: { player } });
 
@@ -225,7 +227,7 @@ export function DraggablePlayerCard({
           const last = parts.length > 1 ? parts.pop()! : "";
           const first = parts.join(" ");
           return (
-            <span className="flex-1 min-w-0 text-white leading-tight text-[12px] font-semibold" title={`${player.name}${player.number ? ` #${player.number}` : ""}`}>
+            <span className={`flex-1 min-w-0 ${nameTone} leading-tight text-[12px] font-semibold`} title={`${player.name}${player.number ? ` #${player.number}` : ""}${player.isMember === false ? " – inte medlem" : ""}`}>
               <span className="block truncate">
                 {first}
                 {player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
@@ -234,7 +236,7 @@ export function DraggablePlayerCard({
             </span>
           );
         })() : (
-          <span className="flex-1 min-w-0 text-white leading-tight text-[13px] font-medium truncate" title={player.name}>
+          <span className={`flex-1 min-w-0 ${nameTone} leading-tight text-[13px] font-medium truncate`} title={`${player.name}${player.isMember === false ? " – inte medlem" : ""}`}>
             {player.name}
             {player.number ? <span className="text-white/40 font-normal ml-1">#{player.number}</span> : null}
           </span>
@@ -779,6 +781,7 @@ export function TeamColorIndicator({ teamColor, compact, mostPlayedTeam }: { tea
 // Drag overlay card
 export function PlayerCardOverlay({ player, isRemoving = false }: { player: Player; isRemoving?: boolean }) {
   const { colors: fc } = useForwardColor();
+  const nameTone = useNameTone(player.isMember);
   return (
     <div
       className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm cursor-grabbing select-none backdrop-blur-xl transition-all duration-200 ${
@@ -796,7 +799,7 @@ export function PlayerCardOverlay({ player, isRemoving = false }: { player: Play
             : "bg-orange-400/20 text-orange-300 border-orange-400/40"
         }`}>{player.captainRole}</span>
       )}
-      <span className="text-white font-medium truncate">{player.name}</span>
+      <span className={`${nameTone} font-medium truncate`}>{player.name}</span>
       {player.number && (
         <span className="font-bold text-emerald-300/70 text-xs w-5 shrink-0">
           {player.number}

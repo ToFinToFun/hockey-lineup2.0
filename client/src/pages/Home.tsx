@@ -5,6 +5,7 @@
 // - localStorage som fallback om servern är offline
 // - Ångra-funktion (Ctrl+Z + knapp i header)
 // - In-app bekräftelsedialog för Rensa
+import { MemberMarkingProvider } from "@/lib/memberMarking";
 import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { teamLogo, club, clubHeading } from "@shared/club";
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
@@ -1676,6 +1677,7 @@ export default function Home() {
   };
 
   return (
+    <MemberMarkingProvider value={true}>
     <PirSettingsProvider settings={displayPirSettings}>
     <div className={`overflow-x-hidden max-w-[100vw] ${isLineupDark ? '' : 'lineup-light'}`}>
     <DndContext
@@ -2555,5 +2557,6 @@ export default function Home() {
     </DndContext>
     </div>
     </PirSettingsProvider>
+    </MemberMarkingProvider>
   );
 }

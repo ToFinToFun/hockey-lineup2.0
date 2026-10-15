@@ -32,6 +32,7 @@ import crypto from "crypto";
 import { assertRequiredEnv } from "./env";
 import { startIntegrationServer } from "../integration";
 import { startSponsorSync } from "../sponsorSync";
+import { loadPlayerLinkState } from "../playerLink";
 import { readFileSync } from "fs";
 import path from "path";
 
@@ -232,6 +233,7 @@ async function startServer() {
     startIntegrationServer(APP_VERSION);
     // Sponsorer från sajten (gör inget förrän synken slås på där)
     startSponsorSync();
+    void loadPlayerLinkState();
     console.log(`Stålstadens v${APP_VERSION} kör på port ${port}`);
   });
 }

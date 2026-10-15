@@ -9,6 +9,7 @@ import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { club } from "../shared/club";
 import { POSITION_BASE_COLORS, POSITION_NAMES, WAIVERS } from "../shared/positions";
+import { applyMembership, createForMember, linkPlayer, playersForSite, updateHockeyFields } from "./playerLink";
 import { linkSponsors, scheduleSponsorSync, sponsorCounts, sponsorMode, sponsorSyncState, syncSponsors } from "./sponsorSync";
 
 export const INTEGRATION_API_VERSION = 1;
@@ -76,6 +77,41 @@ export function startIntegrationServer(appVersion: string): void {
   app.get("/internal/v1/terms", (_req, res) => {
     res.json(currentTerms());
   });
+
+  // ─── Spelare (steg 4): sajtens register kopplar medlemmar till spelare ───
+  const hockey = z.object({
+    number: z.string().trim().max(10).optional(),
+    position: z.enum(["MV", "B", "C", "F", "IB"]).optional(),
+    teamColor: z.enum(["white", "green"]).nullable().optional(),
+    captainRole: z.enum(["C", "A"]).nullable().optional(),
+    altPosition: z.enum(["MV", "B", "C", "F"]).nullable().optional(),
+  });
+  const wrap = (fn: (req: Request, res: Response) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) =>
+    fn(req, res).catch((e: Error) => (e instanceof z.ZodError ? res.status(400).json({ error: "ogiltiga uppgifter" }) : /finns inte|kan inte|redan/.test(e.message) ? res.status(400).json({ error: e.message }) : next(e)));
+
+  app.get("/internal/v1/players", wrap(async (_req, res) => res.json(await playersForSite())));
+
+  app.post("/internal/v1/players/create", wrap(async (req, res) => {
+    const b = hockey.extend({ memberId: z.number().int().positive(), name: z.string().trim().min(1).max(120), isMember: z.boolean() }).parse(req.body);
+    res.json({ id: await createForMember(b) });
+  }));
+
+  app.post("/internal/v1/players/link", wrap(async (req, res) => {
+    const b = z.object({ playerId: z.string().min(1).max(64), memberId: z.number().int().positive().nullable(), isMember: z.boolean().nullable(), fields: hockey.default({}) }).parse(req.body);
+    await linkPlayer(b.playerId, b.memberId, b.isMember, b.fields);
+    res.json({ ok: true });
+  }));
+
+  app.post("/internal/v1/players/update", wrap(async (req, res) => {
+    const b = z.object({ playerId: z.string().min(1).max(64), fields: hockey }).parse(req.body);
+    await updateHockeyFields(b.playerId, b.fields);
+    res.json({ ok: true });
+  }));
+
+  app.post("/internal/v1/players/membership", wrap(async (req, res) => {
+    const b = z.object({ managed: z.boolean(), members: z.record(z.string().max(64), z.boolean()) }).parse(req.body);
+    res.json(await applyMembership(b.managed, b.members));
+  }));
 
   // Synka nu och svara med läget efteråt (används av sajtens Synkstatus)
   app.post("/internal/v1/sync", async (req, res, next) => {

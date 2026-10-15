@@ -7,6 +7,13 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.85.0 – 2026-10-15
+
+- Spelare kopplas till medlemmar i sajtens medlemsregister. Kopplingen görs på sajten (guiden Koppla spelare, när en ansökan godkänns och vid Ny medlem); saknas spelaren skapas den här, aktiv i truppen. Appen får bara medlemmens id – aldrig personnummer, kontaktuppgifter eller avgifter.
+- Lineup: spelare som inte är medlemmar har grått namn (bara i Lineup, inte i delad länk, Score Tracker, Media eller kort). När spelarsynken är På på sajten styr registret vem som är medlem: kopplad till en medlem som inte är avslutad. Då går Medlem inte att ändra här och importen av medlemsregistret är avstängd.
+- Spelare: ny knapp **Ta bort spelaren** för spelare som inte är kopplade till registret och saknar matcher. Spelare med matcher kan inaktiveras eller slås ihop som förut. Kopplade spelare märks "registret".
+- Slå ihop: kopplingen till registret följer med till spelaren som blir kvar. Två spelare kopplade till olika medlemmar kan inte slås ihop.
+
 ## 2.84.0 – 2026-10-15
 
 - Sajtens medlemsregister använder appens lag och positioner: namn, förkortning och färg hämtas från appen (Vita, Gröna, Waivers · MV, B, C, F, IB). Ändras ett lagnamn eller en lagfärg under Inställningar → Klubb syns det i registret inom några sekunder (när synken av lag och positioner är på i sajtens Synkstatus).

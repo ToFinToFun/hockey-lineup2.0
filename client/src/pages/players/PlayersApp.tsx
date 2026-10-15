@@ -246,6 +246,7 @@ export default function PlayersApp() {
                 </span>
                 <span className="text-[11px] w-8 text-white/60" title={r.position ? positionName(r.position) : "Ingen position"}>{r.position || "–"}</span>
                 <span className={`text-[11px] w-10 ${r.teamColor === "green" ? "text-emerald-400" : r.teamColor === "white" ? "text-white" : "text-white/20"}`}>{teamLabel(r.teamColor) || "–"}</span>
+                {r.externalId && <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-300/80" title="Kopplad till medlemsregistret på sajten">registret</span>}
                 {!r.isMember && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300">ej medlem</span>}
                 {!r.active && <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-white/40">inaktiv</span>}
               </button>
@@ -274,7 +275,10 @@ function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]
   const [tab, setTab] = useState<"profile" | "edit">(row ? "profile" : "edit");
   const update = trpc.players.update.useMutation({ onSuccess: () => { toast.success("Sparat"); onSaved(); onClose(); } });
   const create = trpc.players.create.useMutation({ onSuccess: () => { toast.success("Spelaren är tillagd"); onSaved(); onClose(); } });
-  const merge = trpc.players.merge.useMutation({ onSuccess: () => { toast.success("Ihopslagna"); onSaved(); onClose(); } });
+  const merge = trpc.players.merge.useMutation({ onSuccess: () => { toast.success("Ihopslagna"); onSaved(); onClose(); }, onError: (e) => toast.error(e.message) });
+  const managed = trpc.players.membershipManaged.useQuery().data?.managed ?? false;
+  const canRemove = trpc.players.canRemove.useQuery({ id: row?.id ?? "" }, { enabled: !!row && isAdmin });
+  const remove = trpc.players.remove.useMutation({ onSuccess: () => { toast.success("Spelaren är borttagen"); onSaved(); onClose(); }, onError: (e) => toast.error(e.message) });
 
   const payload = {
     name: f.name.trim(), number: f.number.trim(), position: ((POSITIONS as readonly string[]).includes(f.position) ? f.position : "") as PositionOrNone,
@@ -321,9 +325,13 @@ function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]
           <label title="Hybridspelare: position spelaren också kan spela (tvåfärgad bricka i Lineup, används av Auto)">Alt. pos<select className={input} value={f.altPosition ?? ""} onChange={(e) => setF({ ...f, altPosition: e.target.value || null })}><option value="">–</option>{(["MV", "B", "C", "F"] as const).map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
         </div>
         <div className="flex gap-4 text-sm">
-          <label className="flex items-center gap-2"><input type="checkbox" checked={f.isMember} onChange={(e) => setF({ ...f, isMember: e.target.checked })} /> Medlem</label>
+          <label className="flex items-center gap-2" title={managed ? "Styrs av medlemsregistret på sajten" : undefined}>
+            <input type="checkbox" checked={f.isMember} disabled={managed} onChange={(e) => setF({ ...f, isMember: e.target.checked })} /> Medlem
+            {managed && <span className="text-[10px] text-white/40">(styrs av registret)</span>}
+          </label>
           <label className="flex items-center gap-2"><input type="checkbox" checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} /> Aktiv (i truppen)</label>
         </div>
+        {row?.externalId && <p className="text-[11px] text-sky-300/80">Kopplad till medlemsregistret på sajten. Kopplingen ändras där.</p>}
         <label className="block text-xs text-white/50">Namn i laget.se (om det skiljer sig)<input className={input} value={f.lagetName} onChange={(e) => setF({ ...f, lagetName: e.target.value })} /></label>
         <label className="block text-xs text-white/50">Anteckning<textarea className={input} rows={2} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></label>
         <button onClick={save} disabled={!payload.name || update.isPending || create.isPending}
@@ -343,6 +351,13 @@ function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]
                 onClick={() => { if (confirm("Slå ihop? Det går inte att ångra i appen.")) merge.mutate({ fromId: row.id, intoId: mergeInto }); }}
                 className="px-3 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-200 text-xs disabled:opacity-40">Slå ihop</button>
             </div>
+            {canRemove.data?.ok ? (
+              <button disabled={remove.isPending}
+                onClick={() => { if (confirm(`Ta bort ${row.name} helt? Spelaren har inga matcher och finns inte i medlemsregistret.`)) remove.mutate({ id: row.id }); }}
+                className="text-xs px-3 py-1.5 rounded-lg border border-red-400/30 text-red-300 disabled:opacity-40">Ta bort spelaren</button>
+            ) : canRemove.data?.reason ? (
+              <p className="text-[11px] text-white/35">Kan inte tas bort: {canRemove.data.reason.toLowerCase()}.</p>
+            ) : null}
           </div>
         )}
         </>)}

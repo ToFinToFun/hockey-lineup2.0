@@ -2,6 +2,7 @@ import { getAltPositions, setAltPosition } from "../altPositions";
 import { getConfigValue } from "../scoreDb";
 import { teamSuggestions, applyTeams } from "../teamRecovery";
 import { z } from "zod";
+import { hasHistory, membershipManaged, removeUnlinkedPlayer } from "../playerLink";
 import { TRPCError } from "@trpc/server";
 import { adminProcedure, lineupProcedure, router, moduleProcedure } from "../_core/trpc";
 import { seasonHistory, seasonOf } from "../playerHistory";
@@ -122,6 +123,18 @@ function planImport(rows: ImportRow[], registry: RegistryPlayer[], markMissingAs
   return { plan, problems, unchanged };
 }
 
+/** Medlem och koppling styrs av registret: de går inte att ändra här (oförändrade värden släpps igenom). */
+async function guardRegisterFields(id: string, fields: PlayerFields) {
+  const p = (await listPlayers()).find((x) => x.id === id);
+  if (!p) return;
+  if ("externalId" in fields && (fields.externalId ?? null) !== (p.externalId ?? null) && (p.externalId || membershipManaged())) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Kopplingen till medlemsregistret ändras på sajten." });
+  }
+  if (membershipManaged() && "isMember" in fields && fields.isMember !== p.isMember) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Medlem styrs av medlemsregistret på sajten." });
+  }
+}
+
 export const playersRouter = router({
   /** Alla spelare i registret (även inaktiva och ihopslagna). */
   list: moduleProcedure("media", "cards", "stats", "players", "matches", "report").query(() => listPlayers()),
@@ -160,6 +173,7 @@ export const playersRouter = router({
   update: moduleProcedure("players")
     .input(z.object({ id: z.string().max(64), fields: fieldsSchema }))
     .mutation(async ({ input }) => {
+      await guardRegisterFields(input.id, input.fields as PlayerFields);
       const updated = await updatePlayer(input.id, input.fields as PlayerFields);
       if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "Spelaren finns inte" });
       return updated;
@@ -167,12 +181,56 @@ export const playersRouter = router({
 
   create: moduleProcedure("players")
     .input(fieldsSchema.extend({ name: z.string().trim().min(1).max(120) }))
-    .mutation(({ input }) => createPlayer(input as PlayerFields & { name: string })),
+    .mutation(({ input }) => {
+      // Styr registret medlemsmarkeringen är en spelare som skapas i appen aldrig medlem (och aldrig kopplad)
+      const fields = { ...input } as PlayerFields & { name: string };
+      if (membershipManaged()) {
+        fields.isMember = false;
+        fields.externalId = null;
+      }
+      return createPlayer(fields);
+    }),
+
+  /** Tar bort en spelare som inte är kopplad till medlemsregistret och saknar matcher. */
+  remove: moduleProcedure("players")
+    .input(z.object({ id: z.string().min(1).max(64) }))
+    .mutation(async ({ input }) => {
+      try {
+        await removeUnlinkedPlayer(input.id);
+      } catch (e) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: (e as Error).message });
+      }
+      return { success: true };
+    }),
+
+  /** Kan spelaren tas bort (okopplad och utan historik)? */
+  canRemove: moduleProcedure("players")
+    .input(z.object({ id: z.string().min(1).max(64) }))
+    .query(async ({ input }) => {
+      const p = (await listPlayers()).find((x) => x.id === input.id);
+      if (!p) return { ok: false, reason: "Spelaren finns inte" };
+      if (p.externalId) return { ok: false, reason: "Kopplad till medlemsregistret" };
+      if (await hasHistory(p.id)) return { ok: false, reason: "Har matcher i historiken – inaktivera eller slå ihop i stället" };
+      return { ok: true, reason: null };
+    }),
+
+  /** Styrs medlemsmarkeringen av sajtens register? */
+  membershipManaged: moduleProcedure("players").query(() => ({ managed: membershipManaged() })),
 
   /** Samma person registrerad två gånger: matcher och mål flyttas till `intoId`, `fromId` tas bort. */
   merge: adminProcedure
     .input(z.object({ fromId: z.string().max(64), intoId: z.string().max(64) }))
     .mutation(async ({ input }) => {
+      // Kopplingen till medlemsregistret följer med till spelaren som blir kvar
+      const all = await listPlayers();
+      const from = all.find((p) => p.id === input.fromId);
+      const into = all.find((p) => p.id === input.intoId);
+      if (from?.externalId && into?.externalId && from.externalId !== into.externalId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Båda spelarna är kopplade till olika medlemmar i registret. Ändra kopplingen på sajten först." });
+      }
+      if (from?.externalId && into && !into.externalId) {
+        await updatePlayer(into.id, { externalId: from.externalId, isMember: from.isMember });
+      }
       await mergePlayers(input.fromId, input.intoId);
       return { success: true };
     }),
@@ -204,6 +262,7 @@ export const playersRouter = router({
   importApply: adminProcedure
     .input(z.object({ rows: z.array(importRowSchema).max(2000), markMissingAsNonMember: z.boolean().default(false) }))
     .mutation(async ({ input }) => {
+      if (membershipManaged()) throw new TRPCError({ code: "BAD_REQUEST", message: "Spelarna kopplas till medlemsregistret på sajten – importen är avstängd." });
       const { plan, problems } = planImport(input.rows, await listPlayers(), input.markMissingAsNonMember);
       if (problems.length) throw new TRPCError({ code: "BAD_REQUEST", message: problems.join(" ") });
       const creates = plan.filter((c) => c.kind === "new").map((c) => ({ isMember: true, active: true, ...c.fields }));
