@@ -346,7 +346,10 @@ export function DraggablePlayerCard({
             solid
           >
             <div className="px-3 py-2.5 flex flex-col gap-2" onPointerDown={(e) => e.stopPropagation()}>
-              {/* Name field */}
+              {/* Name field (kopplade spelare: namnet ändras i medlemsregistret) */}
+              {player.registerLinked ? (
+                <p className="text-[10px] text-sky-300/80">{player.name}{player.number ? ` #${player.number}` : ""} · namn och nummer ändras i medlemsregistret</p>
+              ) : (
               <div className="flex items-center gap-2">
                 <input
                   type="text"
@@ -380,6 +383,7 @@ export function DraggablePlayerCard({
                   Spara
                 </button>
               </div>
+              )}
               {/* Team color */}
               {onChangeTeamColor && (
                 <div className="flex items-center gap-1.5 pt-1 border-t border-white/10">
@@ -441,7 +445,7 @@ export function DraggablePlayerCard({
               {/* Number + Captain role */}
               {(onChangeNumber || onChangeCaptainRole) && (
                 <div className="flex items-center gap-3 pt-1 border-t border-white/10">
-                  {onChangeNumber && (
+                  {onChangeNumber && !player.registerLinked && (
                     <div className="flex items-center gap-1">
                       <span className="text-white/40 text-[10px]">Nr:</span>
                       <span className="text-white/50 text-xs">#</span>
@@ -532,7 +536,7 @@ export function DraggablePlayerCard({
               <div className="pt-1.5 border-t border-white/10">
                 {!confirmDelete ? (
                   <div className="flex gap-1">
-                    {onDelete && (
+                    {onDelete && !player.registerLinked && (
                       <button
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}

@@ -133,6 +133,12 @@ async function guardRegisterFields(id: string, fields: PlayerFields) {
   if (membershipManaged() && "isMember" in fields && fields.isMember !== p.isMember) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Medlem styrs av medlemsregistret på sajten." });
   }
+  // Kopplade spelare: namn och nummer ägs av medlemsregistret, och de kan inte tas ur truppen
+  if (membershipManaged() && p.externalId) {
+    if ("name" in fields && (fields.name ?? "").trim() !== p.name) throw new TRPCError({ code: "FORBIDDEN", message: "Namnet ändras i medlemsregistret på sajten." });
+    if ("number" in fields && (fields.number ?? "").trim() !== p.number) throw new TRPCError({ code: "FORBIDDEN", message: "Tröjnumret ändras i medlemsregistret på sajten." });
+    if ("active" in fields && fields.active === false) throw new TRPCError({ code: "FORBIDDEN", message: "Medlemmar finns alltid i truppen." });
+  }
 }
 
 export const playersRouter = router({

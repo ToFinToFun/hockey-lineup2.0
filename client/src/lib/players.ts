@@ -43,6 +43,8 @@ export interface Player {
   captainRole?: CaptainRole;
   /** Finns i klubbens medlemsregister (styrs från spelarregistret). */
   isMember?: boolean;
+  /** Kopplad till sajtens medlemsregister: namn och nummer ändras där, och spelaren kan inte tas bort ur truppen. */
+  registerLinked?: boolean;
   /** Antal matcher per position (MV, B, C, LW, RW) – räknas fram, synkas inte. */
   positionStats?: Record<string, number>;
   /** Statistik innevarande säsong – räknas fram, synkas inte. */

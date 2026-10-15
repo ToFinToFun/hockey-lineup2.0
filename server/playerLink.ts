@@ -12,7 +12,7 @@
 import { desc, eq, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import { matchPlayers, matchResults, matchGoals } from "../drizzle/schema";
-import { createPlayer, deletePlayers, listPlayers, updatePlayers, type PlayerFields } from "./playersDb";
+import { createPlayer, deletePlayers, getPlayer, listPlayers, setPlayerChangeHook, touchRegistry, updatePlayers, type PlayerFields } from "./playersDb";
 import { getConfigValue, setConfigValue } from "./scoreDb";
 
 const CONFIG_KEY = "integration.players";
@@ -36,6 +36,7 @@ async function setManaged(next: boolean) {
   if (next === managed) return;
   managed = next;
   await setConfigValue(CONFIG_KEY, JSON.stringify({ managed }));
+  touchRegistry(); // Lineup visar låsningen direkt
   console.log(`[integration] medlemsmarkering ${managed ? "styrs av registret" : "styrs i appen"}`);
 }
 
@@ -64,6 +65,7 @@ export interface LinkPlayer {
   active: boolean;
   memberId: number | null;
   lastPlayed: string | null;
+  updatedAt: string;
 }
 
 const memberIdOf = (externalId: string | null) => {
@@ -87,11 +89,13 @@ export async function playersForSite(): Promise<{ managed: boolean; players: Lin
       active: p.active,
       memberId: memberIdOf(p.externalId),
       lastPlayed: last.get(p.id) ?? null,
+      updatedAt: new Date(p.updatedAt).toISOString(),
     })),
   };
 }
 
 export interface HockeyFields {
+  name?: string;
   number?: string;
   position?: "MV" | "B" | "C" | "F" | "IB";
   teamColor?: "white" | "green" | null;
@@ -99,11 +103,44 @@ export interface HockeyFields {
   altPosition?: "MV" | "B" | "C" | "F" | null;
 }
 
+// Ändringar som kommer från sajten ska inte skickas tillbaka dit
+let fromSite = 0;
+async function asSite<T>(fn: () => Promise<T>): Promise<T> {
+  fromSite++;
+  try {
+    return await fn();
+  } finally {
+    fromSite--;
+  }
+}
+
+const SYNCED = ["teamColor", "position", "altPosition", "captainRole"];
+/** Lag, position, alt. position eller roll ändrad i appen på en kopplad spelare → säg till sajten. */
+setPlayerChangeHook((changes) => {
+  if (fromSite || !managed) return;
+  for (const c of changes) {
+    const memberId = memberIdOf(c.before.externalId);
+    if (memberId === null || !c.fields.some((f) => SYNCED.includes(f))) continue;
+    void (async () => {
+      const p = await getPlayer(c.before.id);
+      if (!p) return;
+      const { siteRequest, integrationConfigured } = await import("./integration");
+      if (!integrationConfigured()) return;
+      await siteRequest("POST", "/internal/v1/players/changed", {
+        playerId: p.id,
+        memberId,
+        values: { teamColor: p.teamColor ?? null, position: p.position, altPosition: p.altPosition ?? null, captainRole: p.captainRole ?? null },
+        at: new Date().toISOString(),
+      });
+    })().catch((e) => console.warn("[integration] kunde inte meddela sajten om spelarändring:", (e as Error).message));
+  }
+});
+
 /** Skapar en spelare för en medlem (aktiv i truppen). Returnerar spelarens id. */
 export async function createForMember(input: { memberId: number; name: string; isMember: boolean } & HockeyFields): Promise<string> {
   const existing = (await listPlayers()).find((p) => memberIdOf(p.externalId) === input.memberId);
   if (existing) return existing.id;
-  const row = await createPlayer({
+  const row = await asSite(() => createPlayer({
     name: input.name,
     number: input.number ?? "",
     position: input.position ?? "IB",
@@ -113,7 +150,7 @@ export async function createForMember(input: { memberId: number; name: string; i
     isMember: input.isMember,
     active: true,
     externalId: String(input.memberId),
-  });
+  }));
   console.log(`[integration] spelare skapad för medlem ${input.memberId}: ${row.name}`);
   return row.id;
 }
@@ -133,12 +170,14 @@ export async function linkPlayer(playerId: string, memberId: number | null, isMe
   if (isMember !== null && (managed || memberId !== null)) set.isMember = isMember;
   if (memberId !== null) set.active = true;
   changes.push({ id: playerId, fields: set });
-  await updatePlayers(changes);
+  await asSite(() => updatePlayers(changes));
 }
 
 /** Uppdaterar hockeyuppgifter på en kopplad spelare (val i registrets guide). */
 export async function updateHockeyFields(playerId: string, fields: HockeyFields) {
-  await updatePlayers([{ id: playerId, fields }]);
+  const p = await getPlayer(playerId);
+  if (!p) throw new Error("Spelaren finns inte i appen");
+  await asSite(() => updatePlayers([{ id: playerId, fields }]));
 }
 
 /**
@@ -151,9 +190,13 @@ export async function applyMembership(next: boolean, members: Record<string, boo
   const changes: Array<{ id: string; fields: PlayerFields }> = [];
   for (const p of await listPlayers()) {
     const want = memberIdOf(p.externalId) !== null && members[p.id] === true;
-    if (p.isMember !== want) changes.push({ id: p.id, fields: { isMember: want } });
+    const fields: PlayerFields = {};
+    if (p.isMember !== want) fields.isMember = want;
+    // Medlemmar finns alltid i truppen
+    if (want && !p.active) fields.active = true;
+    if (Object.keys(fields).length) changes.push({ id: p.id, fields });
   }
-  await updatePlayers(changes);
+  await asSite(() => updatePlayers(changes));
   return { changed: changes.length };
 }
 

@@ -96,6 +96,18 @@ function cleanFields(fields: PlayerFields): Record<string, unknown> {
   return set;
 }
 
+type ChangeHook = (changes: Array<{ before: PlayerRow; fields: string[] }>) => void;
+let changeHook: ChangeHook | null = null;
+/** Anropas efter varje ändring av spelare (integrationen säger till sajten). */
+export function setPlayerChangeHook(fn: ChangeHook) {
+  changeHook = fn;
+}
+
+/** Bygger om allt som visar spelare (t.ex. när kopplingen till registret slås på eller av). */
+export function touchRegistry() {
+  changed("app");
+}
+
 /** Uppdaterar flera spelare på en gång (en omladdning av cachen). */
 export async function updatePlayers(changes: Array<{ id: string; fields: PlayerFields }>): Promise<void> {
   const db = await getDb();
@@ -103,6 +115,7 @@ export async function updatePlayers(changes: Array<{ id: string; fields: PlayerF
   const map = await load();
   let any = false;
   const renames: Array<{ id: string; oldNames: string[] }> = [];
+  const changedRows: Array<{ before: PlayerRow; fields: string[] }> = [];
   for (const { id, fields } of changes) {
     const before = map.get(id);
     if (!before) continue;
@@ -110,12 +123,15 @@ export async function updatePlayers(changes: Array<{ id: string; fields: PlayerF
     if (Object.keys(set).length === 0) continue;
     await db.update(players).set(set).where(eq(players.id, id));
     any = true;
+    const changedKeys = Object.keys(set).filter((k) => (before as unknown as Record<string, unknown>)[k] !== set[k]);
+    if (changedKeys.length) changedRows.push({ before, fields: changedKeys });
     const nameChanged = "name" in set && set.name !== before.name;
     const numberChanged = "number" in set && set.number !== before.number;
     if (nameChanged || numberChanged) renames.push({ id, oldNames: [...new Set([before.name, labelOf(before)])] });
   }
   if (any) await afterWrite();
   if (renames.length) for (const fn of renameListeners) fn(renames);
+  if (changedRows.length && changeHook) changeHook(changedRows);
 }
 
 export async function updatePlayer(id: string, fields: PlayerFields): Promise<PlayerRow | undefined> {

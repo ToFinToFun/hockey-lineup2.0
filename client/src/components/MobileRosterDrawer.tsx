@@ -812,8 +812,11 @@ export function MobileRosterDrawer({
 
             {/* Edit form */}
             <div className="px-4 pb-6 space-y-3">
+              {editingPlayer.registerLinked && (
+                <p className="text-[11px] text-sky-300/80">Namn och nummer ändras i medlemsregistret.</p>
+              )}
               {/* Name field */}
-              {onChangeName && (
+              {onChangeName && !editingPlayer.registerLinked && (
                 <div className="flex items-center gap-2">
                   <span className="text-white/40 text-[10px] w-8 shrink-0">Namn:</span>
                   <input
@@ -841,7 +844,7 @@ export function MobileRosterDrawer({
               )}
 
               {/* Number field */}
-              {onChangeNumber && (
+              {onChangeNumber && !editingPlayer.registerLinked && (
                 <div className="flex items-center gap-2">
                   <span className="text-white/40 text-[10px] w-8 shrink-0">Nr:</span>
                   <div className="flex items-center gap-1">
@@ -981,7 +984,7 @@ export function MobileRosterDrawer({
               <div className="pt-2 border-t border-white/10">
                 {!confirmDelete ? (
                   <div className="flex gap-1.5">
-                    {onDeletePlayer && (
+                    {onDeletePlayer && !editingPlayer.registerLinked && (
                       <button
                         onClick={() => setConfirmDelete(true)}
                         className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold text-white bg-red-600/70 hover:bg-red-600 border border-red-400/50 transition-all"

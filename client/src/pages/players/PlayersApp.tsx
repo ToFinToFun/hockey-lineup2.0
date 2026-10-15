@@ -277,6 +277,7 @@ function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]
   const create = trpc.players.create.useMutation({ onSuccess: () => { toast.success("Spelaren är tillagd"); onSaved(); onClose(); } });
   const merge = trpc.players.merge.useMutation({ onSuccess: () => { toast.success("Ihopslagna"); onSaved(); onClose(); }, onError: (e) => toast.error(e.message) });
   const managed = trpc.players.membershipManaged.useQuery().data?.managed ?? false;
+  const locked = managed && Boolean(row?.externalId);
   const canRemove = trpc.players.canRemove.useQuery({ id: row?.id ?? "" }, { enabled: !!row && isAdmin });
   const remove = trpc.players.remove.useMutation({ onSuccess: () => { toast.success("Spelaren är borttagen"); onSaved(); onClose(); }, onError: (e) => toast.error(e.message) });
 
@@ -315,8 +316,8 @@ function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]
 
         {tab === "edit" && (<>
         <div className="grid grid-cols-4 gap-2">
-          <label className="col-span-3 text-xs text-white/50">Namn<input className={input} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
-          <label className="text-xs text-white/50">Nr<input className={input} inputMode="numeric" value={f.number} onChange={(e) => setF({ ...f, number: e.target.value })} /></label>
+          <label className="col-span-3 text-xs text-white/50">Namn<input className={input} value={f.name} disabled={locked} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
+          <label className="text-xs text-white/50">Nr<input className={input} inputMode="numeric" value={f.number} disabled={locked} onChange={(e) => setF({ ...f, number: e.target.value })} /></label>
         </div>
         <div className="grid grid-cols-4 gap-2 text-xs text-white/50">
           <label>Position<select className={input} value={(POSITIONS as readonly string[]).includes(f.position) ? f.position : ""} onChange={(e) => setF({ ...f, position: e.target.value })}><option value="">– Ingen –</option>{POSITIONS.map((p) => <option key={p} value={p}>{p} – {positionName(p)}</option>)}</select></label>
@@ -329,9 +330,13 @@ function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]
             <input type="checkbox" checked={f.isMember} disabled={managed} onChange={(e) => setF({ ...f, isMember: e.target.checked })} /> Medlem
             {managed && <span className="text-[10px] text-white/40">(styrs av registret)</span>}
           </label>
-          <label className="flex items-center gap-2"><input type="checkbox" checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} /> Aktiv (i truppen)</label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={f.active} disabled={locked && f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} /> Aktiv (i truppen)</label>
         </div>
-        {row?.externalId && <p className="text-[11px] text-sky-300/80">Kopplad till medlemsregistret på sajten. Kopplingen ändras där.</p>}
+        {row?.externalId && (
+          <p className="text-[11px] text-sky-300/80">
+            Kopplad till medlemsregistret på sajten.{locked ? " Namn och tröjnummer ändras där, och spelaren finns alltid i truppen." : " Kopplingen ändras där."}
+          </p>
+        )}
         <label className="block text-xs text-white/50">Namn i laget.se (om det skiljer sig)<input className={input} value={f.lagetName} onChange={(e) => setF({ ...f, lagetName: e.target.value })} /></label>
         <label className="block text-xs text-white/50">Anteckning<textarea className={input} rows={2} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></label>
         <button onClick={save} disabled={!payload.name || update.isPending || create.isPending}

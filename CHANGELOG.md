@@ -7,6 +7,14 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.86.0 – 2026-10-15
+
+- Spelare kopplade till sajtens medlemsregister (när spelarsynken är På på sajten):
+  - **Namn och tröjnummer** ändras bara i registret och går inte att ändra här – varken under Spelare eller i Lineup. Ändringar i registret syns här inom några sekunder.
+  - **Lag, position, alternativ position och roll** kan ändras både här och i registret; den senaste ändringen gäller. Ändras de här skickas de direkt till registret.
+  - **Alltid i truppen:** kopplade spelare kan inte tas bort ur truppen eller inaktiveras. Spelare som inte finns i registret kan fortfarande tas bort.
+- Var 5:e minut stäms registret och appen av, så att inget missas om någon sida var nere.
+
 ## 2.85.0 – 2026-10-15
 
 - Spelare kopplas till medlemmar i sajtens medlemsregister. Kopplingen görs på sajten (guiden Koppla spelare, när en ansökan godkänns och vid Ny medlem); saknas spelaren skapas den här, aktiv i truppen. Appen får bara medlemmens id – aldrig personnummer, kontaktuppgifter eller avgifter.

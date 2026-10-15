@@ -13,6 +13,7 @@
  * skriver platser/anmälan till lineup_state och spelardata till registret,
  * och skickar patchen vidare till alla enheter.
  */
+import { membershipManaged } from "./playerLink";
 import { eq } from "drizzle-orm";
 import { getDb, tableChecksum } from "./db";
 import { lineupState, type PlayerRow } from "../drizzle/schema";
@@ -65,6 +66,8 @@ function toPlayer(row: PlayerRow, attendance: Stored["attendance"]): Player {
     number: row.number,
     position: row.position as Player["position"],
     isMember: row.isMember,
+    // Kopplad till sajtens medlemsregister: namn/nummer låsta och kan inte tas bort ur truppen
+    ...(row.externalId && membershipManaged() ? { registerLinked: true } : {}),
     ...(row.teamColor ? { teamColor: row.teamColor as Player["teamColor"] } : {}),
     ...(row.captainRole ? { captainRole: row.captainRole as Player["captainRole"] } : {}),
     ...(status === "registered" ? { isRegistered: true } : {}),
@@ -240,7 +243,10 @@ export function applyLineupPatch(patchId: string, ops: LineupOp[], clientId?: st
       }
       const fields: PlayerFields = {};
       const src = p as unknown as Record<string, unknown>;
+      const locked = Boolean(row.externalId) && membershipManaged();
       for (const key of REGISTRY_FIELDS) {
+        // Namn och nummer på kopplade spelare ägs av medlemsregistret
+        if (locked && (key === "name" || key === "number")) continue;
         // Saknas fältet ändras ingenting i registret. Lag och C/A tas bara bort när
         // de uttryckligen satts till null (t.ex. valt "Waivers" i spelarkortet) –
         // aldrig för att ett spelarobjekt (t.ex. från en gammal sparad uppställning
@@ -255,13 +261,19 @@ export function applyLineupPatch(patchId: string, ops: LineupOp[], clientId?: st
       if (Object.keys(fields).length) updates.push({ id: p.id, fields });
     }
     // Spelare som försvunnit helt (borttagna i Lineup) blir inaktiva – historiken finns kvar.
+    // Kopplade spelare (medlemsregistret) kan inte tas bort ur truppen – de läggs tillbaka.
+    let keptLinked = false;
     for (const p of [...before.players, ...Object.values(before.lineup)]) {
-      if (!inNext.has(p.id) && registry.get(p.id)?.active) updates.push({ id: p.id, fields: { active: false } });
+      const r = registry.get(p.id);
+      if (!inNext.has(p.id) && r?.active && r.externalId && membershipManaged()) keptLinked = true;
+      else if (!inNext.has(p.id) && r?.active) updates.push({ id: p.id, fields: { active: false } });
     }
     const removed = ops.find((o) => o.t === "field" && o.key === "deletedPlayerIds");
     if (removed && Array.isArray((removed as { value: unknown }).value)) {
       for (const id of (removed as { value: string[] }).value) {
-        if (registry.get(id)?.active && !inNext.has(id)) updates.push({ id, fields: { active: false } });
+        const r = registry.get(id);
+        if (r?.active && !inNext.has(id) && r.externalId && membershipManaged()) keptLinked = true;
+        else if (r?.active && !inNext.has(id)) updates.push({ id, fields: { active: false } });
       }
     }
     applyingOwnRegistryWrite = true;
@@ -271,6 +283,7 @@ export function applyLineupPatch(patchId: string, ops: LineupOp[], clientId?: st
     } finally {
       applyingOwnRegistryWrite = false;
     }
+    if (keptLinked) setTimeout(() => void serialize(() => rebuild("Kopplad spelare kan inte tas bort ur truppen", false)).catch(() => {}), 0);
 
     // "Ändrad …": en spelare placerad, flyttad eller tagen ur laget, eller ny i truppen
     const beforeIds = new Set([...before.players, ...Object.values(before.lineup)].map((p) => p.id));

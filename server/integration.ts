@@ -80,6 +80,7 @@ export function startIntegrationServer(appVersion: string): void {
 
   // ─── Spelare (steg 4): sajtens register kopplar medlemmar till spelare ───
   const hockey = z.object({
+    name: z.string().trim().min(1).max(120).optional(),
     number: z.string().trim().max(10).optional(),
     position: z.enum(["MV", "B", "C", "F", "IB"]).optional(),
     teamColor: z.enum(["white", "green"]).nullable().optional(),
