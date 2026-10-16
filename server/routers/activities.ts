@@ -12,7 +12,7 @@ import {
   getActivity,
   getAttendanceSource,
   listActivities,
-  boardNames,
+  boardMembers,
   setAttendance,
   setAttendanceSource,
   setCancelled,
@@ -79,7 +79,7 @@ export const activitiesRouter = router({
     .mutation(({ input }) => run(() => setAttendance(input.activityId, input.playerId, input.status, "admin", true))),
 
   /** Styrelsen enligt sajten (för att visa vilka "Styrelsen" kallar). */
-  board: adminProcedure.query(() => boardNames()),
+  board: adminProcedure.query(() => boardMembers()),
 
   /** Varifrån Lineup hämtar anmälningarna: laget.se (standard) eller appens aktiviteter. */
   source: adminProcedure.query(async () => ({ source: await getAttendanceSource() })),

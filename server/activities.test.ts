@@ -76,7 +76,9 @@ describe.skipIf(!process.env.DATABASE_URL)("aktiviteter och anmälan", () => {
     }
 
     // Bara valda kallas: inte svarat = de valda som inte svarat
-    const [only] = await createActivities({ ...base, invite: "none", invitedPlayerIds: ["akt-b", "akt-c"], feeEnabled: true, feeAmount: 50, feeReason: "Försäsong", feeSwish: "123" }, [addDays(today, 2)]);
+    // akt-x är inte medlem och kan inte kallas
+    if (!(await listPlayers()).some((p) => p.id === "akt-x")) await createPlayer({ id: "akt-x", name: "Xerxes Extern", position: "MV", isMember: false });
+    const [only] = await createActivities({ ...base, invite: "none", invitedPlayerIds: ["akt-b", "akt-c", "akt-x"], feeEnabled: true, feeAmount: 50, feeReason: "Försäsong", feeSwish: "123" }, [addDays(today, 2)]);
     await setAttendance(only, "akt-b", "yes", "admin", true);
     const o = await getActivity(only);
     expect(o.invitedCount).toBe(2);

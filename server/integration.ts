@@ -70,6 +70,8 @@ export function startIntegrationServer(appVersion: string): void {
   // Sajten säger till att något ändrats – appen hämtar själv
   app.post("/internal/v1/notify", (req, res) => {
     if (req.body?.domain === "sponsors") scheduleSponsorSync();
+    // Organisation sparad på sajten – styrelsen läses om vid nästa behov
+    if (req.body?.domain === "board") void import("./activities").then((m) => m.clearBoardCache());
     res.json({ ok: true });
   });
 

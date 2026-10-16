@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.89.1 – 2026-10-16
+
+- Aktiviteter: bara medlemmar kan kallas (kallelsen går till medlemmens e-post). Den som inte är medlem, t.ex. en extern målvakt, läggs till som Kommer på aktiviteten.
+- Styrelsen matchas nu mot medlemsregistret på sajten och kopplas till spelarna via medlemmens id. När Organisation sparas på sajten läser appen om styrelsen direkt. Namn som inte känns igen, eller medlemmar utan spelare i appen, visas som varning.
+
 ## 2.89.0 – 2026-10-16
 
 - Aktiviteter:

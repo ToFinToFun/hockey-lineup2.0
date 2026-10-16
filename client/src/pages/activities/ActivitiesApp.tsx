@@ -382,7 +382,8 @@ function ActivityForm({ onClose, recent, edit }: { onClose: () => void; recent: 
   const byId = new Map(players.map((p) => [p.id, p]));
   const selected = f.invitedPlayerIds.map((id) => byId.get(id)).filter((p): p is RosterPlayer => !!p);
   const needle = pick.trim().toLowerCase();
-  const pickable = needle ? players.filter((p) => !f.invitedPlayerIds.includes(p.id) && `${p.name} ${p.number}`.toLowerCase().includes(needle)).slice(0, 8) : [];
+  // Bara medlemmar kan kallas (kallelsen går till medlemmens e-post)
+  const pickable = needle ? players.filter((p) => p.isMember && !f.invitedPlayerIds.includes(p.id) && `${p.name} ${p.number}`.toLowerCase().includes(needle)).slice(0, 8) : [];
 
   const done = (msg: string) => {
     utils.activities.invalidate();
@@ -533,12 +534,16 @@ function ActivityForm({ onClose, recent, edit }: { onClose: () => void; recent: 
             </div>
             {f.invite === "board" && (
               <p className="text-xs text-white/50">
-                {board.data?.names.length ? `Styrelsen enligt sajten: ${board.data.names.join(", ")}.` : "Styrelsen hämtas från Organisation på sajten."}
-                {board.data?.error ? ` (Sajten svarar inte just nu: senast kända lista används.)` : ""}
+                {board.data?.names.length ? `Styrelsen enligt Organisation på sajten: ${board.data.names.join(", ")}.` : "Styrelsen hämtas från Organisation på sajten."}
+                {board.data?.unmatched.length ? ` Finns inte i medlemsregistret: ${board.data.unmatched.join(", ")}.` : ""}
+                {board.data?.error ? " (Sajten svarar inte just nu – senast kända lista används.)" : ""}
               </p>
             )}
+            <p className="text-[11px] text-white/40">Bara medlemmar kallas. Den som inte är medlem, t.ex. en extern målvakt, läggs till som Kommer på aktiviteten.</p>
             <div className="space-y-2">
-              <p className="text-xs text-white/60">{f.invite === "none" ? "Välj vilka som kallas:" : "Fler som ska kallas (valfritt), t.ex. en extern målvakt:"}</p>
+              <p className="text-xs text-white/60">
+                {f.invite === "none" ? "Välj vilka medlemmar som kallas:" : "Fler medlemmar som ska kallas (valfritt):"}
+              </p>
               {selected.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {selected.map((p) => (
@@ -938,12 +943,10 @@ function ActivityDetail({ id }: { id: number }) {
             {showMissing && list(notAnswered.map((p) => <Row key={p.playerId} p={p} status="none" />))}
           </Section>
         )}
-        {q.data.unmatchedBoard.length > 0 && (
-          <p className="text-xs text-amber-200">Hittar inte i truppen (styrelsen enligt sajten): {q.data.unmatchedBoard.join(", ")}</p>
-        )}
+        {q.data.inviteWarnings.length > 0 && <p className="text-xs text-amber-200">Kallas inte: {q.data.inviteWarnings.join("; ")}</p>}
 
         <Section title="Lägg till ur truppen">
-          <p className="text-xs text-white/45">Även den som inte är medlem, t.ex. en extern målvakt. Max antal gäller inte här.</p>
+          <p className="text-xs text-white/45">Sätt någon som Kommer eller Kommer inte – även den som inte är medlem, t.ex. en extern målvakt. Max antal gäller inte här.</p>
           <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-2">
             <Search size={14} className="text-white/40" />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Sök namn eller nummer" className="flex-1 bg-transparent py-2 text-sm focus:outline-none" />

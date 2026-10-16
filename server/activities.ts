@@ -75,42 +75,66 @@ function rowValues(f: ActivityFields) {
 
 // ─── Styrelsen (från sajtens Organisation) ───────────────────────────────────
 
-let boardCache: { at: number; names: string[]; error: string | null } | null = null;
-
-/** Styrelsens namn från sajten (gruppen Styrelsen under Organisation). Cachas i 10 minuter. */
-export async function boardNames(): Promise<{ names: string[]; error: string | null }> {
-  if (boardCache && Date.now() - boardCache.at < 10 * 60_000) return boardCache;
-  try {
-    const { siteRequest, integrationConfigured } = await import("./integration");
-    if (!integrationConfigured()) return { names: [], error: "Kopplingen till sajten är inte inställd" };
-    const r = await siteRequest<{ names: string[] }>("GET", "/internal/v1/board");
-    boardCache = { at: Date.now(), names: r.names ?? [], error: null };
-    await setConfigValue("activities.board", JSON.stringify(boardCache.names)).catch(() => {});
-  } catch (e) {
-    // Sajten svarar inte – använd senast kända lista
-    const saved = await getConfigValue("activities.board").catch(() => null);
-    boardCache = { at: Date.now(), names: saved ? (JSON.parse(saved) as string[]) : [], error: (e as Error).message };
-  }
-  return boardCache;
+export interface Board {
+  names: string[];
+  /** Medlemmarnas id i sajtens register (samma som players.externalId för kopplade spelare) */
+  memberIds: number[];
+  /** Namn i Organisation som inte finns i registret */
+  unmatched: string[];
+  error: string | null;
 }
 
-const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+let boardCache: { at: number; value: Board } | null = null;
 
-/** Vilka spelare som är kallade till en aktivitet (id → orsak). */
+/** Sajten säger till när Organisation sparats – nästa läsning hämtar på nytt. */
+export function clearBoardCache() {
+  boardCache = null;
+}
+
+/**
+ * Styrelsen enligt sajten: gruppen Styrelsen under Organisation, matchad mot medlemsregistret.
+ * Hämtas på nytt när sajten meddelar en ändring, annars högst var 10:e minut. Svarar sajten
+ * inte används senast kända lista.
+ */
+export async function boardMembers(): Promise<Board> {
+  if (boardCache && Date.now() - boardCache.at < 10 * 60_000) return boardCache.value;
+  let value: Board;
+  try {
+    const { siteRequest, integrationConfigured } = await import("./integration");
+    if (!integrationConfigured()) throw new Error("Kopplingen till sajten är inte inställd");
+    const r = await siteRequest<{ names: string[]; memberIds: number[]; unmatched: string[] }>("GET", "/internal/v1/board");
+    value = { names: r.names ?? [], memberIds: r.memberIds ?? [], unmatched: r.unmatched ?? [], error: null };
+    await setConfigValue("activities.board", JSON.stringify(value)).catch(() => {});
+  } catch (e) {
+    const saved = await getConfigValue("activities.board").catch(() => null);
+    const last = saved ? (JSON.parse(saved) as Partial<Board>) : {};
+    value = { names: last.names ?? [], memberIds: last.memberIds ?? [], unmatched: last.unmatched ?? [], error: (e as Error).message };
+  }
+  boardCache = { at: Date.now(), value };
+  return value;
+}
+
+/**
+ * Vilka spelare som är kallade till en aktivitet. Bara medlemmar kan kallas (kallelsen går till
+ * medlemmens e-post); den som inte är medlem kan bara läggas till som "kommer" av den som administrerar.
+ */
 export async function invitedPlayers(row: Pick<ActivityRow, "invite" | "invitedPlayerIds">, players: Awaited<ReturnType<typeof listPlayers>>) {
-  const out = new Map<string, "group" | "selected">();
-  if (row.invite === "all") for (const p of players) if (p.isMember && p.active) out.set(p.id, "group");
-  const unmatched: string[] = [];
+  const members = players.filter((p) => p.isMember);
+  const out = new Set<string>();
+  const warnings: string[] = [];
+  if (row.invite === "all") for (const p of members) if (p.active) out.add(p.id);
   if (row.invite === "board") {
-    const { names } = await boardNames();
-    for (const n of names) {
-      const p = players.find((x) => norm(x.name) === norm(n));
-      if (p) out.set(p.id, "group");
-      else unmatched.push(n);
+    const board = await boardMembers();
+    for (const n of board.unmatched) warnings.push(`${n} (finns inte i medlemsregistret)`);
+    for (const id of board.memberIds) {
+      const p = members.find((x) => x.externalId === String(id));
+      if (p) out.add(p.id);
+      else warnings.push(`medlem ${id} (saknar spelare i appen – koppla under Koppla spelare på sajten)`);
     }
   }
-  for (const id of row.invitedPlayerIds ?? []) if (!out.has(id)) out.set(id, "selected");
-  return { invited: out, unmatched };
+  const memberIds = new Set(members.map((p) => p.id));
+  for (const id of row.invitedPlayerIds ?? []) if (memberIds.has(id)) out.add(id);
+  return { invited: out, warnings };
 }
 
 /** Skapar en aktivitet per datum. Flera datum blir en serie. Returnerar id:n. */
@@ -254,10 +278,10 @@ export async function getActivity(id: number) {
   const roster = players
     .filter((p) => p.active)
     .map((p) => ({ id: p.id, name: p.name, number: p.number, position: p.position, isMember: p.isMember, teamColor: p.teamColor }));
-  const { invited, unmatched } = await invitedPlayers(row, players);
+  const { invited, warnings } = await invitedPlayers(row, players);
   const answered = new Set(att.map((a) => a.playerId));
   const notAnswered = sortAttendees(
-    [...invited.keys()]
+    [...invited]
       .filter((pid) => !answered.has(pid))
       .map((pid) => byId.get(pid))
       .filter((p): p is NonNullable<typeof p> => !!p)
@@ -268,7 +292,7 @@ export async function getActivity(id: number) {
     window: signupWindow(row),
     invitedCount: invited.size,
     notAnswered,
-    unmatchedBoard: unmatched,
+    inviteWarnings: warnings,
     yes: sortAttendees(attendees.filter((a) => a.status === "yes")),
     reserve: sortAttendees(attendees.filter((a) => a.status === "reserve")),
     no: sortAttendees(attendees.filter((a) => a.status === "no")),
