@@ -48,3 +48,9 @@ export const lineupOrModuleProcedure = (...modules: AccessModule[]) => t.procedu
   if (!ok) throw new TRPCError({ code: "UNAUTHORIZED", message: "Inloggning krävs" });
   return next({ ctx: { ...ctx, session: s! } });
 });
+
+/** Inloggad medlem (e-post via sajten). Ger bara medlemmens egna aktiviteter och svar. */
+export const memberProcedure = t.procedure.use(({ ctx, next }) => {
+  if (!ctx.member) throw new TRPCError({ code: "UNAUTHORIZED", message: "Logga in som medlem" });
+  return next({ ctx: { ...ctx, member: ctx.member } });
+});

@@ -75,6 +75,18 @@ export function startIntegrationServer(appVersion: string): void {
     res.json({ ok: true });
   });
 
+  // Styrelsen loggar ut alla en medlems enheter (från registret på sajten)
+  app.post("/internal/v1/members/:id/logout", async (req, res, next) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "ogiltigt id" });
+    try {
+      const { revokeAll } = await import("./memberAuth");
+      res.json({ count: await revokeAll(id) });
+    } catch (e) {
+      next(e);
+    }
+  });
+
   // Begrepp: lagens och positionernas namn, förkortning och färg (sajtens medlemsregister använder dem)
   app.get("/internal/v1/terms", (_req, res) => {
     res.json(currentTerms());

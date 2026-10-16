@@ -23,6 +23,7 @@ const ReportApp = lazy(() => import("./pages/report/ReportApp"));
 const AccessRedeem = lazy(() => import("./pages/AccessRedeem"));
 const LivePage = lazy(() => import("./pages/live/LivePage"));
 const ActivitiesApp = lazy(() => import("./pages/activities/ActivitiesApp"));
+const MemberApp = lazy(() => import("./pages/member/MemberApp"));
 import InviteRedeem from "./pages/InviteRedeem";
 import { RequireRole } from "./components/auth/RequireRole";
 import { lazy, Suspense, useEffect, type ComponentType } from "react";
@@ -62,6 +63,11 @@ const ReportPage = guard(["report", "matches"], ReportApp);
 const SponsorsPage = guard("admin", SponsorsApp);
 const SettingsPage = guard("admin", SettingsApp);
 const ActivitiesPage = guard("admin", ActivitiesApp);
+const MemberPage = (props: any) => (
+  <Suspense fallback={<div className="min-h-[100dvh] bg-[#0a0a0a]" />}>
+    <MemberApp {...props} />
+  </Suspense>
+);
 const MediaPage = guard(["media"], MediaApp);
 const VideoPage = guard(["media"], VideoApp);
 
@@ -70,6 +76,11 @@ function Router() {
     <Switch>
       {/* Hub landing page */}
       <Route path="/" component={Hub} />
+
+      {/* Medlemmarna: logga in med e-post och svara på kallelser (egen inloggning) */}
+      <Route path="/logga-in" component={MemberPage} />
+      <Route path="/mina" component={MemberPage} />
+      <Route path="/mina/:id" component={MemberPage} />
 
       {/* Aktiviteter och anmälan */}
       <Route path="/aktiviteter" component={ActivitiesPage} />

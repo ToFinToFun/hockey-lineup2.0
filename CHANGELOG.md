@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.90.0 – 2026-10-16
+
+- **Medlemsinloggning:** medlemmar loggar in med sin e-post från medlemsregistret (Logga in på startsidan). De får en kod och en länk på mejlen; inget lösenord. Flera medlemmar med samma e-post väljer vem de är. Egen inloggning, helt skild från styrelsens lösenord och länkarna – den ger bara medlemmens egna aktiviteter.
+- **Mina aktiviteter:** kommande aktiviteter där medlemmen är kallad, med ✓ Kommer / ✕ Kommer inte direkt i listan. Aktiviteten visar tid, plats, text, extra avgift och vilka som kommer. Kommer går när anmälan är öppen; Kommer inte går alltid fram till att aktiviteten är slut. Fullt med reservlista → reserv.
+- **Mina enheter:** se och logga ut enheter, eller alla. Styrelsen kan logga ut en medlem från registret på sajten.
+
 ## 2.89.2 – 2026-10-16
 
 - Aktiviteter: anmälan sätts med två små knappar per rad – ✓ kommer och ✕ kommer inte. Den valda är ifylld (grön/röd); tryck på den igen för att ta bort svaret. Namnen får plats.

@@ -405,3 +405,21 @@ export const activityAttendance = mysqlTable(
   },
   (t) => [uniqueIndex("activity_attendance_uniq").on(t.activityId, t.playerId)],
 );
+
+// ─── Medlemsinloggning ───────────────────────────────────────────────────────
+// En rad per inloggad enhet. Medlemmen loggar in med e-post via sajten; appen får bara
+// medlemmens id (samma som players.externalId för kopplade spelare).
+
+export const memberSessions = mysqlTable(
+  "member_sessions",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    memberId: int("memberId").notNull(),
+    /** T.ex. "iPhone · Safari" – så att medlemmen känner igen sina enheter */
+    device: varchar("device", { length: 120 }).default("").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    lastSeenAt: timestamp("lastSeenAt").defaultNow().notNull(),
+    revokedAt: timestamp("revokedAt"),
+  },
+  (t) => [index("member_sessions_member_idx").on(t.memberId)],
+);

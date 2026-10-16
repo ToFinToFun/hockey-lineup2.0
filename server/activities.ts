@@ -396,3 +396,114 @@ export async function setAppAttendanceByName(playerName: string, status: "Attend
   await setAttendance(row.id, p.id, status === "Attending" ? "yes" : status === "NotAttending" ? "no" : null, "admin", true);
   return { success: true };
 }
+
+// ─── Medlemmarna (egen inloggning) ───────────────────────────────────────────
+
+/** Medlemmens spelare i appen (kopplad via sajtens register). */
+export async function playerForMember(memberId: number) {
+  return (await listPlayers()).find((p) => p.externalId === String(memberId)) ?? null;
+}
+
+function openState(row: ActivityRow, now = Date.now()) {
+  const w = signupWindow(row);
+  const end = (row.endsAt ?? new Date(row.startsAt.getTime() + 2 * 3600000)).getTime();
+  return {
+    window: w,
+    notOpenYet: !!w.opensAt && now < w.opensAt.getTime(),
+    closed: now >= w.closesAt.getTime(),
+    over: now >= end,
+  };
+}
+
+/** Kommande aktiviteter där medlemmen är kallad eller har svarat, med medlemmens svar. */
+export async function memberActivities(playerId: string) {
+  const d = await db();
+  const players = await listPlayers();
+  const rows = await d
+    .select()
+    .from(activities)
+    .where(gte(activities.startsAt, new Date(Date.now() - 4 * 3600000)))
+    .orderBy(asc(activities.startsAt))
+    .limit(200);
+  if (!rows.length) return [];
+  const att = await d.select().from(activityAttendance).where(inArray(activityAttendance.activityId, rows.map((r) => r.id)));
+  const out = [];
+  for (const r of rows) {
+    const mine = att.find((a) => a.activityId === r.id && a.playerId === playerId);
+    const { invited } = await invitedPlayers(r, players);
+    if (!mine && !invited.has(playerId)) continue;
+    const st = openState(r);
+    if (st.over) continue;
+    out.push({
+      id: r.id,
+      type: r.type,
+      title: r.title,
+      startsAt: r.startsAt,
+      endsAt: r.endsAt,
+      location: r.location,
+      cancelled: r.cancelled,
+      feeEnabled: r.feeEnabled,
+      maxParticipants: r.maxParticipants,
+      yes: att.filter((a) => a.activityId === r.id && a.status === "yes").length,
+      myStatus: (mine?.status as AttendanceStatus | undefined) ?? null,
+      opensAt: st.window.opensAt,
+      closesAt: st.window.closesAt,
+      notOpenYet: st.notOpenYet,
+      closed: st.closed,
+    });
+  }
+  return out;
+}
+
+/** En aktivitet för medlemmen: detaljer, mitt svar och vilka som kommer. */
+export async function memberActivity(id: number, playerId: string) {
+  const a = await getActivity(id);
+  const mine = [...a.yes, ...a.reserve, ...a.no].find((x) => x.playerId === playerId);
+  const { invited } = await invitedPlayers(a.activity, await listPlayers());
+  if (!mine && !invited.has(playerId)) throw new Error("Du är inte kallad till den här aktiviteten");
+  const st = openState(a.activity);
+  const r = a.activity;
+  const pick = (x: Attendee) => ({ playerId: x.playerId, name: x.name, number: x.number, position: x.position, isMember: x.isMember });
+  return {
+    activity: {
+      id: r.id,
+      type: r.type,
+      title: r.title,
+      startsAt: r.startsAt,
+      endsAt: r.endsAt,
+      location: r.location,
+      description: r.description,
+      cancelled: r.cancelled,
+      maxParticipants: r.maxParticipants,
+      waitlist: r.waitlist,
+      feeEnabled: r.feeEnabled,
+      feeAmount: r.feeAmount,
+      feeReason: r.feeReason,
+      feeSwish: r.feeSwish,
+      seriesId: r.seriesId,
+    },
+    myStatus: (mine?.status as AttendanceStatus | undefined) ?? null,
+    opensAt: st.window.opensAt,
+    closesAt: st.window.closesAt,
+    notOpenYet: st.notOpenYet,
+    closed: st.closed,
+    over: st.over,
+    yes: a.yes.map(pick),
+    reserve: a.reserve.map(pick),
+  };
+}
+
+/**
+ * Medlemmen svarar. Kommer: bara när anmälan är öppen. Kommer inte: alltid fram till att
+ * aktiviteten är slut (avanmälan går även efter att anmälan stängt).
+ */
+export async function memberRespond(id: number, playerId: string, status: "yes" | "no") {
+  const a = await memberActivity(id, playerId);
+  if (a.activity.cancelled) throw new Error("Aktiviteten är inställd");
+  if (a.over) throw new Error("Aktiviteten är redan slut");
+  if (status === "yes") {
+    if (a.notOpenYet) throw new Error("Anmälan har inte öppnat än");
+    if (a.closed) throw new Error("Anmälan har stängt – kontakta den som håller i aktiviteten");
+  }
+  return setAttendance(id, playerId, status, "self");
+}

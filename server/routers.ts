@@ -7,6 +7,7 @@ import { publicProcedure, lineupProcedure, adminProcedure, moduleProcedure, line
 import { authRouter } from "./routers/auth";
 import { playersRouter } from "./routers/players";
 import { activitiesRouter } from "./routers/activities";
+import { memberRouter } from "./routers/member";
 import { appAttendance, getAttendanceSource, setAppAttendanceByName } from "./activities";
 import { newsExists, fetchAttendance, updateAttendance, publishNews, deleteNews, fetchAccountName, NEWS_ADMIN_URL, type AttendingStatus } from "./lagetSe";
 import { seasonHistory, seasonOf, recentForm, recentWinners } from "./playerHistory";
@@ -250,6 +251,7 @@ export const appRouter = router({
   score: scoreRouter,
   scoreStats: scoreStatsRouter,
   activities: activitiesRouter,
+  member: memberRouter,
   laget: router({
     /** Hämta anmälningslistan från laget.se för dagens/nästa event */
     attendance: lineupOrModuleProcedure("media").query(async () => {

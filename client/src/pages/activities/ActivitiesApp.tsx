@@ -100,12 +100,12 @@ const fmtDateTime = (d: Date | string) => {
 
 // ─── Små byggstenar ──────────────────────────────────────────────────────────
 
-function TypeChip({ type }: { type: string }) {
+export function TypeChip({ type }: { type: string }) {
   const t = (ACTIVITY_TYPES as readonly string[]).includes(type) ? (type as ActivityType) : "other";
   return <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${TYPE_COLORS[t]}`}>{ACTIVITY_TYPE_NAMES[t]}</span>;
 }
 
-function PosBadge({ position }: { position: string }) {
+export function PosBadge({ position }: { position: string }) {
   return (
     <span
       className={`pos-badge pos-badge-sm ${position ? `pos-badge-${position.toLowerCase()}` : "bg-white/10 text-white/40"} shrink-0`}
@@ -117,7 +117,7 @@ function PosBadge({ position }: { position: string }) {
 }
 
 /** Röd dag eller dag före röd dag. */
-function DayBadge({ mark }: { mark: DayMark | null }) {
+export function DayBadge({ mark }: { mark: DayMark | null }) {
   if (!mark) return null;
   return (
     <span
@@ -129,7 +129,7 @@ function DayBadge({ mark }: { mark: DayMark | null }) {
   );
 }
 
-function PlayerName({ name, number, isMember }: { name: string; number: string; isMember: boolean }) {
+export function PlayerName({ name, number, isMember }: { name: string; number: string; isMember: boolean }) {
   return (
     <span className={`flex-1 min-w-0 truncate ${isMember ? "" : "text-white/55"}`}>
       {name}
@@ -165,7 +165,7 @@ function Header({ title, back }: { title: string; back: string }) {
 }
 
 /** Extra avgift – syns tydligt i kallelsen. */
-function FeeBox({ amount, reason, swish }: { amount: number | null; reason: string; swish: string }) {
+export function FeeBox({ amount, reason, swish }: { amount: number | null; reason: string; swish: string }) {
   return (
     <div className="rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2.5 flex items-start gap-2.5">
       <Coins size={18} className="text-amber-300 shrink-0 mt-0.5" />

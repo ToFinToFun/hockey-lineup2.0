@@ -24,6 +24,7 @@ export default function Hub() {
   const liveNow = !!liveQ.data?.live;
   const pending = trpc.score.match.pendingCount.useQuery(undefined, { enabled: hasModule("matches") });
   const pendingCount = pending.data?.count ?? 0;
+  const member = trpc.member.me.useQuery(undefined, { retry: false, staleTime: 60_000 });
   return (
     <div className="min-h-[100dvh] bg-[#0a0a0a] text-white relative overflow-hidden">
       {/* Background image with overlay */}
@@ -68,6 +69,31 @@ export default function Hub() {
 
         {/* App cards */}
         <div className="w-full max-w-md space-y-4">
+          {/* Medlemmen: mina aktiviteter, eller logga in */}
+          {member.data ? (
+            <Link href="/mina">
+              <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-emerald-500/40 hover:border-emerald-400/70 transition-all duration-300 cursor-pointer">
+                <div className="p-5 sm:p-6 flex items-center gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-emerald-400/10 border border-emerald-400/20 flex items-center justify-center">
+                    <CalendarDays size={24} className="text-emerald-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-lg sm:text-xl font-bold tracking-tight">Mina aktiviteter</h2>
+                    <p className="text-white/40 text-xs sm:text-sm mt-0.5">Träningar, matcher och möten – svara Kommer eller Kommer inte</p>
+                  </div>
+                  <ChevronRight size={20} className="text-white/20 group-hover:text-emerald-300 transition-colors flex-shrink-0" />
+                </div>
+              </div>
+            </Link>
+          ) : member.isFetched ? (
+            <Link href="/logga-in">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] hover:border-emerald-400/50 px-5 py-3 flex items-center gap-3 cursor-pointer">
+                <CalendarDays size={18} className="text-emerald-300" />
+                <span className="flex-1 text-sm">Medlem? Logga in och svara på kallelser</span>
+                <ChevronRight size={18} className="text-white/30" />
+              </div>
+            </Link>
+          ) : null}
           {/* Live – högst upp, för alla */}
           <Link href="/live">
             <div className={`group relative overflow-hidden rounded-2xl border transition-all duration-300 cursor-pointer ${liveNow ? "bg-gradient-to-br from-[#2a0f14] to-[#140a0c] border-red-500/50 hover:border-red-400" : "bg-gradient-to-br from-[#1a1a1a] to-[#111] border-[#2a2a2a] hover:border-red-500/60"}`}>
