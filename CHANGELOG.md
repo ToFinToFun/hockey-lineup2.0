@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.89.2 – 2026-10-16
+
+- Aktiviteter: anmälan sätts med två små knappar per rad – ✓ kommer och ✕ kommer inte. Den valda är ifylld (grön/röd); tryck på den igen för att ta bort svaret. Namnen får plats.
+- Färre hjälptexter.
+
 ## 2.89.1 – 2026-10-16
 
 - Aktiviteter: bara medlemmar kan kallas (kallelsen går till medlemmens e-post). Den som inte är medlem, t.ex. en extern målvakt, läggs till som Kommer på aktiviteten.

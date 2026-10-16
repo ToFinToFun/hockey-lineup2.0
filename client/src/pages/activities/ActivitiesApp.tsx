@@ -27,6 +27,7 @@ import {
   Trash2,
   Users,
   X,
+  Check,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { positionName } from "@/lib/players";
@@ -63,8 +64,6 @@ const btnPrimary = `${btn} bg-emerald-600 border-emerald-600 text-white font-sem
 const btnDanger = `${btn} border-red-400/30 text-red-300 hover:bg-red-500/10`;
 const chip = (on: boolean) =>
   `text-xs px-3 py-1.5 rounded-full border transition-colors ${on ? "bg-[#0a7ea4] border-[#0a7ea4] text-white" : "border-white/15 text-white/60 hover:border-white/30"}`;
-const smallBtn = (tone: "yes" | "no") =>
-  `text-xs px-2.5 py-1 rounded-md border whitespace-nowrap ${tone === "yes" ? "border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/10" : "border-white/15 text-white/60 hover:bg-white/5"}`;
 const inputCls = "w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#0a7ea4]";
 const labelCls = "block text-xs text-white/60 mb-1";
 
@@ -461,7 +460,7 @@ function ActivityForm({ onClose, recent, edit }: { onClose: () => void; recent: 
                 <DayBadge mark={dayMark(date)} />
               </p>
             )}
-            {edit?.scope === "following" && <p className="text-xs text-white/50">Varje tillfälle behåller sitt datum. Tider, plats, text och övrigt ändras för alla kommande.</p>}
+            {edit?.scope === "following" && <p className="text-xs text-white/50">Datumen behålls.</p>}
             <div>
               <label className={labelCls} htmlFor="act-loc">Plats</label>
               <input id="act-loc" className={inputCls} value={f.location} maxLength={120} onChange={(e) => set("location", e.target.value)} placeholder="C-hallen" />
@@ -477,7 +476,7 @@ function ActivityForm({ onClose, recent, edit }: { onClose: () => void; recent: 
             <Section title="Återkommande">
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={repeat} onChange={(e) => setRepeat(e.target.checked)} />
-                Upprepa varje vecka (t.ex. tilldelade istider)
+                Upprepa varje vecka
               </label>
               {repeat && (
                 <div className="space-y-3 rounded-xl border border-white/10 p-3">
@@ -495,7 +494,7 @@ function ActivityForm({ onClose, recent, edit }: { onClose: () => void; recent: 
                   {dates.length > 0 && (
                     <div className="space-y-1.5">
                       <p className="text-xs text-white/60">
-                        <strong className="text-white">{chosen.length} tillfällen.</strong> Tryck på ett datum för att hoppa över det. Röda dagar och dagar före är markerade.
+                        <strong className="text-white">{chosen.length} tillfällen</strong> – tryck på ett datum för att hoppa över det.
                       </p>
                       <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto">
                         {dates.map((d) => {
@@ -539,7 +538,6 @@ function ActivityForm({ onClose, recent, edit }: { onClose: () => void; recent: 
                 {board.data?.error ? " (Sajten svarar inte just nu – senast kända lista används.)" : ""}
               </p>
             )}
-            <p className="text-[11px] text-white/40">Bara medlemmar kallas. Den som inte är medlem, t.ex. en extern målvakt, läggs till som Kommer på aktiviteten.</p>
             <div className="space-y-2">
               <p className="text-xs text-white/60">
                 {f.invite === "none" ? "Välj vilka medlemmar som kallas:" : "Fler medlemmar som ska kallas (valfritt):"}
@@ -607,7 +605,6 @@ function ActivityForm({ onClose, recent, edit }: { onClose: () => void; recent: 
                 Reservlista när det är fullt
               </label>
             )}
-            <p className="text-xs text-white/40">Avanmälan går alltid, även efter att anmälan stängt.</p>
           </Section>
 
           {/* Extra avgift */}
@@ -808,27 +805,41 @@ function ActivityDetail({ id }: { id: number }) {
     doScoped(kind, "one");
   };
 
-  const Row = ({ p, status }: { p: { playerId: string; name: string; number: string; position: string; isMember: boolean }; status: "yes" | "no" | "reserve" | "none" }) => (
-    <li className="flex items-center gap-2.5 px-3 py-2 border-b border-white/5 last:border-0">
-      <PosBadge position={p.position} />
-      <PlayerName name={p.name} number={p.number} isMember={p.isMember} />
-      {status !== "yes" && (
-        <button onClick={() => setAtt.mutate({ activityId: id, playerId: p.playerId, status: "yes" })} className={smallBtn("yes")}>
-          Kommer
-        </button>
-      )}
-      {status !== "no" && (
-        <button onClick={() => setAtt.mutate({ activityId: id, playerId: p.playerId, status: "no" })} className={smallBtn("no")}>
-          Kommer inte
-        </button>
-      )}
-      {status !== "none" && (
-        <button onClick={() => setAtt.mutate({ activityId: id, playerId: p.playerId, status: null })} aria-label={`Ta bort svaret för ${p.name}`} className="text-white/30 hover:text-red-300 p-1">
-          <X size={14} />
-        </button>
-      )}
-    </li>
-  );
+  /**
+   * En rad: position, namn och två små statusknappar (✓ kommer, ✕ kommer inte). Den som är
+   * vald är ifylld. Tryck på den valda igen för att ta bort svaret.
+   */
+  const Row = ({ p, status }: { p: { playerId: string; name: string; number: string; position: string; isMember: boolean }; status: "yes" | "no" | "reserve" | "none" }) => {
+    const choose = (next: "yes" | "no") =>
+      setAtt.mutate({ activityId: id, playerId: p.playerId, status: (next === "yes" && (status === "yes" || status === "reserve")) || (next === "no" && status === "no") ? null : next });
+    const yesOn = status === "yes" || status === "reserve";
+    return (
+      <li className="flex items-center gap-2.5 pl-3 pr-2 py-1.5 border-b border-white/5 last:border-0">
+        <PosBadge position={p.position} />
+        <PlayerName name={p.name} number={p.number} isMember={p.isMember} />
+        <div className="flex gap-1.5 shrink-0" role="group" aria-label={`Svar för ${p.name}`}>
+          <button
+            onClick={() => choose("yes")}
+            aria-pressed={yesOn}
+            aria-label="Kommer"
+            title={yesOn ? "Kommer – tryck för att ta bort svaret" : "Kommer"}
+            className={`w-9 h-9 rounded-lg border flex items-center justify-center ${yesOn ? "bg-emerald-600 border-emerald-600 text-white" : "border-white/15 text-white/40 hover:text-emerald-300 hover:border-emerald-400/50"}`}
+          >
+            <Check size={18} />
+          </button>
+          <button
+            onClick={() => choose("no")}
+            aria-pressed={status === "no"}
+            aria-label="Kommer inte"
+            title={status === "no" ? "Kommer inte – tryck för att ta bort svaret" : "Kommer inte"}
+            className={`w-9 h-9 rounded-lg border flex items-center justify-center ${status === "no" ? "bg-red-500/80 border-red-500/80 text-white" : "border-white/15 text-white/40 hover:text-red-300 hover:border-red-400/50"}`}
+          >
+            <X size={18} />
+          </button>
+        </div>
+      </li>
+    );
+  };
   const list = (items: ReactNode, empty?: string) => (
     <ul className="rounded-xl border border-white/10 bg-white/[0.02]">{items || (empty && <li className="px-3 py-3 text-sm text-white/40">{empty}</li>)}</ul>
   );
@@ -946,7 +957,6 @@ function ActivityDetail({ id }: { id: number }) {
         {q.data.inviteWarnings.length > 0 && <p className="text-xs text-amber-200">Kallas inte: {q.data.inviteWarnings.join("; ")}</p>}
 
         <Section title="Lägg till ur truppen">
-          <p className="text-xs text-white/45">Sätt någon som Kommer eller Kommer inte – även den som inte är medlem, t.ex. en extern målvakt. Max antal gäller inte här.</p>
           <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-2">
             <Search size={14} className="text-white/40" />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Sök namn eller nummer" className="flex-1 bg-transparent py-2 text-sm focus:outline-none" />
