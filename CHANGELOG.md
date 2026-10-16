@@ -7,6 +7,15 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.89.0 – 2026-10-16
+
+- Aktiviteter:
+  - **Vilka kallas:** Alla medlemmar, Styrelsen (namnen hämtas från Organisation på stalstadens.se) eller Bara valda – och alltid valfria spelare utöver eller i stället, t.ex. en extern målvakt. Listan **Inte svarat** visar vilka kallade som inte svarat.
+  - **Extra avgift:** kryssruta med belopp, vad den avser och Swishnummer (förslag 50 kr, Försäsong, 123 427 55 66). Syns tydligt i kallelsen och i listan.
+  - **Röda dagar** och dagen före markeras i listan, i kallelsen och när en serie planeras (julafton, midsommarafton och nyårsafton räknas som röda).
+  - **Förhandsvisning** av kallelsen medan den skrivs.
+  - Tydligare val: **Ändra tillfället** eller **Ändra serien**. Snyggare knappar, rubriker och radbrytning; målvaktsräknaren är borttagen.
+
 ## 2.88.0 – 2026-10-16
 
 - **Aktiviteter** (styrelsen): träningar, matcher, möten och övrigt med datum, tid, plats, text, vilka som kallas, max antal (valfri reservlista) och när anmälan öppnar och stänger.

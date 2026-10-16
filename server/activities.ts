@@ -32,6 +32,12 @@ export interface ActivityFields {
   waitlist: boolean;
   opensDaysBefore: number | null;
   closesHoursBefore: number | null;
+  /** Valda spelare utöver (eller i stället för) gruppen */
+  invitedPlayerIds: string[];
+  feeEnabled: boolean;
+  feeAmount: number | null;
+  feeReason: string;
+  feeSwish: string;
 }
 
 async function db() {
@@ -59,7 +65,52 @@ function rowValues(f: ActivityFields) {
     waitlist: f.waitlist,
     opensDaysBefore: f.opensDaysBefore,
     closesHoursBefore: f.closesHoursBefore,
+    invitedPlayerIds: [...new Set(f.invitedPlayerIds)],
+    feeEnabled: f.feeEnabled,
+    feeAmount: f.feeEnabled ? f.feeAmount : null,
+    feeReason: f.feeEnabled ? f.feeReason.trim().slice(0, 120) : "",
+    feeSwish: f.feeEnabled ? f.feeSwish.trim().slice(0, 40) : "",
   };
+}
+
+// ─── Styrelsen (från sajtens Organisation) ───────────────────────────────────
+
+let boardCache: { at: number; names: string[]; error: string | null } | null = null;
+
+/** Styrelsens namn från sajten (gruppen Styrelsen under Organisation). Cachas i 10 minuter. */
+export async function boardNames(): Promise<{ names: string[]; error: string | null }> {
+  if (boardCache && Date.now() - boardCache.at < 10 * 60_000) return boardCache;
+  try {
+    const { siteRequest, integrationConfigured } = await import("./integration");
+    if (!integrationConfigured()) return { names: [], error: "Kopplingen till sajten är inte inställd" };
+    const r = await siteRequest<{ names: string[] }>("GET", "/internal/v1/board");
+    boardCache = { at: Date.now(), names: r.names ?? [], error: null };
+    await setConfigValue("activities.board", JSON.stringify(boardCache.names)).catch(() => {});
+  } catch (e) {
+    // Sajten svarar inte – använd senast kända lista
+    const saved = await getConfigValue("activities.board").catch(() => null);
+    boardCache = { at: Date.now(), names: saved ? (JSON.parse(saved) as string[]) : [], error: (e as Error).message };
+  }
+  return boardCache;
+}
+
+const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+
+/** Vilka spelare som är kallade till en aktivitet (id → orsak). */
+export async function invitedPlayers(row: Pick<ActivityRow, "invite" | "invitedPlayerIds">, players: Awaited<ReturnType<typeof listPlayers>>) {
+  const out = new Map<string, "group" | "selected">();
+  if (row.invite === "all") for (const p of players) if (p.isMember && p.active) out.set(p.id, "group");
+  const unmatched: string[] = [];
+  if (row.invite === "board") {
+    const { names } = await boardNames();
+    for (const n of names) {
+      const p = players.find((x) => norm(x.name) === norm(n));
+      if (p) out.set(p.id, "group");
+      else unmatched.push(n);
+    }
+  }
+  for (const id of row.invitedPlayerIds ?? []) if (!out.has(id)) out.set(id, "selected");
+  return { invited: out, unmatched };
 }
 
 /** Skapar en aktivitet per datum. Flera datum blir en serie. Returnerar id:n. */
@@ -203,9 +254,21 @@ export async function getActivity(id: number) {
   const roster = players
     .filter((p) => p.active)
     .map((p) => ({ id: p.id, name: p.name, number: p.number, position: p.position, isMember: p.isMember, teamColor: p.teamColor }));
+  const { invited, unmatched } = await invitedPlayers(row, players);
+  const answered = new Set(att.map((a) => a.playerId));
+  const notAnswered = sortAttendees(
+    [...invited.keys()]
+      .filter((pid) => !answered.has(pid))
+      .map((pid) => byId.get(pid))
+      .filter((p): p is NonNullable<typeof p> => !!p)
+      .map((p) => ({ playerId: p.id, name: p.name, number: p.number, position: p.position, isMember: p.isMember })),
+  );
   return {
     activity: row,
     window: signupWindow(row),
+    invitedCount: invited.size,
+    notAnswered,
+    unmatchedBoard: unmatched,
     yes: sortAttendees(attendees.filter((a) => a.status === "yes")),
     reserve: sortAttendees(attendees.filter((a) => a.status === "reserve")),
     no: sortAttendees(attendees.filter((a) => a.status === "no")),

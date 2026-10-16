@@ -211,6 +211,13 @@
       "when": 1792156735240,
       "tag": "0029_activities",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
+      "when": 1792160547490,
+      "tag": "0030_activity_invite_fee",
+      "breakpoints": true
     }
   ]
 }

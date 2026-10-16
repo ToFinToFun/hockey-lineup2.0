@@ -362,8 +362,15 @@ export const activities = mysqlTable(
     endsAt: timestamp("endsAt"),
     location: varchar("location", { length: 120 }).default("").notNull(),
     description: text("description"),
-    /** Vilka som kallas: all | white | green */
+    /** Vilka som kallas: all (alla medlemmar) | board (styrelsen) | none (bara valda) */
     invite: varchar("invite", { length: 16 }).default("all").notNull(),
+    /** Valda spelare som kallas utöver (eller i stället för) gruppen – även icke-medlemmar */
+    invitedPlayerIds: json("invitedPlayerIds").$type<string[]>(),
+    /** Extra avgift som visas tydligt i kallelsen, t.ex. 50 kr för försäsongen via Swish */
+    feeEnabled: boolean("feeEnabled").default(false).notNull(),
+    feeAmount: int("feeAmount"),
+    feeReason: varchar("feeReason", { length: 120 }).default("").notNull(),
+    feeSwish: varchar("feeSwish", { length: 40 }).default("").notNull(),
     /** Max antal som kan anmäla sig (null = obegränsat) */
     maxParticipants: int("maxParticipants"),
     /** Reservlista när det är fullt (annars stoppas anmälan) */

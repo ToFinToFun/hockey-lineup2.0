@@ -25,6 +25,11 @@ const base: ActivityFields = {
   waitlist: true,
   opensDaysBefore: null,
   closesHoursBefore: 2,
+  invitedPlayerIds: [],
+  feeEnabled: false,
+  feeAmount: null,
+  feeReason: "",
+  feeSwish: "",
 };
 
 describe.skipIf(!process.env.DATABASE_URL)("aktiviteter och anmälan", () => {
@@ -69,6 +74,15 @@ describe.skipIf(!process.env.DATABASE_URL)("aktiviteter och anmälan", () => {
       expect(lineup.registeredNames).toContain("Mats Målvakt");
       expect(lineup.eventTime).toBe("21:00");
     }
+
+    // Bara valda kallas: inte svarat = de valda som inte svarat
+    const [only] = await createActivities({ ...base, invite: "none", invitedPlayerIds: ["akt-b", "akt-c"], feeEnabled: true, feeAmount: 50, feeReason: "Försäsong", feeSwish: "123" }, [addDays(today, 2)]);
+    await setAttendance(only, "akt-b", "yes", "admin", true);
+    const o = await getActivity(only);
+    expect(o.invitedCount).toBe(2);
+    expect(o.notAnswered.map((x) => x.playerId)).toEqual(["akt-c"]);
+    expect(o.activity.feeAmount).toBe(50);
+    await deleteActivities(only, "one");
 
     await setCancelled(created[0], "one", true, "Ishallen stängd");
     expect((await getActivity(created[0])).activity.cancelled).toBe(true);

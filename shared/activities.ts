@@ -17,9 +17,13 @@ export const ACTIVITY_TYPE_NAMES: Record<ActivityType, string> = {
 /** Typer som Lineup kan hämta anmälningar från. */
 export const LINEUP_TYPES: ActivityType[] = ["training", "match"];
 
-export const INVITES = ["all", "white", "green"] as const;
+/** Vilka som kallas. Valda spelare kan läggas till utöver gruppen – eller i stället ("none"). */
+export const INVITES = ["all", "board", "none"] as const;
 export type Invite = (typeof INVITES)[number];
-export const INVITE_NAMES: Record<Invite, string> = { all: "Alla medlemmar", white: "Vita", green: "Gröna" };
+export const INVITE_NAMES: Record<Invite, string> = { all: "Alla medlemmar", board: "Styrelsen", none: "Bara valda" };
+
+/** Förslag när extra avgift kryssas i. */
+export const DEFAULT_FEE = { amount: 50, reason: "Försäsong", swish: "123 427 55 66" };
 
 export const WEEKDAY_NAMES = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag", "Söndag"];
 
