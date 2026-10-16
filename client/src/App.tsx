@@ -22,6 +22,7 @@ const VideoApp = lazy(() => import("./pages/media/VideoApp"));
 const ReportApp = lazy(() => import("./pages/report/ReportApp"));
 const AccessRedeem = lazy(() => import("./pages/AccessRedeem"));
 const LivePage = lazy(() => import("./pages/live/LivePage"));
+const ActivitiesApp = lazy(() => import("./pages/activities/ActivitiesApp"));
 import InviteRedeem from "./pages/InviteRedeem";
 import { RequireRole } from "./components/auth/RequireRole";
 import { lazy, Suspense, useEffect, type ComponentType } from "react";
@@ -60,6 +61,7 @@ const PlayersPage = guard(["players"], PlayersApp);
 const ReportPage = guard(["report", "matches"], ReportApp);
 const SponsorsPage = guard("admin", SponsorsApp);
 const SettingsPage = guard("admin", SettingsApp);
+const ActivitiesPage = guard("admin", ActivitiesApp);
 const MediaPage = guard(["media"], MediaApp);
 const VideoPage = guard(["media"], VideoApp);
 
@@ -68,6 +70,10 @@ function Router() {
     <Switch>
       {/* Hub landing page */}
       <Route path="/" component={Hub} />
+
+      {/* Aktiviteter och anmälan */}
+      <Route path="/aktiviteter" component={ActivitiesPage} />
+      <Route path="/aktiviteter/:id" component={ActivitiesPage} />
 
       {/* Lineup app */}
       <Route path="/lineup" component={LineupPage} />

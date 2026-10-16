@@ -6,6 +6,8 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, lineupProcedure, adminProcedure, moduleProcedure, lineupOrModuleProcedure, router } from "./_core/trpc";
 import { authRouter } from "./routers/auth";
 import { playersRouter } from "./routers/players";
+import { activitiesRouter } from "./routers/activities";
+import { appAttendance, getAttendanceSource, setAppAttendanceByName } from "./activities";
 import { newsExists, fetchAttendance, updateAttendance, publishNews, deleteNews, fetchAccountName, NEWS_ADMIN_URL, type AttendingStatus } from "./lagetSe";
 import { seasonHistory, seasonOf, recentForm, recentWinners } from "./playerHistory";
 import { ENV } from "./_core/env";
@@ -247,11 +249,14 @@ export const appRouter = router({
   players: playersRouter,
   score: scoreRouter,
   scoreStats: scoreStatsRouter,
+  activities: activitiesRouter,
   laget: router({
     /** Hämta anmälningslistan från laget.se för dagens/nästa event */
     attendance: lineupOrModuleProcedure("media").query(async () => {
+      // Anmälningarna kommer från laget.se eller appens aktiviteter (Inställningar → laget.se)
+      const fromApp = (await getAttendanceSource()) === "app";
       // Mot andra lag kan matchen ha egen dag/tid/plats (Lineup → Match)
-      return withExternalEvent(await fetchAttendance());
+      return withExternalEvent(fromApp ? await appAttendance() : await fetchAttendance());
     }),
 
     /** Ändra en spelares deltagarstatus på laget.se */
@@ -263,6 +268,7 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input }) => {
+        if ((await getAttendanceSource()) === "app") return setAppAttendanceByName(input.playerName, input.status);
         const result = await updateAttendance(
           input.playerName,
           input.status as AttendingStatus

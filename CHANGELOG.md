@@ -7,6 +7,14 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.88.0 – 2026-10-16
+
+- **Aktiviteter** (styrelsen): träningar, matcher, möten och övrigt med datum, tid, plats, text, vilka som kallas, max antal (valfri reservlista) och när anmälan öppnar och stänger.
+  - **Återkommande:** välj veckodagar och till-datum, bocka ur tillfällen som inte blir av (t.ex. lov). Ändra, ställ in eller ta bort ett tillfälle eller alla kommande.
+  - **Anmälan:** listan visar position (samma färgbricka som i Lineup), namn och nummer – målvakter först, sedan alla i bokstavsordning. Styrelsen lägger till spelare ur truppen, även icke-medlemmar som en extern målvakt, och ser MV x/2.
+- **Lineup kan hämta anmälningarna från Aktiviteter** i stället för laget.se (valet överst under Aktiviteter). Standard är fortfarande laget.se, så inget ändras förrän det slås på.
+- Medlemmarna anmäler sig själva i ett senare steg (egen inloggning).
+
 ## 2.87.0 – 2026-10-15
 
 - Sajtens medlemsregister kan läsa matcher och spelade positioner (MV, B, C, F) per säsong för spelare som är kopplade till registret – samma siffror som statistiken här.

@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { AccessPanel } from "@/components/auth/AccessPanel";
 import { AppVersion } from "@/components/AppVersion";
-import { BarChart3, Users, ChevronRight, Trophy, ClipboardList, Timer, TrendingUp, Sparkles, History, Settings as SettingsIcon, Image as ImageIcon, Radio } from "lucide-react";
+import { BarChart3, Users, ChevronRight, Trophy, ClipboardList, Timer, TrendingUp, Sparkles, History, Settings as SettingsIcon, Image as ImageIcon, Radio, CalendarDays } from "lucide-react";
 
 // Keep the hub artwork on the same origin as the application. The old external
 // CDN links can expire or reject requests in production, while Vite serves
@@ -152,6 +152,24 @@ export default function Hub() {
             </div>
           </Link>
           )}
+          {/* Aktiviteter */}
+          {isAdmin && (
+          <Link href="/aktiviteter">
+            <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] hover:border-emerald-400/60 transition-all duration-300 cursor-pointer">
+              <div className="p-5 sm:p-6 flex items-center gap-4">
+                <div className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-emerald-400/10 border border-emerald-400/20 flex items-center justify-center">
+                  <CalendarDays size={24} className="text-emerald-300" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold tracking-tight">Aktiviteter</h2>
+                  <p className="text-white/40 text-xs sm:text-sm mt-0.5">Träningar, matcher och möten – kallelse och anmälan</p>
+                </div>
+                <ChevronRight size={20} className="text-white/20 group-hover:text-emerald-300 transition-colors flex-shrink-0" />
+              </div>
+            </div>
+          </Link>
+          )}
+
           {/* Match History Card */}
           {hasModule("matches") && (
           <Link href="/history">

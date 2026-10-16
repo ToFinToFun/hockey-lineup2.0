@@ -1,4 +1,4 @@
-import { int, json, mysqlEnum, mysqlTable, text, mediumtext, timestamp, varchar, boolean, bigint, index } from "drizzle-orm/mysql-core";
+import { int, json, mysqlEnum, mysqlTable, text, mediumtext, timestamp, varchar, boolean, bigint, index, uniqueIndex } from "drizzle-orm/mysql-core";
 
 // ─── Lineup State ────────────────────────────────────────────────────────────
 // Single-row table holding the current lineup state (replaces Firebase /lineup node)
@@ -344,3 +344,57 @@ export const opponentPlayers = mysqlTable("opponent_players", {
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => [index("opponent_players_opponent_idx").on(t.opponentId)]);
+
+// ─── Aktiviteter och anmälan ─────────────────────────────────────────────────
+// Ersätter på sikt laget.se:s kalender och anmälan. Tider sparas i UTC; datum och
+// klockslag visas i svensk tid. Återkommande aktiviteter delar seriesId.
+
+export const activities = mysqlTable(
+  "activities",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    /** Samma id för alla tillfällen i en serie (återkommande). Null = enstaka. */
+    seriesId: varchar("seriesId", { length: 36 }),
+    /** training | match | meeting | other */
+    type: varchar("type", { length: 16 }).notNull(),
+    title: varchar("title", { length: 120 }).notNull(),
+    startsAt: timestamp("startsAt").notNull(),
+    endsAt: timestamp("endsAt"),
+    location: varchar("location", { length: 120 }).default("").notNull(),
+    description: text("description"),
+    /** Vilka som kallas: all | white | green */
+    invite: varchar("invite", { length: 16 }).default("all").notNull(),
+    /** Max antal som kan anmäla sig (null = obegränsat) */
+    maxParticipants: int("maxParticipants"),
+    /** Reservlista när det är fullt (annars stoppas anmälan) */
+    waitlist: boolean("waitlist").default(false).notNull(),
+    /** Anmälan öppnar X dagar före start (null = direkt) */
+    opensDaysBefore: int("opensDaysBefore"),
+    /** Anmälan stänger X timmar före start (null = vid start). Avanmälan går alltid. */
+    closesHoursBefore: int("closesHoursBefore"),
+    cancelled: boolean("cancelled").default(false).notNull(),
+    cancelledNote: varchar("cancelledNote", { length: 200 }).default("").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => [index("activities_starts_idx").on(t.startsAt), index("activities_series_idx").on(t.seriesId)],
+);
+
+export type ActivityRow = typeof activities.$inferSelect;
+
+export const activityAttendance = mysqlTable(
+  "activity_attendance",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    activityId: int("activityId").notNull(),
+    playerId: varchar("playerId", { length: 64 }).notNull(),
+    /** yes = kommer, no = kommer inte, reserve = på reservlistan */
+    status: varchar("status", { length: 10 }).notNull(),
+    /** self = medlemmen själv, admin = lagd av den som administrerar */
+    source: varchar("source", { length: 10 }).default("admin").notNull(),
+    comment: varchar("comment", { length: 200 }).default("").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => [uniqueIndex("activity_attendance_uniq").on(t.activityId, t.playerId)],
+);
