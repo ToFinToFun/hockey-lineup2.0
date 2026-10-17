@@ -125,6 +125,21 @@ export function startIntegrationServer(appVersion: string): void {
     }
   });
 
+  // Sajten skickar en notis till medlemmar som har push (t.ex. ny avgift att betala)
+  app.post("/internal/v1/push", async (req, res, next) => {
+    const b = z
+      .object({ memberIds: z.array(z.number().int().positive()).max(5000), title: z.string().min(1).max(120), body: z.string().max(300), url: z.string().regex(/^\/[\w\-/]*$/) })
+      .safeParse(req.body);
+    if (!b.success) return res.status(400).json({ error: "ogiltiga uppgifter" });
+    try {
+      const { pushTo } = await import("./push");
+      const reached = await pushTo(b.data.memberIds, { title: b.data.title, body: b.data.body, url: b.data.url, tag: "avgift" });
+      res.json({ pushed: reached.size });
+    } catch (e) {
+      next(e);
+    }
+  });
+
   // Begrepp: lagens och positionernas namn, förkortning och färg (sajtens medlemsregister använder dem)
   app.get("/internal/v1/terms", (_req, res) => {
     res.json(currentTerms());

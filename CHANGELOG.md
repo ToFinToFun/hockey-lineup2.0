@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.2.0 – 2026-10-17
+
+- **Avgifter på Mina sidor:** obetalda medlems- och aktivitetsavgifter visas överst med en knapp *Betala* som leder till betalsidan på stalstadens.se. Uppgifterna hämtas från sajten när de visas och sparas inte i appen. När avgifterna skickas ut eller en påminnelse går ut får medlemmen en notis, om push är påslaget.
+
 ## 3.1.0 – 2026-10-17
 
 - **Kalenderprenumeration:** Mina sidor → Inställningar → *Lägg till i kalendern*. Aktiviteterna man är kallad till eller har svarat på syns i telefonens kalender och uppdateras av sig själva (inställda markeras). Hemlig länk per medlem; *Ny länk* stänger den gamla. Tas bort när medlemmen avslutas eller raderas.

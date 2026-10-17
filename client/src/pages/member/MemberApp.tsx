@@ -262,6 +262,7 @@ function Mine() {
     <Shell title="Mina sidor" back="/" tab="aktiviteter">
       <div className="space-y-4">
         <p className="text-white/60 text-sm">Hej {me.data.name?.split(" ")[0] ?? ""}!</p>
+        <FeesCard />
         <PushCard compact />
         {list.data && !list.data.linked && (
           <p className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-100">
@@ -563,6 +564,35 @@ function Settings() {
         <Devices />
       </div>
     </Shell>
+  );
+}
+
+/** Obetalda avgifter med betalknapp (betalningen sker på sajten via Kustom). */
+function FeesCard() {
+  const fees = trpc.member.fees.useQuery(undefined, { staleTime: 60_000 });
+  if (!fees.data?.length) return null;
+  const kr = (ore: number) => `${(ore / 100).toLocaleString("sv-SE")} kr`;
+  return (
+    <>
+      {fees.data.map((f) => {
+        const due = new Date(f.dueDate + "T12:00:00").toLocaleDateString("sv-SE", { day: "numeric", month: "long" });
+        return (
+          <section key={f.url} className="rounded-xl border border-amber-400/40 bg-amber-500/10 p-3 space-y-2">
+            <div className="flex items-baseline gap-2">
+              <h3 className="text-sm font-semibold flex-1">{f.title}</h3>
+              <span className="text-xs text-amber-100/80">Sista dag {due}</span>
+            </div>
+            <div className="text-sm text-white/80">
+              Medlemsavgift {kr(f.memberFeeOre)}
+              {f.activityExempt ? " · aktivitetsavgift 0 kr (befriad)" : f.activityFeeOre ? ` · aktivitetsavgift ${kr(f.activityFeeOre)}` : ""}
+            </div>
+            <a href={f.url} target="_blank" rel="noopener" className={primary}>
+              Betala
+            </a>
+          </section>
+        );
+      })}
+    </>
   );
 }
 

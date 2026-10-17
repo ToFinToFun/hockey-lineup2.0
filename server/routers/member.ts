@@ -133,6 +133,20 @@ export const memberRouter = router({
     }
   }),
 
+  // ─── Avgifter: medlemmens egna obetalda (hämtas från sajten när de visas, sparas inte i appen)
+  fees: memberProcedure.query(async ({ ctx }) => {
+    const { siteRequest, integrationConfigured } = await import("../integration");
+    if (!integrationConfigured()) return [];
+    try {
+      return await siteRequest<{ title: string; period: string; memberFeeOre: number; activityFeeOre: number; activityExempt: boolean; dueDate: string; url: string }[]>(
+        "GET",
+        `/internal/v1/members/${ctx.member.memberId}/fees`,
+      );
+    } catch {
+      return [];
+    }
+  }),
+
   // ─── Kalenderprenumeration ─────────────────────────────────────────────────
   calendar: memberProcedure.query(async ({ ctx }) => ({ path: `/api/kalender/${await calendarToken(ctx.member.memberId)}.ics` })),
   renewCalendar: memberProcedure.mutation(async ({ ctx }) => ({ path: `/api/kalender/${await renewCalendarToken(ctx.member.memberId)}.ics` })),
