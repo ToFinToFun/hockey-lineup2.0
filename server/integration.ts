@@ -109,6 +109,21 @@ export function startIntegrationServer(appVersion: string): void {
     }
   });
 
+  // Medlemmen har slutat eller raderats på sajten: utloggad överallt och utan behörigheter
+  app.post("/internal/v1/members/:id/removed", async (req, res, next) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "ogiltigt id" });
+    try {
+      const { revokeAll } = await import("./memberAuth");
+      const { removeGrant } = await import("./grants");
+      const devices = await revokeAll(id);
+      await removeGrant(id);
+      res.json({ devices });
+    } catch (e) {
+      next(e);
+    }
+  });
+
   // Begrepp: lagens och positionernas namn, förkortning och färg (sajtens medlemsregister använder dem)
   app.get("/internal/v1/terms", (_req, res) => {
     res.json(currentTerms());

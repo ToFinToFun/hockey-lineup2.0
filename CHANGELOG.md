@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.0.1 – 2026-10-17
+
+- **Medlem som slutar eller raderas** på sajten (status Avslutad eller raderad): loggas ut från appen på alla enheter, förlorar sina behörigheter och slutar få notiser. Avslutade medlemmar kan inte logga in igen.
+
 ## 3.0.0 – 2026-10-17
 
 Ny grund för inloggning, behörigheter och notiser. Allt gammalt fungerar parallellt.
