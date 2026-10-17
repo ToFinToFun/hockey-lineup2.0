@@ -371,6 +371,14 @@ export const activities = mysqlTable(
     feeAmount: int("feeAmount"),
     feeReason: varchar("feeReason", { length: 120 }).default("").notNull(),
     feeSwish: varchar("feeSwish", { length: 40 }).default("").notNull(),
+    /** Kallelse via mejl när anmälan öppnar (av som standard – laget.se kan sköta kallelsen) */
+    notifyEmail: boolean("notifyEmail").default(false).notNull(),
+    /** Påminnelse till kallade som inte svarat, X timmar innan anmälan stänger (null = ingen) */
+    reminderHours: int("reminderHours"),
+    notifiedAt: timestamp("notifiedAt"),
+    remindedAt: timestamp("remindedAt"),
+    /** Mejl om att aktiviteten ställts in (till de anmälda) */
+    cancelNotifiedAt: timestamp("cancelNotifiedAt"),
     /** Max antal som kan anmäla sig (null = obegränsat) */
     maxParticipants: int("maxParticipants"),
     /** Reservlista när det är fullt (annars stoppas anmälan) */

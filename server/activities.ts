@@ -38,6 +38,8 @@ export interface ActivityFields {
   feeAmount: number | null;
   feeReason: string;
   feeSwish: string;
+  notifyEmail: boolean;
+  reminderHours: number | null;
 }
 
 async function db() {
@@ -70,6 +72,8 @@ function rowValues(f: ActivityFields) {
     feeAmount: f.feeEnabled ? f.feeAmount : null,
     feeReason: f.feeEnabled ? f.feeReason.trim().slice(0, 120) : "",
     feeSwish: f.feeEnabled ? f.feeSwish.trim().slice(0, 40) : "",
+    notifyEmail: f.notifyEmail,
+    reminderHours: f.notifyEmail ? f.reminderHours : null,
   };
 }
 

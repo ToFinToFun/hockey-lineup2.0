@@ -59,7 +59,10 @@ export default function MemberApp() {
 function Login() {
   const [, navigate] = useLocation();
   const search = useSearch();
-  const token = new URLSearchParams(search).get("t");
+  const params = new URLSearchParams(search);
+  const token = params.get("t");
+  // Tillbaka dit man var på väg (t.ex. länken i kallelsen)
+  const next = /^\/mina(\/\d+)?$/.test(params.get("next") ?? "") ? params.get("next")! : "/mina";
   const utils = trpc.useUtils();
   const me = trpc.member.me.useQuery();
   const [email, setEmail] = useState("");
@@ -70,7 +73,7 @@ function Login() {
   const done = (r: { done: boolean; ticket?: string; choices?: { memberId: number; name: string }[] }) => {
     if (!r.done && r.ticket && r.choices) return setChoice({ ticket: r.ticket, choices: r.choices });
     utils.member.invalidate();
-    navigate("/mina");
+    navigate(next);
   };
   const request = trpc.member.requestCode.useMutation({ onSuccess: () => setStep("code"), onError: (e) => toast.error(e.message) });
   const verify = trpc.member.verifyCode.useMutation({ onSuccess: done, onError: (e) => toast.error(e.message) });
@@ -78,8 +81,8 @@ function Login() {
   const choose = trpc.member.choose.useMutation({ onSuccess: () => done({ done: true }), onError: (e) => toast.error(e.message) });
 
   useEffect(() => {
-    if (me.data) navigate("/mina");
-  }, [me.data, navigate]);
+    if (me.data) navigate(next);
+  }, [me.data, navigate, next]);
 
   if (choice)
     return (
@@ -328,7 +331,11 @@ function Devices() {
 // ─── En aktivitet ────────────────────────────────────────────────────────────
 
 function Detail({ id }: { id: number }) {
-  const q = trpc.member.activity.useQuery({ id });
+  const [, navigate] = useLocation();
+  const q = trpc.member.activity.useQuery({ id }, { retry: false });
+  useEffect(() => {
+    if (q.error?.data?.code === "UNAUTHORIZED") navigate(`/logga-in?next=/mina/${id}`);
+  }, [q.error, id, navigate]);
   if (!q.data)
     return (
       <Shell title="Aktivitet" back="/mina">

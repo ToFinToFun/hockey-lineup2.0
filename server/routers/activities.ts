@@ -38,6 +38,8 @@ const fields = z.object({
   feeAmount: z.number().int().min(0).max(100000).nullable(),
   feeReason: z.string().max(120),
   feeSwish: z.string().max(40),
+  notifyEmail: z.boolean(),
+  reminderHours: z.number().int().min(1).max(240).nullable(),
 });
 const scope = z.enum(["one", "following"]);
 
@@ -77,6 +79,16 @@ export const activitiesRouter = router({
   setAttendance: adminProcedure
     .input(z.object({ activityId: z.number().int(), playerId: z.string().min(1).max(64), status: z.enum(["yes", "no"]).nullable() }))
     .mutation(({ input }) => run(() => setAttendance(input.activityId, input.playerId, input.status, "admin", true))),
+
+  /** Skicka kallelsen via mejl nu, till kallade som inte svarat. */
+  sendInvitation: adminProcedure.input(z.object({ id: z.number().int() })).mutation(({ input }) =>
+    run(async () => {
+      const { sendInvitation } = await import("../activityMail");
+      const a = (await getActivity(input.id)).activity;
+      if (a.cancelled) throw new Error("Aktiviteten är inställd");
+      return sendInvitation(a);
+    }),
+  ),
 
   /** Styrelsen enligt sajten (för att visa vilka "Styrelsen" kallar). */
   board: adminProcedure.query(() => boardMembers()),

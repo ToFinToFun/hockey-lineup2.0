@@ -30,6 +30,8 @@ const base: ActivityFields = {
   feeAmount: null,
   feeReason: "",
   feeSwish: "",
+  notifyEmail: false,
+  reminderHours: null,
 };
 
 describe.skipIf(!process.env.DATABASE_URL)("aktiviteter och anmälan", () => {

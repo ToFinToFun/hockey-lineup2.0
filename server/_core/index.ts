@@ -233,6 +233,8 @@ async function startServer() {
     startIntegrationServer(APP_VERSION);
     // Sponsorer från sajten (gör inget förrän synken slås på där)
     startSponsorSync();
+    // Kallelser via mejl för Aktiviteter (bara aktiviteter där det är påslaget)
+    void import("../activityMail").then((m) => m.startActivityMail());
     void loadPlayerLinkState();
     console.log(`Stålstadens v${APP_VERSION} kör på port ${port}`);
   });

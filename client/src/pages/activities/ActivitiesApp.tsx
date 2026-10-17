@@ -84,6 +84,8 @@ type Fields = {
   feeAmount: number | null;
   feeReason: string;
   feeSwish: string;
+  notifyEmail: boolean;
+  reminderHours: number | null;
 };
 
 type RosterPlayer = { id: string; name: string; number: string; position: string; isMember: boolean };
@@ -355,6 +357,8 @@ const EMPTY: Fields = {
   feeAmount: null,
   feeReason: "",
   feeSwish: "",
+  notifyEmail: false,
+  reminderHours: null,
 };
 
 type EditTarget = { id: number; scope: "one" | "following"; date: string; fields: Fields; count?: number };
@@ -607,6 +611,21 @@ function ActivityForm({ onClose, recent, edit }: { onClose: () => void; recent: 
             )}
           </Section>
 
+          {/* Kallelse via mejl */}
+          <Section title="Kallelse via mejl">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={f.notifyEmail} onChange={(e) => set("notifyEmail", e.target.checked)} />
+              Mejla kallelsen när anmälan öppnar
+            </label>
+            {f.notifyEmail && (
+              <div className="max-w-[260px]">
+                <label className={labelCls} htmlFor="act-remind">Påminnelse, timmar innan anmälan stänger</label>
+                <input id="act-remind" inputMode="numeric" className={inputCls} value={f.reminderHours ?? ""} placeholder="Ingen påminnelse" onChange={(e) => set("reminderHours", numOrNull(e.target.value) || null)} />
+              </div>
+            )}
+            {!f.notifyEmail && <p className="text-xs text-white/40">Av – t.ex. när kallelsen fortfarande går via laget.se.</p>}
+          </Section>
+
           {/* Extra avgift */}
           <Section title="Extra avgift">
             <label className="flex items-center gap-2 text-sm">
@@ -792,6 +811,8 @@ function ActivityDetail({ id }: { id: number }) {
     feeAmount: a.feeAmount,
     feeReason: a.feeReason,
     feeSwish: a.feeSwish,
+    notifyEmail: a.notifyEmail,
+    reminderHours: a.reminderHours,
   };
 
   const doScoped = (kind: "cancel" | "remove" | "restore", sc: "one" | "following") => {
@@ -874,6 +895,7 @@ function ActivityDetail({ id }: { id: number }) {
           </div>
           {a.description && <p className="text-sm text-white/80 whitespace-pre-line">{a.description}</p>}
           {a.feeEnabled && <FeeBox amount={a.feeAmount} reason={a.feeReason} swish={a.feeSwish} />}
+          <MailStatus id={id} notifyEmail={a.notifyEmail} notifiedAt={a.notifiedAt} remindedAt={a.remindedAt} cancelled={a.cancelled} />
           <div className="text-xs text-white/50">
             {signupState}
             {a.maxParticipants ? ` · max ${a.maxParticipants}${a.waitlist ? ", sedan reservlista" : ""}` : ""}
@@ -971,6 +993,41 @@ function ActivityDetail({ id }: { id: number }) {
           edit={{ id, scope: editing, date: start.date, fields: editFields, count: seriesLeft || undefined }}
         />
       )}
+    </div>
+  );
+}
+
+/** Status för kallelsen via mejl, och knapp för att skicka nu. */
+function MailStatus({ id, notifyEmail, notifiedAt, remindedAt, cancelled }: { id: number; notifyEmail: boolean; notifiedAt: Date | string | null; remindedAt: Date | string | null; cancelled: boolean }) {
+  const utils = trpc.useUtils();
+  const send = trpc.activities.sendInvitation.useMutation({
+    onSuccess: (r) => {
+      utils.activities.get.invalidate({ id });
+      toast.success(
+        `Kallelsen mejlades till ${r.sent} ${r.sent === 1 ? "adress" : "adresser"}` + (r.missingEmail.length ? ` · ${r.missingEmail.length} saknar e-post i registret` : ""),
+      );
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  if (cancelled) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-xs text-white/50">
+      <span className="flex-1 min-w-[180px]">
+        {notifiedAt
+          ? `Kallelse mejlad ${fmtDateTime(notifiedAt)}${remindedAt ? `, påminnelse ${fmtDateTime(remindedAt)}` : ""}`
+          : notifyEmail
+            ? "Kallelsen mejlas när anmälan öppnar"
+            : "Ingen kallelse via mejl"}
+      </span>
+      <button
+        onClick={() => {
+          if (window.confirm(notifiedAt ? "Mejla kallelsen igen till alla kallade som inte svarat?" : "Mejla kallelsen nu till alla kallade som inte svarat?")) send.mutate({ id });
+        }}
+        disabled={send.isPending}
+        className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-white/70 hover:bg-white/5"
+      >
+        {send.isPending ? "Skickar…" : notifiedAt ? "Mejla igen" : "Mejla kallelsen nu"}
+      </button>
     </div>
   );
 }

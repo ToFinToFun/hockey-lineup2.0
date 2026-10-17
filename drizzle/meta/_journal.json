@@ -225,6 +225,13 @@
       "when": 1792164181666,
       "tag": "0031_member_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "5",
+      "when": 1792230859397,
+      "tag": "0032_activity_mail",
+      "breakpoints": true
     }
   ]
 }

@@ -7,6 +7,13 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.91.0 – 2026-10-17
+
+- **Kallelse via mejl** (Aktiviteter, av som standard): mejlas till kallade som inte svarat när anmälan öppnar, med länk direkt till aktiviteten. Valfri påminnelse X timmar innan anmälan stänger. Ställs aktiviteten in efter att kallelsen gått ut får de anmälda ett mejl. Knappen **Mejla kallelsen nu** skickar direkt.
+- Mejlen skickas av sajten (som har adresserna); appen skickar bara medlemmarnas id. Medlemmar som delar adress får ett mejl.
+- Länken i mejlet leder till inloggningen och sedan tillbaka till aktiviteten.
+- laget.se påverkas inte: kallelser, anmälningar och Lineup mot laget.se fungerar som förut.
+
 ## 2.90.0 – 2026-10-16
 
 - **Medlemsinloggning:** medlemmar loggar in med sin e-post från medlemsregistret (Logga in på startsidan). De får en kod och en länk på mejlen; inget lösenord. Flera medlemmar med samma e-post väljer vem de är. Egen inloggning, helt skild från styrelsens lösenord och länkarna – den ger bara medlemmens egna aktiviteter.
