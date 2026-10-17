@@ -10,6 +10,7 @@ import { listPlayers } from "../playersDb";
 import { chatMessages, chatState, chatWindow, deleteChat, inChat, inbox, markRead, postChat, setChatState, unreadChats } from "../messaging";
 import { getActivity } from "../activities";
 import { publicKey, pushTo, subscribe, unsubscribe } from "../push";
+import { calendarToken, renewCalendarToken } from "../calendar";
 
 // Enkel spärr: högst 10 kodförfrågningar och 20 kontroller per IP och 15 minuter
 const hits = new Map<string, { n: number; reset: number }>();
@@ -131,6 +132,10 @@ export const memberRouter = router({
       throw new TRPCError({ code: "BAD_REQUEST", message: (e as Error).message });
     }
   }),
+
+  // ─── Kalenderprenumeration ─────────────────────────────────────────────────
+  calendar: memberProcedure.query(async ({ ctx }) => ({ path: `/api/kalender/${await calendarToken(ctx.member.memberId)}.ics` })),
+  renewCalendar: memberProcedure.mutation(async ({ ctx }) => ({ path: `/api/kalender/${await renewCalendarToken(ctx.member.memberId)}.ics` })),
 
   // ─── Push-notiser på den här enheten ──────────────────────────────────────
   pushKey: memberProcedure.query(async () => ({ publicKey: await publicKey() })),

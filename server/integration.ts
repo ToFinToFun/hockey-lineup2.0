@@ -118,6 +118,7 @@ export function startIntegrationServer(appVersion: string): void {
       const { removeGrant } = await import("./grants");
       const devices = await revokeAll(id);
       await removeGrant(id);
+      await import("./calendar").then((m) => m.removeCalendar(id));
       res.json({ devices });
     } catch (e) {
       next(e);

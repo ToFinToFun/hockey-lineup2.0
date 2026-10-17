@@ -192,6 +192,21 @@ async function startServer() {
     }
   });
 
+  // Kalenderprenumeration (hemlig länk per medlem, för kalenderappar)
+  app.get("/api/kalender/:token.ics", async (req, res) => {
+    try {
+      const { calendarFeed } = await import("../calendar");
+      const ics = await calendarFeed(req.params.token);
+      if (!ics) return res.status(404).type("text/plain").send("Länken gäller inte längre. Hämta en ny under Mina sidor.");
+      res.setHeader("Content-Type", "text/calendar; charset=utf-8");
+      res.setHeader("Cache-Control", "private, max-age=900");
+      res.setHeader("X-Robots-Tag", "noindex");
+      res.send(ics);
+    } catch {
+      res.status(500).end();
+    }
+  });
+
   // Health check endpoint for Coolify / Docker
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", version: APP_VERSION, timestamp: Date.now() });

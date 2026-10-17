@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.1.0 – 2026-10-17
+
+- **Kalenderprenumeration:** Mina sidor → Inställningar → *Lägg till i kalendern*. Aktiviteterna man är kallad till eller har svarat på syns i telefonens kalender och uppdateras av sig själva (inställda markeras). Hemlig länk per medlem; *Ny länk* stänger den gamla. Tas bort när medlemmen avslutas eller raderas.
+
 ## 3.0.1 – 2026-10-17
 
 - **Medlem som slutar eller raderas** på sajten (status Avslutad eller raderad): loggas ut från appen på alla enheter, förlorar sina behörigheter och slutar få notiser. Avslutade medlemmar kan inte logga in igen.

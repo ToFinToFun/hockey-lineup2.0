@@ -10,7 +10,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
-import { ArrowLeft, Bell, BellOff, Check, Clock, Loader2, LogOut, MapPin, MessageCircle, Smartphone, X } from "lucide-react";
+import { ArrowLeft, Bell, BellOff, CalendarDays, Check, Clock, Loader2, LogOut, MapPin, MessageCircle, Smartphone, X } from "lucide-react";
 import { usePush } from "@/lib/push";
 import { trpc } from "@/lib/trpc";
 import { shortDate, stockholmParts } from "@shared/activities";
@@ -557,8 +557,53 @@ function Settings() {
   const me = useMember();
   return (
     <Shell title="Mina sidor" back="/" tab="installningar">
-      <div className="space-y-6">{me && <PushCard />}<Devices /></div>
+      <div className="space-y-6">
+        {me && <PushCard />}
+        {me && <CalendarCard />}
+        <Devices />
+      </div>
     </Shell>
+  );
+}
+
+/** Kalenderprenumeration: aktiviteterna i telefonens kalender, uppdateras av sig själv. */
+function CalendarCard() {
+  const utils = trpc.useUtils();
+  const cal = trpc.member.calendar.useQuery();
+  const renew = trpc.member.renewCalendar.useMutation({
+    onSuccess: (r) => {
+      utils.member.calendar.setData(undefined, r);
+      toast.success("Ny länk – den gamla slutar fungera");
+    },
+  });
+  if (!cal.data) return null;
+  const https = `${location.origin}${cal.data.path}`;
+  const webcal = https.replace(/^https?:/, "webcal:");
+  return (
+    <section className="rounded-xl border border-white/10 bg-white/[0.03] p-3 space-y-2">
+      <div className="flex items-center gap-2">
+        <CalendarDays size={16} className="text-emerald-300" />
+        <h3 className="text-sm font-semibold flex-1">Kalender</h3>
+      </div>
+      <p className="text-xs text-white/55">Aktiviteterna i telefonens kalender. Ändringar och inställda tillfällen kommer med av sig själva.</p>
+      <a href={webcal} className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-500/60 text-emerald-200 font-semibold py-3">
+        Lägg till i kalendern
+      </a>
+      <div className="flex gap-2 text-xs">
+        <button
+          onClick={() => void navigator.clipboard.writeText(https).then(() => toast.success("Länken kopierad – klistra in i t.ex. Google Kalender"))}
+          className="flex-1 py-2 rounded-lg border border-white/10 text-white/60"
+        >
+          Kopiera länk
+        </button>
+        <button
+          onClick={() => confirm("Byta länk? Kalendrar som använder den gamla slutar uppdateras.") && renew.mutate()}
+          className="flex-1 py-2 rounded-lg border border-white/10 text-white/60"
+        >
+          Ny länk
+        </button>
+      </div>
+    </section>
   );
 }
 

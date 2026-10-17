@@ -520,3 +520,11 @@ export const pushSubscriptions = mysqlTable(
   },
   (t) => [uniqueIndex("push_endpoint_uniq").on(t.endpoint), index("push_member_idx").on(t.memberId)],
 );
+
+/** Kalenderprenumeration: hemlig länk per medlem (kalenderappar kan inte logga in). */
+export const memberCalendars = mysqlTable("member_calendars", {
+  memberId: int("memberId").primaryKey(),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  lastFetchedAt: timestamp("lastFetchedAt"),
+});
