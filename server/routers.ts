@@ -5,6 +5,7 @@ import { notifySite } from "./integration";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, lineupProcedure, adminProcedure, moduleProcedure, lineupOrModuleProcedure, router } from "./_core/trpc";
 import { authRouter } from "./routers/auth";
+import { canLineup } from "./auth";
 import { playersRouter } from "./routers/players";
 import { activitiesRouter } from "./routers/activities";
 import { memberRouter } from "./routers/member";
@@ -967,7 +968,7 @@ export const appRouter = router({
       const { doc } = await getLineupSnapshot();
       let view: import("./scoreLineupView").ScoreLineupView | { mode: "staff" } = { mode: "staff" };
       // Styrelsen och Lineup-länkar ser alltid laget; andra (även delade modullänkar) enligt publiceringen
-      if (!ctx.session || ctx.session.role === "access") {
+      if (!canLineup(ctx.session)) {
         const ev = await nextEvent().catch(() => null);
         view = scoreLineupView(lock, eventStart(ev?.date, ev?.time));
         if (view.mode === "scheduled" || view.mode === "hidden") {

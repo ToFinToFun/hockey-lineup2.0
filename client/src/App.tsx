@@ -54,7 +54,7 @@ const OpponentLinkRoute = (props: any) => (
   </Suspense>
 );
 const IceTimePage = guard("admin", IceTimeApp);
-// Delade länkar (Inställningar → Åtkomst) ger moduler utan styrelselösenordet
+// Behörighet: Admin, eller delar (moduler) via medlemmens behörighet eller en delad länk (Inställningar → Åtkomst)
 const StatsPage = guard(["stats"], StatsApp);
 const CardsPage = guard(["cards"], CardsApp);
 const HistoryPage = guard(["matches"], HistoryApp);
@@ -62,7 +62,7 @@ const PlayersPage = guard(["players"], PlayersApp);
 const ReportPage = guard(["report", "matches"], ReportApp);
 const SponsorsPage = guard("admin", SponsorsApp);
 const SettingsPage = guard("admin", SettingsApp);
-const ActivitiesPage = guard("admin", ActivitiesApp);
+const ActivitiesPage = guard(["activities"], ActivitiesApp);
 const MemberPage = (props: any) => (
   <Suspense fallback={<div className="min-h-[100dvh] bg-[#0a0a0a]" />}>
     <MemberApp {...props} />

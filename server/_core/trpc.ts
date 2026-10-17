@@ -2,6 +2,7 @@ import type { AccessModule } from "../../shared/accessModules";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
+import { canLineup, hasModule, isAdmin } from "../auth";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -14,17 +15,17 @@ export const publicProcedure = t.procedure;
 
 /** Styrelsen eller den som har en giltig tillfällig länk. */
 export const lineupProcedure = t.procedure.use(({ ctx, next }) => {
-  // Delade modullänkar ("access") ger aldrig Lineup
-  if (!ctx.session || ctx.session.role === "access") {
+  // Admin, gammal Lineup-länk, eller länk/medlem med Lineup
+  if (!canLineup(ctx.session)) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Inloggning krävs" });
   }
   return next({ ctx: { ...ctx, session: ctx.session } });
 });
 
-/** Endast styrelsen. */
+/** Admin (lösenordet eller medlem med Admin). */
 export const adminProcedure = t.procedure.use(({ ctx, next }) => {
-  if (ctx.session?.role !== "admin") {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Endast styrelsen" });
+  if (!isAdmin(ctx.session)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Kräver Admin" });
   }
   return next({ ctx: { ...ctx, session: ctx.session } });
 });
@@ -36,15 +37,14 @@ export const adminProcedure = t.procedure.use(({ ctx, next }) => {
  */
 export const moduleProcedure = (...modules: AccessModule[]) => t.procedure.use(({ ctx, next }) => {
   const s = ctx.session;
-  const ok = s?.role === "admin" || (s?.role === "access" && modules.some((m) => s.modules?.includes(m)));
-  if (!ok) throw new TRPCError({ code: "FORBIDDEN", message: "Endast styrelsen" });
+  if (!hasModule(s, ...modules)) throw new TRPCError({ code: "FORBIDDEN", message: "Du har inte behörighet till det här" });
   return next({ ctx: { ...ctx, session: s! } });
 });
 
 /** Lineup (styrelsen eller Lineup-länk) eller en delad länk med någon av modulerna – för läsning som modulerna delar */
 export const lineupOrModuleProcedure = (...modules: AccessModule[]) => t.procedure.use(({ ctx, next }) => {
   const s = ctx.session;
-  const ok = s?.role === "admin" || s?.role === "lineup" || (s?.role === "access" && modules.some((m) => s.modules?.includes(m)));
+  const ok = canLineup(s) || hasModule(s, ...modules);
   if (!ok) throw new TRPCError({ code: "UNAUTHORIZED", message: "Inloggning krävs" });
   return next({ ctx: { ...ctx, session: s! } });
 });

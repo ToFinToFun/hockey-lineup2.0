@@ -15,10 +15,57 @@ import {
   redeemAccessLink,
 } from "../auth";
 import { createAccessLink, listAccessLinks, updateAccessLink, revokeAccessLink } from "../accessLinks";
+import { listGrants, removeGrant, setGrant } from "../grants";
+import { listPlayers } from "../playersDb";
+import { boardMembers, playerForMember } from "../activities";
+import { ENV } from "../_core/env";
+
+/** Vem som gav en behörighet: medlemmens namn, annars hur man var inloggad. */
+async function grantedByName(s: { via?: string; memberId?: number } | null) {
+  if (s?.memberId) return (await playerForMember(s.memberId))?.name ?? `Medlem ${s.memberId}`;
+  return s?.via === "password" ? "Styrelsens lösenord" : "Okänd";
+}
 
 export const authRouter = router({
   /** Vem är inloggad? null = ingen (bara score tracker). */
   me: publicProcedure.query(({ ctx }) => ctx.session),
+
+  /** Finns styrelsens lösenord kvar (variabeln satt)? Annars visas bara medlemsinloggningen. */
+  loginOptions: publicProcedure.query(() => ({ password: !!ENV.adminPassword })),
+
+  // ─── Behörigheter per medlem (Inställningar → Åtkomst) ───
+  grants: adminProcedure.query(async () => {
+    const [grants, players, board] = await Promise.all([listGrants(), listPlayers(), boardMembers()]);
+    const nameOf = (id: number) => players.find((p) => p.externalId === String(id))?.name ?? null;
+    const admins = new Set(grants.filter((g) => g.admin).map((g) => g.memberId));
+    return {
+      grants: grants
+        .map((g) => ({ ...g, name: nameOf(g.memberId) ?? `Medlem ${g.memberId}` }))
+        .sort((a, b) => Number(b.admin) - Number(a.admin) || a.name.localeCompare(b.name, "sv")),
+      // Kontroll mot Organisation: styrelsen enligt sajten jämfört med de som har Admin
+      board: {
+        missingAdmin: board.memberIds.filter((id) => !admins.has(id)).map((id) => ({ memberId: id, name: nameOf(id) })),
+        adminNotBoard: [...admins].filter((id) => !board.memberIds.includes(id)).map((id) => nameOf(id) ?? `Medlem ${id}`),
+        unmatched: board.unmatched,
+        error: board.error,
+      },
+    };
+  }),
+  setGrant: adminProcedure
+    .input(z.object({ memberId: z.number().int().positive(), admin: z.boolean(), modules: z.array(z.string().max(30)).max(20) }))
+    .mutation(async ({ ctx, input }) => {
+      // Man kan inte ta Admin från sig själv (risk att låsa ute sig)
+      if (ctx.session?.memberId === input.memberId && !input.admin) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Du kan inte ta bort din egen Admin. Be en annan admin." });
+      }
+      await setGrant(input.memberId, input, await grantedByName(ctx.session));
+      return { ok: true };
+    }),
+  removeGrant: adminProcedure.input(z.object({ memberId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    if (ctx.session?.memberId === input.memberId) throw new TRPCError({ code: "BAD_REQUEST", message: "Du kan inte ta bort din egen Admin. Be en annan admin." });
+    await removeGrant(input.memberId);
+    return { ok: true };
+  }),
 
   /** Styrelseinloggning med ADMIN_PASSWORD. */
   login: publicProcedure
@@ -34,6 +81,7 @@ export const authRouter = router({
       return { role: "admin" as const };
     }),
 
+  /** Loggar ut lösenordet/länken. Medlemmens inloggning loggas ut via member.logout. */
   logout: publicProcedure.mutation(({ ctx }) => {
     clearSessionCookie(ctx.res);
     return { success: true };

@@ -100,6 +100,7 @@ export async function revokeDevice(memberId: number, sid: string) {
     .set({ revokedAt: new Date() })
     .where(and(eq(memberSessions.id, sid), eq(memberSessions.memberId, memberId)));
   cache.delete(sid);
+  await import("./push").then((m) => m.removeForSessions([sid])).catch(() => undefined);
 }
 
 /** Loggar ut alla en medlems enheter (medlemmen själv, eller styrelsen via sajten). */
@@ -107,6 +108,7 @@ export async function revokeAll(memberId: number) {
   const rows = await listDevices(memberId);
   await (await db()).update(memberSessions).set({ revokedAt: new Date() }).where(and(eq(memberSessions.memberId, memberId), isNull(memberSessions.revokedAt)));
   for (const r of rows) cache.delete(r.id);
+  await import("./push").then((m) => m.removeForSessions(rows.map((r) => r.id))).catch(() => undefined);
   return rows.length;
 }
 

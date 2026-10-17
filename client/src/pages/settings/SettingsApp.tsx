@@ -33,7 +33,7 @@ const TABS = [
   { id: "laget", label: "laget.se", hint: "Konto, anslutning och automatisk nyhet", icon: Link2 },
   { id: "externa", label: "Externa källor", hint: "SHL-tabell och matcher (API-nyckel)", icon: Globe },
   { id: "notiser", label: "Notiser", hint: "Vem som får vilka mejl", icon: Bell },
-  { id: "atkomst", label: "Åtkomst", hint: "Delade länkar till moduler (utan styrelselösenordet)", icon: KeyRound },
+  { id: "atkomst", label: "Åtkomst", hint: "Vem som får göra vad: medlemmar och länkar", icon: KeyRound },
   { id: "om", label: "Om", hint: "Version och databas", icon: Info },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];

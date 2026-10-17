@@ -246,6 +246,34 @@
       "when": 1792234817414,
       "tag": "0034_messages_to_all",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "5",
+      "when": 1792245088242,
+      "tag": "0035_member_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1792245833358,
+      "tag": "0036_drop_prefs",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "5",
+      "when": 1792245834332,
+      "tag": "0037_push",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "5",
+      "when": 1792245879415,
+      "tag": "0038_messages_pushed",
+      "breakpoints": true
     }
   ]
 }

@@ -38,7 +38,7 @@ behövs inga filer i koden.
 | `DATABASE_URL` | ja | MySQL 8, t.ex. `mysql://user:pass@host:3306/minklubb` |
 | `DATABASE_SSL` / `DATABASE_SSL_CA` | nej | `off` för lokal databas utan TLS |
 | `JWT_SECRET` | ja | Lång slumpad sträng (sessioner) |
-| `ADMIN_PASSWORD` | ja | Styrelsens lösenord |
+| `ADMIN_PASSWORD` | ja, utan koppling till sajten | Styrelsens lösenord. Med kopplingen ger sajten Admin till medlemmar, och lösenordet kan tas bort |
 | `CLUB_PROFILE` | nej | Profilens id (standard `stalstadens`) |
 | `APP_URL` | nej | Appens adress (annars profilens `appUrl`) |
 | `LAGET_SE_USERNAME` / `LAGET_SE_PASSWORD` | för laget.se | Ett konto med admin för laget på laget.se (helst ett gemensamt styrelsekonto) |

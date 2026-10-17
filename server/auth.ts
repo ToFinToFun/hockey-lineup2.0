@@ -187,7 +187,22 @@ export async function redeemInvite(res: Response, token: string): Promise<{ expi
   }
 }
 
-export type Session = { role: Role; expiresAt: number; modules?: AccessModule[]; linkName?: string; linkExpiresAt?: string | null } | null;
+export type Session = {
+  role: Role;
+  expiresAt: number;
+  modules?: AccessModule[];
+  linkName?: string;
+  linkExpiresAt?: string | null;
+  /** Hur man kom in: styrelsens lösenord, Lineup-länk (gammal), delad länk eller som medlem */
+  via?: "password" | "invite" | "link" | "member";
+  /** Inloggad medlem med behörighet (sajtens medlems-id) */
+  memberId?: number;
+} | null;
+
+/** Admin: allt. */
+export const isAdmin = (s: Session) => s?.role === "admin";
+/** Får bygga laguppställningar (Lineup). */
+export const canLineup = (s: Session) => s?.role === "admin" || s?.role === "lineup" || !!s?.modules?.includes("lineup");
 
 const ACCESS_SESSION_SECONDS = 365 * 24 * 60 * 60;
 
@@ -220,13 +235,13 @@ export async function readSession(req: Request): Promise<Session> {
   try {
     const { payload } = await jwtVerify(raw, secretKey());
     if (payload.typ !== "session" || !payload.exp) return null;
-    if (payload.role === "admin") return { role: "admin", expiresAt: payload.exp * 1000 };
+    if (payload.role === "admin") return { role: "admin", expiresAt: payload.exp * 1000, via: "password" };
     if (payload.role === "lineup" && payload.v === (await getInviteVersion()) && (await isInviteActive(payload.inv))) {
-      return { role: "lineup", expiresAt: payload.exp * 1000 };
+      return { role: "lineup", expiresAt: payload.exp * 1000, via: "invite" };
     }
     if (payload.role === "access") {
       const link = await getActiveAccessLink(payload.al);
-      if (link) return { role: "access", expiresAt: payload.exp * 1000, modules: link.modules, linkName: link.name, linkExpiresAt: link.expiresAt };
+      if (link) return { role: "access", expiresAt: payload.exp * 1000, modules: link.modules, linkName: link.name, linkExpiresAt: link.expiresAt, via: "link" };
     }
     return null;
   } catch {
@@ -248,7 +263,21 @@ export function loginRateLimited(ip: string): boolean {
 }
 
 
-/** Styrelsen eller en delad länk med någon av modulerna (för REST-routerna) */
+/** Admin, eller en session (länk eller medlem) med någon av modulerna */
 export function hasModule(s: Session, ...modules: AccessModule[]): boolean {
-  return s?.role === "admin" || (s?.role === "access" && modules.some((m) => s.modules?.includes(m)));
+  return s?.role === "admin" || modules.some((m) => !!s?.modules?.includes(m));
+}
+
+/**
+ * Sessionen som gäller: kakan (lösenord/länk) och den inloggade medlemmens behörighet
+ * slås ihop – det starkaste vinner, och moduler läggs ihop.
+ */
+export function mergeSessions(cookie: Session, member: { memberId: number; admin: boolean; modules: AccessModule[] } | null): Session {
+  if (!member) return cookie;
+  const far = Date.now() + 365 * 24 * 3600_000;
+  if (cookie?.role === "admin") return { ...cookie, memberId: member.memberId };
+  if (member.admin) return { role: "admin", expiresAt: far, via: "member", memberId: member.memberId };
+  const modules = new Set<AccessModule>([...member.modules, ...(cookie?.modules ?? [])]);
+  if (cookie?.role === "lineup") modules.add("lineup");
+  return { role: "access", expiresAt: far, modules: [...modules], via: "member", memberId: member.memberId };
 }

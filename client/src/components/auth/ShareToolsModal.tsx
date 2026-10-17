@@ -1,22 +1,23 @@
 /**
- * Dela verktyg (styrelsen): tillfälliga länkar som ger någon annan tillgång till
- * Lineup och Score Tracker i 24 timmar – t.ex. en tränare som bygger laget.
+ * Dela Lineup: en delad länk (samma sort som under Inställningar → Åtkomst) med bara
+ * Lineup, giltig till och med i morgon – t.ex. en tränare som bygger laget.
  * Länken ger inte statistik, PIR, spelarregistret eller inställningar.
  */
 import { useState } from "react";
 import { toast } from "sonner";
-import { X, Link2, Copy, Share2, ShieldOff, Loader2, Trash2 } from "lucide-react";
+import { X, Link2, Copy, Share2, Loader2, Trash2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
-const fmt = (ms: number) => new Date(ms).toLocaleString("sv-SE", { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
-const urlOf = (token: string) => `${window.location.origin}/lank/${token}`;
+const fmt = (iso: string) => new Date(new Date(iso).getTime() - 60_000).toLocaleDateString("sv-SE", { weekday: "short", day: "numeric", month: "numeric" });
+const urlOf = (token: string) => `${window.location.origin}/a/${token}`;
+const isoDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 export function ShareToolsModal({ onClose }: { onClose: () => void }) {
   const utils = trpc.useUtils();
-  const list = trpc.auth.listInvites.useQuery(undefined, { refetchInterval: 30_000 });
-  const refresh = () => utils.auth.listInvites.invalidate();
+  const list = trpc.auth.accessLinks.useQuery(undefined, { refetchInterval: 30_000 });
+  const refresh = () => utils.auth.accessLinks.invalidate();
   const [label, setLabel] = useState("");
-  const create = trpc.auth.createInvite.useMutation({
+  const create = trpc.auth.createAccessLink.useMutation({
     onSuccess: async (data) => {
       setLabel("");
       await refresh();
@@ -24,8 +25,7 @@ export function ShareToolsModal({ onClose }: { onClose: () => void }) {
     },
     onError: (e) => toast.error("Kunde inte skapa länken", { description: e.message }),
   });
-  const revoke = trpc.auth.revokeInvite.useMutation({ onSuccess: () => { toast.success("Länken är återkallad"); void refresh(); } });
-  const revokeAll = trpc.auth.revokeInvites.useMutation({ onSuccess: () => { toast.success("Alla länkar är återkallade"); void refresh(); } });
+  const revoke = trpc.auth.revokeAccessLink.useMutation({ onSuccess: () => { toast.success("Länken är stängd"); void refresh(); } });
 
   async function share(url: string, justCreated = false) {
     if (navigator.share) {
@@ -42,20 +42,22 @@ export function ShareToolsModal({ onClose }: { onClose: () => void }) {
     }
   }
 
-  const invites = list.data ?? [];
+  // Länkar med bara Lineup som fortfarande gäller
+  const invites = (list.data ?? []).filter((l) => l.modules.length === 1 && l.modules[0] === "lineup" && (!l.expiresAt || new Date(l.expiresAt).getTime() > Date.now()));
+  const tomorrow = () => isoDate(new Date(Date.now() + 86400000));
 
   return (
     <div className="fixed inset-0 z-[99999] bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
       <div className="w-full sm:max-w-md glass-panel-strong panel-solid rounded-t-2xl sm:rounded-2xl p-4 space-y-4 max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h2 className="font-bold text-white flex items-center gap-2" style={{ fontFamily: "'Oswald', sans-serif" }}>
-            <Link2 size={16} className="text-emerald-400" /> Dela verktyg
+            <Link2 size={16} className="text-emerald-400" /> Dela Lineup
           </h2>
           <button onClick={onClose} aria-label="Stäng" className="text-white/50 hover:text-white"><X size={18} /></button>
         </div>
 
         <div className="text-xs text-white/55 space-y-1">
-          <p>En länk ger den som öppnar den tillgång i <b className="text-white/80">24 timmar</b> till:</p>
+          <p>En länk ger den som öppnar den tillgång <b className="text-white/80">till och med i morgon</b> till:</p>
           <ul className="list-disc pl-4 space-y-0.5">
             <li><b className="text-white/80">Lineup</b> – bygga laget, hämta anmälda, dela</li>
             <li><b className="text-white/80">Score Tracker</b> – föra matchen (sparade matcher väntar på godkännande)</li>
@@ -71,7 +73,7 @@ export function ShareToolsModal({ onClose }: { onClose: () => void }) {
             maxLength={60}
             className="flex-1 min-w-0 rounded-lg bg-white/5 border border-white/10 text-white text-sm px-3 py-2"
           />
-          <button onClick={() => create.mutate({ label })} disabled={create.isPending}
+          <button onClick={() => create.mutate({ name: label.trim() || "Lineup", modules: ["lineup"], validUntil: tomorrow() })} disabled={create.isPending}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-500 text-emerald-950 text-sm font-bold disabled:opacity-50">
             {create.isPending ? <Loader2 size={14} className="animate-spin" /> : <Link2 size={14} />} Skapa
           </button>
@@ -89,16 +91,16 @@ export function ShareToolsModal({ onClose }: { onClose: () => void }) {
                 <li key={i.id} className="rounded-xl bg-white/[0.04] border border-white/10 p-3">
                   <div className="flex items-start gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white/90 truncate">{i.label || "Utan namn"}</p>
+                      <p className="text-sm text-white/90 truncate">{i.name}</p>
                       <p className="text-[10px] text-white/40">
-                        Giltig till {fmt(i.expiresAt)} · öppnad {i.uses} {i.uses === 1 ? "gång" : "gånger"}
+                        {i.expiresAt ? `Gäller till och med ${fmt(i.expiresAt)}` : "Tills vidare"} · öppnad {i.uses} {i.uses === 1 ? "gång" : "gånger"}
                       </p>
                     </div>
                     <button onClick={() => void share(urlOf(i.token))} title="Dela eller kopiera" aria-label="Dela eller kopiera"
                       className="p-2 rounded-lg bg-sky-500/15 border border-sky-400/30 text-sky-300">
                       {typeof navigator !== "undefined" && "share" in navigator ? <Share2 size={14} /> : <Copy size={14} />}
                     </button>
-                    <button onClick={() => { if (confirm(`Återkalla länken${i.label ? ` till ${i.label}` : ""}? Den som använder den loggas ut.`)) revoke.mutate({ id: i.id }); }}
+                    <button onClick={() => { if (confirm(`Stänga länken "${i.name}"? Den som använder den loggas ut.`)) revoke.mutate({ id: i.id }); }}
                       title="Återkalla" aria-label="Återkalla"
                       className="p-2 rounded-lg bg-red-500/10 border border-red-500/25 text-red-300">
                       <Trash2 size={14} />
@@ -110,13 +112,7 @@ export function ShareToolsModal({ onClose }: { onClose: () => void }) {
           )}
         </div>
 
-        {invites.length > 1 && (
-          <button onClick={() => { if (confirm("Återkalla alla länkar direkt? Alla som använder dem loggas ut.")) revokeAll.mutate(); }}
-            disabled={revokeAll.isPending}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/25 text-red-300 text-xs">
-            <ShieldOff size={14} /> Återkalla alla
-          </button>
-        )}
+
       </div>
     </div>
   );

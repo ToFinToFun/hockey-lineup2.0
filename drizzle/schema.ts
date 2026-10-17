@@ -432,16 +432,8 @@ export const memberSessions = mysqlTable(
   (t) => [index("member_sessions_member_idx").on(t.memberId)],
 );
 
-// ─── Medlemmarnas inställningar, meddelanden och chatt per aktivitet ─────────
+// ─── Meddelanden och chatt per aktivitet ─────────────────────────────────────
 
-/** Vad medlemmen vill få med mejl (allt finns alltid i appen). Saknas raden gäller standard: allt på. */
-export const memberPrefs = mysqlTable("member_prefs", {
-  memberId: int("memberId").primaryKey(),
-  invitesEmail: boolean("invitesEmail").default(true).notNull(),
-  remindersEmail: boolean("remindersEmail").default(true).notNull(),
-  messagesEmail: boolean("messagesEmail").default(true).notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
 
 /** Meddelanden från styrelsen. Mottagarna sparas som de var när meddelandet skickades. */
 export const memberMessages = mysqlTable(
@@ -457,6 +449,8 @@ export const memberMessages = mysqlTable(
     toAll: boolean("toAll").default(false).notNull(),
     recipientMemberIds: json("recipientMemberIds").$type<number[]>().notNull(),
     emailed: int("emailed").default(0).notNull(),
+    /** Antal medlemmar som fick push */
+    pushed: int("pushed").default(0).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   (t) => [index("member_messages_created_idx").on(t.createdAt)],
@@ -493,6 +487,36 @@ export const activityChatState = mysqlTable(
     memberId: int("memberId").notNull(),
     muted: boolean("muted").default(false).notNull(),
     lastReadId: int("lastReadId").default(0).notNull(),
+    /** Senaste push-notisen om chatten (högst en per kvart medan det finns olästa) */
+    notifiedAt: timestamp("notifiedAt"),
   },
   (t) => [uniqueIndex("activity_chat_state_uniq").on(t.activityId, t.memberId)],
+);
+
+/** Behörigheter i appen per medlem (sajtens medlems-id). Admin = allt. */
+export const memberGrants = mysqlTable("member_grants", {
+  memberId: int("memberId").primaryKey(),
+  admin: boolean("admin").default(false).notNull(),
+  modules: json("modules").$type<string[]>().notNull(),
+  grantedBy: varchar("grantedBy", { length: 120 }).default("").notNull(),
+  grantedAt: timestamp("grantedAt").defaultNow().notNull(),
+  lastUsedAt: timestamp("lastUsedAt"),
+});
+export type MemberGrantRow = typeof memberGrants.$inferSelect;
+
+/** Push-notiser: en prenumeration per enhet (kopplad till medlemmens inloggning på enheten). */
+export const pushSubscriptions = mysqlTable(
+  "push_subscriptions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    memberId: int("memberId").notNull(),
+    /** member_sessions.id – loggas enheten ut tas prenumerationen bort */
+    sessionId: varchar("sessionId", { length: 64 }).notNull(),
+    endpoint: varchar("endpoint", { length: 700 }).notNull(),
+    p256dh: varchar("p256dh", { length: 200 }).notNull(),
+    auth: varchar("auth", { length: 100 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    lastOkAt: timestamp("lastOkAt"),
+  },
+  (t) => [uniqueIndex("push_endpoint_uniq").on(t.endpoint), index("push_member_idx").on(t.memberId)],
 );

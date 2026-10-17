@@ -9,6 +9,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { AdminChat, MessageComposer, MessagesPage } from "./Messages";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -194,6 +195,7 @@ export default function ActivitiesApp() {
 // ─── Lista ───────────────────────────────────────────────────────────────────
 
 function ActivityList() {
+  const { isAdmin } = useAuth();
   const [past, setPast] = useState(false);
   const [creating, setCreating] = useState(false);
   const list = trpc.activities.list.useQuery({ past });
@@ -203,7 +205,7 @@ function ActivityList() {
     <div className="min-h-[100dvh] bg-[#0a0a0a] text-white">
       <Header title="Aktiviteter" back="/" />
       <main className="max-w-3xl mx-auto p-4 space-y-4">
-        <SourceCard />
+        {isAdmin && <SourceCard />}
         <div className="flex items-center gap-2">
           <button onClick={() => setPast(false)} className={chip(!past)}>
             Kommande
@@ -617,11 +619,11 @@ function ActivityForm({ onClose, recent, edit }: { onClose: () => void; recent: 
             )}
           </Section>
 
-          {/* Kallelse via mejl */}
-          <Section title="Kallelse via mejl">
+          {/* Kallelse (notis eller mejl) */}
+          <Section title="Kallelse">
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={f.notifyEmail} onChange={(e) => set("notifyEmail", e.target.checked)} />
-              Mejla kallelsen när anmälan öppnar
+              Skicka kallelsen när anmälan öppnar
             </label>
             {f.notifyEmail && (
               <div className="max-w-[260px]">
@@ -629,7 +631,7 @@ function ActivityForm({ onClose, recent, edit }: { onClose: () => void; recent: 
                 <input id="act-remind" inputMode="numeric" className={inputCls} value={f.reminderHours ?? ""} placeholder="Ingen påminnelse" onChange={(e) => set("reminderHours", numOrNull(e.target.value) || null)} />
               </div>
             )}
-            {!f.notifyEmail && <p className="text-xs text-white/40">Av – t.ex. när kallelsen fortfarande går via laget.se.</p>}
+            {!f.notifyEmail && <p className="text-xs text-white/40">Av – t.ex. när kallelsen går via laget.se.</p>}
           </Section>
 
           {/* Extra avgift */}
@@ -1017,7 +1019,7 @@ function MailStatus({ id, notifyEmail, notifiedAt, remindedAt, cancelled }: { id
     onSuccess: (r) => {
       utils.activities.get.invalidate({ id });
       toast.success(
-        `Kallelsen mejlades till ${r.sent} ${r.sent === 1 ? "adress" : "adresser"}` + (r.missingEmail.length ? ` · ${r.missingEmail.length} saknar e-post i registret` : ""),
+        `Kallelsen skickad: ${r.pushed} notis, ${r.sent} mejl` + (r.missingEmail.length ? ` · ${r.missingEmail.length} saknar e-post i registret` : ""),
       );
     },
     onError: (e) => toast.error(e.message),
@@ -1027,19 +1029,19 @@ function MailStatus({ id, notifyEmail, notifiedAt, remindedAt, cancelled }: { id
     <div className="flex flex-wrap items-center gap-2 text-xs text-white/50">
       <span className="flex-1 min-w-[180px]">
         {notifiedAt
-          ? `Kallelse mejlad ${fmtDateTime(notifiedAt)}${remindedAt ? `, påminnelse ${fmtDateTime(remindedAt)}` : ""}`
+          ? `Kallelse skickad ${fmtDateTime(notifiedAt)}${remindedAt ? `, påminnelse ${fmtDateTime(remindedAt)}` : ""}`
           : notifyEmail
-            ? "Kallelsen mejlas när anmälan öppnar"
-            : "Ingen kallelse via mejl"}
+            ? "Kallelsen skickas när anmälan öppnar"
+            : "Ingen kallelse från appen"}
       </span>
       <button
         onClick={() => {
-          if (window.confirm(notifiedAt ? "Mejla kallelsen igen till alla kallade som inte svarat?" : "Mejla kallelsen nu till alla kallade som inte svarat?")) send.mutate({ id });
+          if (window.confirm(notifiedAt ? "Skicka kallelsen igen till alla kallade som inte svarat?" : "Skicka kallelsen nu till alla kallade som inte svarat?")) send.mutate({ id });
         }}
         disabled={send.isPending}
         className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-white/70 hover:bg-white/5"
       >
-        {send.isPending ? "Skickar…" : notifiedAt ? "Mejla igen" : "Mejla kallelsen nu"}
+        {send.isPending ? "Skickar…" : notifiedAt ? "Skicka igen" : "Skicka kallelsen nu"}
       </button>
     </div>
   );

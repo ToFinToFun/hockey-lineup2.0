@@ -143,7 +143,7 @@ async function guardRegisterFields(id: string, fields: PlayerFields) {
 
 export const playersRouter = router({
   /** Alla spelare i registret (även inaktiva och ihopslagna). */
-  list: moduleProcedure("media", "cards", "stats", "players", "matches", "report").query(() => listPlayers()),
+  list: moduleProcedure("media", "cards", "stats", "players", "matches", "report", "activities", "lineup").query(() => listPlayers()),
 
   /** Matcher, positioner, lag, mål och assist per säsong för en spelare. */
   history: moduleProcedure("players", "stats", "cards")

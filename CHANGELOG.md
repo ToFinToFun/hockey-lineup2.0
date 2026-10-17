@@ -7,6 +7,18 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.0.0 – 2026-10-17
+
+Ny grund för inloggning, behörigheter och notiser. Allt gammalt fungerar parallellt.
+
+- **En inloggning för alla:** man loggar in som medlem med e-postkod. Behörigheter sitter på medlemmen: **Admin** (allt) eller valda delar – Lineup, Aktiviteter, Media, Hockeykort, Statistik, Spelare, Matcher, Rapport. Sätts under **Inställningar → Åtkomst**, gäller direkt och visar vem som gav behörigheten och när den senast användes.
+- **Vägen in från sajten:** i medlemsregistret kan styrelsen ge en medlem Admin i appen (och ta bort det). Varning i appen om styrelsen enligt Organisation och de som har Admin inte stämmer överens.
+- **Styrelsens lösenord** finns kvar som reserv så länge `ADMIN_PASSWORD` är satt, och är inte längre ett krav för att starta appen.
+- **Lineup-länken** är nu en vanlig delad länk med Lineup (gäller till och med i morgon). Delade länkar kan även ge Lineup och Aktiviteter.
+- **Push-notiser:** slå på under Mina sidor. En regel i stället för inställningar: har man notiser på telefonen får man notis, annars mejl – för kallelser, påminnelser, inställda aktiviteter och meddelanden från styrelsen. Chatten ger bara notiser: en vid första nya inlägget, sedan tyst tills man läst (högst en per kvart); tystad chatt ger inga. På iPhone krävs att appen ligger på hemskärmen.
+- Mejlinställningarna från 2.92.0 är borttagna (ersatta av regeln ovan).
+- Inlägg i chatten från den som är inloggad som medlem visas med ens namn.
+
 ## 2.92.0 – 2026-10-17
 
 - **Mina sidor** har nu flikarna Aktiviteter, Meddelanden och Inställningar.

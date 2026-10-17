@@ -22,7 +22,7 @@ export function assertRequiredEnv() {
   if (!ENV.isProduction) return;
   const missing: string[] = [];
   if (ENV.cookieSecret.length < 32) missing.push("JWT_SECRET (minst 32 tecken)");
-  if (!ENV.adminPassword) missing.push("ADMIN_PASSWORD");
+  // ADMIN_PASSWORD är valfri: utan den loggar styrelsen in som medlemmar med Admin
   if (!ENV.databaseUrl) missing.push("DATABASE_URL");
   if (missing.length) {
     throw new Error(`Saknade miljövariabler: ${missing.join(", ")}`);

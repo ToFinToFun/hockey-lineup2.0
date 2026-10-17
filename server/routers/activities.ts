@@ -4,7 +4,11 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { adminProcedure, router } from "../_core/trpc";
+import { adminProcedure, moduleProcedure, router } from "../_core/trpc";
+import { playerForMember } from "../activities";
+
+/** Aktiviteter: Admin, eller medlem/länk med behörigheten Aktiviteter. */
+const activitiesProcedure = moduleProcedure("activities");
 import { ACTIVITY_TYPES, INVITES } from "../../shared/activities";
 import {
   createActivities,
@@ -54,35 +58,35 @@ async function run<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 export const activitiesRouter = router({
-  list: adminProcedure
+  list: activitiesProcedure
     .input(z.object({ past: z.boolean().optional() }).optional())
     .query(({ input }) => listActivities(input?.past ? { from: new Date(Date.now() - 120 * 86400000), to: new Date() } : {})),
 
-  get: adminProcedure.input(z.object({ id: z.number().int() })).query(({ input }) => run(() => getActivity(input.id))),
+  get: activitiesProcedure.input(z.object({ id: z.number().int() })).query(({ input }) => run(() => getActivity(input.id))),
 
-  create: adminProcedure
+  create: activitiesProcedure
     .input(z.object({ fields, dates: z.array(date).min(1).max(200) }))
     .mutation(({ input }) => run(async () => ({ ids: await createActivities(input.fields, input.dates) }))),
 
-  update: adminProcedure
+  update: activitiesProcedure
     .input(z.object({ id: z.number().int(), scope, fields, date: date.optional() }))
     .mutation(({ input }) => run(() => updateActivities(input.id, input.scope, input.fields, input.date))),
 
-  cancel: adminProcedure
+  cancel: activitiesProcedure
     .input(z.object({ id: z.number().int(), scope, cancelled: z.boolean(), note: z.string().max(200).default("") }))
     .mutation(({ input }) => run(() => setCancelled(input.id, input.scope, input.cancelled, input.note))),
 
-  remove: adminProcedure
+  remove: activitiesProcedure
     .input(z.object({ id: z.number().int(), scope }))
     .mutation(({ input }) => run(() => deleteActivities(input.id, input.scope))),
 
   /** Den som administrerar lägger till/ändrar/tar bort en spelare ur truppen (går förbi max antal). */
-  setAttendance: adminProcedure
+  setAttendance: activitiesProcedure
     .input(z.object({ activityId: z.number().int(), playerId: z.string().min(1).max(64), status: z.enum(["yes", "no"]).nullable() }))
     .mutation(({ input }) => run(() => setAttendance(input.activityId, input.playerId, input.status, "admin", true))),
 
   /** Skicka kallelsen via mejl nu, till kallade som inte svarat. */
-  sendInvitation: adminProcedure.input(z.object({ id: z.number().int() })).mutation(({ input }) =>
+  sendInvitation: activitiesProcedure.input(z.object({ id: z.number().int() })).mutation(({ input }) =>
     run(async () => {
       const { sendInvitation } = await import("../activityMail");
       const a = (await getActivity(input.id)).activity;
@@ -92,7 +96,7 @@ export const activitiesRouter = router({
   ),
 
   /** Styrelsen enligt sajten (för att visa vilka "Styrelsen" kallar). */
-  board: adminProcedure.query(() => boardMembers()),
+  board: activitiesProcedure.query(() => boardMembers()),
 
   /** Varifrån Lineup hämtar anmälningarna: laget.se (standard) eller appens aktiviteter. */
   source: adminProcedure.query(async () => ({ source: await getAttendanceSource() })),
@@ -102,24 +106,30 @@ export const activitiesRouter = router({
   }),
 
   // ─── Chatt (styrelsen skriver som "Styrelsen") ─────────────────────────────
-  chat: adminProcedure.input(z.object({ activityId: z.number().int() })).query(({ input }) =>
+  chat: activitiesProcedure.input(z.object({ activityId: z.number().int() })).query(({ input }) =>
     run(async () => {
       const a = (await getActivity(input.activityId)).activity;
       return { ...chatWindow(a), messages: await chatMessages(input.activityId) };
     }),
   ),
-  chatPost: adminProcedure
+  chatPost: activitiesProcedure
     .input(z.object({ activityId: z.number().int(), text: z.string().min(1).max(1000) }))
-    .mutation(({ input }) => run(async () => (await postChat(input.activityId, null, input.text), { ok: true }))),
-  chatDelete: adminProcedure.input(z.object({ id: z.number().int() })).mutation(({ input }) => run(async () => (await deleteChat(input.id, null), { ok: true }))),
+    .mutation(({ ctx, input }) =>
+      run(async () => {
+        // Inloggad som medlem: inlägget får ens eget namn; annars "Styrelsen"
+        const p = ctx.session.memberId ? await playerForMember(ctx.session.memberId) : null;
+        await postChat(input.activityId, p?.id ?? null, input.text);
+        return { ok: true };
+      }),
+    ),
+  chatDelete: activitiesProcedure.input(z.object({ id: z.number().int() })).mutation(({ input }) => run(async () => (await deleteChat(input.id, null), { ok: true }))),
 
   // ─── Meddelanden till medlemmarna ──────────────────────────────────────────
-  sendMessage: adminProcedure
+  sendMessage: activitiesProcedure
     .input(
       z.object({
         title: z.string().trim().min(1, "Ange en rubrik").max(150),
         body: z.string().trim().min(1, "Skriv ett meddelande").max(5000),
-        email: z.boolean(),
         audience: z.discriminatedUnion("kind", [
           z.object({ kind: z.literal("all") }),
           z.object({ kind: z.literal("board") }),
@@ -129,6 +139,6 @@ export const activitiesRouter = router({
       }),
     )
     .mutation(({ input }) => run(() => sendMessage(input))),
-  messages: adminProcedure.query(() => sentMessages()),
-  deleteMessage: adminProcedure.input(z.object({ id: z.number().int() })).mutation(({ input }) => run(async () => (await deleteMessage(input.id), { ok: true }))),
+  messages: activitiesProcedure.query(() => sentMessages()),
+  deleteMessage: activitiesProcedure.input(z.object({ id: z.number().int() })).mutation(({ input }) => run(async () => (await deleteMessage(input.id), { ok: true }))),
 });

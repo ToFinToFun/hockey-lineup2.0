@@ -1,0 +1,1 @@
+ALTER TABLE `member_messages` ADD `pushed` int DEFAULT 0 NOT NULL;

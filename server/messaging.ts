@@ -1,12 +1,13 @@
 /**
- * Medlemmarnas mejlinställningar, meddelanden från styrelsen och chatten per aktivitet.
+ * Notiser, meddelanden från styrelsen och chatten per aktivitet.
  *
- * - Inställningar: kallelser, påminnelser och meddelanden kan var för sig väljas bort som mejl.
- *   Allt finns alltid i appen. Standard (ingen rad): allt på.
+ * - Notiser: en regel, inga inställningar. Har medlemmen push på någon enhet får den push,
+ *   annars mejl (via sajten, som har adresserna).
  * - Meddelanden: styrelsen skriver till alla medlemmar, styrelsen, de anmälda eller de som inte
- *   svarat på en aktivitet, eller valda medlemmar. Inkorg i appen + mejl via sajten. Sparas i 12 månader.
- * - Chatt per aktivitet: de anmälda (kommer/reserv) och styrelsen. Öppen från att anmälan öppnar
- *   till 12 timmar efter slut – sedan raderas allt.
+ *   svarat på en aktivitet, eller valda medlemmar. Inkorg i appen + notis. Sparas i 12 månader.
+ * - Chatt per aktivitet: de anmälda (kommer/reserv) och de med behörighet. Öppen från att anmälan
+ *   öppnar till 12 timmar efter slut – sedan raderas allt. Bara push, aldrig mejl: en notis vid
+ *   första nya inlägget, sedan tyst tills man läst (högst en per kvart). Tystad chatt: inga notiser.
  */
 import { and, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import { getDb } from "./db";
@@ -17,7 +18,6 @@ import {
   activityChatState,
   memberMessageReads,
   memberMessages,
-  memberPrefs,
   type ActivityRow,
 } from "../drizzle/schema";
 import { listPlayers } from "./playersDb";
@@ -31,28 +31,7 @@ async function db() {
   return d;
 }
 
-// ─── Inställningar ───────────────────────────────────────────────────────────
-
-export type PrefKey = "invitesEmail" | "remindersEmail" | "messagesEmail";
-export type Prefs = Record<PrefKey, boolean>;
-const DEFAULT_PREFS: Prefs = { invitesEmail: true, remindersEmail: true, messagesEmail: true };
-
-export async function getPrefs(memberId: number): Promise<Prefs> {
-  const [row] = await (await db()).select().from(memberPrefs).where(eq(memberPrefs.memberId, memberId));
-  return row ? { invitesEmail: row.invitesEmail, remindersEmail: row.remindersEmail, messagesEmail: row.messagesEmail } : DEFAULT_PREFS;
-}
-
-export async function setPrefs(memberId: number, prefs: Prefs) {
-  await (await db()).insert(memberPrefs).values({ memberId, ...prefs }).onDuplicateKeyUpdate({ set: prefs });
-}
-
-/** Medlemmar som har valt bort mejl av en viss sort. */
-export async function optedOut(key: PrefKey): Promise<number[]> {
-  const rows = await (await db()).select().from(memberPrefs).where(eq(memberPrefs[key], false));
-  return rows.map((r) => r.memberId);
-}
-
-// ─── Mejl via sajten ─────────────────────────────────────────────────────────
+// ─── Notiser: push, annars mejl ──────────────────────────────────────────────
 
 export interface MailResult {
   sent: number;
@@ -60,16 +39,37 @@ export interface MailResult {
   failed: number[];
 }
 
-export async function mailMembers(target: { memberIds: number[] } | { all: true }, key: PrefKey, subject: string, text: string): Promise<MailResult> {
-  const exclude = await optedOut(key);
-  if ("memberIds" in target) {
-    const ids = target.memberIds.filter((id) => !exclude.includes(id));
-    if (!ids.length) return { sent: 0, missingEmail: [], failed: [] };
-    target = { memberIds: ids };
-  }
+export interface NotifyResult extends MailResult {
+  pushed: number;
+}
+
+async function mail(target: { memberIds: number[] } | { all: true; excludeMemberIds: number[] }, subject: string, text: string): Promise<MailResult> {
+  if ("memberIds" in target && !target.memberIds.length) return { sent: 0, missingEmail: [], failed: [] };
   const { siteRequest, integrationConfigured } = await import("./integration");
   if (!integrationConfigured()) throw new Error("Kopplingen till sajten är inte inställd – mejl kan inte skickas");
-  return siteRequest<MailResult>("POST", "/internal/v1/mail/members", { ...target, excludeMemberIds: exclude, subject, text });
+  return siteRequest<MailResult>("POST", "/internal/v1/mail/members", { ...target, subject, text });
+}
+
+/**
+ * Når medlemmarna: push till den som har det, mejl till övriga.
+ * target "all" = alla i registret (mejlet skickas av sajten till alla utom de som fick push).
+ */
+export async function notifyMembers(
+  target: { memberIds: number[] } | { all: true },
+  msg: { title: string; body: string; url: string; tag?: string; mailSubject: string; mailText: string },
+): Promise<NotifyResult> {
+  const { pushTo } = await import("./push");
+  const all = !("memberIds" in target);
+  const ids = all ? null : [...new Set(target.memberIds)];
+  if (ids && !ids.length) return { pushed: 0, sent: 0, missingEmail: [], failed: [] };
+  const reached = await pushTo(ids, { title: msg.title, body: msg.body, url: msg.url, tag: msg.tag }).catch((e) => {
+    console.warn("[notiser] push:", (e as Error).message);
+    return new Set<number>();
+  });
+  const m = all
+    ? await mail({ all: true, excludeMemberIds: [...reached] }, msg.mailSubject, msg.mailText)
+    : await mail({ memberIds: ids!.filter((id) => !reached.has(id)) }, msg.mailSubject, msg.mailText);
+  return { pushed: reached.size, ...m };
 }
 
 // ─── Meddelanden ─────────────────────────────────────────────────────────────
@@ -117,7 +117,7 @@ async function resolveAudience(a: Audience): Promise<{ toAll: boolean; memberIds
   return { toAll: false, memberIds: ids, label: `${a.who === "yes" ? "Anmälda" : "Ej svarat"}: ${row.title} ${when(row.startsAt)}`, activityId: row.id };
 }
 
-export async function sendMessage(input: { title: string; body: string; audience: Audience; email: boolean }) {
+export async function sendMessage(input: { title: string; body: string; audience: Audience }) {
   const r = await resolveAudience(input.audience);
   if (!r.toAll && !r.memberIds.length) throw new Error("Inga mottagare");
   const d = await db();
@@ -130,12 +130,16 @@ export async function sendMessage(input: { title: string; body: string; audience
     recipientMemberIds: r.memberIds,
   });
   const id = (ins as unknown as { insertId: number }).insertId;
-  let mail: MailResult | null = null;
-  if (input.email) {
-    mail = await mailMembers(r.toAll ? { all: true } : { memberIds: r.memberIds }, "messagesEmail", input.title.trim(), `${input.body.trim()}\n\n– Styrelsen, Stålstadens SF\n${appUrl()}/mina/meddelanden`);
-    await d.update(memberMessages).set({ emailed: mail.sent }).where(eq(memberMessages.id, id));
-  }
-  return { id, recipients: r.toAll ? null : r.memberIds.length, label: r.label, mail };
+  const n = await notifyMembers(r.toAll ? { all: true } : { memberIds: r.memberIds }, {
+    title: input.title.trim(),
+    body: input.body.trim().slice(0, 180),
+    url: "/mina/meddelanden",
+    tag: `msg-${id}`,
+    mailSubject: input.title.trim(),
+    mailText: `${input.body.trim()}\n\n– Styrelsen, Stålstadens SF\n${appUrl()}/mina/meddelanden`,
+  });
+  await d.update(memberMessages).set({ emailed: n.sent, pushed: n.pushed }).where(eq(memberMessages.id, id));
+  return { id, recipients: r.toAll ? null : r.memberIds.length, label: r.label, notify: n };
 }
 
 export async function sentMessages() {
@@ -204,7 +208,53 @@ export async function postChat(activityId: number, playerId: string | null, text
   if (!chatWindow(a).open) throw new Error("Chatten är stängd");
   const clean = text.trim().slice(0, 1000);
   if (!clean) throw new Error("Skriv något");
-  await (await db()).insert(activityChat).values({ activityId, playerId, text: clean });
+  const [ins] = await (await db()).insert(activityChat).values({ activityId, playerId, text: clean });
+  const id = (ins as unknown as { insertId: number }).insertId;
+  void chatPush(a, id, playerId, clean).catch((e) => console.warn("[chatt] push:", (e as Error).message));
+}
+
+const CHAT_PUSH_GAP = 15 * 60_000;
+
+/**
+ * Push om ett nytt chattinlägg till de anmälda (inte till den som skrev). Första nya inlägget
+ * ger en notis; sedan tyst för den chatten tills man läst, högst en notis per kvart. Tystad: inget.
+ */
+async function chatPush(a: ActivityRow, newId: number, authorPlayerId: string | null, text: string) {
+  const d = await db();
+  const players = await listPlayers();
+  const att = await d.select().from(activityAttendance).where(eq(activityAttendance.activityId, a.id));
+  const targets = new Map<number, string>(); // medlems-id → spelar-id
+  for (const x of att) {
+    if ((x.status !== "yes" && x.status !== "reserve") || x.playerId === authorPlayerId) continue;
+    const p = players.find((pl) => pl.id === x.playerId);
+    const mid = Number(p?.externalId);
+    if (p?.isMember && Number.isInteger(mid) && mid > 0) targets.set(mid, p.id);
+  }
+  if (!targets.size) return;
+  const states = await d.select().from(activityChatState).where(and(eq(activityChatState.activityId, a.id), inArray(activityChatState.memberId, [...targets.keys()])));
+  const earlier = await d
+    .select({ id: activityChat.id, playerId: activityChat.playerId })
+    .from(activityChat)
+    .where(and(eq(activityChat.activityId, a.id), lt(activityChat.id, newId)));
+  const now = Date.now();
+  const send: number[] = [];
+  for (const [mid, pid] of targets) {
+    const st = states.find((x) => x.memberId === mid);
+    if (st?.muted) continue;
+    const unreadBefore = earlier.some((c) => c.id > (st?.lastReadId ?? 0) && c.playerId !== pid);
+    if (unreadBefore && st?.notifiedAt && now - st.notifiedAt.getTime() < CHAT_PUSH_GAP) continue;
+    send.push(mid);
+  }
+  if (!send.length) return;
+  const author = authorPlayerId ? players.find((p) => p.id === authorPlayerId)?.name ?? "Någon" : "Styrelsen";
+  const { pushTo } = await import("./push");
+  const reached = await pushTo(send, { title: `${a.title} ${when(a.startsAt)}`, body: `${author}: ${text.slice(0, 140)}`, url: `/mina/${a.id}`, tag: `chat-${a.id}` });
+  for (const mid of reached) {
+    await d
+      .insert(activityChatState)
+      .values({ activityId: a.id, memberId: mid, notifiedAt: new Date() })
+      .onDuplicateKeyUpdate({ set: { notifiedAt: new Date() } });
+  }
 }
 
 /** Tar bort ett inlägg: styrelsen alla, medlemmen sina egna. */

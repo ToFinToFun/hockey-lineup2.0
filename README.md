@@ -56,7 +56,7 @@ pnpm dev
 |---|---|---|
 | `DATABASE_URL` | Ja | MySQL connection string, t.ex. `mysql://user:pass@host:3306/lineup` |
 | `JWT_SECRET` | Ja | Signerar sessioner och länkar. Minst 32 tecken, generera med `openssl rand -hex 32` |
-| `ADMIN_PASSWORD` | Ja | Styrelsens lösenord för inloggning i appen |
+| `ADMIN_PASSWORD` | Nej | Reservlösenord för styrelsen. Kan tas bort när styrelsen loggar in som medlemmar med Admin |
 | `DATABASE_SSL` | Nej | `auto` (standard): krypterat om databasen kräver det. `on`/`off` tvingar |
 | `DATABASE_SSL_CA` | Nej | Sökväg till CA-certifikat om certifikatet ska kontrolleras |
 | `LAGET_SE_USERNAME` | Ja* | Laget.se-konto för anmälningssynk (*krävs för laget.se-funktionen) |
@@ -64,17 +64,19 @@ pnpm dev
 | `NODE_ENV` | Ja | `production` i Coolify, `development` lokalt |
 | `PORT` | Nej | Server-port (default: 3000) |
 
-Appen startar inte i produktion om `JWT_SECRET`, `ADMIN_PASSWORD` eller `DATABASE_URL` saknas.
+Appen startar inte i produktion om `JWT_SECRET` eller `DATABASE_URL` saknas.
 
 ## Behörighet
 
 | Roll | Hur | Får göra |
 |---|---|---|
 | Alla | Ingen inloggning | Score tracker: registrera mål, spara match, se uppställningen |
-| Tillfällig länk | Styrelsen skapar länk på startsidan, giltig 24 h | Bygga uppställningar, synka laget.se |
-| Styrelsen | `ADMIN_PASSWORD`, inloggad 30 dagar per enhet | Allt, inkl. statistik, historik, inställningar, radering |
+| Medlem | E-postkod via sajten, inloggad per enhet | Mina sidor: anmälan, chatt, meddelanden |
+| Medlem med behörighet | Samma inloggning; behörigheten sätts under Inställningar → Åtkomst | Admin (allt) eller valda delar (Lineup, Aktiviteter, Media …) |
+| Delad länk | Admin skapar länk under Inställningar → Åtkomst | Valda delar, till ett datum eller tills vidare |
+| Lösenord (reserv) | `ADMIN_PASSWORD`, om satt | Allt |
 
-"Återkalla alla" på startsidan gör alla utskickade länkar ogiltiga direkt. Behörigheten kontrolleras på servern (`server/_core/trpc.ts`).
+Vägen in om ingen har Admin: på sajten kan den som har rollen styrelse eller webbadmin ge en medlem Admin i appen (Inställningar → Appen). Behörigheten kontrolleras på servern (`server/_core/trpc.ts`, `server/session.ts`).
 
 ---
 

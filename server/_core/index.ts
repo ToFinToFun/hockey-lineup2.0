@@ -11,7 +11,8 @@ import express from "express";
 import helmet from "helmet";
 import { createServer } from "http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { readSession, hasModule } from "../auth";
+import { hasModule } from "../auth";
+import { effectiveSession } from "../session";
 import { getPlayerPhoto } from "../playerPhotos";
 import { getCardSource, getCardMask } from "../playerCards";
 import { startLiveProfileSchedule } from "../cardProfile";
@@ -102,7 +103,7 @@ async function startServer() {
   // spelarkortet öppnas; ETag gör att webbläsaren återanvänder bilden tills den byts.
   app.get("/api/players/:id/photo", async (req, res) => {
     try {
-      const session = await readSession(req);
+      const { session } = await effectiveSession(req);
       if (!session) return res.status(401).end();
       const photo = await getPlayerPhoto(String(req.params.id).slice(0, 64));
       if (!photo) return res.status(404).end();
@@ -119,7 +120,7 @@ async function startServer() {
   // Hockeykortets originalfoto – bara styrelsen (hockeykorten är en styrelsemodul)
   app.get("/api/players/:id/card-source", async (req, res) => {
     try {
-      const session = await readSession(req);
+      const { session } = await effectiveSession(req);
       if (!hasModule(session, "cards", "media")) return res.status(401).end();
       const src = await getCardSource(String(req.params.id).slice(0, 64));
       if (!src) return res.status(404).end();
@@ -136,7 +137,7 @@ async function startServer() {
   // Hockeykortets friläggningsmask (gråskala-PNG) – bara styrelsen
   app.get("/api/players/:id/card-mask", async (req, res) => {
     try {
-      const session = await readSession(req);
+      const { session } = await effectiveSession(req);
       if (!hasModule(session, "cards", "media")) return res.status(401).end();
       const m = await getCardMask(String(req.params.id).slice(0, 64));
       if (!m) return res.status(404).end();
@@ -180,7 +181,7 @@ async function startServer() {
   // Media: egen bild i ett sparat inlägg – bara styrelsen
   app.get("/api/media/:id/photo", async (req, res) => {
     try {
-      const session = await readSession(req);
+      const { session } = await effectiveSession(req);
       if (!hasModule(session, "media")) return res.status(401).end();
       const p = await getMediaPhoto(Number(req.params.id));
       if (!p) return res.status(404).end();

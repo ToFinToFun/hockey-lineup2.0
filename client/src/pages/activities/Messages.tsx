@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Mail, MessageCircle, Send, Trash2, X } from "lucide-react";
+import { ArrowLeft, Bell, Loader2, Mail, MessageCircle, Send, Trash2, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { shortDate, stockholmParts } from "@shared/activities";
 import { ChatBox } from "./ChatBox";
@@ -33,13 +33,12 @@ export function MessageComposer({ onClose, activityId }: { onClose: () => void; 
   const [search, setSearch] = useState("");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [email, setEmail] = useState(true);
   const send = trpc.activities.sendMessage.useMutation({
     onSuccess: (r) => {
       utils.activities.messages.invalidate();
-      const m = r.mail;
+      const n = r.notify;
       toast.success(
-        `Skickat till ${r.label}${m ? ` · ${m.sent} mejl${m.missingEmail.length ? `, ${m.missingEmail.length} saknar e-post` : ""}${m.failed.length ? `, ${m.failed.length} misslyckades` : ""}` : ""}`,
+        `Skickat till ${r.label} · ${n.pushed} notis, ${n.sent} mejl${n.missingEmail.length ? `, ${n.missingEmail.length} saknar e-post` : ""}${n.failed.length ? `, ${n.failed.length} misslyckades` : ""}`,
       );
       onClose();
     },
@@ -57,7 +56,7 @@ export function MessageComposer({ onClose, activityId }: { onClose: () => void; 
         : kind === "selected"
           ? { kind, playerIds: picked }
           : { kind: "activity" as const, activityId: actId ?? 0, who: kind };
-    send.mutate({ title, body, email, audience: audience as never });
+    send.mutate({ title, body, audience: audience as never });
   };
   const opts: [Kind, string][] = [
     ["all", "Alla medlemmar"],
@@ -130,10 +129,7 @@ export function MessageComposer({ onClose, activityId }: { onClose: () => void; 
             <label className={labelCls}>Meddelande</label>
             <textarea className={`${inputCls} min-h-32`} maxLength={5000} value={body} onChange={(e) => setBody(e.target.value)} />
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" className="w-4 h-4 accent-emerald-600" checked={email} onChange={(e) => setEmail(e.target.checked)} />
-            Skicka även som mejl
-          </label>
+          <p className="text-xs text-white/40">Hamnar under Meddelanden i appen. Notis till den som har det påslaget, annars mejl.</p>
         </div>
         <div className="sticky bottom-0 bg-[#141414] border-t border-white/10 px-4 py-3 flex gap-2 justify-end">
           <button onClick={onClose} className={btnGhost}>
@@ -179,9 +175,9 @@ export function MessagesPage() {
             <div className="text-xs text-white/50 flex items-center gap-2 flex-wrap">
               <span>{fmt(m.createdAt)}</span>
               <span>· {m.audienceLabel}</span>
-              {m.emailed > 0 && (
+              {(m.pushed > 0 || m.emailed > 0) && (
                 <span className="inline-flex items-center gap-1">
-                  · <Mail size={11} /> {m.emailed}
+                  · <Bell size={11} /> {m.pushed} <Mail size={11} /> {m.emailed}
                 </span>
               )}
             </div>

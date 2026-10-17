@@ -5,8 +5,9 @@
 // - Byggda filer (/assets/*, hashade namn): cache först, de ändras aldrig.
 // - Bilder, ljud, ikoner, typsnitt: cache först, uppdateras i bakgrunden.
 // - API-anrop (/api/*) hanteras aldrig här; appen sköter sin egen offline-data.
+// - Push-notiser (kallelser, meddelanden, chatt): visas här; tryck öppnar rätt sida i appen.
 
-const VERSION = 'v7';
+const VERSION = 'v8';
 const SHELL_CACHE = `stal-shell-${VERSION}`;
 const ASSET_CACHE = `stal-assets-${VERSION}`;
 const NETWORK_TIMEOUT_MS = 3000;
@@ -120,4 +121,43 @@ self.addEventListener('fetch', (event) => {
   if (/\.(png|jpe?g|webp|svg|ico|mp3|wav|ogg|m4a|woff2?|json)$/i.test(url.pathname)) {
     event.respondWith(cacheFirst(request, SHELL_CACHE, true));
   }
+});
+
+// ─── Push-notiser ────────────────────────────────────────────────────────────
+
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: 'Stålstadens', body: event.data ? event.data.text() : '' };
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Stålstadens', {
+      body: data.body || '',
+      icon: '/pwa-icon-192.png',
+      badge: '/favicon-32.png',
+      tag: data.tag || undefined,
+      renotify: !!data.tag,
+      data: { url: data.url || '/mina' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/mina';
+  event.waitUntil(
+    (async () => {
+      const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const w of wins) {
+        if (new URL(w.url).origin === self.location.origin && 'focus' in w) {
+          await w.focus();
+          if ('navigate' in w) await w.navigate(url).catch(() => {});
+          return;
+        }
+      }
+      await self.clients.openWindow(url);
+    })()
+  );
 });

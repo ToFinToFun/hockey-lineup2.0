@@ -10,7 +10,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
-import { ArrowLeft, Check, Clock, Loader2, LogOut, MapPin, MessageCircle, Smartphone, X } from "lucide-react";
+import { ArrowLeft, Bell, BellOff, Check, Clock, Loader2, LogOut, MapPin, MessageCircle, Smartphone, X } from "lucide-react";
+import { usePush } from "@/lib/push";
 import { trpc } from "@/lib/trpc";
 import { shortDate, stockholmParts } from "@shared/activities";
 import { dayMark } from "@shared/holidays";
@@ -94,7 +95,8 @@ function Login() {
   const params = new URLSearchParams(search);
   const token = params.get("t");
   // Tillbaka dit man var på väg (t.ex. länken i kallelsen)
-  const next = /^\/mina(\/(\d+|meddelanden|installningar))?$/.test(params.get("next") ?? "") ? params.get("next")! : "/mina";
+  // Bara sökvägar i appen (inte //annan-sajt)
+  const next = /^\/(?!\/)[\w\-/]*$/.test(params.get("next") ?? "") ? params.get("next")! : "/mina";
   const utils = trpc.useUtils();
   const me = trpc.member.me.useQuery();
   const [email, setEmail] = useState("");
@@ -260,6 +262,7 @@ function Mine() {
     <Shell title="Mina sidor" back="/" tab="aktiviteter">
       <div className="space-y-4">
         <p className="text-white/60 text-sm">Hej {me.data.name?.split(" ")[0] ?? ""}!</p>
+        <PushCard compact />
         {list.data && !list.data.linked && (
           <p className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-100">
             Du är inte kopplad till en spelare än. Kontakta styrelsen, så fixar de det.
@@ -552,37 +555,48 @@ function Messages() {
 
 function Settings() {
   const me = useMember();
-  const utils = trpc.useUtils();
-  const prefs = trpc.member.prefs.useQuery(undefined, { enabled: !!me });
-  const save = trpc.member.setPrefs.useMutation({ onSuccess: (p) => utils.member.prefs.setData(undefined, p), onError: (e) => toast.error(e.message) });
-  const rows: { key: "invitesEmail" | "remindersEmail" | "messagesEmail"; label: string }[] = [
-    { key: "invitesEmail", label: "Kallelser och inställda aktiviteter" },
-    { key: "remindersEmail", label: "Påminnelser om att svara" },
-    { key: "messagesEmail", label: "Meddelanden från styrelsen" },
-  ];
   return (
     <Shell title="Mina sidor" back="/" tab="installningar">
-      <div className="space-y-6">
-        <section className="space-y-2">
-          <h3 className="text-sm font-semibold">Mejl</h3>
-          <div className="rounded-xl border border-white/10 divide-y divide-white/5">
-            {rows.map((r) => (
-              <label key={r.key} className="flex items-center gap-3 px-3 py-3 text-sm cursor-pointer">
-                <span className="flex-1">{r.label}</span>
-                <input
-                  type="checkbox"
-                  className="w-5 h-5 accent-emerald-600"
-                  checked={prefs.data?.[r.key] ?? true}
-                  disabled={!prefs.data || save.isPending}
-                  onChange={(e) => prefs.data && save.mutate({ ...prefs.data, [r.key]: e.target.checked })}
-                />
-              </label>
-            ))}
-          </div>
-          <p className="text-xs text-white/40">Allt finns alltid här i appen.</p>
-        </section>
-        <Devices />
-      </div>
+      <div className="space-y-6">{me && <PushCard />}<Devices /></div>
     </Shell>
+  );
+}
+
+/** Notiser på den här telefonen. Utan notiser kommer kallelser och meddelanden som mejl. */
+function PushCard({ compact }: { compact?: boolean }) {
+  const push = usePush();
+  const test = trpc.member.pushTest.useMutation({ onSuccess: (r) => (r.ok ? toast.success("Testnotis skickad") : toast.error("Kunde inte skicka – försök slå av och på igen")) });
+  if (push.state === "loading") return null;
+  if (compact && push.state !== "off") return null;
+  const text: Record<string, string> = {
+    "ios-home": "Lägg appen på hemskärmen först: tryck på Dela och välj Lägg till på hemskärmen. Öppna sedan appen därifrån.",
+    unsupported: "Den här webbläsaren kan inte ta emot notiser. Du får mejl i stället.",
+    denied: "Notiser är blockerade för appen i telefonens inställningar. Du får mejl i stället.",
+    off: "Få kallelser, meddelanden och chatt direkt i telefonen. Utan notiser får du mejl.",
+    on: "Notiserna är på för den här telefonen. Chattar kan tystas var för sig.",
+  };
+  return (
+    <section className="rounded-xl border border-white/10 bg-white/[0.03] p-3 space-y-2">
+      <div className="flex items-center gap-2">
+        {push.state === "on" ? <Bell size={16} className="text-emerald-300" /> : <BellOff size={16} className="text-white/50" />}
+        <h3 className="text-sm font-semibold flex-1">Notiser</h3>
+        {push.state === "on" && (
+          <button onClick={() => test.mutate()} disabled={test.isPending} className="text-xs text-white/50 px-2 py-1">
+            Testa
+          </button>
+        )}
+      </div>
+      <p className="text-xs text-white/55">{text[push.state]}</p>
+      {push.state === "off" && (
+        <button onClick={() => void push.enable().catch((e) => toast.error((e as Error).message))} disabled={push.busy} className={primary}>
+          {push.busy && <Loader2 size={16} className="animate-spin" />} Slå på notiser
+        </button>
+      )}
+      {push.state === "on" && !compact && (
+        <button onClick={() => void push.disable()} disabled={push.busy} className="w-full text-xs text-white/50 py-2 rounded-lg border border-white/10">
+          Stäng av på den här telefonen
+        </button>
+      )}
+    </section>
   );
 }

@@ -87,6 +87,28 @@ export function startIntegrationServer(appVersion: string): void {
     }
   });
 
+  // ─── Admin i appen: vägen in från sajten (den med rollen styrelse/webbadmin) ───
+  app.get("/internal/v1/grants", async (_req, res, next) => {
+    try {
+      const { listGrants } = await import("./grants");
+      res.json((await listGrants()).map((g) => ({ memberId: g.memberId, admin: g.admin, modules: g.modules, grantedBy: g.grantedBy, grantedAt: g.grantedAt, lastUsedAt: g.lastUsedAt })));
+    } catch (e) {
+      next(e);
+    }
+  });
+  app.post("/internal/v1/grants/admin", async (req, res, next) => {
+    const b = z.object({ memberId: z.number().int().positive(), admin: z.boolean(), by: z.string().trim().min(1).max(100) }).safeParse(req.body);
+    if (!b.success) return res.status(400).json({ error: "ogiltiga uppgifter" });
+    try {
+      const { listGrants, setGrant } = await import("./grants");
+      const cur = (await listGrants()).find((g) => g.memberId === b.data.memberId);
+      await setGrant(b.data.memberId, { admin: b.data.admin, modules: cur?.modules ?? [] }, `${b.data.by} (sajten)`);
+      res.json({ ok: true });
+    } catch (e) {
+      next(e);
+    }
+  });
+
   // Begrepp: lagens och positionernas namn, förkortning och färg (sajtens medlemsregister använder dem)
   app.get("/internal/v1/terms", (_req, res) => {
     res.json(currentTerms());

@@ -2,8 +2,8 @@ import { trpc } from "@/lib/trpc";
 import type { AccessModule } from "@shared/accessModules";
 
 /**
- * Aktuell roll: "admin" (styrelsen), "lineup" (tillfällig Lineup-länk),
- * "access" (delad länk med moduler) eller null.
+ * Vad den inloggade får göra. Rollen kommer från styrelsens lösenord, en delad länk
+ * eller den inloggade medlemmens behörighet (Admin eller valda delar).
  */
 export function useAuth() {
   const me = trpc.auth.me.useQuery(undefined, { staleTime: 60_000, retry: false });
@@ -14,10 +14,12 @@ export function useAuth() {
     loading: me.isLoading,
     role,
     isAdmin,
-    canEditLineup: role === "admin" || role === "lineup",
-    /** Styrelsen, eller delad länk med någon av modulerna */
-    hasModule: (...m: AccessModule[]) => isAdmin || (role === "access" && m.some((x) => modules.includes(x))),
+    canEditLineup: isAdmin || role === "lineup" || modules.includes("lineup"),
+    /** Admin, eller någon av modulerna (länk eller medlem) */
+    hasModule: (...m: AccessModule[]) => isAdmin || m.some((x) => modules.includes(x)),
     modules,
+    /** "password" | "invite" | "link" | "member" */
+    via: me.data?.via ?? null,
     linkName: me.data?.linkName ?? null,
     /** Delad länk: sista giltighet (null = tills vidare) */
     linkExpiresAt: me.data?.linkExpiresAt ?? null,

@@ -18,7 +18,8 @@ import fs from "fs";
 import fsp from "fs/promises";
 import path from "path";
 import os from "os";
-import { readSession, hasModule } from "../auth";
+import { hasModule } from "../auth";
+import { effectiveSession } from "../session";
 import { recordSponsorNews } from "../sponsorsDb";
 import { buildFfmpegArgs, maxClipSeconds, stillSeconds, totalDuration, type VideoFormat } from "./videoFfmpeg";
 import { DEFAULT_STILL_POSITION, isStillPosition } from "../../shared/videoTimeline";
@@ -62,7 +63,7 @@ const queue: Array<() => Promise<void>> = [];
 let running = false;
 
 async function requireAdmin(req: Request, res: Response): Promise<boolean> {
-  const s = await readSession(req);
+  const { session: s } = await effectiveSession(req);
   if (!hasModule(s, "media")) {
     res.status(401).json({ error: "Bara styrelsen kan skapa videor" });
     return false;

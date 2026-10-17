@@ -36,11 +36,7 @@ export function RequireRole({ need, children }: { need: Need; children: ReactNod
           </h1>
         </div>
         <p className="text-white/50 text-sm">
-          {need === "lineup"
-            ? "Den här delen är för styrelsen, eller för dig som fått en tillfällig länk."
-            : Array.isArray(need)
-              ? auth.role === "access" ? "Din länk ger inte tillgång till den här delen." : "Den här delen är för styrelsen, eller för dig som fått en länk till den."
-              : "Den här delen är bara för styrelsen."}
+          {auth.role ? "Du har inte behörighet till den här delen. Fråga styrelsen." : "Logga in för att fortsätta."}
         </p>
         <LoginForm />
         <Link href="/" className="inline-flex items-center gap-1 text-white/40 text-xs hover:text-white">

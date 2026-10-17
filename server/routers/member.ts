@@ -7,8 +7,9 @@ import { memberProcedure, publicProcedure, router } from "../_core/trpc";
 import { choiceTicket, clearMemberCookie, listDevices, readChoiceTicket, revokeAll, revokeDevice, startMemberSession } from "../memberAuth";
 import { memberActivities, memberActivity, memberRespond, playerForMember } from "../activities";
 import { listPlayers } from "../playersDb";
-import { chatMessages, chatState, chatWindow, deleteChat, getPrefs, inChat, inbox, markRead, postChat, setChatState, setPrefs, unreadChats } from "../messaging";
+import { chatMessages, chatState, chatWindow, deleteChat, inChat, inbox, markRead, postChat, setChatState, unreadChats } from "../messaging";
 import { getActivity } from "../activities";
+import { publicKey, pushTo, subscribe, unsubscribe } from "../push";
 
 // Enkel spärr: högst 10 kodförfrågningar och 20 kontroller per IP och 15 minuter
 const hits = new Map<string, { n: number; reset: number }>();
@@ -131,14 +132,23 @@ export const memberRouter = router({
     }
   }),
 
-  // ─── Inställningar ─────────────────────────────────────────────────────────
-  prefs: memberProcedure.query(({ ctx }) => getPrefs(ctx.member.memberId)),
-  setPrefs: memberProcedure
-    .input(z.object({ invitesEmail: z.boolean(), remindersEmail: z.boolean(), messagesEmail: z.boolean() }))
+  // ─── Push-notiser på den här enheten ──────────────────────────────────────
+  pushKey: memberProcedure.query(async () => ({ publicKey: await publicKey() })),
+  pushSubscribe: memberProcedure
+    .input(z.object({ endpoint: z.string().url().max(700), keys: z.object({ p256dh: z.string().min(10).max(200), auth: z.string().min(4).max(100) }) }))
     .mutation(async ({ ctx, input }) => {
-      await setPrefs(ctx.member.memberId, input);
-      return input;
+      await subscribe(ctx.member.memberId, ctx.member.sid, input);
+      return { ok: true };
     }),
+  pushUnsubscribe: memberProcedure.input(z.object({ endpoint: z.string().max(700) })).mutation(async ({ ctx, input }) => {
+    await unsubscribe(ctx.member.memberId, input.endpoint);
+    return { ok: true };
+  }),
+  /** Testnotis till den här medlemmens enheter */
+  pushTest: memberProcedure.mutation(async ({ ctx }) => {
+    const reached = await pushTo([ctx.member.memberId], { title: "Stålstadens", body: "Notiserna fungerar 👍", url: "/mina/installningar", tag: "test" });
+    return { ok: reached.size > 0 };
+  }),
 
   // ─── Meddelanden ───────────────────────────────────────────────────────────
   messages: memberProcedure.query(({ ctx }) => inbox(ctx.member.memberId)),
