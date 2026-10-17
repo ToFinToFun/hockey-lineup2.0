@@ -3,16 +3,19 @@
  *
  * /logga-in      – e-post → kod (eller länk från mejlet)
  * /mina          – mina kommande aktiviteter med ✓ / ✕
- * /mina/:id      – en aktivitet: info, extra avgift, mitt svar och vilka som kommer
+ * /mina/:id      – en aktivitet: info, extra avgift, mitt svar, vilka som kommer och chatten
+ * /mina/meddelanden  – meddelanden från styrelsen
+ * /mina/installningar – mejlinställningar, enheter, logga ut
  */
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
-import { ArrowLeft, Check, Clock, Loader2, LogOut, MapPin, Smartphone, X } from "lucide-react";
+import { ArrowLeft, Check, Clock, Loader2, LogOut, MapPin, MessageCircle, Smartphone, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { shortDate, stockholmParts } from "@shared/activities";
 import { dayMark } from "@shared/holidays";
 import { DayBadge, FeeBox, PlayerName, PosBadge, TypeChip } from "../activities/ActivitiesApp";
+import { ChatBox } from "../activities/ChatBox";
 
 const HEAD_FONT = { fontFamily: "'Oswald', sans-serif" };
 const inputCls =
@@ -28,7 +31,31 @@ const fmt = (d: Date | string) => {
   return `${shortDate(p.date)} kl ${p.time}`;
 };
 
-function Shell({ title, back, children }: { title: string; back?: string; children: ReactNode }) {
+type Tab = "aktiviteter" | "meddelanden" | "installningar";
+
+function Tabs({ active }: { active: Tab }) {
+  const unread = trpc.member.unread.useQuery(undefined, { refetchInterval: 60_000 });
+  const msgs = unread.data?.messages ?? 0;
+  const chats = Object.values(unread.data?.chats ?? {}).reduce((a, b) => a + b, 0);
+  const tab = (id: Tab, href: string, label: string, n: number) => (
+    <Link
+      href={href}
+      className={`flex-1 text-center text-sm py-2.5 border-b-2 ${active === id ? "border-emerald-500 text-white font-semibold" : "border-transparent text-white/50"}`}
+    >
+      {label}
+      {n > 0 && <span className="ml-1.5 inline-flex min-w-5 h-5 px-1.5 items-center justify-center rounded-full bg-emerald-600 text-[11px] text-white font-semibold">{n}</span>}
+    </Link>
+  );
+  return (
+    <nav className="flex border-b border-white/5 px-2">
+      {tab("aktiviteter", "/mina", "Aktiviteter", chats)}
+      {tab("meddelanden", "/mina/meddelanden", "Meddelanden", msgs)}
+      {tab("installningar", "/mina/installningar", "Inställningar", 0)}
+    </nav>
+  );
+}
+
+function Shell({ title, back, tab, children }: { title: string; back?: string; tab?: Tab; children: ReactNode }) {
   return (
     <div className="min-h-[100dvh] bg-[#0a0a0a] text-white">
       <header className="sticky top-0 z-20 bg-[#0a0a0a]/95 backdrop-blur border-b border-white/5 px-4 py-3 flex items-center gap-3">
@@ -41,6 +68,7 @@ function Shell({ title, back, children }: { title: string; back?: string; childr
           {title}
         </h1>
       </header>
+      {tab && <Tabs active={tab} />}
       <main className="max-w-lg mx-auto p-4">{children}</main>
     </div>
   );
@@ -48,8 +76,12 @@ function Shell({ title, back, children }: { title: string; back?: string; childr
 
 export default function MemberApp() {
   const [isLogin] = useRoute("/logga-in");
+  const [isMessages] = useRoute("/mina/meddelanden");
+  const [isSettings] = useRoute("/mina/installningar");
   const [, detail] = useRoute("/mina/:id");
   if (isLogin) return <Login />;
+  if (isMessages) return <Messages />;
+  if (isSettings) return <Settings />;
   if (detail?.id) return <Detail id={Number(detail.id)} />;
   return <Mine />;
 }
@@ -62,7 +94,7 @@ function Login() {
   const params = new URLSearchParams(search);
   const token = params.get("t");
   // Tillbaka dit man var på väg (t.ex. länken i kallelsen)
-  const next = /^\/mina(\/\d+)?$/.test(params.get("next") ?? "") ? params.get("next")! : "/mina";
+  const next = /^\/mina(\/(\d+|meddelanden|installningar))?$/.test(params.get("next") ?? "") ? params.get("next")! : "/mina";
   const utils = trpc.useUtils();
   const me = trpc.member.me.useQuery();
   const [email, setEmail] = useState("");
@@ -209,6 +241,7 @@ function Mine() {
   const [, navigate] = useLocation();
   const me = trpc.member.me.useQuery();
   const list = trpc.member.activities.useQuery(undefined, { enabled: !!me.data });
+  const unread = trpc.member.unread.useQuery(undefined, { enabled: !!me.data });
 
   useEffect(() => {
     if (me.data === null) navigate("/logga-in");
@@ -224,7 +257,7 @@ function Mine() {
     );
 
   return (
-    <Shell title="Mina aktiviteter" back="/">
+    <Shell title="Mina sidor" back="/" tab="aktiviteter">
       <div className="space-y-4">
         <p className="text-white/60 text-sm">Hej {me.data.name?.split(" ")[0] ?? ""}!</p>
         {list.data && !list.data.linked && (
@@ -246,6 +279,12 @@ function Mine() {
                       {a.cancelled && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-500/20 text-red-300">Inställd</span>}
                       <DayBadge mark={mark} />
                       {a.feeEnabled && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-200">Avgift</span>}
+                      {a.over && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white/60">Avslutad</span>}
+                      {!!unread.data?.chats[a.id] && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-600 text-white inline-flex items-center gap-1">
+                          <MessageCircle size={10} /> {unread.data.chats[a.id]}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-end gap-3">
                       <div className="flex-1 min-w-0">
@@ -259,7 +298,7 @@ function Mine() {
                           {a.notOpenYet && a.opensAt ? ` · anmälan öppnar ${fmt(a.opensAt)}` : a.closed ? " · anmälan stängd" : ""}
                         </div>
                       </div>
-                      {!a.cancelled && <Answer id={a.id} status={a.myStatus} disabledYes={a.notOpenYet || a.closed} compact />}
+                      {!a.cancelled && !a.over && <Answer id={a.id} status={a.myStatus} disabledYes={a.notOpenYet || a.closed} compact />}
                     </div>
                   </div>
                 </Link>
@@ -267,7 +306,6 @@ function Mine() {
             );
           })}
         </ul>
-        <Devices />
       </div>
     </Shell>
   );
@@ -292,7 +330,7 @@ function Devices() {
     },
   });
   return (
-    <section className="pt-6 space-y-2">
+    <section className="space-y-2">
       <div className="flex gap-2">
         <button onClick={() => setOpen((x) => !x)} className="flex-1 text-sm rounded-xl border border-white/10 py-2.5 text-white/70 inline-flex items-center justify-center gap-2">
           <Smartphone size={15} /> Mina enheter
@@ -382,8 +420,10 @@ function Detail({ id }: { id: number }) {
           {a.description && <p className="text-white/80 whitespace-pre-line">{a.description}</p>}
           {a.feeEnabled && <FeeBox amount={a.feeAmount} reason={a.feeReason} swish={a.feeSwish} />}
           <p className="text-sm text-white/50">{status}</p>
-          {!a.cancelled && <Answer id={a.id} status={myStatus} disabledYes={q.data.notOpenYet || q.data.closed} />}
+          {!a.cancelled && !q.data.over && <Answer id={a.id} status={myStatus} disabledYes={q.data.notOpenYet || q.data.closed} />}
         </section>
+
+        {(myStatus === "yes" || myStatus === "reserve") && <MemberChat activityId={a.id} />}
 
         <section className="space-y-2">
           <h3 className="text-sm font-semibold">
@@ -412,6 +452,136 @@ function Detail({ id }: { id: number }) {
             </>
           )}
         </section>
+      </div>
+    </Shell>
+  );
+}
+
+// ─── Chatt ───────────────────────────────────────────────────────────────────
+
+function MemberChat({ activityId }: { activityId: number }) {
+  const utils = trpc.useUtils();
+  const chat = trpc.member.chat.useQuery({ activityId }, { refetchInterval: 10_000, retry: false });
+  const post = trpc.member.chatPost.useMutation({ onSuccess: () => utils.member.chat.invalidate({ activityId }), onError: (e) => toast.error(e.message) });
+  const del = trpc.member.chatDelete.useMutation({ onSuccess: () => utils.member.chat.invalidate({ activityId }) });
+  const state = trpc.member.chatState.useMutation({ onSuccess: () => utils.member.unread.invalidate() });
+  const last = chat.data?.messages[chat.data.messages.length - 1]?.id ?? 0;
+  useEffect(() => {
+    if (chat.data && last > chat.data.lastReadId) state.mutate({ activityId, lastReadId: last });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [last, activityId]);
+  if (!chat.data) return null;
+  return (
+    <section className="space-y-2">
+      <h3 className="text-sm font-semibold inline-flex items-center gap-1.5">
+        <MessageCircle size={15} /> Chatt för de anmälda
+      </h3>
+      <ChatBox
+        {...chat.data}
+        me={chat.data.playerId}
+        onSend={(text) => post.mutateAsync({ activityId, text })}
+        onDelete={(id) => del.mutate({ activityId, id })}
+        onMute={(muted) => state.mutate({ activityId, muted }, { onSuccess: () => utils.member.chat.invalidate({ activityId }) })}
+        sending={post.isPending}
+      />
+    </section>
+  );
+}
+
+// ─── Meddelanden ─────────────────────────────────────────────────────────────
+
+function useMember() {
+  const [, navigate] = useLocation();
+  const me = trpc.member.me.useQuery();
+  useEffect(() => {
+    if (me.data === null) navigate(`/logga-in?next=${encodeURIComponent(location.pathname)}`);
+  }, [me.data, navigate]);
+  return me.data;
+}
+
+function Messages() {
+  const me = useMember();
+  const utils = trpc.useUtils();
+  const list = trpc.member.messages.useQuery(undefined, { enabled: !!me });
+  const read = trpc.member.readMessage.useMutation({
+    onSuccess: () => {
+      utils.member.messages.invalidate();
+      utils.member.unread.invalidate();
+    },
+  });
+  const [open, setOpen] = useState<number | null>(null);
+  return (
+    <Shell title="Mina sidor" back="/" tab="meddelanden">
+      {!list.data ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="animate-spin text-white/40" />
+        </div>
+      ) : list.data.length === 0 ? (
+        <p className="text-white/40 py-8 text-center">Inga meddelanden.</p>
+      ) : (
+        <ul className="space-y-2">
+          {list.data.map((m) => (
+            <li key={m.id}>
+              <button
+                onClick={() => {
+                  setOpen(open === m.id ? null : m.id);
+                  if (!m.read) read.mutate({ id: m.id });
+                }}
+                className="w-full text-left rounded-xl border border-white/10 bg-white/[0.03] p-3"
+              >
+                <div className="flex items-center gap-2">
+                  {!m.read && <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" aria-label="Oläst" />}
+                  <span className={`flex-1 truncate ${m.read ? "" : "font-semibold"}`}>{m.title}</span>
+                  <span className="text-xs text-white/40 shrink-0">{fmt(m.createdAt)}</span>
+                </div>
+                {open === m.id ? (
+                  <p className="mt-2 text-sm text-white/80 whitespace-pre-line">{m.body}</p>
+                ) : (
+                  <p className="mt-1 text-sm text-white/50 truncate">{m.body}</p>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Shell>
+  );
+}
+
+// ─── Inställningar ───────────────────────────────────────────────────────────
+
+function Settings() {
+  const me = useMember();
+  const utils = trpc.useUtils();
+  const prefs = trpc.member.prefs.useQuery(undefined, { enabled: !!me });
+  const save = trpc.member.setPrefs.useMutation({ onSuccess: (p) => utils.member.prefs.setData(undefined, p), onError: (e) => toast.error(e.message) });
+  const rows: { key: "invitesEmail" | "remindersEmail" | "messagesEmail"; label: string }[] = [
+    { key: "invitesEmail", label: "Kallelser och inställda aktiviteter" },
+    { key: "remindersEmail", label: "Påminnelser om att svara" },
+    { key: "messagesEmail", label: "Meddelanden från styrelsen" },
+  ];
+  return (
+    <Shell title="Mina sidor" back="/" tab="installningar">
+      <div className="space-y-6">
+        <section className="space-y-2">
+          <h3 className="text-sm font-semibold">Mejl</h3>
+          <div className="rounded-xl border border-white/10 divide-y divide-white/5">
+            {rows.map((r) => (
+              <label key={r.key} className="flex items-center gap-3 px-3 py-3 text-sm cursor-pointer">
+                <span className="flex-1">{r.label}</span>
+                <input
+                  type="checkbox"
+                  className="w-5 h-5 accent-emerald-600"
+                  checked={prefs.data?.[r.key] ?? true}
+                  disabled={!prefs.data || save.isPending}
+                  onChange={(e) => prefs.data && save.mutate({ ...prefs.data, [r.key]: e.target.checked })}
+                />
+              </label>
+            ))}
+          </div>
+          <p className="text-xs text-white/40">Allt finns alltid här i appen.</p>
+        </section>
+        <Devices />
       </div>
     </Shell>
   );

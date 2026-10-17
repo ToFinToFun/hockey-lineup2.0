@@ -7,6 +7,14 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 2.92.0 – 2026-10-17
+
+- **Mina sidor** har nu flikarna Aktiviteter, Meddelanden och Inställningar.
+- **Meddelanden från styrelsen** (Aktiviteter → Meddelanden, eller Meddelande på en aktivitet): till alla medlemmar, styrelsen, de anmälda eller de som inte svarat på en aktivitet, eller valda medlemmar. Hamnar i appens inkorg och kan även mejlas. Sparas i 12 månader.
+- **Chatt per aktivitet** för de anmälda (kommer/reserv) och styrelsen (skriver som "Styrelsen"). Öppen från att anmälan öppnar till 12 timmar efter slut, sedan raderas allt. Går att tysta. Olästa visas med en bricka.
+- **Mejlinställningar** för medlemmen: kallelser, påminnelser och meddelanden kan väljas bort var för sig. Allt syns ändå i appen.
+- laget.se påverkas inte.
+
 ## 2.91.0 – 2026-10-17
 
 - **Kallelse via mejl** (Aktiviteter, av som standard): mejlas till kallade som inte svarat när anmälan öppnar, med länk direkt till aktiviteten. Valfri påminnelse X timmar innan anmälan stänger. Ställs aktiviteten in efter att kallelsen gått ut får de anmälda ett mejl. Knappen **Mejla kallelsen nu** skickar direkt.

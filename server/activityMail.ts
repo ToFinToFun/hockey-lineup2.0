@@ -15,6 +15,9 @@ import { activities, activityAttendance, type ActivityRow } from "../drizzle/sch
 import { listPlayers } from "./playersDb";
 import { invitedPlayers } from "./activities";
 import { appUrl } from "./clubConfig";
+import { mailMembers, purgeMessaging, type MailResult, type PrefKey } from "./messaging";
+
+export type { MailResult };
 import { ACTIVITY_TYPE_NAMES, shortDate, signupWindow, stockholmParts, type ActivityType } from "../shared/activities";
 
 const when = (d: Date) => {
@@ -62,17 +65,9 @@ async function recipients(a: ActivityRow, filter: (playerId: string, status: str
   return [...ids];
 }
 
-export interface MailResult {
-  sent: number;
-  missingEmail: number[];
-  failed: number[];
-}
-
-async function send(memberIds: number[], subject: string, text: string): Promise<MailResult> {
+async function send(memberIds: number[], key: PrefKey, subject: string, text: string): Promise<MailResult> {
   if (!memberIds.length) return { sent: 0, missingEmail: [], failed: [] };
-  const { siteRequest, integrationConfigured } = await import("./integration");
-  if (!integrationConfigured()) throw new Error("Kopplingen till sajten är inte inställd – mejl kan inte skickas");
-  return siteRequest<MailResult>("POST", "/internal/v1/mail/members", { memberIds, subject, text });
+  return mailMembers({ memberIds }, key, subject, text);
 }
 
 const subjectFor = (a: ActivityRow, prefix: string) => `${prefix}: ${a.title} ${when(a.startsAt)}`;
@@ -80,7 +75,7 @@ const subjectFor = (a: ActivityRow, prefix: string) => `${prefix}: ${a.title} ${
 /** Skickar kallelsen nu (styrelsen trycker, eller schemat när anmälan öppnar). */
 export async function sendInvitation(a: ActivityRow): Promise<MailResult> {
   const ids = await recipients(a, (_pid, st) => st === undefined);
-  const r = await send(ids, subjectFor(a, "Kallelse"), body(a, "Du är kallad till:"));
+  const r = await send(ids, "invitesEmail", subjectFor(a, "Kallelse"), body(a, "Du är kallad till:"));
   const d = await getDb();
   await d?.update(activities).set({ notifiedAt: new Date() }).where(eq(activities.id, a.id));
   return r;
@@ -88,7 +83,7 @@ export async function sendInvitation(a: ActivityRow): Promise<MailResult> {
 
 async function sendReminder(a: ActivityRow) {
   const ids = await recipients(a, (_pid, st) => st === undefined);
-  await send(ids, subjectFor(a, "Påminnelse"), body(a, "Du har inte svarat på kallelsen till:"));
+  await send(ids, "remindersEmail", subjectFor(a, "Påminnelse"), body(a, "Du har inte svarat på kallelsen till:"));
   const d = await getDb();
   await d?.update(activities).set({ remindedAt: new Date() }).where(eq(activities.id, a.id));
 }
@@ -98,6 +93,7 @@ async function sendCancelled(a: ActivityRow) {
   const note = a.cancelledNote ? `\n${a.cancelledNote}` : "";
   await send(
     ids,
+    "invitesEmail",
     subjectFor(a, "Inställt"),
     `${ACTIVITY_TYPE_NAMES[a.type as ActivityType] ?? "Aktiviteten"} ${a.title} ${when(a.startsAt)} är inställd.${note}\n\n${appUrl()}/mina/${a.id}`,
   );
@@ -135,7 +131,10 @@ export async function runActivityMail(now = new Date()) {
 }
 
 export function startActivityMail() {
-  const run = () => void runActivityMail().catch((e) => console.warn("[aktiviteter] mejlschemat:", (e as Error).message));
+  const run = () => {
+    void runActivityMail().catch((e) => console.warn("[aktiviteter] mejlschemat:", (e as Error).message));
+    void purgeMessaging().catch((e) => console.warn("[aktiviteter] gallring av chatt/meddelanden:", (e as Error).message));
+  };
   setTimeout(run, 60_000);
   setInterval(run, 5 * 60_000).unref();
 }

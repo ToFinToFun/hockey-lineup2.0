@@ -18,6 +18,7 @@ import {
   setCancelled,
   updateActivities,
 } from "../activities";
+import { chatMessages, chatWindow, deleteChat, deleteMessage, postChat, sendMessage, sentMessages } from "../messaging";
 
 const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Ange tid som TT:MM");
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -99,4 +100,35 @@ export const activitiesRouter = router({
     await setAttendanceSource(input.source);
     return { source: input.source };
   }),
+
+  // ─── Chatt (styrelsen skriver som "Styrelsen") ─────────────────────────────
+  chat: adminProcedure.input(z.object({ activityId: z.number().int() })).query(({ input }) =>
+    run(async () => {
+      const a = (await getActivity(input.activityId)).activity;
+      return { ...chatWindow(a), messages: await chatMessages(input.activityId) };
+    }),
+  ),
+  chatPost: adminProcedure
+    .input(z.object({ activityId: z.number().int(), text: z.string().min(1).max(1000) }))
+    .mutation(({ input }) => run(async () => (await postChat(input.activityId, null, input.text), { ok: true }))),
+  chatDelete: adminProcedure.input(z.object({ id: z.number().int() })).mutation(({ input }) => run(async () => (await deleteChat(input.id, null), { ok: true }))),
+
+  // ─── Meddelanden till medlemmarna ──────────────────────────────────────────
+  sendMessage: adminProcedure
+    .input(
+      z.object({
+        title: z.string().trim().min(1, "Ange en rubrik").max(150),
+        body: z.string().trim().min(1, "Skriv ett meddelande").max(5000),
+        email: z.boolean(),
+        audience: z.discriminatedUnion("kind", [
+          z.object({ kind: z.literal("all") }),
+          z.object({ kind: z.literal("board") }),
+          z.object({ kind: z.literal("activity"), activityId: z.number().int(), who: z.enum(["yes", "unanswered"]) }),
+          z.object({ kind: z.literal("selected"), playerIds: z.array(z.string().min(1).max(64)).min(1).max(300) }),
+        ]),
+      }),
+    )
+    .mutation(({ input }) => run(() => sendMessage(input))),
+  messages: adminProcedure.query(() => sentMessages()),
+  deleteMessage: adminProcedure.input(z.object({ id: z.number().int() })).mutation(({ input }) => run(async () => (await deleteMessage(input.id), { ok: true }))),
 });

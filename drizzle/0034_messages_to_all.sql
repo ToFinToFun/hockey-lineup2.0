@@ -1,0 +1,1 @@
+ALTER TABLE `member_messages` ADD `toAll` boolean DEFAULT false NOT NULL;

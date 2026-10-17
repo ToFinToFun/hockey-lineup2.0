@@ -8,6 +8,7 @@
  */
 import { useMemo, useState, type ReactNode } from "react";
 import { Link, useLocation, useRoute } from "wouter";
+import { AdminChat, MessageComposer, MessagesPage } from "./Messages";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -24,6 +25,7 @@ import {
   Repeat,
   RotateCcw,
   Search,
+  Send,
   Trash2,
   Users,
   X,
@@ -184,6 +186,7 @@ export function FeeBox({ amount, reason, swish }: { amount: number | null; reaso
 
 export default function ActivitiesApp() {
   const [, params] = useRoute("/aktiviteter/:id");
+  if (params?.id === "meddelanden") return <MessagesPage />;
   const id = params?.id ? Number(params.id) : null;
   return id ? <ActivityDetail id={id} /> : <ActivityList />;
 }
@@ -209,6 +212,9 @@ function ActivityList() {
             Tidigare
           </button>
           <span className="flex-1" />
+          <Link href="/aktiviteter/meddelanden" className={btnGhost}>
+            <Send size={15} /> Meddelanden
+          </Link>
           <button onClick={() => setCreating(true)} className={btnPrimary}>
             <CalendarPlus size={15} /> Ny aktivitet
           </button>
@@ -735,6 +741,7 @@ function ActivityDetail({ id }: { id: number }) {
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
   const q = trpc.activities.get.useQuery({ id });
+  const [composing, setComposing] = useState(false);
   const recent = trpc.activities.list.useQuery({});
   const [editing, setEditing] = useState<null | "one" | "following">(null);
   const [askScope, setAskScope] = useState<null | "cancel" | "remove" | "restore">(null);
@@ -925,6 +932,9 @@ function ActivityDetail({ id }: { id: number }) {
                 <Ban size={14} /> Ställ in
               </button>
             )}
+            <button onClick={() => setComposing(true)} className={btnGhost}>
+              <Send size={14} /> Meddelande
+            </button>
             <button onClick={() => startScoped("remove")} className={btnDanger}>
               <Trash2 size={14} /> Ta bort
             </button>
@@ -978,6 +988,8 @@ function ActivityDetail({ id }: { id: number }) {
         )}
         {q.data.inviteWarnings.length > 0 && <p className="text-xs text-amber-200">Kallas inte: {q.data.inviteWarnings.join("; ")}</p>}
 
+        <AdminChat activityId={id} />
+
         <Section title="Lägg till ur truppen">
           <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-2">
             <Search size={14} className="text-white/40" />
@@ -986,6 +998,7 @@ function ActivityDetail({ id }: { id: number }) {
           {needle && list(addable.length ? addable.map((p) => <Row key={p.id} p={{ ...p, playerId: p.id }} status="none" />) : null, "Ingen träff.")}
         </Section>
       </main>
+      {composing && <MessageComposer activityId={id} onClose={() => setComposing(false)} />}
       {editing && (
         <ActivityForm
           onClose={() => setEditing(null)}

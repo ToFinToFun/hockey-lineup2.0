@@ -408,6 +408,11 @@ export async function playerForMember(memberId: number) {
   return (await listPlayers()).find((p) => p.externalId === String(memberId)) ?? null;
 }
 
+/** Chatten per aktivitet stänger (och raderas) 12 timmar efter slut. */
+export function chatClosesAt(row: Pick<ActivityRow, "startsAt" | "endsAt">) {
+  return new Date((row.endsAt ?? new Date(row.startsAt.getTime() + 2 * 3600000)).getTime() + 12 * 3600000);
+}
+
 function openState(row: ActivityRow, now = Date.now()) {
   const w = signupWindow(row);
   const end = (row.endsAt ?? new Date(row.startsAt.getTime() + 2 * 3600000)).getTime();
@@ -426,7 +431,7 @@ export async function memberActivities(playerId: string) {
   const rows = await d
     .select()
     .from(activities)
-    .where(gte(activities.startsAt, new Date(Date.now() - 4 * 3600000)))
+    .where(gte(activities.startsAt, new Date(Date.now() - 24 * 3600000)))
     .orderBy(asc(activities.startsAt))
     .limit(200);
   if (!rows.length) return [];
@@ -437,8 +442,11 @@ export async function memberActivities(playerId: string) {
     const { invited } = await invitedPlayers(r, players);
     if (!mine && !invited.has(playerId)) continue;
     const st = openState(r);
-    if (st.over) continue;
+    // Efter slut syns den bara för de anmälda så länge chatten är öppen (12 h)
+    const signedUp = mine?.status === "yes" || mine?.status === "reserve";
+    if (st.over && !(signedUp && Date.now() < chatClosesAt(r).getTime())) continue;
     out.push({
+      over: st.over,
       id: r.id,
       type: r.type,
       title: r.title,

@@ -7,6 +7,8 @@ import { memberProcedure, publicProcedure, router } from "../_core/trpc";
 import { choiceTicket, clearMemberCookie, listDevices, readChoiceTicket, revokeAll, revokeDevice, startMemberSession } from "../memberAuth";
 import { memberActivities, memberActivity, memberRespond, playerForMember } from "../activities";
 import { listPlayers } from "../playersDb";
+import { chatMessages, chatState, chatWindow, deleteChat, getPrefs, inChat, inbox, markRead, postChat, setChatState, setPrefs, unreadChats } from "../messaging";
+import { getActivity } from "../activities";
 
 // Enkel spärr: högst 10 kodförfrågningar och 20 kontroller per IP och 15 minuter
 const hits = new Map<string, { n: number; reset: number }>();
@@ -128,4 +130,67 @@ export const memberRouter = router({
       throw new TRPCError({ code: "BAD_REQUEST", message: (e as Error).message });
     }
   }),
+
+  // ─── Inställningar ─────────────────────────────────────────────────────────
+  prefs: memberProcedure.query(({ ctx }) => getPrefs(ctx.member.memberId)),
+  setPrefs: memberProcedure
+    .input(z.object({ invitesEmail: z.boolean(), remindersEmail: z.boolean(), messagesEmail: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      await setPrefs(ctx.member.memberId, input);
+      return input;
+    }),
+
+  // ─── Meddelanden ───────────────────────────────────────────────────────────
+  messages: memberProcedure.query(({ ctx }) => inbox(ctx.member.memberId)),
+  readMessage: memberProcedure.input(z.object({ id: z.number().int() })).mutation(async ({ ctx, input }) => {
+    await markRead(ctx.member.memberId, input.id);
+    return { ok: true };
+  }),
+
+  /** Olästa meddelanden och chattinlägg (för brickor i menyn). */
+  unread: memberProcedure.query(async ({ ctx }) => {
+    const messages = (await inbox(ctx.member.memberId)).filter((m) => !m.read).length;
+    const p = await playerForMember(ctx.member.memberId);
+    const items = p ? await memberActivities(p.id) : [];
+    const chats = await unreadChats(ctx.member.memberId, p?.id ?? "", items.filter((i) => i.myStatus === "yes" || i.myStatus === "reserve").map((i) => i.id));
+    return { messages, chats: Object.fromEntries(chats) as Record<number, number> };
+  }),
+
+  // ─── Chatt per aktivitet ───────────────────────────────────────────────────
+  chat: memberProcedure.input(z.object({ activityId: z.number().int() })).query(async ({ ctx, input }) => {
+    const p = await chatPlayer(ctx.member.memberId, input.activityId);
+    const a = (await getActivity(input.activityId)).activity;
+    const w = chatWindow(a);
+    const st = await chatState(input.activityId, ctx.member.memberId);
+    return { ...w, muted: st.muted, lastReadId: st.lastReadId, playerId: p, messages: w.open ? await chatMessages(input.activityId) : [] };
+  }),
+  chatPost: memberProcedure.input(z.object({ activityId: z.number().int(), text: z.string().min(1).max(1000) })).mutation(async ({ ctx, input }) => {
+    if (limited(`chat:${ctx.member.memberId}`, 60)) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Lugn i stormen – vänta en stund." });
+    const p = await chatPlayer(ctx.member.memberId, input.activityId);
+    try {
+      await postChat(input.activityId, p, input.text);
+    } catch (e) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: (e as Error).message });
+    }
+    return { ok: true };
+  }),
+  chatDelete: memberProcedure.input(z.object({ activityId: z.number().int(), id: z.number().int() })).mutation(async ({ ctx, input }) => {
+    const p = await chatPlayer(ctx.member.memberId, input.activityId);
+    await deleteChat(input.id, p);
+    return { ok: true };
+  }),
+  chatState: memberProcedure
+    .input(z.object({ activityId: z.number().int(), muted: z.boolean().optional(), lastReadId: z.number().int().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      await chatPlayer(ctx.member.memberId, input.activityId);
+      await setChatState(input.activityId, ctx.member.memberId, input);
+      return { ok: true };
+    }),
 });
+
+/** Spelaren som får vara med i chatten (anmäld: kommer eller reserv), annars fel. */
+async function chatPlayer(memberId: number, activityId: number) {
+  const p = await playerForMember(memberId);
+  if (!p || !(await inChat(activityId, p.id))) throw new TRPCError({ code: "FORBIDDEN", message: "Chatten är för de anmälda" });
+  return p.id;
+}

@@ -431,3 +431,68 @@ export const memberSessions = mysqlTable(
   },
   (t) => [index("member_sessions_member_idx").on(t.memberId)],
 );
+
+// ─── Medlemmarnas inställningar, meddelanden och chatt per aktivitet ─────────
+
+/** Vad medlemmen vill få med mejl (allt finns alltid i appen). Saknas raden gäller standard: allt på. */
+export const memberPrefs = mysqlTable("member_prefs", {
+  memberId: int("memberId").primaryKey(),
+  invitesEmail: boolean("invitesEmail").default(true).notNull(),
+  remindersEmail: boolean("remindersEmail").default(true).notNull(),
+  messagesEmail: boolean("messagesEmail").default(true).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/** Meddelanden från styrelsen. Mottagarna sparas som de var när meddelandet skickades. */
+export const memberMessages = mysqlTable(
+  "member_messages",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    title: varchar("title", { length: 160 }).notNull(),
+    body: text("body").notNull(),
+    /** Beskrivning av mottagarna, t.ex. "Alla medlemmar" eller "Anmälda: Träning tis 20 okt" */
+    audienceLabel: varchar("audienceLabel", { length: 200 }).notNull(),
+    activityId: int("activityId"),
+    /** Till alla medlemmar (även de som inte loggat in i appen än) */
+    toAll: boolean("toAll").default(false).notNull(),
+    recipientMemberIds: json("recipientMemberIds").$type<number[]>().notNull(),
+    emailed: int("emailed").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => [index("member_messages_created_idx").on(t.createdAt)],
+);
+
+export const memberMessageReads = mysqlTable(
+  "member_message_reads",
+  {
+    messageId: int("messageId").notNull(),
+    memberId: int("memberId").notNull(),
+    readAt: timestamp("readAt").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("member_message_reads_uniq").on(t.messageId, t.memberId)],
+);
+
+/** Chatt per aktivitet: öppen från att anmälan öppnar till 12 h efter slut, raderas sedan. */
+export const activityChat = mysqlTable(
+  "activity_chat",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    activityId: int("activityId").notNull(),
+    /** Spelaren som skrev, eller null = styrelsen */
+    playerId: varchar("playerId", { length: 64 }),
+    text: varchar("text", { length: 1000 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => [index("activity_chat_activity_idx").on(t.activityId, t.id)],
+);
+
+export const activityChatState = mysqlTable(
+  "activity_chat_state",
+  {
+    activityId: int("activityId").notNull(),
+    memberId: int("memberId").notNull(),
+    muted: boolean("muted").default(false).notNull(),
+    lastReadId: int("lastReadId").default(0).notNull(),
+  },
+  (t) => [uniqueIndex("activity_chat_state_uniq").on(t.activityId, t.memberId)],
+);
