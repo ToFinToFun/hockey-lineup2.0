@@ -89,6 +89,7 @@ export function AccessPanel() {
 
   return (
     <div className="space-y-6">
+      <PublicAccessCard />
       <MemberGrants />
       <section className="space-y-4">
       <h3 className="text-sm font-semibold flex items-center gap-2"><KeyRound size={15} className="text-sky-300" /> Länkar</h3>
@@ -273,6 +274,45 @@ function MemberGrants() {
           </div>
         ))}
       </div>
+    </section>
+  );
+}
+
+// ─── Öppet utan inloggning ───────────────────────────────────────────────────
+
+function PublicAccessCard() {
+  const utils = trpc.useUtils();
+  const q = trpc.auth.publicAccess.useQuery();
+  const save = trpc.auth.setPublicAccess.useMutation({
+    onSuccess: (v) => {
+      utils.auth.publicAccess.setData(undefined, v);
+      toast.success("Sparat – gäller direkt");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  if (!q.data) return null;
+  const rows: { key: "live" | "score"; label: string }[] = [
+    { key: "live", label: "Live – följa matchen" },
+    { key: "score", label: "Score Tracker – föra matchen" },
+  ];
+  return (
+    <section className="space-y-2">
+      <h3 className="text-sm font-semibold">Öppet utan inloggning</h3>
+      <div className="rounded-xl border border-white/10 divide-y divide-white/5">
+        {rows.map((r) => (
+          <label key={r.key} className="flex items-center gap-3 px-3 py-3 text-sm cursor-pointer">
+            <span className="flex-1">{r.label}</span>
+            <input
+              type="checkbox"
+              className="w-5 h-5 accent-emerald-600"
+              checked={q.data[r.key]}
+              disabled={save.isPending}
+              onChange={(e) => save.mutate({ ...q.data!, [r.key]: e.target.checked })}
+            />
+          </label>
+        ))}
+      </div>
+      <p className="text-[11px] text-white/45">Avbockat: bara inloggade – medlemmar, styrelsen och länkar. För Score Tracker behöver länken Score Tracker eller Lineup.</p>
     </section>
   );
 }

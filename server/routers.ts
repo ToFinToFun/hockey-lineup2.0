@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { sponsorsManagedBySite } from "./sponsorSync";
 import { notifySite } from "./integration";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, lineupProcedure, adminProcedure, moduleProcedure, lineupOrModuleProcedure, router } from "./_core/trpc";
+import { publicProcedure, lineupProcedure, adminProcedure, moduleProcedure, lineupOrModuleProcedure, scoreProcedure, liveProcedure, broadcastProcedure, router } from "./_core/trpc";
 import { authRouter } from "./routers/auth";
 import { canLineup } from "./auth";
 import { playersRouter } from "./routers/players";
@@ -791,7 +791,7 @@ export const appRouter = router({
    * Läktaren: hjärtan och kommentarer (Inställningar → Live).
    */
   live: router({
-    state: publicProcedure.query(async ({ ctx }) => {
+    state: liveProcedure.query(async ({ ctx }) => {
       const ip = String(ctx.req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() || ctx.req.ip || "";
       await touchViewer(ip, String(ctx.req.headers["user-agent"] ?? ""));
       // Samma svar till alla tittare: byggs högst var 2:a sekund (många tittare × var 4:e sekund)
@@ -803,13 +803,16 @@ export const appRouter = router({
     }),
 
     /** Startsidan: pågår en livesändning just nu? */
-    isLive: publicProcedure.query(async () => ({ live: isLive(await currentSession()) })),
-    heart: publicProcedure.input(z.object({ team: z.enum(["white", "green"]) })).mutation(async ({ ctx, input }) => {
+    isLive: publicProcedure.query(async ({ ctx }) => {
+      const { canLive } = await import("./publicAccess");
+      return { live: (await canLive(ctx.session, ctx.member)) && isLive(await currentSession()) };
+    }),
+    heart: liveProcedure.input(z.object({ team: z.enum(["white", "green"]) })).mutation(async ({ ctx, input }) => {
       const ip = String(ctx.req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() || ctx.req.ip || "";
       const viewer = await touchViewer(ip, String(ctx.req.headers["user-agent"] ?? ""));
       return { ok: viewer ? await sendHeart(viewer, input.team) : false };
     }),
-    comment: publicProcedure
+    comment: liveProcedure
       .input(z.object({ name: z.string().max(60), text: z.string().min(1).max(500) }))
       .mutation(async ({ ctx, input }) => {
         const ip = String(ctx.req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() || ctx.req.ip || "";
@@ -827,7 +830,7 @@ export const appRouter = router({
       }),
 
     /** Score Tracker: läget för sändningen (min enhet, tittare, hjärtan, kommentarer inkl. dolda) */
-    status: lineupProcedure.input(z.object({ deviceId: z.string().max(64) })).query(async ({ input }) => {
+    status: broadcastProcedure.input(z.object({ deviceId: z.string().max(64) })).query(async ({ input }) => {
       const s = await currentSession();
       const live = isLive(s);
       return {
@@ -845,12 +848,12 @@ export const appRouter = router({
         autoSaved: s && s.endedAt && s.autoSavedMatchId ? { sessionId: s.id, matchId: s.autoSavedMatchId } : null,
       };
     }),
-    start: lineupProcedure.input(z.object({ deviceId: z.string().min(8).max(64), takeover: z.boolean().optional() })).mutation(async ({ input }) => {
+    start: broadcastProcedure.input(z.object({ deviceId: z.string().min(8).max(64), takeover: z.boolean().optional() })).mutation(async ({ input }) => {
       const r = await startLive(input.deviceId, !!input.takeover);
       if (!r.ok) throw new TRPCError({ code: "CONFLICT", message: "Live sänds redan från en annan enhet" });
       return { id: r.session.id };
     }),
-    push: lineupProcedure
+    push: broadcastProcedure
       .input(z.object({
         deviceId: z.string().max(64),
         whiteScore: z.number().int().min(0).max(99), greenScore: z.number().int().min(0).max(99),
@@ -881,7 +884,7 @@ export const appRouter = router({
       liveStateCache = null;
       return { ok };
     }),
-    end: lineupProcedure.input(z.object({ deviceId: z.string().max(64), force: z.boolean().optional() })).mutation(async ({ input }) => {
+    end: broadcastProcedure.input(z.object({ deviceId: z.string().max(64), force: z.boolean().optional() })).mutation(async ({ input }) => {
       const ok = await endLive(input.force ? null : input.deviceId);
       // Unika tittare och hjärtan sparas med matchen som just sparades (inom 15 min)
       if (ok) {
@@ -907,7 +910,7 @@ export const appRouter = router({
 
   lineup: router({
     /** Aktuell uppställning (öppen – visas i Score Tracker). */
-    getState: publicProcedure.query(async () => {
+    getState: scoreProcedure.query(async () => {
       const { doc, version, appliedPatchIds } = await getLineupSnapshot();
       return { ...doc, version, appliedPatchIds };
     }),
@@ -963,7 +966,7 @@ export const appRouter = router({
      * nyhet, annars Lineup). Andra ser det enligt scoreLineupView: publicerat lag,
      * annars live från 75 min före matchstart.
      */
-    scoreState: publicProcedure.query(async ({ ctx }) => {
+    scoreState: scoreProcedure.query(async ({ ctx }) => {
       const lock = await getActiveLock();
       const { doc } = await getLineupSnapshot();
       let view: import("./scoreLineupView").ScoreLineupView | { mode: "staff" } = { mode: "staff" };

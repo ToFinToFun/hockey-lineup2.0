@@ -10,6 +10,7 @@ const Home = lazy(() => import("./pages/Home"));
 const ShareView = lazy(() => import("./pages/ShareView"));
 const OpponentLinkPage = lazy(() => import("./pages/opponent/OpponentLinkPage"));
 import ScoreApp from "./pages/score/ScoreApp";
+import { PublicGate } from "./components/auth/PublicGate";
 const IceTimeApp = lazy(() => import("./pages/icetime/IceTimeApp"));
 const StatsApp = lazy(() => import("./pages/stats/StatsApp"));
 const CardsApp = lazy(() => import("./pages/cards/CardsApp"));
@@ -98,11 +99,11 @@ function Router() {
       {/* Delad länk med moduler */}
       <Route path="/a/:token">{(params) => <Suspense fallback={<div className="min-h-[100dvh] bg-[#0a0a0a]" />}><AccessRedeem token={params.token} /></Suspense>}</Route>
       <Route path="/rapport" component={ReportPage} />
-      {/* Livesidan – öppen för alla */}
-      <Route path="/live">{() => <Suspense fallback={<div className="min-h-[100dvh] bg-[#07100b]" />}><LivePage /></Suspense>}</Route>
+      {/* Livesidan – öppen för alla, eller bara inloggade (Inställningar → Åtkomst) */}
+      <Route path="/live">{() => <PublicGate area="live"><Suspense fallback={<div className="min-h-[100dvh] bg-[#07100b]" />}><LivePage /></Suspense></PublicGate>}</Route>
 
-      {/* Score Tracker app – öppen för alla */}
-      <Route path="/score" component={ScoreApp} />
+      {/* Score Tracker – öppen för alla, eller bara inloggade (Inställningar → Åtkomst) */}
+      <Route path="/score">{() => <PublicGate area="score"><ScoreApp /></PublicGate>}</Route>
 
       {/* IceTime app */}
       <Route path="/icetime" component={IceTimePage} />

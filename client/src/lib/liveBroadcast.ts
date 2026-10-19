@@ -22,10 +22,12 @@ export function liveDeviceId(): string {
 
 /** Läget för sändningen (delas mellan matchvyn och footern – samma fråga) */
 export function useLiveStatus() {
-  const { canEditLineup } = useAuth();
+  const { canEditLineup, modules } = useAuth();
+  // Lineup eller behörigheten Score Tracker (t.ex. en länk till den som för matchen)
+  const canBroadcast = canEditLineup || modules.includes("score");
   const deviceId = liveDeviceId();
-  const status = trpc.live.status.useQuery({ deviceId }, { enabled: canEditLineup, refetchInterval: 5_000, retry: false });
-  return { canBroadcast: canEditLineup, deviceId, status };
+  const status = trpc.live.status.useQuery({ deviceId }, { enabled: canBroadcast, refetchInterval: 5_000, retry: false });
+  return { canBroadcast, deviceId, status };
 }
 
 /** Skickar ställning, mål och sluttid när de ändras (bara när den här enheten sänder) */

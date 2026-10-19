@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.3.0 – 2026-10-19
+
+- **Öppet utan inloggning** (Inställningar → Åtkomst): Live och Score Tracker kan var för sig kräva inloggning. Standard: båda öppna som tidigare.
+- Stängd Score Tracker: inloggade medlemmar, styrelsen och länkar med Score Tracker eller Lineup. Stängd Live: alla inloggade. Startsidan visar bara det man får använda.
+- **Score Tracker** finns som behörighet för länkar och medlemmar – och ger även rätt att sända Live.
+
 ## 3.2.0 – 2026-10-17
 
 - **Avgifter på Mina sidor:** obetalda medlems- och aktivitetsavgifter visas överst med en knapp *Betala* som leder till betalsidan på stalstadens.se. Uppgifterna hämtas från sajten när de visas och sparas inte i appen. När avgifterna skickas ut eller en påminnelse går ut får medlemmen en notis, om push är påslaget.

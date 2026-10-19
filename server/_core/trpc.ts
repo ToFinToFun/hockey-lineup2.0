@@ -54,3 +54,23 @@ export const memberProcedure = t.procedure.use(({ ctx, next }) => {
   if (!ctx.member) throw new TRPCError({ code: "UNAUTHORIZED", message: "Logga in som medlem" });
   return next({ ctx: { ...ctx, member: ctx.member } });
 });
+
+/** Score Tracker: öppen för alla, eller bara inloggade (Inställningar → Åtkomst). */
+export const scoreProcedure = t.procedure.use(async ({ ctx, next }) => {
+  const { canScore } = await import("../publicAccess");
+  if (!(await canScore(ctx.session, ctx.member))) throw new TRPCError({ code: "UNAUTHORIZED", message: "Logga in för att använda Score Tracker" });
+  return next();
+});
+
+/** Live: öppen för alla, eller bara inloggade (Inställningar → Åtkomst). */
+export const liveProcedure = t.procedure.use(async ({ ctx, next }) => {
+  const { canLive } = await import("../publicAccess");
+  if (!(await canLive(ctx.session, ctx.member))) throw new TRPCError({ code: "UNAUTHORIZED", message: "Logga in för att följa Live" });
+  return next();
+});
+
+/** Sända Live från Score Tracker: Lineup (Admin, Lineup-länk/-behörighet) eller behörigheten Score Tracker. */
+export const broadcastProcedure = t.procedure.use(({ ctx, next }) => {
+  if (!canLineup(ctx.session) && !ctx.session?.modules?.includes("score")) throw new TRPCError({ code: "UNAUTHORIZED", message: "Inloggning krävs" });
+  return next({ ctx: { ...ctx, session: ctx.session! } });
+});

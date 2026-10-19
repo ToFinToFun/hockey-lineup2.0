@@ -30,6 +30,13 @@ export const authRouter = router({
   /** Vem är inloggad? null = ingen (bara score tracker). */
   me: publicProcedure.query(({ ctx }) => ctx.session),
 
+  /** Vad som är öppet utan inloggning (Live, Score Tracker) */
+  publicAccess: publicProcedure.query(async () => (await import("../publicAccess")).getPublicAccess()),
+  setPublicAccess: adminProcedure.input(z.object({ live: z.boolean(), score: z.boolean() })).mutation(async ({ input }) => {
+    await (await import("../publicAccess")).setPublicAccess(input);
+    return input;
+  }),
+
   /** Finns styrelsens lösenord kvar (variabeln satt)? Annars visas bara medlemsinloggningen. */
   loginOptions: publicProcedure.query(() => ({ password: !!ENV.adminPassword })),
 

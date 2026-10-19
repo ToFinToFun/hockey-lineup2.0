@@ -87,7 +87,11 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "2mb", extended: true }));
 
   // SSE endpoint for real-time lineup sync
-  app.get("/api/sse/lineup", (req, res) => {
+  app.get("/api/sse/lineup", async (req, res) => {
+    // Samma regel som Score Tracker (öppen eller bara inloggade)
+    const { session, member } = await effectiveSession(req);
+    const { canScore } = await import("../publicAccess");
+    if (!(await canScore(session, member))) return res.status(401).end();
     // Use client-provided clientId so echo prevention works correctly.
     // The client sends the same clientId with saveState mutations.
     const clientId = (req.query.clientId as string) || crypto.randomUUID();

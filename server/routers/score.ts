@@ -22,7 +22,7 @@ import { TRPCError } from "@trpc/server";
  * head-to-head, season awards, season stats, and team comparison.
  */
 
-import { publicProcedure, adminProcedure, router, moduleProcedure } from "../_core/trpc";
+import { scoreProcedure, publicProcedure, adminProcedure, router, moduleProcedure } from "../_core/trpc";
 import {
   saveMatch,
   getAllMatchResults,
@@ -151,14 +151,14 @@ export const scoreRouter = router({
    * Träningen som en match som avslutas nu hör till (dag, tid, sluttid, plats) –
    * öppen för alla, så att Score Tracker visar rätt starttid även utan inloggning.
    */
-  matchEvent: publicProcedure.query(async () => {
+  matchEvent: scoreProcedure.query(async () => {
     const { candidateEvents, pickEvent } = await import("../recentEvents");
     const ev = pickEvent(await candidateEvents(), null, new Date());
     return ev ? { eventDate: ev.date, eventTime: ev.time, eventEndTime: ev.endTime ?? undefined, eventLocation: ev.location ?? undefined } : null;
   }),
 
   match: router({
-    save: publicProcedure
+    save: scoreProcedure
       .input(
         z.object({
           name: z.string().min(1).max(255),

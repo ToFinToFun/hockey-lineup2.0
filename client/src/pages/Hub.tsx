@@ -25,6 +25,12 @@ export default function Hub() {
   const pending = trpc.score.match.pendingCount.useQuery(undefined, { enabled: hasModule("matches") });
   const pendingCount = pending.data?.count ?? 0;
   const member = trpc.member.me.useQuery(undefined, { retry: false, staleTime: 60_000 });
+  const { role, modules } = useAuth();
+  // Live och Score Tracker kan kräva inloggning (Inställningar → Åtkomst)
+  const pub = trpc.auth.publicAccess.useQuery(undefined, { staleTime: 60_000, retry: false });
+  const open = (k: "live" | "score") => !pub.data || pub.data[k];
+  const canLive = open("live") || !!member.data || !!role;
+  const canScore = open("score") || !!member.data || isAdmin || canEditLineup || modules.includes("score");
   return (
     <div className="min-h-[100dvh] bg-[#0a0a0a] text-white relative overflow-hidden">
       {/* Background image with overlay */}
@@ -94,7 +100,8 @@ export default function Hub() {
               </div>
             </Link>
           ) : null}
-          {/* Live – högst upp, för alla */}
+          {/* Live – högst upp (för alla, eller bara inloggade) */}
+          {canLive && (
           <Link href="/live">
             <div className={`group relative overflow-hidden rounded-2xl border transition-all duration-300 cursor-pointer ${liveNow ? "bg-gradient-to-br from-[#2a0f14] to-[#140a0c] border-red-500/50 hover:border-red-400" : "bg-gradient-to-br from-[#1a1a1a] to-[#111] border-[#2a2a2a] hover:border-red-500/60"}`}>
               <div className="p-5 sm:p-6 flex items-center gap-4">
@@ -112,8 +119,10 @@ export default function Hub() {
               </div>
             </div>
           </Link>
+          )}
 
           {/* Score Tracker Card */}
+          {canScore && (
           <Link href="/score">
             <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] hover:border-[#0a7ea4]/60 transition-all duration-300 cursor-pointer">
               {/* Accent line */}
@@ -144,6 +153,7 @@ export default function Hub() {
               </div>
             </div>
           </Link>
+          )}
 
           {/* Lineup Card */}
           {canEditLineup && (
