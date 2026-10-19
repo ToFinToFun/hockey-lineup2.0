@@ -124,7 +124,12 @@ async function rebuildLineup(registeredIds: Set<string>, declinedIds: Set<string
   const { doc } = await getLineupSnapshot();
   const ours = new Map<string, Player>();
   for (const p of [...doc.players, ...Object.values(doc.lineup)]) if (!isOpponentPlayerId(p.id)) ours.set(p.id, p);
-  const flagged = [...ours.values()].map((p) => ({ ...p, isRegistered: registeredIds.has(p.id), isDeclined: declinedIds.has(p.id) && !registeredIds.has(p.id) }));
+  const flagged = [...ours.values()].map((p) => ({
+    ...p,
+    isRegistered: registeredIds.has(p.id),
+    isDeclined: declinedIds.has(p.id) && !registeredIds.has(p.id),
+    registeredLocal: registeredIds.has(p.id) ? p.registeredLocal : undefined,
+  }));
   const useForBalance = (await getConfigValue("pir_use_for_balance")) !== "false";
   const result = autoDistribute(await enrich(flagged), {}, { useForBalance });
   const ops = buildAutoOps(flagged, result);
@@ -165,6 +170,10 @@ export async function autoLineupTick(now = new Date()): Promise<void> {
     }
     const roster = doc.players.filter((p) => !isOpponentPlayerId(p.id));
     const reg = new Set(matchRegisteredPlayers(att.registeredNames, roster, doc.lineup).matchedIds);
+    // "Kommer" satt bara i appen (finns inte på laget.se) räknas som anmäld för samma evenemang
+    for (const p of [...roster, ...Object.values(doc.lineup)]) {
+      if (p.isRegistered && p.registeredLocal !== undefined && (p.registeredLocal === "" || p.registeredLocal === att.eventDate)) reg.add(p.id);
+    }
     const dec = new Set(matchDeclinedPlayers(att.declinedNames ?? [], roster, doc.lineup).matchedIds);
     const mm = findMismatch(doc.lineup, reg, dec, roster);
     const hasMismatch = mm.missing.length > 0 || mm.notComing.length > 0;

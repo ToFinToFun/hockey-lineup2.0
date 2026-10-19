@@ -59,6 +59,11 @@ export interface Player {
   isOpponent?: boolean;
   isRegistered?: boolean;   // Anmäld till dagens match ("Kommer")
   isDeclined?: boolean;     // Avböjt dagens match ("Kommer inte")
+  /**
+   * "Kommer" satt bara i appen, t.ex. för en spelare som inte finns på laget.se (visas gult).
+   * Värdet är evenemangets datum – markeringen står kvar när anmälningarna hämtas, men bara för det evenemanget.
+   */
+  registeredLocal?: string;
   gamesPlayed?: number;     // Antal matcher spelade
   mostPlayedPosition?: string; // Vanligaste positionen baserat på matchhistorik
   /** Manuell alternativ position (hybridspelare): MV/B/C/F */
@@ -195,4 +200,18 @@ export function getPositionDotColor(position: Position, forwardDot?: string): st
     case "C":  return "bg-purple-400";
     case "IB":  return "bg-[#a8b8c8]";
   }
+}
+
+/** Anmälan som den blev efter en ändring (null = ingen ändring) */
+export type AttendancePatch = { isRegistered: boolean; isDeclined: boolean; registeredLocal?: string };
+
+/** Spelarens anmälan efter att anmälningarna hämtats från laget.se. */
+export function attendanceAfterSync(p: Player, registered: boolean, declined: boolean, eventDate: string): AttendancePatch {
+  if (registered) return { isRegistered: true, isDeclined: false, registeredLocal: undefined };
+  if (declined) return { isRegistered: false, isDeclined: true, registeredLocal: undefined };
+  // Satt som "kommer" bara i appen: står kvar för samma evenemang (utan datum: knyts till det här)
+  if (p.registeredLocal !== undefined && p.isRegistered && (p.registeredLocal === "" || p.registeredLocal === eventDate)) {
+    return { isRegistered: true, isDeclined: false, registeredLocal: eventDate };
+  }
+  return { isRegistered: false, isDeclined: false, registeredLocal: undefined };
 }

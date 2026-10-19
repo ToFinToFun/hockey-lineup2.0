@@ -25,7 +25,7 @@ import {
   type DragOverEvent,
   type CollisionDetection,
 } from "@dnd-kit/core";
-import { initialPlayers, type Player, type Position, type TeamColor, type CaptainRole, type PlayerRecord } from "@/lib/players";
+import { initialPlayers, attendanceAfterSync, type AttendancePatch, type Player, type Position, type TeamColor, type CaptainRole, type PlayerRecord } from "@/lib/players";
 import { useIsMobile } from "@/hooks/useMobile";
 import { createTeamSlots, DEFAULT_TEAM_CONFIG, MAX_TEAM_CONFIG, type TeamConfig } from "@/lib/lineup";
 import { PlayerList } from "@/components/PlayerList";
@@ -244,6 +244,8 @@ export default function Home() {
 
   // Event-info från senaste anmälningshämtning
   const [eventInfo, setEventInfo] = useState<{ title: string; date: string; time?: string; location?: string } | null>(null);
+  const eventDateRef = useRef("");
+  eventDateRef.current = eventInfo?.date ?? "";
 
   // Tidstämpel för senaste synk
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
@@ -1193,7 +1195,7 @@ export default function Home() {
 
       if (data.noEvent) {
         // Inget event idag/imorgon — nollställ alla anmälningar
-        const clearRegistered = (p: Player): Player => ({ ...p, isRegistered: false, isDeclined: false });
+        const clearRegistered = (p: Player): Player => ({ ...p, isRegistered: false, isDeclined: false, registeredLocal: undefined });
         setAvailablePlayers((prev) => prev.map(clearRegistered));
         setLineup((prev) => {
           const next: Record<string, Player> = {};
@@ -1220,15 +1222,14 @@ export default function Home() {
       );
       const declinedSet = new Set(declinedResult.matchedIds);
 
-      // Uppdatera alla spelares isRegistered och isDeclined
+      // Uppdatera alla spelares anmälan ("kommer" satt bara i appen står kvar för samma evenemang)
       const updatePlayer = (p: Player): Player => ({
         ...p,
-        isRegistered: matchedSet.has(p.id),
-        isDeclined: declinedSet.has(p.id) && !matchedSet.has(p.id),
+        ...attendanceAfterSync(p, matchedSet.has(p.id), declinedSet.has(p.id), data.eventDate ?? ""),
       });
 
       // Vad ändrades? (visas i beskedet, så att det syns vad synken gjorde)
-      const statusOf = (p: Player) => (p.isRegistered ? "kommer" : p.isDeclined ? "kommer ej" : "inte svarat");
+      const statusOf = (p: Player) => (p.isRegistered ? (p.registeredLocal !== undefined ? "kommer (bara i appen)" : "kommer") : p.isDeclined ? "kommer ej" : "inte svarat");
       const changes: string[] = [];
       const seenIds = new Set<string>();
       for (const p of [...Object.values(lineupRef.current), ...availablePlayersRef.current]) {
@@ -1265,18 +1266,10 @@ export default function Home() {
   const [syncingPlayerIds, setSyncingPlayerIds] = useState<Set<string>>(new Set());
 
   // Synka en spelares status till laget.se och uppdatera lokalt
-  const handleSyncToLaget = useCallback(async (playerId: string, playerName: string, status: "Attending" | "NotAttending" | "NotAnswered") => {
+  const handleSyncToLaget = useCallback(async (playerId: string, playerName: string, status: "Attending" | "NotAttending" | "NotAnswered"): Promise<AttendancePatch | null> => {
     setSyncingPlayerIds((prev) => new Set(prev).add(playerId));
-    try {
-      const result = await updateAttendanceOnLaget(playerName, status);
-      if (!result.success) {
-        alert(`Kunde inte uppdatera ${playerName} på laget.se: ${result.error}`);
-        return;
-      }
-      // Uppdatera lokal status baserat på vad vi satte
-      const isRegistered = status === "Attending";
-      const isDeclined = status === "NotAttending";
-      const update = (p: Player): Player => p.id === playerId ? { ...p, isRegistered, isDeclined } : p;
+    const apply = (patch: AttendancePatch) => {
+      const update = (p: Player): Player => p.id === playerId ? { ...p, ...patch } : p;
       setAvailablePlayers((prev) => prev.map(update));
       setLineup((prev) => {
         const next = { ...prev };
@@ -1285,6 +1278,28 @@ export default function Home() {
         }
         return next;
       });
+      return patch;
+    };
+    try {
+      const result = await updateAttendanceOnLaget(playerName, status);
+      if (!result.success) {
+        const current = [...availablePlayersRef.current, ...Object.values(lineupRef.current)].find((p) => p.id === playerId);
+        // Gul "kommer" som ändras: laget.se känner inte till spelaren, så ändra bara i appen
+        if (current?.registeredLocal !== undefined && status !== "Attending") {
+          return apply({ isRegistered: false, isDeclined: status === "NotAttending", registeredLocal: undefined });
+        }
+        if (status === "Attending") {
+          const ok = confirm(
+            `Kunde inte uppdatera ${playerName} på laget.se: ${result.error}\n\n` +
+              `Markera ${playerName} som "Kommer" bara i appen? Spelaren visas då gul och står kvar som anmäld när anmälningarna hämtas från laget.se.`,
+          );
+          return ok ? apply({ isRegistered: true, isDeclined: false, registeredLocal: eventDateRef.current }) : null;
+        }
+        alert(`Kunde inte uppdatera ${playerName} på laget.se: ${result.error}`);
+        return null;
+      }
+      // Uppdatera lokal status baserat på vad vi satte
+      return apply({ isRegistered: status === "Attending", isDeclined: status === "NotAttending", registeredLocal: undefined });
     } finally {
       setSyncingPlayerIds((prev) => {
         const next = new Set(prev);
@@ -1292,9 +1307,13 @@ export default function Home() {
         return next;
       });
     }
-    // Hämta om från laget.se för att säkerställa synk
+  }, []);
+  // Hämta om från laget.se efter en ändring, för att säkerställa synk
+  const handleSyncToLagetAndRefresh = useCallback(async (playerId: string, playerName: string, status: "Attending" | "NotAttending" | "NotAnswered") => {
+    const patch = await handleSyncToLaget(playerId, playerName, status);
     setTimeout(() => handleBulkRegister(true), 2000);
-  }, [handleBulkRegister]);
+    return patch;
+  }, [handleSyncToLaget, handleBulkRegister]);
 
   // Bulk-ändra status för flera spelare till laget.se
   const handleBulkSyncToLaget = useCallback(async (playerIds: string[], status: "Attending" | "NotAttending" | "NotAnswered") => {
@@ -1308,7 +1327,8 @@ export default function Home() {
       if (!player) continue;
       await handleSyncToLaget(id, player.name, status);
     }
-  }, [handleSyncToLaget]);
+    setTimeout(() => handleBulkRegister(true), 2000);
+  }, [handleSyncToLaget, handleBulkRegister]);
 
   // Auto-hämta anmälningar vid sidladdning — vänta tills initial state har laddats
   // så att matchRegisteredPlayers har spelare att matcha mot
@@ -2169,7 +2189,7 @@ export default function Home() {
                         onChangeName={handleChangeName}
                         onChangeCaptainRole={handleChangeCaptainRole}
                         onChangeRegistered={handleChangeRegistered}
-                         onSyncToLaget={handleSyncToLaget}
+                         onSyncToLaget={handleSyncToLagetAndRefresh}
                          syncingPlayerIds={syncingPlayerIds}
                          onBulkSyncToLaget={handleBulkSyncToLaget}
                          onChangeGamesPlayed={handleChangeGamesPlayed}
@@ -2198,7 +2218,7 @@ export default function Home() {
                       onChangeTeamColor={handleChangeTeamColor}
                       onChangeCaptainRole={handleChangeCaptainRole}
                       onChangeRegistered={handleChangeRegistered}
-                      onSyncToLaget={handleSyncToLaget}
+                      onSyncToLaget={handleSyncToLagetAndRefresh}
                       onDeletePlayer={handleDeletePlayer}
                       teamName={teamAName}
                       slots={TEAM_A_SLOTS}
@@ -2225,7 +2245,7 @@ export default function Home() {
                       onChangeTeamColor={handleChangeTeamColor}
                       onChangeCaptainRole={handleChangeCaptainRole}
                       onChangeRegistered={handleChangeRegistered}
-                      onSyncToLaget={handleSyncToLaget}
+                      onSyncToLaget={handleSyncToLagetAndRefresh}
                       onDeletePlayer={handleDeletePlayer}
                       teamName={teamBName}
                       slots={TEAM_B_SLOTS}
@@ -2262,7 +2282,7 @@ export default function Home() {
                     onChangeTeamColor={handleChangeTeamColor}
                     onChangeCaptainRole={handleChangeCaptainRole}
                     onChangeRegistered={handleChangeRegistered}
-                    onSyncToLaget={handleSyncToLaget}
+                    onSyncToLaget={handleSyncToLagetAndRefresh}
                     onDeletePlayer={handleDeletePlayer}
                     teamName={teamAName}
                     slots={TEAM_A_SLOTS}
@@ -2293,7 +2313,7 @@ export default function Home() {
                         onChangeName={handleChangeName}
                         onChangeCaptainRole={handleChangeCaptainRole}
                         onChangeRegistered={handleChangeRegistered}
-                        onSyncToLaget={handleSyncToLaget}
+                        onSyncToLaget={handleSyncToLagetAndRefresh}
                         syncingPlayerIds={syncingPlayerIds}
                         onBulkSyncToLaget={handleBulkSyncToLaget}
                         onChangeGamesPlayed={handleChangeGamesPlayed}
@@ -2320,7 +2340,7 @@ export default function Home() {
                     onChangeTeamColor={handleChangeTeamColor}
                     onChangeCaptainRole={handleChangeCaptainRole}
                     onChangeRegistered={handleChangeRegistered}
-                    onSyncToLaget={handleSyncToLaget}
+                    onSyncToLaget={handleSyncToLagetAndRefresh}
                     onDeletePlayer={handleDeletePlayer}
                     teamName={teamBName}
                     slots={TEAM_B_SLOTS}
@@ -2378,7 +2398,7 @@ export default function Home() {
                     onChangeTeamColor={handleChangeTeamColor}
                     onChangeCaptainRole={handleChangeCaptainRole}
                     onChangeRegistered={handleChangeRegistered}
-                    onSyncToLaget={handleSyncToLaget}
+                    onSyncToLaget={handleSyncToLagetAndRefresh}
                     onDeletePlayer={handleDeletePlayer}
                     onEmptySlotClick={handleEmptySlotClickA}
                   />
@@ -2408,7 +2428,7 @@ export default function Home() {
                     onChangeTeamColor={handleChangeTeamColor}
                     onChangeCaptainRole={handleChangeCaptainRole}
                     onChangeRegistered={handleChangeRegistered}
-                    onSyncToLaget={handleSyncToLaget}
+                    onSyncToLaget={handleSyncToLagetAndRefresh}
                     onDeletePlayer={handleDeletePlayer}
                     onEmptySlotClick={handleEmptySlotClickB}
                   />
@@ -2495,7 +2515,7 @@ export default function Home() {
           onChangeName={handleChangeName}
           onChangeCaptainRole={handleChangeCaptainRole}
           onChangeRegistered={handleChangeRegistered}
-          onSyncToLaget={handleSyncToLaget}
+          onSyncToLaget={handleSyncToLagetAndRefresh}
           onBulkRegister={handleBulkRegister}
           onEventInfoUpdate={(info) => setEventInfo(info)}
           totalRegistered={totalRegistered}

@@ -8,7 +8,7 @@ export const lineupState = mysqlTable("lineup_state", {
   /** Plats → spelar-ID. Spelardata (namn, nummer …) finns bara i `players`. */
   slots: json("slots").$type<Record<string, string>>(),
   /** Spelar-ID → anmälan till dagens match ("registered" | "declined"). */
-  attendance: json("attendance").$type<Record<string, "registered" | "declined">>(),
+  attendance: json("attendance").$type<Record<string, "registered" | "declined" | `local:${string}`>>(),
   /** Team A display name */
   teamAName: varchar("teamAName", { length: 100 }).notNull().default("VITA"),
   /** Team B display name */

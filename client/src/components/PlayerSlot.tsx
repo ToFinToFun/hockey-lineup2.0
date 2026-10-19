@@ -25,7 +25,7 @@ interface PlayerSlotProps {
   onChangeTeamColor?: (color: TeamColor) => void;
   onChangeCaptainRole?: (role: CaptainRole) => void;
   onChangeRegistered?: (isRegistered: boolean) => void;
-  onSyncToLaget?: (status: "Attending" | "NotAttending" | "NotAnswered") => Promise<void>;
+  onSyncToLaget?: (status: "Attending" | "NotAttending" | "NotAnswered") => Promise<unknown>;
   onDelete?: () => void;
   /** Called when an empty slot is tapped (mobile) */
   onEmptySlotClick?: () => void;

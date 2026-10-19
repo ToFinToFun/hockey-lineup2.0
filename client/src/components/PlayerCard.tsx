@@ -33,7 +33,7 @@ interface PlayerCardProps {
   onChangeName?: (name: string) => void;
   onChangeCaptainRole?: (role: CaptainRole) => void;
   onChangeRegistered?: (isRegistered: boolean) => void;
-  onSyncToLaget?: (status: "Attending" | "NotAttending" | "NotAnswered") => Promise<void>;
+  onSyncToLaget?: (status: "Attending" | "NotAttending" | "NotAnswered") => Promise<unknown>;
   onChangeGamesPlayed?: (gamesPlayed: number) => void;
   onLongPress?: (e: React.PointerEvent) => void;
   onLongPressEnd?: () => void;
@@ -181,13 +181,13 @@ export function DraggablePlayerCard({
       className={`
         group relative rounded-r-md rounded-l-sm w-full
         ${embedded ? "bg-transparent" : "player-row"} border-l-[3px]
-        ${player.isRegistered ? "border-l-emerald-400" : player.isDeclined ? "border-l-red-500" : "border-l-white/10"}
+        ${player.isRegistered ? (player.registeredLocal !== undefined ? "border-l-amber-400" : "border-l-emerald-400") : player.isDeclined ? "border-l-red-500" : "border-l-white/10"}
         transition-all duration-150 select-none
         ${compact ? "flex items-center pl-1 pr-0.5 py-0.5 text-xs" : "flex items-center pl-1.5 pr-1 py-1 text-sm"}
         ${isDragging ? "shadow-2xl ring-2 ring-emerald-400/60" : ""}
         ${isHolding ? "ring-1 ring-red-400/60" : ""}
       `}
-      title={player.isRegistered ? "Anmäld" : player.isDeclined ? "Kommer inte" : "Inte svarat"}
+      title={player.isRegistered ? (player.registeredLocal !== undefined ? "Kommer – satt bara i appen (inte på laget.se)" : "Anmäld") : player.isDeclined ? "Kommer inte" : "Inte svarat"}
       {...attributes}
       {...listeners}
       onPointerDown={handlePointerDown}
@@ -608,7 +608,7 @@ export function DraggablePlayerCard({
  */
 export function AttendanceButtons({ player, onSync, onLocal, size = "sm" }: {
   player: Player;
-  onSync?: (status: "Attending" | "NotAttending" | "NotAnswered") => Promise<void>;
+  onSync?: (status: "Attending" | "NotAttending" | "NotAnswered") => Promise<unknown>;
   onLocal?: (isRegistered: boolean) => void;
   size?: "sm" | "md";
 }) {
@@ -623,8 +623,14 @@ export function AttendanceButtons({ player, onSync, onLocal, size = "sm" }: {
     }
   };
   const btn = size === "md" ? "text-[11px] px-3 py-1.5" : "text-[9px] px-2 py-1";
+  const local = player.isRegistered && player.registeredLocal !== undefined;
   const opts: Array<{ status: "Attending" | "NotAttending" | "NotAnswered"; label: string; on: string }> = [
-    { status: "Attending", label: "Kommer", on: "bg-emerald-400/25 text-emerald-300 border-emerald-400/50" },
+    {
+      status: "Attending",
+      label: "Kommer",
+      // Gul: satt bara i appen (spelaren finns inte på laget.se)
+      on: local ? "bg-amber-400/25 text-amber-300 border-amber-400/50" : "bg-emerald-400/25 text-emerald-300 border-emerald-400/50",
+    },
     { status: "NotAttending", label: "Kommer inte", on: "bg-red-400/25 text-red-300 border-red-400/50" },
     { status: "NotAnswered", label: "Ej svarat", on: "bg-white/15 text-white/70 border-white/30" },
   ];
@@ -643,7 +649,7 @@ export function AttendanceButtons({ player, onSync, onLocal, size = "sm" }: {
         </button>
       ))}
       {busy && <span className="text-[9px] text-amber-300 animate-pulse">Uppdaterar laget.se…</span>}
-      {!onSync && <span className="text-[9px] text-white/30">(bara i appen)</span>}
+      {(!onSync || local) && <span className={`text-[9px] ${local ? "text-amber-300/70" : "text-white/30"}`}>(bara i appen)</span>}
     </div>
   );
 }

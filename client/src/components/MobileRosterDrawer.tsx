@@ -31,7 +31,7 @@ interface MobileRosterDrawerProps {
   onChangeName?: (id: string, name: string) => void;
   onChangeCaptainRole?: (id: string, role: CaptainRole) => void;
   onChangeRegistered?: (id: string, registered: boolean) => void;
-  onSyncToLaget?: (id: string, name: string, status: "Attending" | "NotAttending" | "NotAnswered") => Promise<void>;
+  onSyncToLaget?: (id: string, name: string, status: "Attending" | "NotAttending" | "NotAnswered") => Promise<unknown>;
   onBulkRegister?: (forceRefresh?: boolean) => Promise<{ matched: number; unmatched: string[]; eventTitle?: string; eventDate?: string; error?: string; noEvent?: boolean }>;
   onEventInfoUpdate?: (info: { title: string; date: string } | null) => void;
   totalRegistered?: number;
@@ -519,7 +519,7 @@ export function MobileRosterDrawer({
                       key={player.id}
                       className={`
                         grid items-center gap-1 pl-2 pr-2 py-1.5 rounded-r-lg rounded-l-sm transition-all !border-l-[3px]
-                        ${player.isRegistered ? "!border-l-emerald-400" : player.isDeclined ? "!border-l-red-500" : "!border-l-white/10"}
+                        ${player.isRegistered ? (player.registeredLocal !== undefined ? "!border-l-amber-400" : "!border-l-emerald-400") : player.isDeclined ? "!border-l-red-500" : "!border-l-white/10"}
                         ${isSelected
                           ? "bg-emerald-500/20 border border-emerald-400/40 ring-1 ring-emerald-400/20"
                           : "bg-white/3 border border-transparent hover:bg-white/5"
@@ -967,8 +967,8 @@ export function MobileRosterDrawer({
                     size="md"
                     player={editingPlayer}
                     onSync={onSyncToLaget ? async (status) => {
-                      await onSyncToLaget(editingPlayer.id, editingPlayer.name, status);
-                      setEditingPlayer((p) => p ? { ...p, isRegistered: status === "Attending", isDeclined: status === "NotAttending" } : p);
+                      const patch = await onSyncToLaget(editingPlayer.id, editingPlayer.name, status);
+                      if (patch && typeof patch === "object") setEditingPlayer((p) => p ? { ...p, ...(patch as Partial<Player>) } : p);
                     } : undefined}
                     onLocal={onChangeRegistered ? (val) => {
                       onChangeRegistered(editingPlayer.id, val);

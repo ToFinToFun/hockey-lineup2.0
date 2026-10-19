@@ -23,7 +23,7 @@ interface PlayerListProps {
   onChangeName: (playerId: string, name: string) => void;
   onChangeCaptainRole: (playerId: string, role: CaptainRole) => void;
   onChangeRegistered: (playerId: string, isRegistered: boolean) => void;
-  onSyncToLaget?: (playerId: string, playerName: string, status: "Attending" | "NotAttending" | "NotAnswered") => Promise<void>;
+  onSyncToLaget?: (playerId: string, playerName: string, status: "Attending" | "NotAttending" | "NotAnswered") => Promise<unknown>;
   syncingPlayerIds?: Set<string>;
   onBulkSyncToLaget?: (playerIds: string[], status: "Attending" | "NotAttending" | "NotAnswered") => Promise<void>;
   onChangeGamesPlayed: (playerId: string, gamesPlayed: number) => void;
@@ -368,6 +368,9 @@ export function PlayerList({ players, onAddPlayer, onDeletePlayer, onChangePosit
         <span className="flex items-center gap-1"><span className="w-[3px] h-3 rounded-sm bg-emerald-400" />Anmäld</span>
         <span className="flex items-center gap-1"><span className="w-[3px] h-3 rounded-sm bg-red-500" />Kommer inte</span>
         <span className="flex items-center gap-1"><span className="w-[3px] h-3 rounded-sm bg-white/15" />Inte svarat</span>
+        {players.some((p) => p.isRegistered && p.registeredLocal !== undefined) && (
+          <span className="flex items-center gap-1" title="Kommer – satt bara i appen (finns inte på laget.se)"><span className="w-[3px] h-3 rounded-sm bg-amber-400" />Bara i appen</span>
+        )}
         <span className="flex items-center gap-0.5 ml-auto"><span className="w-3 h-3 rounded-sm bg-white text-slate-900 text-[8px] font-black flex items-center justify-center">V</span><span className="w-3 h-3 rounded-sm bg-emerald-400 text-emerald-950 text-[8px] font-black flex items-center justify-center">G</span><span className="w-3 h-3 rounded-sm border border-white/20 text-white/45 text-[8px] font-black flex items-center justify-center">W</span></span>
       </div>
 

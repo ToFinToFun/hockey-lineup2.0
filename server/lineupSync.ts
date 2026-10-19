@@ -30,7 +30,8 @@ interface Stored {
   /** Intern match eller mot motståndare */
   setup: MatchSetup;
   slots: Record<string, string>;
-  attendance: Record<string, "registered" | "declined">;
+  // "local:<datum>" = kommer, satt bara i appen (spelaren finns inte på laget.se)
+  attendance: Record<string, "registered" | "declined" | `local:${string}`>;
   teamAName: string;
   teamBName: string;
   teamAConfig: LineupDoc["teamAConfig"];
@@ -71,6 +72,7 @@ function toPlayer(row: PlayerRow, attendance: Stored["attendance"]): Player {
     ...(row.teamColor ? { teamColor: row.teamColor as Player["teamColor"] } : {}),
     ...(row.captainRole ? { captainRole: row.captainRole as Player["captainRole"] } : {}),
     ...(status === "registered" ? { isRegistered: true } : {}),
+    ...(status?.startsWith("local:") ? { isRegistered: true, registeredLocal: status.slice(6) } : {}),
     ...(status === "declined" ? { isDeclined: true } : {}),
   } as Player;
 }
@@ -103,7 +105,7 @@ function dehydrate(d: LineupDoc): Stored {
   const slots: Record<string, string> = {};
   for (const [slot, p] of Object.entries(d.lineup)) slots[slot] = p.id;
   for (const p of [...d.players, ...Object.values(d.lineup)]) {
-    if (p.isRegistered) attendance[p.id] = "registered";
+    if (p.isRegistered) attendance[p.id] = p.registeredLocal !== undefined ? `local:${p.registeredLocal}` : "registered";
     else if (p.isDeclined) attendance[p.id] = "declined";
   }
   return { setup: normalizeSetup(d.setup), slots, attendance, teamAName: d.teamAName, teamBName: d.teamBName, teamAConfig: d.teamAConfig, teamBConfig: d.teamBConfig };

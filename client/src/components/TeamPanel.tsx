@@ -39,7 +39,7 @@ interface TeamPanelProps {
   onChangeTeamColor?: (playerId: string, color: TeamColor) => void;
   onChangeCaptainRole?: (playerId: string, role: CaptainRole) => void;
   onChangeRegistered?: (playerId: string, isRegistered: boolean) => void;
-  onSyncToLaget?: (playerId: string, playerName: string, status: "Attending" | "NotAttending" | "NotAnswered") => Promise<void>;
+  onSyncToLaget?: (playerId: string, playerName: string, status: "Attending" | "NotAttending" | "NotAnswered") => Promise<unknown>;
   onDeletePlayer?: (playerId: string) => void;
   /** Called when an empty slot is tapped (mobile) */
   onEmptySlotClick?: (slotId: string, slotType: string) => void;
@@ -73,7 +73,7 @@ function GroupCard({
   onChangeTeamColor?: (playerId: string, color: TeamColor) => void;
   onChangeCaptainRole?: (playerId: string, role: CaptainRole) => void;
   onChangeRegistered?: (playerId: string, isRegistered: boolean) => void;
-  onSyncToLaget?: (playerId: string, playerName: string, status: "Attending" | "NotAttending" | "NotAnswered") => Promise<void>;
+  onSyncToLaget?: (playerId: string, playerName: string, status: "Attending" | "NotAttending" | "NotAnswered") => Promise<unknown>;
   onDeletePlayer?: (playerId: string) => void;
   onEmptySlotClick?: (slotId: string, slotType: string) => void;
 }) {

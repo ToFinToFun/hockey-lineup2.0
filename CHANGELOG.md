@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.4.0 – 2026-10-19
+
+- **"Kommer" bara i appen:** spelare som inte finns på laget.se kan sättas som Kommer. Efter varningen frågar appen om markeringen ska göras bara i appen. Spelaren visas då gul (i listan, i uppställningen och på Kommer-knappen), räknas som anmäld av Auto och Auto-lag, och står kvar när anmälningarna hämtas – men bara för det evenemanget. Anmäls spelaren på laget.se blir markeringen grön som vanligt.
+
 ## 3.3.0 – 2026-10-19
 
 - **Öppet utan inloggning** (Inställningar → Åtkomst): Live och Score Tracker kan var för sig kräva inloggning. Standard: båda öppna som tidigare.
