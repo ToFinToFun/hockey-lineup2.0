@@ -1,3 +1,4 @@
+import { posLabel } from "@shared/positions";
 // Hockey Lineup App – Home
 // Design: Industrial Ice Arena
 
@@ -1361,23 +1362,23 @@ export default function Home() {
 
   const handleEmptySlotClickA = useCallback((slotId: string, slotType: string) => {
     const slot = TEAM_A_SLOTS.find(s => s.id === slotId);
-    setMobileSlotPicker({ slotId, slotType, teamId: "team-a", teamName: teamAName, slotLabel: slot?.shortLabel ?? slotType });
+    setMobileSlotPicker({ slotId, slotType, teamId: "team-a", teamName: teamAName, slotLabel: posLabel(slot?.shortLabel) || slotType });
   }, [TEAM_A_SLOTS, teamAName]);
 
   const handleEmptySlotClickB = useCallback((slotId: string, slotType: string) => {
     const slot = TEAM_B_SLOTS.find(s => s.id === slotId);
-    setMobileSlotPicker({ slotId, slotType, teamId: "team-b", teamName: teamBName, slotLabel: slot?.shortLabel ?? slotType });
+    setMobileSlotPicker({ slotId, slotType, teamId: "team-b", teamName: teamBName, slotLabel: posLabel(slot?.shortLabel) || slotType });
   }, [TEAM_B_SLOTS, teamBName]);
 
   // ─── Desktop: vald tom plats → truppen sorteras för platsen, klick placerar ───
   const [desktopTarget, setDesktopTarget] = useState<{ slotId: string; slotType: string; teamId: string; teamName: string; slotLabel: string } | null>(null);
   const handleDesktopSlotClickA = useCallback((slotId: string, slotType: string) => {
     const slot = TEAM_A_SLOTS.find(s => s.id === slotId);
-    setDesktopTarget(prev => prev?.slotId === slotId ? null : { slotId, slotType, teamId: "team-a", teamName: teamAName, slotLabel: slot?.shortLabel ?? slotType });
+    setDesktopTarget(prev => prev?.slotId === slotId ? null : { slotId, slotType, teamId: "team-a", teamName: teamAName, slotLabel: posLabel(slot?.shortLabel) || slotType });
   }, [TEAM_A_SLOTS, teamAName]);
   const handleDesktopSlotClickB = useCallback((slotId: string, slotType: string) => {
     const slot = TEAM_B_SLOTS.find(s => s.id === slotId);
-    setDesktopTarget(prev => prev?.slotId === slotId ? null : { slotId, slotType, teamId: "team-b", teamName: teamBName, slotLabel: slot?.shortLabel ?? slotType });
+    setDesktopTarget(prev => prev?.slotId === slotId ? null : { slotId, slotType, teamId: "team-b", teamName: teamBName, slotLabel: posLabel(slot?.shortLabel) || slotType });
   }, [TEAM_B_SLOTS, teamBName]);
   // Platsen fylldes på annat sätt (dra och släpp, synk) → släpp valet
   useEffect(() => {
@@ -1843,7 +1844,7 @@ export default function Home() {
                           {/* Alternativ position i brickan: från hur stor andel av matcherna */}
                           <label
                             className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] ${isLineupDark ? 'text-white/60' : 'text-gray-600'}`}
-                            title="Brickan får två färger när spelaren spelat en annan position (MV/B/C/F) minst så här ofta – eller har en alternativ position i spelarkortet"
+                            title="Brickan får två färger när spelaren spelat en annan position (G/D/C/F) minst så här ofta – eller har en alternativ position i spelarkortet"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <span className="w-4 h-4 rounded-sm shrink-0" style={{ background: "linear-gradient(135deg, #3b82f6 0 52%, #8b5cf6 52% 100%)" }} />
@@ -2116,8 +2117,8 @@ export default function Home() {
                           <span className="text-white/50 font-semibold">{teamAName}</span>
                           <span className="text-white/50 font-semibold">{teamBName}</span>
                           {[
-                            { pos: "MV", label: "MV", color: "text-amber-400" },
-                            { pos: "B", label: "B", color: "text-blue-400" },
+                            { pos: "MV", label: "G", color: "text-amber-400" },
+                            { pos: "B", label: "D", color: "text-blue-400" },
                             { pos: "F", label: "F", color: fc.sectionHeader },
                             { pos: "C", label: "C", color: "text-purple-400" },
                           ].map(({ pos, label, color }) => (

@@ -1,3 +1,4 @@
+import { posLabel } from "@shared/positions";
 import { goalsOldestFirst, winningGoalIndex } from "@shared/goalOrder";
 /**
  * Stars of the Game (NHL-stil): tre stjärnor per match.
@@ -47,9 +48,9 @@ const bare = (label: string) => label.replace(/\s*#\d*\s*$/, "").trim();
 /** Numret ur "Kalle Karlsson #12" (tomt om det saknas) */
 const numberOf = (label: string) => label.match(/#(\d+)\s*$/)?.[1] ?? "";
 
-/** Förkortning i texten: M, B, C, VF, HF */
+/** Förkortning i texten (NHL): G, D, C, LW, RW */
 export function starPositionLabel(p: StarCandidate["position"]): string {
-  return { MV: "M", B: "B", C: "C", LW: "VF", RW: "HF", "": "" }[p];
+  return posLabel(p);
 }
 
 /** Liten deterministisk slump (samma match → samma ordning). */
@@ -149,20 +150,20 @@ export function autoStars(candidates: StarCandidate[], seed: number): string[] {
   return picked.slice(0, 3).map((c) => c.key);
 }
 
-/** Statistik på engelska som "Stars of the Game": "2G 3A 5TP", målvakt "0 GA". */
+/** Statistik på engelska som "Stars of the Game": "2G 3A 5P", målvakt "0 GA". */
 export function starStat(c: StarCandidate): string {
   if (c.position === "MV" && c.goalsAgainst !== null) return `${c.goalsAgainst} GA`;
   const pts = c.goals + c.assists;
-  return pts ? `${c.goals}G ${c.assists}A ${pts}TP` : "";
+  return pts ? `${c.goals}G ${c.assists}A ${pts}P` : "";
 }
 
-/** Statistik inklusive GWG, för bildtext och listor: "1G 2A 3TP GWG" */
+/** Statistik inklusive GWG, för bildtext och listor: "1G 2A 3P GWG" */
 export function starStatWithGwg(c: StarCandidate): string {
   const st = starStat(c);
   return c.gwg ? `${st} GWG`.trim() : st;
 }
 
-/** "Jerry Paasovaara (VF) 2G 3A 5TP" – position och statistik kan väljas bort. */
+/** "Jerry Paasovaara (LW) 2G 3A 5P" – position och statistik kan väljas bort. */
 export function starLine(c: StarCandidate, opts: { position?: boolean; stats?: boolean } = {}): string {
   const pos = opts.position === false ? "" : starPositionLabel(c.position);
   const who = c.number ? `${c.name} #${c.number}` : c.name;

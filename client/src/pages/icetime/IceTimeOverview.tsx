@@ -229,7 +229,7 @@ function ScenarioCard({
           <PositionPill
             icon={Shield}
             count={s.backs}
-            label="B"
+            label="D"
             colorClass="bg-sky-400/10 text-sky-400 border-sky-400/20"
           />
           <PositionPill

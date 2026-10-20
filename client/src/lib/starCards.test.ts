@@ -5,7 +5,7 @@ const c = (o = {}) => ({ key: "p", name: "Kalle", team: "white" as const, positi
 
 describe("Stars of the Game-kort", () => {
   it("matchens siffror: utespelare med GWG och målvakt", () => {
-    expect(starMatchCells(c(), true).map((x) => `${x.label}=${x.value}`)).toEqual(["G=2", "A=1", "PTS=3", "GWG=1"]);
+    expect(starMatchCells(c(), true).map((x) => `${x.label}=${x.value}`)).toEqual(["G=2", "A=1", "P=3", "GWG=1"]);
     expect(starMatchCells(c({ gwg: false }), true)).toHaveLength(3);
     expect(starMatchCells(c({ position: "MV", goalsAgainst: 0 }), true).map((x) => `${x.label}=${x.value}`)).toEqual(["GA=0", "SO=1", "RES=W"]);
   });

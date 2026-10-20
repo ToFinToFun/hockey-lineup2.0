@@ -215,3 +215,5 @@ export function attendanceAfterSync(p: Player, registered: boolean, declined: bo
   }
   return { isRegistered: false, isDeclined: false, registeredLocal: undefined };
 }
+
+export { posLabel } from "@shared/positions";

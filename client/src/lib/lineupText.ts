@@ -1,3 +1,4 @@
+import { posLabel } from "@shared/positions";
 /**
  * Laguppställningen som ren text, för att klistra in i chatt (t.ex. lagets gruppchatt).
  * Används av både Score Tracker och Lineup.
@@ -51,7 +52,8 @@ export function generateLineupText(
         for (const slot of filledInGroup) {
           const p = lineup[slot.id];
           if (!p) continue;
-          const pos = b(slot.shortLabel) + " ".repeat(Math.max(0, 3 - slot.shortLabel.length));
+          const label = posLabel(slot.shortLabel);
+          const pos = b(label) + " ".repeat(Math.max(0, 3 - label.length));
           const captain = p.captainRole ? ` ${b(`(${p.captainRole})`)}` : "";
           const num = p.number ? ` #${txt(p.number)}` : "";
           lines.push(`${pos}  ${txt(p.name)}${num}${captain}`);

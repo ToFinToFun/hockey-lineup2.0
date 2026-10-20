@@ -1,3 +1,4 @@
+import { wlt } from "@shared/statAbbr";
 /**
  * Statistik → Motståndare: resultat mot varje lag vi mött (V/O/F, målskillnad,
  * senaste mötet), våra bästa poänggörare mot laget och deras målskyttar mot oss.
@@ -40,7 +41,7 @@ export function OpponentsTab({ dateFilter }: { dateFilter: Range }) {
               <span className="flex-1 min-w-0">
                 <span className="block text-sm font-semibold text-white truncate">{r.name}</span>
                 <span className="block text-[11px] text-white/45">
-                  {r.matches} {r.matches === 1 ? "match" : "matcher"} · {r.wins}–{r.draws}–{r.losses} · mål {r.goalsFor}–{r.goalsAgainst} ({diff >= 0 ? "+" : ""}{diff})
+                  {r.matches} GP · <span title="W-L-T">{wlt(r.wins, r.losses, r.draws)}</span> · mål {r.goalsFor}–{r.goalsAgainst} ({diff >= 0 ? "+" : ""}{diff})
                 </span>
               </span>
               {isOpen ? <ChevronUp size={16} className="text-white/40" /> : <ChevronDown size={16} className="text-white/40" />}
@@ -71,7 +72,7 @@ function ScorerList({ title, lines, empty = "Inga poäng" }: { title: string; li
         initial={5}
         empty={empty}
         columns={[
-          { key: "m", label: "M", title: "Mål", value: (r) => r.goals },
+          { key: "m", label: "G", title: "Mål", value: (r) => r.goals },
           { key: "a", label: "A", title: "Assist", value: (r) => r.assists },
           { key: "p", label: "P", title: "Poäng", value: (r) => r.points },
         ]}

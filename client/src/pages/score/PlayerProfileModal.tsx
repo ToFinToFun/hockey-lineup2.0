@@ -1,3 +1,4 @@
+import { posLabel } from "@shared/positions";
 import { CardThumb } from "@/components/CardThumb";
 import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
 import { POSITION_COLORS } from "@/lib/positionColors";
@@ -56,15 +57,15 @@ export default function PlayerProfileModal({ playerName, onClose }: PlayerProfil
             <div className="grid grid-cols-3 gap-2">
               <div className="bg-[#2a2a2a] rounded-xl p-3 text-center border border-[#3a3a3a]">
                 <div className="text-[#0a7ea4] text-xl font-bold">{profile.matchesPlayed}</div>
-                <div className="text-[#687076] text-[10px] uppercase">Matcher</div>
+                <div className="text-[#687076] text-[10px] uppercase" title="Spelade matcher">GP</div>
               </div>
               <div className="bg-[#2a2a2a] rounded-xl p-3 text-center border border-[#3a3a3a]">
                 <div className="text-[#22C55E] text-xl font-bold">{profile.wins}</div>
-                <div className="text-[#687076] text-[10px] uppercase">Vinster</div>
+                <div className="text-[#687076] text-[10px] uppercase" title="Vinster">W</div>
               </div>
               <div className="bg-[#2a2a2a] rounded-xl p-3 text-center border border-[#3a3a3a]">
                 <div className="text-[#F59E0B] text-xl font-bold">{profile.winRate}%</div>
-                <div className="text-[#687076] text-[10px] uppercase">Vinstprocent</div>
+                <div className="text-[#687076] text-[10px] uppercase" title="Andel vinster">W%</div>
               </div>
             </div>
 
@@ -80,11 +81,11 @@ export default function PlayerProfileModal({ playerName, onClose }: PlayerProfil
               </div>
               <div className="bg-[#2a2a2a] rounded-lg p-2 text-center border border-[#3a3a3a]">
                 <div className="text-[#EF4444] text-sm font-bold">{profile.losses}</div>
-                <div className="text-[#687076] text-[9px] uppercase">Förluster</div>
+                <div className="text-[#687076] text-[9px] uppercase" title="Förluster">L</div>
               </div>
               <div className="bg-[#2a2a2a] rounded-lg p-2 text-center border border-[#3a3a3a]">
                 <div className="text-[#9BA1A6] text-sm font-bold">{profile.draws}</div>
-                <div className="text-[#687076] text-[9px] uppercase">Oavgjort</div>
+                <div className="text-[#687076] text-[9px] uppercase" title="Oavgjorda">T</div>
               </div>
             </div>
 
@@ -95,21 +96,21 @@ export default function PlayerProfileModal({ playerName, onClose }: PlayerProfil
                   <Target size={12} className="text-[#0a7ea4]" />
                   <span className="text-[#0a7ea4] text-xl font-bold">{profile.totalGoals}</span>
                 </div>
-                <div className="text-[#687076] text-[10px] uppercase">Mål</div>
+                <div className="text-[#687076] text-[10px] uppercase" title="Mål">G</div>
               </div>
               <div className="bg-[#2a2a2a] rounded-xl p-3 text-center border border-[#3a3a3a]">
                 <div className="flex items-center justify-center gap-1">
                   <TrendingUp size={12} className="text-[#0a7ea4]" />
                   <span className="text-[#0a7ea4] text-xl font-bold">{profile.totalAssists}</span>
                 </div>
-                <div className="text-[#687076] text-[10px] uppercase">Assist</div>
+                <div className="text-[#687076] text-[10px] uppercase" title="Assist">A</div>
               </div>
               <div className="bg-[#2a2a2a] rounded-xl p-3 text-center border border-[#3a3a3a]">
                 <div className="flex items-center justify-center gap-1">
                   <Trophy size={12} className="text-[#0a7ea4]" />
                   <span className="text-[#0a7ea4] text-xl font-bold">{profile.totalGoals + profile.totalAssists}</span>
                 </div>
-                <div className="text-[#687076] text-[10px] uppercase">Poäng</div>
+                <div className="text-[#687076] text-[10px] uppercase" title="Poäng (mål + assist)">P</div>
               </div>
               <div className="bg-[#2a2a2a] rounded-xl p-3 text-center border border-[#F59E0B]/30">
                 <div className="flex items-center justify-center gap-1">
@@ -179,7 +180,7 @@ export default function PlayerProfileModal({ playerName, onClose }: PlayerProfil
                     </div>
                     {/* Points */}
                     <div className="text-right flex-shrink-0">
-                      <div className="text-[#F59E0B] text-lg font-bold">{profile.bestMatch.points}p</div>
+                      <div className="text-[#F59E0B] text-lg font-bold">{profile.bestMatch.points} P</div>
                       <div className="text-[#687076] text-[9px]">
                         {profile.bestMatch.goals}G {profile.bestMatch.assists}A
                       </div>
@@ -198,16 +199,16 @@ export default function PlayerProfileModal({ playerName, onClose }: PlayerProfil
                 <div className="space-y-1.5">
                   {profile.positionStats.map((ps) => {
                     const posColor = positionColors[ps.position] || '#687076';
-                    const posLabel = positionLabels[ps.position] || ps.position;
+                    const posName = positionLabels[ps.position] || ps.position;
                     return (
                       <div key={ps.position} className="flex items-center gap-2">
                         <span
                           className="text-[10px] font-bold px-2 py-0.5 rounded w-10 text-center flex-shrink-0"
                           style={{ backgroundColor: `${posColor}20`, color: posColor }}
                         >
-                          {ps.position}
+                          {posLabel(ps.position)}
                         </span>
-                        <span className="text-[#9BA1A6] text-xs flex-shrink-0 w-24">{posLabel}</span>
+                        <span className="text-[#9BA1A6] text-xs flex-shrink-0 w-24">{posName}</span>
                         <div className="flex-1 h-3 bg-[#3a3a3a] rounded-full overflow-hidden">
                           <div
                             className="h-full rounded-full transition-all"
@@ -446,7 +447,7 @@ export default function PlayerProfileModal({ playerName, onClose }: PlayerProfil
               <div className="space-y-1">
                 {profile.matchHistory.map((match, i) => {
                   const resultColor = match.result === 'win' ? '#22C55E' : match.result === 'loss' ? '#EF4444' : '#9BA1A6';
-                  const resultText = match.result === 'win' ? 'V' : match.result === 'loss' ? 'F' : 'O';
+                  const resultText = match.result === 'win' ? 'W' : match.result === 'loss' ? 'L' : 'T';
                   const teamColor = match.team === 'green' ? '#22C55E' : '#ECEDEE';
                   const posColor = positionColors[match.position] || '#687076';
 
@@ -476,7 +477,7 @@ export default function PlayerProfileModal({ playerName, onClose }: PlayerProfil
                                 className="text-[9px] font-bold px-1.5 py-0.5 rounded"
                                 style={{ backgroundColor: `${posColor}20`, color: posColor }}
                               >
-                                {match.position}
+                                {posLabel(match.position)}
                               </span>
                             )}
                           </div>

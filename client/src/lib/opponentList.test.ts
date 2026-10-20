@@ -20,7 +20,7 @@ describe("motståndaren som lista", () => {
   it("nyhetstexten listar spelarna med position och nummer", () => {
     const { slots, lineup } = listAsSlots(players);
     const text = generateLineupText({ teamAName: "OSS", teamBName: "DEM" } as never, [], slots, {}, lineup);
-    expect(text).toContain("MV   Målis #1");
+    expect(text).toContain("G    Målis #1");
     expect(text).toContain("F    Fwd Ett #17");
   });
   it("listan sparas i matchinställningen", () => {

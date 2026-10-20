@@ -1,3 +1,4 @@
+import { posLabel } from "@shared/positions";
 /**
  * Motståndarens sida via delningslänk (/lag/:token) – ingen inloggning.
  * Laget fyller i namn, logga, färg och spelare och gör sin uppställning.
@@ -105,7 +106,7 @@ export default function OpponentLinkPage() {
           <div className="grid grid-cols-[1fr_3.5rem_4.5rem_2.25rem] gap-1.5">
             <input value={np.name} onChange={(e) => setNp({ ...np, name: e.target.value })} onKeyDown={(e) => { if (e.key === "Enter") add(); }} placeholder="Namn" maxLength={80} className={input} />
             <input value={np.number} onChange={(e) => setNp({ ...np, number: e.target.value.replace(/\D/g, "").slice(0, 3) })} onKeyDown={(e) => { if (e.key === "Enter") add(); }} placeholder="Nr" inputMode="numeric" className={`${input} text-center`} />
-            <select value={np.position} onChange={(e) => setNp({ ...np, position: e.target.value })} className={input}>{POSITIONS.map((p) => <option key={p} value={p} className="text-black">{p || "–"}</option>)}</select>
+            <select value={np.position} onChange={(e) => setNp({ ...np, position: e.target.value })} className={input}>{POSITIONS.map((p) => <option key={p} value={p} className="text-black">{posLabel(p) || "–"}</option>)}</select>
             <button onClick={add} disabled={!np.name.trim()} aria-label="Lägg till spelare" className="rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center disabled:opacity-40"><Plus size={16} /></button>
           </div>
           <ul className="space-y-1">
@@ -113,7 +114,7 @@ export default function OpponentLinkPage() {
               <li key={p.id} className="grid grid-cols-[1fr_3.5rem_4.5rem_2.25rem] gap-1.5 items-center">
                 <input defaultValue={p.name} onBlur={(e) => { if (e.target.value.trim() && e.target.value !== p.name) updatePlayer.mutate({ token, id: p.id, name: e.target.value }); }} className={input} />
                 <input defaultValue={p.number ?? ""} onBlur={(e) => { if (e.target.value !== (p.number ?? "")) updatePlayer.mutate({ token, id: p.id, number: e.target.value || null }); }} inputMode="numeric" className={`${input} text-center`} />
-                <select value={p.position ?? ""} onChange={(e) => updatePlayer.mutate({ token, id: p.id, position: (e.target.value || null) as never })} className={input}>{POSITIONS.map((x) => <option key={x} value={x} className="text-black">{x || "–"}</option>)}</select>
+                <select value={p.position ?? ""} onChange={(e) => updatePlayer.mutate({ token, id: p.id, position: (e.target.value || null) as never })} className={input}>{POSITIONS.map((x) => <option key={x} value={x} className="text-black">{posLabel(x) || "–"}</option>)}</select>
                 <button onClick={() => { if (confirm(`Ta bort ${p.name}?`)) deletePlayer.mutate({ token, id: p.id }); }} aria-label="Ta bort" className="text-red-300/60 hover:text-red-300 flex items-center justify-center"><Trash2 size={14} /></button>
               </li>
             ))}
@@ -145,7 +146,7 @@ export default function OpponentLinkPage() {
                 <div className="p-2.5 space-y-1">
                   {sortList(d.ours.players).map((p, i) => (
                     <div key={i} className="flex items-center gap-1.5 rounded-lg bg-white/[0.04] border border-white/10 px-1.5 py-1 min-h-[34px]">
-                      <span className="pos-badge pos-badge-sm shrink-0">{(p.position || "F").toUpperCase()}</span>
+                      <span className="pos-badge pos-badge-sm shrink-0">{posLabel((p.position || "F").toUpperCase())}</span>
                       <span className="flex-1 min-w-0 truncate text-xs text-white">{p.name}{p.number ? <span className="text-white/40"> #{p.number}</span> : null}</span>
                     </div>
                   ))}

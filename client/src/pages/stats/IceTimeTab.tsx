@@ -13,7 +13,7 @@ type SortKey = "minutes" | "perMatch" | "p60" | "matches";
 type GkSort = "mv" | "ga60" | "shutouts" | "gkMatches" | "gkWins";
 
 const POS: Array<{ key: "MV" | "B" | "C" | "F"; label: string }> = [
-  { key: "MV", label: "MV" }, { key: "B", label: "B" }, { key: "C", label: "C" }, { key: "F", label: "F" },
+  { key: "MV", label: "G" }, { key: "B", label: "D" }, { key: "C", label: "C" }, { key: "F", label: "F" },
 ];
 
 /** "12 h 05 min" / "45 min" */
@@ -79,7 +79,7 @@ export function IceTimeTab({ input, view: fixedView }: { input: Input; view?: "s
       {viewSwitch}
       <div className="flex items-center gap-1.5 flex-wrap">
         <span className="text-[10px] text-white/40 mr-1">Sortera:</span>
-        {gkChip("gkWins", "Vinster")}{gkChip("ga60", "Insl./60")}{gkChip("shutouts", "Nollor")}{gkChip("mv", "Tid i mål")}{gkChip("gkMatches", "Matcher")}
+        {gkChip("gkWins", "W")}{gkChip("ga60", "GAA")}{gkChip("shutouts", "SO")}{gkChip("mv", "TOI")}{gkChip("gkMatches", "GP")}
       </div>
       {goalies.length === 0 ? <p className="text-sm text-white/45 text-center py-8">Inga målvakter under perioden.</p> : (
         <div className="rounded-xl bg-[#161616] border border-white/10 overflow-hidden">
@@ -87,12 +87,12 @@ export function IceTimeTab({ input, view: fixedView }: { input: Input; view?: "s
             <thead>
               <tr className="text-white/40 text-[10px] border-b border-white/5">
                 <th className="text-left font-medium px-3 py-2">Målvakt</th>
-                <th className="font-medium w-8">M</th>
-                <th className="font-medium w-8" title="Vinster (målvaktens lag vann)">V</th>
-                <th className="font-medium text-right pr-2">Tid i mål</th>
-                <th className="font-medium w-10" title="Insläppta mål (fördelade efter tid i mål)">Insl.</th>
-                <th className="font-medium w-12" title="Insläppta mål per 60 minuter i mål">/60</th>
-                <th className="font-medium w-10 pr-3" title="Hållna nollor (ensam i målet, inga insläppta)">Nollor</th>
+                <th className="font-medium w-8" title="Matcher i mål">GP</th>
+                <th className="font-medium w-8" title="Vinster (målvaktens lag vann)">W</th>
+                <th className="font-medium text-right pr-2" title="Tid i mål">TOI</th>
+                <th className="font-medium w-10" title="Insläppta mål (fördelade efter tid i mål)">GA</th>
+                <th className="font-medium w-12" title="Insläppta mål per 60 minuter i mål">GAA</th>
+                <th className="font-medium w-10 pr-3" title="Hållna nollor (ensam i målet, inga insläppta)">SO</th>
               </tr>
             </thead>
             <tbody>
@@ -111,7 +111,7 @@ export function IceTimeTab({ input, view: fixedView }: { input: Input; view?: "s
           </table>
         </div>
       )}
-      <p className="text-[10px] text-white/40">Delar två målvakter på matchen fördelas de insläppta målen efter hur länge var och en stod (uppskattat, som speltiden). /60 visas efter minst 30 minuter i mål.</p>
+      <p className="text-[10px] text-white/40">Delar två målvakter på matchen fördelas de insläppta målen efter hur länge var och en stod (uppskattat, som speltiden). GAA (insläppta per 60 minuter) visas efter minst 30 minuter i mål.</p>
     </div>
   );
 
@@ -120,16 +120,16 @@ export function IceTimeTab({ input, view: fixedView }: { input: Input; view?: "s
       {viewSwitch}
       <div className="flex items-center gap-1.5 flex-wrap">
         <span className="text-[10px] text-white/40 mr-1">Sortera:</span>
-        {chip("minutes", "Total tid")}{chip("perMatch", "Snitt/match")}{chip("p60", "P/60")}{chip("matches", "Matcher")}
+        {chip("minutes", "TOI")}{chip("perMatch", "TOI/GP")}{chip("p60", "P/60")}{chip("matches", "GP")}
       </div>
       <div className="rounded-xl bg-[#161616] border border-white/10 overflow-hidden">
         <table className="w-full text-xs">
           <thead>
             <tr className="text-white/40 text-[10px] border-b border-white/5">
               <th className="text-left font-medium px-3 py-2">Spelare</th>
-              <th className="font-medium w-8">M</th>
-              <th className="font-medium text-right pr-2">Tid</th>
-              <th className="font-medium w-12">Snitt</th>
+              <th className="font-medium w-8" title="Spelade matcher">GP</th>
+              <th className="font-medium text-right pr-2" title="Speltid totalt">TOI</th>
+              <th className="font-medium w-12" title="Speltid per match">TOI/GP</th>
               <th className="font-medium w-12 pr-3" title="Poäng per 60 minuter speltid">P/60</th>
             </tr>
           </thead>

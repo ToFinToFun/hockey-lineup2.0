@@ -20,7 +20,7 @@ describe("fler rekord", () => {
     expect(by.comeback).toMatchObject({ value: "Från 2 måls underläge", who: "Vita" });
     expect(by.fastest).toMatchObject({ value: "Efter 2 min", who: "S0" });
     expect(by.streak_white).toMatchObject({ value: "3 vinster i rad" });
-    expect(by.shutouts).toMatchObject({ who: "Målis", value: "2 nollor" });
+    expect(by.shutouts).toMatchObject({ who: "Målis", value: "2 SO" });
     expect(by.ga60).toMatchObject({ who: "Målis" });
   });
 

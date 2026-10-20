@@ -47,8 +47,8 @@ type SortDir = "asc" | "desc";
 
 const positionFilters: { label: string; value: PosFilter }[] = [
   { label: "Alla", value: "Alla" },
-  { label: "MV", value: "MV" },
-  { label: "B", value: "B" },
+  { label: "G", value: "MV" },
+  { label: "D", value: "B" },
   { label: "F", value: "F" },
   { label: "C", value: "C" },
   { label: "IB", value: "IB" },

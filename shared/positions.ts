@@ -24,3 +24,10 @@ export const POSITION_BASE_COLORS: Record<PositionCode, string> = {
 
 /** Spelare utan lag */
 export const WAIVERS = { name: "Waivers", shortName: "W", color: "#8c8c8c" } as const;
+
+/**
+ * Positionerna som de VISAS (NHL): G, D, C, F, LW, RW. Koderna i databasen är oförändrade (MV, B …).
+ * Använd posLabel() överallt där en position skrivs ut.
+ */
+export const POSITION_ABBR: Record<string, string> = { MV: "G", RES: "G", B: "D", C: "C", F: "F", LW: "LW", RW: "RW", IB: "IB" };
+export const posLabel = (code: string | null | undefined): string => (code ? (POSITION_ABBR[code] ?? code) : "");

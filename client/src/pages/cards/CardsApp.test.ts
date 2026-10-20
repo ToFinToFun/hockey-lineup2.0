@@ -9,16 +9,16 @@ describe("hockeykort", () => {
   it("statistikrutan för utespelare och målvakt", () => {
     const skater = cellsFor("season", { season: line(), career: line({ label: "Totalt", matches: 30 }), form: "VVF", isGoalie: false });
     expect(skater.title).toBe("Säsong 2026/27");
-    expect(skater.cells.map((c) => c.label)).toEqual(["GP", "G", "A", "PTS", "W%"]);
+    expect(skater.cells.map((c) => c.label)).toEqual(["GP", "G", "A", "P", "W%"]);
     expect(skater.cells[3].value).toBe("12");
     const gk = cellsFor("career", { season: line(), career: line({ label: "Totalt", goalie: { matches: 8, gaa: 2.25, shutouts: 2, ga60: 2.67, winPct: 75 } }), form: "", isGoalie: true });
     expect(gk.title).toBe("Totalt");
-    expect(gk.cells.map((c) => c.label)).toEqual(["GP", "SO", "GAA", "/60", "W%"]);
-    expect(gk.cells.find((c) => c.label === "/60")?.value).toBe("2,7");
+    expect(gk.cells.map((c) => c.label)).toEqual(["GP", "SO", "GAA", "GA/GP", "W%"]);
+    expect(gk.cells.find((c) => c.label === "GAA")?.value).toBe("2,7");
     expect(gk.cells.find((c) => c.label === "W%")?.value).toBe("75%");
     // Målvakt som inte stått i mål än: målvaktsrutor ändå
     const fresh = cellsFor("season", { season: line({ goalie: null }), career: line(), form: "", isGoalie: true });
-    expect(fresh.cells.map((c) => `${c.label}=${c.value}`)).toEqual(["GP=0", "SO=–", "GAA=–", "/60=–", "W%=–"]);
+    expect(fresh.cells.map((c) => `${c.label}=${c.value}`)).toEqual(["GP=0", "SO=–", "GAA=–", "GA/GP=–", "W%=–"]);
     expect(cellsFor("none", undefined).cells).toEqual([]);
   });
 
@@ -101,7 +101,7 @@ describe("kortets perioder", () => {
     const stats = { season: l(), career: l({ label: "Totalt" }), playoff: l({ label: "Slutspel 2026/27", matches: 2, goals: 1, assists: 1, points: 2 }), form: "", isGoalie: false };
     const po = cellsFor("playoff", stats as never);
     expect(po.title).toBe("Slutspel 2026/27");
-    expect(po.cells.find((c) => c.label === "PTS")?.value).toBe("2");
+    expect(po.cells.find((c) => c.label === "P")?.value).toBe("2");
     const pre = cellsFor("preseason", stats as never);
     expect(pre.title).toBe("Försäsong 2026/27");
     expect(pre.cells.find((c) => c.label === "GP")?.value).toBe("0");

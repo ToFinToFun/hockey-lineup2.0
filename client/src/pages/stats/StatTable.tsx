@@ -4,6 +4,7 @@
  */
 import { useMemo, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { statTitle } from "@shared/statAbbr";
 
 export interface StatColumn<T> {
   key: string;
@@ -70,7 +71,7 @@ export function StatTable<T>({ rows, columns, name, nameLabel = "Spelare", rowKe
               {columns.map((c) => {
                 const active = sort.key === c.key;
                 return (
-                  <th key={c.key} title={c.title} className={`font-medium px-1.5 py-2 whitespace-nowrap ${c.className ?? "text-center"}`}>
+                  <th key={c.key} title={c.title ?? statTitle(c.label)} className={`font-medium px-1.5 py-2 whitespace-nowrap ${c.className ?? "text-center"}`}>
                     <button onClick={() => click(c)} className={`inline-flex items-center gap-0.5 ${active ? "text-sky-300" : "hover:text-white/70"}`}>
                       {c.label}
                       {active && (sort.dir === "desc" ? <ChevronDown size={11} /> : <ChevronUp size={11} />)}

@@ -1,3 +1,5 @@
+import { statTitle } from "@shared/statAbbr";
+import { posLabel } from "@shared/positions";
 /**
  * TeamsTab – Team comparison (Vita vs Gröna) with visual bars + Head-to-Head player comparison
  */
@@ -89,7 +91,7 @@ function H2HStatBar({
           {val1}
           {suffix}
         </span>
-        <span className="text-[#687076]">{label}</span>
+        <span className="text-[#687076]" title={statTitle(label)}>{label}</span>
         <span className={p2Better ? "text-[#F59E0B] font-bold" : ""}>
           {val2}
           {suffix}
@@ -274,7 +276,7 @@ function HeadToHeadSection({ dateFilter }: { dateFilter?: { from?: string; to?: 
                 <div className="flex justify-around items-center py-3 bg-[#0a0a0a] rounded-xl">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-[#0a7ea4]">{h2h.player1.winRate}%</div>
-                    <div className="text-[10px] text-[#687076] uppercase">Vinst%</div>
+                    <div className="text-[10px] text-[#687076] uppercase" title="Andel vinster">W%</div>
                   </div>
                   <div className="text-center">
                     <Trophy size={20} className="text-amber-400 mx-auto mb-1" />
@@ -282,18 +284,18 @@ function HeadToHeadSection({ dateFilter }: { dateFilter?: { from?: string; to?: 
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-[#F59E0B]">{h2h.player2.winRate}%</div>
-                    <div className="text-[10px] text-[#687076] uppercase">Vinst%</div>
+                    <div className="text-[10px] text-[#687076] uppercase" title="Andel vinster">W%</div>
                   </div>
                 </div>
 
                 {/* Stat bars */}
                 <div className="bg-[#0a0a0a] rounded-xl p-4">
-                  <H2HStatBar label="Matcher" val1={h2h.player1.matchesPlayed} val2={h2h.player2.matchesPlayed} />
-                  <H2HStatBar label="Vinster" val1={h2h.player1.wins} val2={h2h.player2.wins} />
-                  <H2HStatBar label="Förluster" val1={h2h.player1.losses} val2={h2h.player2.losses} higherIsBetter={false} />
-                  <H2HStatBar label="Mål" val1={h2h.player1.goals} val2={h2h.player2.goals} />
-                  <H2HStatBar label="Assist" val1={h2h.player1.assists} val2={h2h.player2.assists} />
-                  <H2HStatBar label="Poäng" val1={h2h.player1.points} val2={h2h.player2.points} />
+                  <H2HStatBar label="GP" val1={h2h.player1.matchesPlayed} val2={h2h.player2.matchesPlayed} />
+                  <H2HStatBar label="W" val1={h2h.player1.wins} val2={h2h.player2.wins} />
+                  <H2HStatBar label="L" val1={h2h.player1.losses} val2={h2h.player2.losses} higherIsBetter={false} />
+                  <H2HStatBar label="G" val1={h2h.player1.goals} val2={h2h.player2.goals} />
+                  <H2HStatBar label="A" val1={h2h.player1.assists} val2={h2h.player2.assists} />
+                  <H2HStatBar label="P" val1={h2h.player1.points} val2={h2h.player2.points} />
                   <H2HStatBar label={teamName("white")} val1={h2h.player1.matchesWhite} val2={h2h.player2.matchesWhite} />
                   <H2HStatBar label={teamName("green")} val1={h2h.player1.matchesGreen} val2={h2h.player2.matchesGreen} />
                 </div>
@@ -310,9 +312,9 @@ function HeadToHeadSection({ dateFilter }: { dateFilter?: { from?: string; to?: 
                           Samma lag ({h2h.player1.sameTeamMatches} matcher)
                         </p>
                         <div className="flex gap-3 text-xs">
-                          <span className="text-emerald-400 font-medium">{h2h.sameTeamRecord.wins}V</span>
-                          <span className="text-red-400">{h2h.sameTeamRecord.losses}F</span>
-                          <span className="text-[#9BA1A6]">{h2h.sameTeamRecord.draws}O</span>
+                          <span className="text-emerald-400 font-medium">{h2h.sameTeamRecord.wins} W</span>
+                          <span className="text-red-400">{h2h.sameTeamRecord.losses} L</span>
+                          <span className="text-[#9BA1A6]">{h2h.sameTeamRecord.draws} T</span>
                         </div>
                       </div>
                     )}
@@ -354,7 +356,7 @@ function HeadToHeadSection({ dateFilter }: { dateFilter?: { from?: string; to?: 
                                   className="w-1.5 h-1.5 rounded-full"
                                   style={{ backgroundColor: posColor }}
                                 />
-                                {pos}
+                                {posLabel(pos)}
                               </span>
                               <span>{count}x</span>
                             </div>
@@ -405,21 +407,21 @@ function TeamStatCard({
 
       <div className="grid grid-cols-2 gap-3">
         {[
-          { label: "Vinster", value: data.wins, icon: Trophy },
-          { label: "Mål", value: data.goals, icon: Target },
-          { label: "Mål/match", value: data.goalsPerMatch, icon: Target },
-          { label: "Nollor", value: data.cleanSheets, icon: HockeyGoal },
+          { label: "W", value: data.wins, icon: Trophy },
+          { label: "G", value: data.goals, icon: Target },
+          { label: "G/GP", value: data.goalsPerMatch, icon: Target },
+          { label: "SO", value: data.cleanSheets, icon: HockeyGoal },
           { label: "GWG", value: data.gwg, icon: Flame },
-          { label: "Vinstprocent", value: `${data.winRate}%`, icon: Trophy },
+          { label: "W%", value: `${data.winRate}%`, icon: Trophy },
           { label: "Unika spelare", value: data.uniquePlayers, icon: Users },
-          { label: "Poäng/match", value: data.pointsPerMatch, icon: Target },
+          { label: "P/GP", value: data.pointsPerMatch, icon: Target },
         ].map((stat) => {
           const Icon = stat.icon;
           return (
             <div key={stat.label} className="flex items-center gap-2">
               <Icon size={12} style={{ color }} className="opacity-50 flex-shrink-0" />
               <div>
-                <p className="text-[#687076] text-[9px] uppercase tracking-wider">{stat.label}</p>
+                <p className="text-[#687076] text-[9px] uppercase tracking-wider" title={statTitle(stat.label)}>{stat.label}</p>
                 <p className="text-[#ECEDEE] text-sm font-bold">{stat.value}</p>
               </div>
             </div>

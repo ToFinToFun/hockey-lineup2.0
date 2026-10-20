@@ -1,3 +1,4 @@
+import { posLabel } from "@shared/positions";
 /**
  * Motståndarens lag i uppställningen (lag B mot motståndare). Platserna fylls
  * genom att välja bland lagets sparade spelare – eller lägga till en ny direkt.
@@ -95,7 +96,7 @@ export function OpponentTeamPanel({ teamName, logoUrl, color, config, lineup, ro
               <button key={r.id} onClick={() => onListChange?.(on ? listIds!.filter((x) => x !== r.id) : [...listIds!, r.id])}
                 className={`w-full flex items-center gap-1.5 rounded-lg border px-1.5 py-1 min-h-[34px] text-left ${on ? "bg-white/[0.08] border-white/25" : "bg-white/[0.02] border-white/10 opacity-60"}`}>
                 <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] ${on ? "bg-emerald-500/70 border-emerald-300 text-white" : "border-white/30"}`}>{on ? "✓" : ""}</span>
-                <span className={`pos-badge pos-badge-sm ${BADGE[pos === "LW" || pos === "RW" ? "F" : pos] ?? ""} shrink-0`}>{pos}</span>
+                <span className={`pos-badge pos-badge-sm ${BADGE[pos === "LW" || pos === "RW" ? "F" : pos] ?? ""} shrink-0`}>{posLabel(pos)}</span>
                 <span className="flex-1 min-w-0 truncate text-xs text-white">{r.name}{r.number ? <span className="text-white/40"> #{r.number}</span> : null}</span>
               </button>
             );
@@ -108,7 +109,7 @@ export function OpponentTeamPanel({ teamName, logoUrl, color, config, lineup, ro
               <input value={listNew.number} onChange={(e) => setListNew({ ...listNew, number: e.target.value.replace(/\D/g, "").slice(0, 3) })} onKeyDown={(e) => { if (e.key === "Enter") void addToList(); }}
                 placeholder="Nr" inputMode="numeric" className="w-10 rounded bg-white/5 border border-white/15 text-xs text-white px-1 py-1 text-center" />
               <select value={listNew.position} onChange={(e) => setListNew({ ...listNew, position: e.target.value })} aria-label="Position" className="rounded bg-white/5 border border-white/15 text-xs text-white px-1 py-1">
-                {["MV", "B", "C", "F"].map((p) => <option key={p} value={p} className="text-black">{p}</option>)}
+                {["MV", "B", "C", "F"].map((p) => <option key={p} value={p} className="text-black">{posLabel(p)}</option>)}
               </select>
               <button onClick={() => void addToList()} className="px-1.5 rounded bg-emerald-500/30 text-emerald-200 text-xs">OK</button>
             </div>
@@ -125,7 +126,7 @@ export function OpponentTeamPanel({ teamName, logoUrl, color, config, lineup, ro
                 const pos = POS_FOR_SLOT(slot.type, slot.shortLabel);
                 return (
                   <div key={slot.id} className="flex items-center gap-1.5 rounded-lg bg-white/[0.04] border border-white/10 px-1.5 py-1 min-h-[34px]">
-                    <span className={`pos-badge pos-badge-sm ${BADGE[pos] ?? ""} shrink-0`}>{slot.shortLabel}</span>
+                    <span className={`pos-badge pos-badge-sm ${BADGE[pos] ?? ""} shrink-0`}>{posLabel(slot.shortLabel)}</span>
                     {p ? (
                       <>
                         <span className="flex-1 min-w-0 truncate text-xs text-white">{p.name}{p.number ? <span className="text-white/40"> #{p.number}</span> : null}</span>

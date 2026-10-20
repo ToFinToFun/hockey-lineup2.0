@@ -7,6 +7,14 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.5.0 – 2026-10-21
+
+- **Samma förkortningar överallt (NHL):** GP, G, A, P, P/GP, GWG, P/60, TOI, TOI/GP, W-L-T och W% för utespelare; GP, W, GA, GAA (insläppta per 60 min, tidigare "/60"), GA/GP, SO och TOI för målvakter. Gäller statistiken, spelarprofilen, spelarkortet, Score Tracker, Live, utmärkelser, hockeykort, Media-bilder och videor. Svensk förklaring när man håller över en förkortning; rubriker och löptext är kvar på svenska.
+- **Positionerna visas som G, D, C, F, LW, RW** (IB som förut). I databasen och registret är koderna oförändrade (MV, B …), och import tar emot både G/D och MV/B.
+- **Resultat som W/L/T** i formrutor och matchloggar, och rekord i NHL-ordning W-L-T.
+- Matchens stjärnor: "2G 1A 3P" (tidigare TP), positioner i texten som LW/RW/G.
+- Säkerhet: follow-redirects 1.16.1 (via axios).
+
 ## 3.4.0 – 2026-10-19
 
 - **"Kommer" bara i appen:** spelare som inte finns på laget.se kan sättas som Kommer. Efter varningen frågar appen om markeringen ska göras bara i appen. Spelaren visas då gul (i listan, i uppställningen och på Kommer-knappen), räknas som anmäld av Auto och Auto-lag, och står kvar när anmälningarna hämtas – men bara för det evenemanget. Anmäls spelaren på laget.se blir markeringen grön som vanligt.

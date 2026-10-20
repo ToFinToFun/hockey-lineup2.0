@@ -1,3 +1,4 @@
+import { posLabel } from "@shared/positions";
 /**
  * Inställningar → Motståndare (beta): lag vi spelar mot, med logga, färg och
  * spelare. Sparas så att nästa match mot samma lag är förifylld.
@@ -151,7 +152,7 @@ function OpponentEditor({ id, onBack }: { id: number; onBack: () => void }) {
         <div className="grid grid-cols-[1fr_3.5rem_4.5rem_2.25rem] gap-1.5 mb-2">
           <input ref={nameRef} value={np.name} onChange={(e) => setNp({ ...np, name: e.target.value })} onKeyDown={onEnter} placeholder="Namn" maxLength={80} className={input} />
           <input value={np.number} onChange={(e) => setNp({ ...np, number: e.target.value.replace(/\D/g, "").slice(0, 3) })} onKeyDown={onEnter} placeholder="Nr" inputMode="numeric" className={`${input} text-center`} />
-          <select value={np.position} onChange={(e) => setNp({ ...np, position: e.target.value })} onKeyDown={onEnter} className={input}>{POSITIONS.map((p) => <option key={p} value={p} className="text-black">{p || "–"}</option>)}</select>
+          <select value={np.position} onChange={(e) => setNp({ ...np, position: e.target.value })} onKeyDown={onEnter} className={input}>{POSITIONS.map((p) => <option key={p} value={p} className="text-black">{posLabel(p) || "–"}</option>)}</select>
           <button onClick={add} disabled={!np.name.trim()} aria-label="Lägg till spelare" className="rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center disabled:opacity-40"><Plus size={16} /></button>
         </div>
         <ul className="space-y-1">
@@ -159,7 +160,7 @@ function OpponentEditor({ id, onBack }: { id: number; onBack: () => void }) {
             <li key={p.id} className={`grid grid-cols-[1fr_3.5rem_4.5rem_2.25rem] gap-1.5 items-center ${p.active ? "" : "opacity-50"}`}>
               <input defaultValue={p.name} onBlur={(e) => { if (e.target.value.trim() && e.target.value !== p.name) updatePlayer.mutate({ opponentId: id, id: p.id, name: e.target.value }); }} className={input} />
               <input defaultValue={p.number ?? ""} onBlur={(e) => { if (e.target.value !== (p.number ?? "")) updatePlayer.mutate({ opponentId: id, id: p.id, number: e.target.value || null }); }} inputMode="numeric" className={`${input} text-center`} />
-              <select value={p.position ?? ""} onChange={(e) => updatePlayer.mutate({ opponentId: id, id: p.id, position: (e.target.value || null) as never })} className={input}>{POSITIONS.map((x) => <option key={x} value={x} className="text-black">{x || "–"}</option>)}</select>
+              <select value={p.position ?? ""} onChange={(e) => updatePlayer.mutate({ opponentId: id, id: p.id, position: (e.target.value || null) as never })} className={input}>{POSITIONS.map((x) => <option key={x} value={x} className="text-black">{posLabel(x) || "–"}</option>)}</select>
               <button onClick={() => { if (confirm(`Ta bort ${p.name}?`)) deletePlayer.mutate({ opponentId: id, id: p.id }); }} aria-label="Ta bort" className="text-red-300/60 hover:text-red-300 flex items-center justify-center"><Trash2 size={14} /></button>
             </li>
           ))}

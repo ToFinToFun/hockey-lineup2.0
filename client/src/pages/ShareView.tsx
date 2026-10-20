@@ -1,3 +1,4 @@
+import { posLabel } from "@shared/positions";
 // ShareView – Skrivskyddad vy av en sparad uppställning (SQL/tRPC-version)
 // Design: Industrial Ice Arena – mörk, polerad, läsbar
 
@@ -57,7 +58,7 @@ function SlotRow({ player, label, shortLabel }: { player: Player | undefined; la
       style={{ borderLeftColor: c.border, backgroundColor: c.bg }}>
       <span className="shrink-0 w-7 h-[18px] rounded flex items-center justify-center text-[9px] font-bold"
         style={{ backgroundColor: c.border, color: c.text }}>
-        {shortLabel}
+        {posLabel(shortLabel)}
       </span>
       {player.captainRole && (
         <span className="shrink-0 text-[10px] font-black" style={{ color: CAPTAIN_COLORS[player.captainRole as "C" | "A"] }}>

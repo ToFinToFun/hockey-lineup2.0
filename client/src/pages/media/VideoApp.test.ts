@@ -11,8 +11,8 @@ describe("Media → Video", () => {
   });
   it("stjärnans rad", () => {
     const base = { key: "a", name: "A", number: "1", team: "green" as const, gwg: false, score: 0 };
-    expect(starLine({ ...base, position: "C", goals: 2, assists: 1, goalsAgainst: null })).toBe("2 mål · 1 assist");
-    expect(starLine({ ...base, position: "MV", goals: 0, assists: 0, goalsAgainst: 0 })).toBe("Hållen nolla");
+    expect(starLine({ ...base, position: "C", goals: 2, assists: 1, goalsAgainst: null })).toBe("2G · 1A");
+    expect(starLine({ ...base, position: "MV", goals: 0, assists: 0, goalsAgainst: 0 })).toBe("0 GA · SO");
   });
   it("standardval per kategori och säkra ytan i Reel-läget", () => {
     expect(defaultShow("goal").overlay.score).toBe(true);
@@ -26,11 +26,11 @@ describe("matchens statistik", () => {
   const base = { key: "a", name: "A", number: "1", gwg: false, score: 0 };
   it("utespelare med stjärna", () => {
     const r = matchStatCells({ ...base, team: "green", position: "C", goals: 2, assists: 1, goalsAgainst: null }, { teamWhiteScore: 3, teamGreenScore: 5 }, 1);
-    expect(r.cells.map((c) => `${c.label}:${c.value}`)).toEqual(["G:2", "A:1", "PTS:3", "RES:V", "STJÄRNA:★★★"]);
+    expect(r.cells.map((c) => `${c.label}:${c.value}`)).toEqual(["G:2", "A:1", "P:3", "RES:W", "★:★★★"]);
   });
   it("målvakt utan stjärna", () => {
     const r = matchStatCells({ ...base, team: "white", position: "MV", goals: 0, assists: 0, goalsAgainst: 0 }, { teamWhiteScore: 2, teamGreenScore: 0 }, null);
-    expect(r.cells.map((c) => `${c.label}:${c.value}`)).toEqual(["GA:0", "NOLLA:JA", "RES:V"]);
+    expect(r.cells.map((c) => `${c.label}:${c.value}`)).toEqual(["GA:0", "SO:1", "RES:W"]);
   });
 });
 

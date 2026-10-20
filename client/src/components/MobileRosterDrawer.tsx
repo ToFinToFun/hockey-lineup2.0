@@ -1,3 +1,4 @@
+import { posLabel } from "@shared/positions";
 // Hockey Lineup App – MobileRosterDrawer
 // Trupp-overlay som glider in från höger på mobil
 // Visar spelarlistan med sök, filter och stöd för tap-to-assign med slot-picker
@@ -410,7 +411,7 @@ export function MobileRosterDrawer({
                         : "bg-white/5 text-white/40 border border-white/8 hover:bg-white/10"
                     }`}
                   >
-                    {pos}
+                    {posLabel(pos)}
                   </button>
                 ))}
               </div>
@@ -553,7 +554,7 @@ export function MobileRosterDrawer({
                         )}
                         <TeamColorIndicator teamColor={player.teamColor ?? null} compact mostPlayedTeam={!player.teamColor ? player.mostPlayedTeam : undefined} />
                         <span className={`pos-badge pos-badge-sm ${displayPosition ? `pos-badge-${displayPosition.toLowerCase()}` : "bg-white/10 text-white/40"} shrink-0`} title={displayPosition ? positionName(displayPosition) : "Ingen position"}>
-                          {displayPosition}
+                          {posLabel(displayPosition)}
                         </span>
                         {pirEnabled && pirSettings.showTrend && (() => {
                           const isGk = player.position === 'MV';
@@ -623,7 +624,7 @@ export function MobileRosterDrawer({
             {/* Selected player info */}
             <div className="text-center mb-2">
               <span className={`pos-badge pos-badge-sm pos-badge-${selectedPlayer.position.toLowerCase()} inline-block mb-1`}>
-                {selectedPlayer.position}
+                {posLabel(selectedPlayer.position)}
               </span>
               <div className="text-white font-bold text-base">
                 {selectedPlayer.name}
@@ -658,7 +659,7 @@ export function MobileRosterDrawer({
             {/* Selected player reminder */}
             <div className="flex items-center gap-2 mb-3 px-2 py-1.5 rounded-lg bg-white/5 border border-white/8">
               <span className={`pos-badge pos-badge-sm pos-badge-${selectedPlayer.position.toLowerCase()}`}>
-                {selectedPlayer.position}
+                {posLabel(selectedPlayer.position)}
               </span>
               <span className="text-[11px] text-white/70 font-medium truncate">
                 {selectedPlayer.name}
@@ -712,7 +713,7 @@ export function MobileRosterDrawer({
                         return (
                           <button
                             key={slot.id}
-                            onClick={() => handleSelectSlot(slot.id, `${group.label} — ${slot.shortLabel}`)}
+                            onClick={() => handleSelectSlot(slot.id, `${group.label} — ${posLabel(slot.shortLabel)}`)}
                             className={`
                               w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-all
                               ${isMatch
@@ -724,7 +725,7 @@ export function MobileRosterDrawer({
                             <span className={`text-[10px] font-bold w-6 text-center ${
                               isMatch ? "text-emerald-300" : "text-white/50"
                             }`}>
-                              {slot.shortLabel}
+                              {posLabel(slot.shortLabel)}
                             </span>
                             <span className={`text-[10px] ${isMatch ? "text-emerald-200/70" : "text-white/30"}`}>
                               {slot.label}
@@ -795,7 +796,7 @@ export function MobileRosterDrawer({
             <div className="flex items-center justify-between px-4 pb-2">
               <div className="flex items-center gap-2">
                 <span className={`pos-badge pos-badge-sm pos-badge-${editingPlayer.position.toLowerCase()}`}>
-                  {editingPlayer.position}
+                  {posLabel(editingPlayer.position)}
                 </span>
                 <span className="text-white font-bold text-sm">
                   {editingPlayer.name}
@@ -914,7 +915,7 @@ export function MobileRosterDrawer({
                             : "bg-white/5 text-white/30 border border-white/10 hover:bg-white/10 hover:text-white/50"
                         }`}
                       >
-                        {pos}
+                        {posLabel(pos)}
                       </button>
                     ))}
                   </div>

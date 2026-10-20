@@ -1,3 +1,4 @@
+import { posLabel } from "@shared/positions";
 // Hockey Lineup App – PlayerSlot – v6
 // Large slot-position badge fills full row height on the left.
 // Player's favorite position is shown as a small badge on the right (inside PlayerCard).
@@ -85,7 +86,7 @@ export function PlayerSlot({
     >
       {/* Slot position badge — fills full row height, flush left with rounded left corners */}
       <span className={`slot-badge ${badgeClass} ${compact ? 'slot-badge-compact' : ''} flex-col gap-0.5`} title={positionName(slot.shortLabel)}>
-        {slot.shortLabel}
+        {posLabel(slot.shortLabel)}
         {player && iceTimeMinutes != null && (
           <span className="text-[9px] font-semibold opacity-75 normal-case tracking-normal" title={`Beräknad speltid: ${iceTimeMinutes} min`}>
             {iceTimeMinutes}ʼ

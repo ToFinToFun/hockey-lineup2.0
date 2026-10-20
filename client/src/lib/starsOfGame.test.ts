@@ -24,14 +24,14 @@ describe("Stars of the Game", () => {
     expect(stars).toContain("p1");
     expect(stars).toContain("p2");
     const p1 = c.find((x) => x.key === "p1")!;
-    expect(starLine(p1)).toBe("Jerry Paasovaara #63 (VF) 1G 1A 2TP");
+    expect(starLine(p1)).toBe("Jerry Paasovaara #63 (LW) 1G 1A 2P");
     // Hampus gjorde 1–0 = matchvinnande (slutet 2–0) och får dubbla poäng
     const p2 = c.find((x) => x.key === "p2")!;
     expect(p2.gwg).toBe(true);
-    expect(starLine(p2, { position: false })).toBe("Hampus Bergman 1G 0A 1TP GWG");
+    expect(starLine(p2, { position: false })).toBe("Hampus Bergman 1G 0A 1P GWG");
     expect(starLine(p1, { position: false, stats: false })).toBe("Jerry Paasovaara #63");
-    expect(starLine(c.find((x) => x.key === "gkW")!)).toBe("Linus Carbin (M) 0 GA");
-    expect(starLine(c.find((x) => x.key === "gkG")!)).toBe("Robert Romanowski (M) 2 GA");
+    expect(starLine(c.find((x) => x.key === "gkW")!)).toBe("Linus Carbin (G) 0 GA");
+    expect(starLine(c.find((x) => x.key === "gkG")!)).toBe("Robert Romanowski (G) 2 GA");
   });
 
   it("fyller på med slumpade spelare, samma slump för samma match", () => {

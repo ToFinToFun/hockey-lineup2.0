@@ -322,7 +322,7 @@ function focusBox(ctx: CanvasRenderingContext2D, f: PressFocus): BoxDef {
                 ctx.font = `700 15px ${HEAD}`;
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
-                ctx.fillText(r, fx + 11, cy + 17);
+                ctx.fillText(r === "V" ? "W" : "L", fx + 11, cy + 17);
                 fx += 26;
               }
             }
@@ -412,7 +412,7 @@ function tableBox(ctx: CanvasRenderingContext2D, t: NonNullable<PressPageData["s
           ctx.font = `600 13px ${BODY}`;
           ctx.textBaseline = "top";
           ctx.textAlign = "right";
-          ctx.fillText("M", cG, y + 42);
+          ctx.fillText("GP", cG, y + 42);
           ctx.fillText("P", cP, y + 42);
           let ry = y + 36 + 26;
           const n = t.rows.length;

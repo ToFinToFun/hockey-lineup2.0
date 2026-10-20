@@ -13,7 +13,7 @@ export const STAT_PERIODS: Array<{ id: StatPeriod; name: string }> = [
   { id: "month", name: "Månad" }, { id: "week", name: "Vecka" }, { id: "all", name: "Totalt" },
 ];
 export const STAT_CATEGORIES: Array<{ id: StatCategory; name: string; title: string; valueLabel: string }> = [
-  { id: "points", name: "Poäng", title: "Poängligan", valueLabel: "PTS" },
+  { id: "points", name: "Poäng", title: "Poängligan", valueLabel: "P" },
   { id: "goals", name: "Mål", title: "Skytteligan", valueLabel: "G" },
   { id: "assists", name: "Assist", title: "Assistligan", valueLabel: "A" },
   { id: "gwg", name: "GWG", title: "Matchvinnande mål", valueLabel: "GWG" },
@@ -21,10 +21,10 @@ export const STAT_CATEGORIES: Array<{ id: StatCategory; name: string; title: str
   { id: "awards", name: "Utmärkelser", title: "Utmärkelser", valueLabel: "" },
   { id: "records", name: "Rekord", title: "Rekord", valueLabel: "" },
   // Målvakter
-  { id: "gk_ga60", name: "MV insläppta/60", title: "Målvaktsligan", valueLabel: "/60" },
-  { id: "gk_wins", name: "MV vinster", title: "Flest vinster i mål", valueLabel: "V" },
-  { id: "gk_shutouts", name: "MV nollor", title: "Hållna nollor", valueLabel: "SO" },
-  { id: "gk_streak", name: "MV svit", title: "Längsta svit ≤2 insläppta", valueLabel: "Matcher" },
+  { id: "gk_ga60", name: "Målvakter GAA", title: "Målvaktsligan", valueLabel: "GAA" },
+  { id: "gk_wins", name: "Målvakter W", title: "Flest vinster i mål", valueLabel: "W" },
+  { id: "gk_shutouts", name: "Målvakter SO", title: "Hållna nollor", valueLabel: "SO" },
+  { id: "gk_streak", name: "Målvakter svit", title: "Längsta svit ≤2 insläppta", valueLabel: "GP" },
 ];
 export const isGoalieCategory = (c: StatCategory) => c.startsWith("gk_");
 
@@ -32,12 +32,12 @@ interface GoalieIce { name: string; gkMatches: number; gkWins: number; shutouts:
 interface GoalieFun { name: string; gkMatches: number; max2: number; current2: number }
 const dec = (n: number) => String(Math.round(n * 100) / 100).replace(".", ",");
 
-/** Målvakternas topplistor (exporteras för test): /60 kräver minst 30 min i mål, lägst först. */
+/** Målvakternas topplistor (exporteras för test): GAA kräver minst 30 min i mål, lägst först. */
 export function goalieRows(cat: StatCategory, ice: GoalieIce[] | undefined, fun: GoalieFun[] | undefined, limit: number): StatsRow[] {
   const gks = (ice ?? []).filter((r) => r.gkMatches > 0);
-  const sub = (r: { gkMatches: number }) => `${r.gkMatches} ${r.gkMatches === 1 ? "match" : "matcher"} i mål`;
+  const sub = (r: { gkMatches: number }) => `${r.gkMatches} GP`;
   let list: Array<{ name: string; v: number; value: string; sub: string }>;
-  if (cat === "gk_ga60") list = gks.filter((r) => r.ga60 != null).map((r) => ({ name: r.name, v: -(r.ga60 as number), value: dec(r.ga60 as number), sub: `${sub(r)} · ${Number.isInteger(r.ga) ? r.ga : dec(r.ga)} insläppta` }));
+  if (cat === "gk_ga60") list = gks.filter((r) => r.ga60 != null).map((r) => ({ name: r.name, v: -(r.ga60 as number), value: dec(r.ga60 as number), sub: `${sub(r)} · ${Number.isInteger(r.ga) ? r.ga : dec(r.ga)} GA` }));
   else if (cat === "gk_wins") list = gks.filter((r) => r.gkWins > 0).map((r) => ({ name: r.name, v: r.gkWins, value: String(r.gkWins), sub: sub(r) }));
   else if (cat === "gk_shutouts") list = gks.filter((r) => r.shutouts > 0).map((r) => ({ name: r.name, v: r.shutouts, value: String(r.shutouts), sub: sub(r) }));
   else list = (fun ?? []).filter((r) => r.max2 > 0).map((r) => ({ name: r.name, v: r.max2, value: String(r.max2), sub: `${sub(r)}${r.current2 ? ` · pågående ${r.current2}` : ""}` }));
@@ -96,7 +96,7 @@ export function statRows(cat: StatCategory, stats: SeasonStatsLike | undefined, 
   if (cat === "records") {
     const date = (n: string) => n.split(" ").slice(0, 3).join(" ");
     const rows: StatsRow[] = [];
-    if (stats.playerRecordPoints) rows.push({ rank: "★", name: stats.playerRecordPoints.playerName, sub: `Flest poäng i en match · ${date(stats.playerRecordPoints.matchName)}`, value: `${stats.playerRecordPoints.points}p` });
+    if (stats.playerRecordPoints) rows.push({ rank: "★", name: stats.playerRecordPoints.playerName, sub: `Flest poäng i en match · ${date(stats.playerRecordPoints.matchName)}`, value: `${stats.playerRecordPoints.points}P` });
     if (stats.playerRecordGoals) rows.push({ rank: "★", name: stats.playerRecordGoals.playerName, sub: `Flest mål i en match · ${date(stats.playerRecordGoals.matchName)}`, value: `${stats.playerRecordGoals.goals}G` });
     if (stats.playerRecordAssists) rows.push({ rank: "★", name: stats.playerRecordAssists.playerName, sub: `Flest assist i en match · ${date(stats.playerRecordAssists.matchName)}`, value: `${stats.playerRecordAssists.assists}A` });
     if (stats.highestScoringMatch) rows.push({ rank: "★", name: "Målrikaste matchen", sub: date(stats.highestScoringMatch.name), value: `${stats.highestScoringMatch.whiteScore}–${stats.highestScoringMatch.greenScore}` });
@@ -110,6 +110,6 @@ export function statRows(cat: StatCategory, stats: SeasonStatsLike | undefined, 
   let rank = 0, prev = NaN;
   return sorted.slice(0, limit).map((p, i) => {
     if (p[k] !== prev) { rank = i + 1; prev = p[k] as number; }
-    return { rank: String(rank), name: p.name, sub: cat === "points" ? `${p.goals}+${p.assists} · ${p.matches} matcher` : `${p.matches} matcher`, value: String(p[k]) };
+    return { rank: String(rank), name: p.name, sub: cat === "points" ? `${p.goals}G ${p.assists}A · ${p.matches} GP` : `${p.matches} GP`, value: String(p[k]) };
   });
 }

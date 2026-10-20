@@ -53,10 +53,10 @@ export function goalsWithScore(m: ReportMatch | undefined) {
   });
 }
 
-/** "2 mål · 1 assist" eller "1 insläppt" (exporteras för test) */
+/** "2G · 1A" eller "1 GA" / "0 GA · SO" (exporteras för test) */
 export function starLine(c: StarCandidate): string {
-  if (c.position === "MV" && c.goalsAgainst !== null) return c.goalsAgainst === 0 ? "Hållen nolla" : `${c.goalsAgainst} insläppta`;
-  const parts = [c.goals ? `${c.goals} mål` : "", c.assists ? `${c.assists} assist` : ""].filter(Boolean);
+  if (c.position === "MV" && c.goalsAgainst !== null) return c.goalsAgainst === 0 ? "0 GA · SO" : `${c.goalsAgainst} GA`;
+  const parts = [c.goals ? `${c.goals}G` : "", c.assists ? `${c.assists}A` : ""].filter(Boolean);
   return parts.join(" · ") || "";
 }
 
@@ -77,12 +77,12 @@ export const VIDEO_STATS_MODES: Array<{ id: VideoStatsMode; name: string }> = [
 export function matchStatCells(c: StarCandidate, match: { teamWhiteScore: number; teamGreenScore: number }, starRankOf: number | null): { title: string; cells: Array<{ label: string; value: string }> } {
   const own = c.team === "white" ? match.teamWhiteScore : match.teamGreenScore;
   const opp = c.team === "white" ? match.teamGreenScore : match.teamWhiteScore;
-  const res = own > opp ? "V" : own < opp ? "F" : "O";
+  const res = own > opp ? "W" : own < opp ? "L" : "T";
   const cells = c.position === "MV" && c.goalsAgainst !== null
-    ? [{ label: "GA", value: String(c.goalsAgainst) }, { label: "NOLLA", value: c.goalsAgainst === 0 ? "JA" : "–" }]
-    : [{ label: "G", value: String(c.goals) }, { label: "A", value: String(c.assists) }, { label: "PTS", value: String(c.goals + c.assists) }];
+    ? [{ label: "GA", value: String(c.goalsAgainst) }, { label: "SO", value: c.goalsAgainst === 0 ? "1" : "0" }]
+    : [{ label: "G", value: String(c.goals) }, { label: "A", value: String(c.assists) }, { label: "P", value: String(c.goals + c.assists) }];
   cells.push({ label: "RES", value: res });
-  if (starRankOf) cells.push({ label: "STJÄRNA", value: "★".repeat(4 - starRankOf) });
+  if (starRankOf) cells.push({ label: "★", value: "★".repeat(4 - starRankOf) });
   return { title: "Matchen", cells };
 }
 

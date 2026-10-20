@@ -115,7 +115,7 @@ describe("uppställningen med fet stil", () => {
       { bold: true }
     );
     expect(text).toContain("<b>VITA</b>");
-    expect(text).toContain("<b>B</b>    Henrik &lt;Björling&gt; #81");
+    expect(text).toContain("<b>D</b>    Henrik &lt;Björling&gt; #81");
     expect(text).toContain("<b>LW</b>   Hampus Bergman Lahti #16 <b>(C)</b>");
   });
 });

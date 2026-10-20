@@ -16,13 +16,13 @@ export function starMatchCells(c: StarCandidate, won: boolean | null): CardCell[
     return [
       { label: "GA", value: String(c.goalsAgainst) },
       { label: "SO", value: c.goalsAgainst === 0 ? "1" : "0" },
-      { label: "RES", value: won === null ? "O" : won ? "W" : "L" },
+      { label: "RES", value: won === null ? "T" : won ? "W" : "L" },
     ];
   }
   const cells: CardCell[] = [
     { label: "G", value: String(c.goals) },
     { label: "A", value: String(c.assists) },
-    { label: "PTS", value: String(c.goals + c.assists) },
+    { label: "P", value: String(c.goals + c.assists) },
   ];
   if (c.gwg) cells.push({ label: "GWG", value: "1" });
   return cells;

@@ -37,14 +37,14 @@ describe("matchrapport", () => {
     // 3–2 till Vita: Vitas tredje mål (21:40) är matchvinnande
     expect(d.goals.map((g) => g.gwg)).toEqual([false, false, false, false, true]);
     expect(d.whiteName).toBe("Vita");
-    expect(d.stars[0]).toEqual({ name: "Kalle", stat: "2G 1A 3TP", gwg: true });
+    expect(d.stars[0]).toEqual({ name: "Kalle", stat: "2G 1A 3P", gwg: true });
     expect(buildReportData(match, stars, null, [false, true, true]).stars[0]).toEqual({ name: "Kalle", stat: "", gwg: false });
   });
 
   it("bildtext enligt mallen", () => {
     const text = buildCaption(stars, "Polar", ["#StålstadensSF", "#Gubbhockey"]);
     expect(text.split("\n")[0]).toBe("Kvällens Stars of the Game");
-    expect(text).toContain("⭐⭐⭐ Kalle 2G 1A 3TP GWG");
+    expect(text).toContain("⭐⭐⭐ Kalle 2G 1A 3P GWG");
     expect(buildCaption(stars, null, [], [false, true, true])).toContain("⭐⭐⭐ Kalle\n");
     expect(buildReportData(match, stars, null, undefined, "Julmatchen").title).toBe("Julmatchen");
     expect(text).toContain("Dagens mål presenterades av Polar");

@@ -1,3 +1,5 @@
+import { posLabel } from "@shared/positions";
+import { wlt } from "@shared/statAbbr";
 /**
  * PlayersApp – spelarregistret (styrelsen).
  *
@@ -105,10 +107,11 @@ function rowsFromCsv(text: string): { rows: ImportRow[]; errors: string[] } {
     const row: ImportRow = { name };
     if (get(c.id)) row.id = get(c.id);
     if (c.number >= 0 && get(c.number) !== "") row.number = get(c.number);
-    const pos = get(c.position).toUpperCase();
+    // G och D (som appen visar) går också, utöver MV och B
+    const pos = ({ G: "MV", D: "B" } as Record<string, string>)[get(c.position).toUpperCase()] ?? get(c.position).toUpperCase();
     if (pos) {
       if ((POSITIONS as readonly string[]).includes(pos)) row.position = pos as ImportRow["position"];
-      else errors.push(`Rad ${i + 2}: okänd position "${pos}" (använd MV, B, C, F eller IB).`);
+      else errors.push(`Rad ${i + 2}: okänd position "${pos}" (använd G, D, C, F eller IB).`);
     }
     if (c.team >= 0) {
       const t = get(c.team).toLowerCase();
@@ -244,7 +247,7 @@ export default function PlayersApp() {
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm truncate">{r.name}{r.captainRole ? <span className="ml-1 text-amber-300 font-bold">{r.captainRole}</span> : null}</span>
                 </span>
-                <span className="text-[11px] w-8 text-white/60" title={r.position ? positionName(r.position) : "Ingen position"}>{r.position || "–"}</span>
+                <span className="text-[11px] w-8 text-white/60" title={r.position ? positionName(r.position) : "Ingen position"}>{posLabel(r.position) || "–"}</span>
                 <span className={`text-[11px] w-10 ${r.teamColor === "green" ? "text-emerald-400" : r.teamColor === "white" ? "text-white" : "text-white/20"}`}>{teamLabel(r.teamColor) || "–"}</span>
                 {r.externalId && <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-300/80" title="Kopplad till medlemsregistret på sajten">registret</span>}
                 {!r.isMember && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300">ej medlem</span>}
@@ -320,10 +323,10 @@ function EditModal({ row, all, onClose, onSaved }: { row: Row | null; all: Row[]
           <label className="text-xs text-white/50">Nr<input className={input} inputMode="numeric" value={f.number} disabled={locked} onChange={(e) => setF({ ...f, number: e.target.value })} /></label>
         </div>
         <div className="grid grid-cols-4 gap-2 text-xs text-white/50">
-          <label>Position<select className={input} value={(POSITIONS as readonly string[]).includes(f.position) ? f.position : ""} onChange={(e) => setF({ ...f, position: e.target.value })}><option value="">– Ingen –</option>{POSITIONS.map((p) => <option key={p} value={p}>{p} – {positionName(p)}</option>)}</select></label>
+          <label>Position<select className={input} value={(POSITIONS as readonly string[]).includes(f.position) ? f.position : ""} onChange={(e) => setF({ ...f, position: e.target.value })}><option value="">– Ingen –</option>{POSITIONS.map((p) => <option key={p} value={p}>{posLabel(p)} – {positionName(p)}</option>)}</select></label>
           <label>Lag<select className={input} value={f.teamColor ?? ""} onChange={(e) => setF({ ...f, teamColor: e.target.value || null })}><option value="">–</option><option value="white">Vit</option><option value="green">Grön</option></select></label>
           <label>Roll<select className={input} value={f.captainRole ?? ""} onChange={(e) => setF({ ...f, captainRole: e.target.value || null })}><option value="">–</option><option value="C">C</option><option value="A">A</option></select></label>
-          <label title="Hybridspelare: position spelaren också kan spela (tvåfärgad bricka i Lineup, används av Auto)">Alt. pos<select className={input} value={f.altPosition ?? ""} onChange={(e) => setF({ ...f, altPosition: e.target.value || null })}><option value="">–</option>{(["MV", "B", "C", "F"] as const).map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
+          <label title="Hybridspelare: position spelaren också kan spela (tvåfärgad bricka i Lineup, används av Auto)">Alt. pos<select className={input} value={f.altPosition ?? ""} onChange={(e) => setF({ ...f, altPosition: e.target.value || null })}><option value="">–</option>{(["MV", "B", "C", "F"] as const).map((p) => <option key={p} value={p}>{posLabel(p)}</option>)}</select></label>
         </div>
         <div className="flex gap-4 text-sm">
           <label className="flex items-center gap-2" title={managed ? "Styrs av medlemsregistret på sajten" : undefined}>
@@ -388,11 +391,11 @@ function SeasonHistory({ id }: { id: string }) {
             <thead className="text-white/40">
               <tr>
                 <th className="text-left font-normal py-1">Säsong</th>
-                <th className="text-right font-normal">M</th>
-                <th className="text-right font-normal">V-O-F</th>
-                <th className="text-right font-normal">Mål</th>
-                <th className="text-right font-normal">Ass</th>
-                <th className="text-right font-normal">MV/B/C/LW/RW</th>
+                <th className="text-right font-normal" title="Spelade matcher">GP</th>
+                <th className="text-right font-normal" title="Vinster–förluster–oavgjorda">W-L-T</th>
+                <th className="text-right font-normal" title="Mål">G</th>
+                <th className="text-right font-normal" title="Assist">A</th>
+                <th className="text-right font-normal" title="Matcher per position">G/D/C/LW/RW</th>
                 <th className="text-right font-normal">Vit/Grön</th>
               </tr>
             </thead>
@@ -401,7 +404,7 @@ function SeasonHistory({ id }: { id: string }) {
                 <tr key={l.season} className="border-t border-white/5">
                   <td className="py-1">{l.season}</td>
                   <td className="text-right">{l.matches}</td>
-                  <td className="text-right">{l.wins}-{l.draws}-{l.losses}</td>
+                  <td className="text-right">{wlt(l.wins, l.losses, l.draws)}</td>
                   <td className="text-right">{l.goals}</td>
                   <td className="text-right">{l.assists}</td>
                   <td className="text-right">{l.positions.MV}/{l.positions.B}/{l.positions.C}/{l.positions.LW}/{l.positions.RW}</td>

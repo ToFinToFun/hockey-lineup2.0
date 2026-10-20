@@ -1,3 +1,4 @@
+import { posLabel } from "@shared/positions";
 /**
  * Hockeykort (styrelsen) – route /cards.
  *
@@ -463,7 +464,7 @@ export default function CardsApp() {
             <label className="text-[11px] text-white/50">Nummer<input value={settings.number} onChange={(e) => update({ number: e.target.value.replace(/[^0-9]/g, "").slice(0, 3) })} inputMode="numeric" className={input} /></label>
             <label className="text-[11px] text-white/50">Position
               <select value={settings.position} onChange={(e) => update({ position: e.target.value })} className={input}>
-                {POSITIONS.map((p) => <option key={p} value={p} className="text-black">{p || "– ingen –"}</option>)}
+                {POSITIONS.map((p) => <option key={p} value={p} className="text-black">{posLabel(p) || "– ingen –"}</option>)}
               </select>
             </label>
             <label className="text-[11px] text-white/50">C/A

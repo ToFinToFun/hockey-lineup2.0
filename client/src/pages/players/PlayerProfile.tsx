@@ -1,3 +1,6 @@
+import { Abbr } from "@/components/Abbr";
+import { STAT, resultLabel, wlt, type StatKey } from "@shared/statAbbr";
+import { posLabel } from "@shared/positions";
 /**
  * Spelarprofil på spelarsidan: bild, form, sammanfattning, rekord, kemi
  * (kedjekamrater, lagkamrater, motståndare), matchlogg och jämförelse.
@@ -28,9 +31,9 @@ const pct = (w: number, m: number) => (m ? `${Math.round((w / m) * 100)}%` : "�
 const streakText = (s: Profile["records"]["currentStreak"]) =>
   !s ? "" : `${s.length} ${s.result === "V" ? (s.length === 1 ? "vinst" : "raka vinster") : s.result === "F" ? (s.length === 1 ? "förlust" : "raka förluster") : s.length === 1 ? "oavgjord" : "raka oavgjorda"}`;
 
-function Stat({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+function Stat({ label, value, sub, title }: { label: string; value: string | number; sub?: string; title?: string }) {
   return (
-    <div className="rounded-lg bg-white/[0.04] border border-white/[0.06] px-2 py-1.5 text-center">
+    <div className="rounded-lg bg-white/[0.04] border border-white/[0.06] px-2 py-1.5 text-center" title={title ?? (label in STAT ? STAT[label as StatKey] : undefined)}>
       <p className="text-lg font-bold tabular-nums leading-tight">{value}</p>
       <p className="text-[10px] text-white/40">{label}</p>
       {sub && <p className="text-[9px] text-white/30">{sub}</p>}
@@ -57,7 +60,7 @@ function MateRow({ m }: { m: Mate }) {
         <div className={`h-full ${color}`} style={{ width: `${m.winPct}%` }} />
       </div>
       <span className="w-9 text-right tabular-nums text-white/80">{m.winPct}%</span>
-      <span className="w-16 text-right tabular-nums text-white/35">{m.wins}-{m.draws}-{m.losses}</span>
+      <span className="w-16 text-right tabular-nums text-white/35" title="W-L-T">{wlt(m.wins, m.losses, m.draws)}</span>
     </div>
   );
 }
@@ -130,11 +133,11 @@ export function PlayerProfileView({ player, all }: { player: Basic; all: Basic[]
         <>
           {/* Sammanfattning totalt */}
           <div className="grid grid-cols-5 gap-1.5">
-            <Stat label="Matcher" value={t.matches} />
-            <Stat label="Mål" value={t.goals} />
-            <Stat label="Assist" value={t.assists} />
-            <Stat label="Poäng" value={points} sub={`${p.records.pointsPerMatch}/match`} />
-            <Stat label="Vinst" value={pct(t.wins, t.matches)} sub={`${t.wins}-${t.draws}-${t.losses}`} />
+            <Stat label="GP" value={t.matches} />
+            <Stat label="G" value={t.goals} />
+            <Stat label="A" value={t.assists} />
+            <Stat label="P" value={points} sub={`${p.records.pointsPerMatch} P/GP`} />
+            <Stat label="W%" value={pct(t.wins, t.matches)} sub={wlt(t.wins, t.losses, t.draws)} title="Andel vinster · W-L-T (vinster–förluster–oavgjorda)" />
           </div>
 
           {/* PIR */}
@@ -145,7 +148,7 @@ export function PlayerProfileView({ player, all }: { player: Basic; all: Basic[]
             <div className="grid grid-cols-3 gap-1.5">
               <Stat
                 label="Bästa match"
-                value={p.records.bestMatch ? `${p.records.bestMatch.points} p` : "–"}
+                value={p.records.bestMatch ? `${p.records.bestMatch.points} P` : "–"}
                 sub={p.records.bestMatch ? `${p.records.bestMatch.goals}+${p.records.bestMatch.assists}, ${shortDate(p.records.bestMatch.date)}` : undefined}
               />
               <Stat label="Längsta vinstsvit" value={p.records.longestWinStreak} />
@@ -157,28 +160,28 @@ export function PlayerProfileView({ player, all }: { player: Basic; all: Basic[]
           {ice && ice.minutes > 0 && (
             <Section title="Speltid" hint="Uppskattad: samma regler som i Lineup, räknat på varje match utifrån uppställningen och matchens längd.">
               <div className="grid grid-cols-3 gap-1.5">
-                <Stat label="Totalt" value={formatMinutes(ice.minutes)} sub={`${ice.matches} matcher`} />
-                <Stat label="Snitt/match" value={`${ice.perMatch} min`} />
-                <Stat label="Poäng/60 min" value={ice.p60 ?? "–"} />
+                <Stat label="TOI" value={formatMinutes(ice.minutes)} sub={`${ice.matches} GP`} />
+                <Stat label="TOI/GP" value={`${ice.perMatch} min`} />
+                <Stat label="P/60" value={ice.p60 ?? "–"} />
               </div>
               {ice.byPos.MV > 0 && (
                 <div className="grid grid-cols-3 gap-1.5 mt-1.5">
-                  <Stat label="I mål" value={formatMinutes(ice.byPos.MV)} sub={`${ice.gkMatches} matcher`} />
-                  <Stat label="Insläppta/60" value={ice.ga60 ?? "–"} sub={`${Number.isInteger(ice.ga) ? ice.ga : ice.ga.toFixed(1)} insläppta`} />
-                  <Stat label="Hållna nollor" value={ice.shutouts} />
+                  <Stat label="TOI (G)" value={formatMinutes(ice.byPos.MV)} sub={`${ice.gkMatches} GP`} title="Speltid i mål" />
+                  <Stat label="GAA" value={ice.ga60 ?? "–"} sub={`${Number.isInteger(ice.ga) ? ice.ga : ice.ga.toFixed(1)} GA`} />
+                  <Stat label="SO" value={ice.shutouts} />
                 </div>
               )}
               <div className="mt-2 space-y-1">
                 <PositionSplit byPos={ice.byPos} total={ice.minutes} />
                 <p className="text-[10px] text-white/45">
-                  {(["MV", "B", "C", "F"] as const).filter((k) => ice.byPos[k]).map((k) => `${k} ${formatMinutes(ice.byPos[k])} (${Math.round((ice.byPos[k] / ice.minutes) * 100)} %)`).join(" · ")}
+                  {(["MV", "B", "C", "F"] as const).filter((k) => ice.byPos[k]).map((k) => `${posLabel(k)} ${formatMinutes(ice.byPos[k])} (${Math.round((ice.byPos[k] / ice.minutes) * 100)} %)`).join(" · ")}
                 </p>
               </div>
             </Section>
           )}
 
           {/* Kemi */}
-          <Section title="Kemi" hint="Vinstprocent tillsammans. Stapeln: grön ≥ 60 %, röd < 40 %. V-O-F till höger.">
+          <Section title="Kemi" hint="Vinstprocent tillsammans. Stapeln: grön ≥ 60 %, röd < 40 %. W-L-T till höger.">
             <div className="space-y-3">
               {lines.enough > 0 && (
                 <div className="space-y-1">
@@ -216,8 +219,8 @@ export function PlayerProfileView({ player, all }: { player: Basic; all: Basic[]
                     <th className="text-left font-normal">Lag</th>
                     <th className="text-left font-normal">Pos</th>
                     <th className="text-right font-normal">Resultat</th>
-                    <th className="text-right font-normal">Mål</th>
-                    <th className="text-right font-normal">Ass</th>
+                    <th className="text-right font-normal"><Abbr k="G" /></th>
+                    <th className="text-right font-normal"><Abbr k="A" /></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -225,9 +228,9 @@ export function PlayerProfileView({ player, all }: { player: Basic; all: Basic[]
                     <tr key={e.matchId} className="border-t border-white/5">
                       <td className="py-1 tabular-nums">{shortDate(e.date)}</td>
                       <td><span className={`inline-block w-2 h-2 rounded-full mr-1 ${e.team === "green" ? "bg-emerald-400" : "bg-white"}`} />{teamName(e.team === "green" ? "green" : "white")}</td>
-                      <td title={positionName(e.position)}>{e.position}</td>
+                      <td title={positionName(e.position)}>{posLabel(e.position)}</td>
                       <td className="text-right tabular-nums">
-                        <span className={`inline-block w-4 text-center rounded-[3px] mr-1 text-[9px] font-black ${e.result === "V" ? "bg-emerald-500/80 text-emerald-950" : e.result === "F" ? "bg-red-500/75 text-red-950" : "bg-white/25"}`}>{e.result}</span>
+                        <span className={`inline-block w-4 text-center rounded-[3px] mr-1 text-[9px] font-black ${e.result === "V" ? "bg-emerald-500/80 text-emerald-950" : e.result === "F" ? "bg-red-500/75 text-red-950" : "bg-white/25"}`}>{resultLabel(e.result)}</span>
                         {e.own}–{e.opp}
                       </td>
                       <td className="text-right tabular-nums">{e.goals || ""}</td>
@@ -319,7 +322,7 @@ function CompareTable({ a, b }: { a: { name: string; p: Profile; pir: Pir | null
     return (
       <tr key={label} className="border-t border-white/5">
         <td className={`py-1 text-right tabular-nums ${better === -1 ? "text-emerald-300 font-semibold" : ""}`}>{fmt(va)}</td>
-        <td className="text-center text-white/40 px-2">{label}</td>
+        <td className="text-center text-white/40 px-2" title={label in STAT ? STAT[label as StatKey] : undefined}>{label}</td>
         <td className={`tabular-nums ${better === 1 ? "text-emerald-300 font-semibold" : ""}`}>{fmt(vb)}</td>
       </tr>
     );
@@ -339,11 +342,11 @@ function CompareTable({ a, b }: { a: { name: string; p: Profile; pir: Pir | null
           </tr>
         </thead>
         <tbody>
-          {row("Matcher", a.p.totals.matches, b.p.totals.matches)}
-          {row("Mål", a.p.totals.goals, b.p.totals.goals)}
-          {row("Assist", a.p.totals.assists, b.p.totals.assists)}
-          {row("Poäng/match", a.p.records.pointsPerMatch, b.p.records.pointsPerMatch)}
-          {row("Vinst %", winPct(a.p), winPct(b.p), (v) => `${v}%`)}
+          {row("GP", a.p.totals.matches, b.p.totals.matches)}
+          {row("G", a.p.totals.goals, b.p.totals.goals)}
+          {row("A", a.p.totals.assists, b.p.totals.assists)}
+          {row("P/GP", a.p.records.pointsPerMatch, b.p.records.pointsPerMatch)}
+          {row("W%", winPct(a.p), winPct(b.p), (v) => `${v}%`)}
           {row("Längsta vinstsvit", a.p.records.longestWinStreak, b.p.records.longestWinStreak)}
           {a.pir?.outfieldRating != null && b.pir?.outfieldRating != null && row("PIR ute", a.pir.outfieldRating, b.pir.outfieldRating)}
           {a.pir?.goalkeeperRating != null && b.pir?.goalkeeperRating != null && row("PIR målvakt", a.pir.goalkeeperRating, b.pir.goalkeeperRating)}
@@ -356,12 +359,12 @@ function CompareTable({ a, b }: { a: { name: string; p: Profile; pir: Pir | null
       </table>
       {together && (
         <p className="text-[10px] text-white/40 mt-1.5">
-          I samma lag: {together.matches} matcher, {together.winPct}% vinster ({together.wins}-{together.draws}-{together.losses}).
+          I samma lag: {together.matches} matcher, {together.winPct}% vinster ({wlt(together.wins, together.losses, together.draws)}).
         </p>
       )}
       {against && (
         <p className="text-[10px] text-white/40">
-          Mot varandra: {a.name} har {against.wins}-{against.draws}-{against.losses} på {against.matches} matcher.
+          Mot varandra: {a.name} har {wlt(against.wins, against.losses, against.draws)} (W-L-T) på {against.matches} matcher.
         </p>
       )}
     </div>

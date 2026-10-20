@@ -44,7 +44,7 @@ beforeAll(async () => {
   // Hockeykort – alla stilar
   const { renderCard, DEFAULT_SETTINGS } = await import("@shared/cardRender");
   const { CARD_SKINS } = await import("@shared/cardSkins");
-  const cells = [{ label: "GP", value: "14" }, { label: "G", value: "9" }, { label: "A", value: "12" }, { label: "PTS", value: "21" }, { label: "W%", value: "64%" }];
+  const cells = [{ label: "GP", value: "14" }, { label: "G", value: "9" }, { label: "A", value: "12" }, { label: "P", value: "21" }, { label: "W%", value: "64%" }];
   for (const skin of CARD_SKINS) {
     images[`kort-${skin.id}`] = (await renderCard({
       settings: { ...DEFAULT_SETTINGS, skin: skin.id, name: "Hampus Bergman Lahti", number: "16", position: "LW", captain: "C", statsMode: "season", statsTitle: "Säsong 2026/27", cells } as never,
@@ -92,7 +92,7 @@ beforeAll(async () => {
     { label: "1:a kedjan", players: [P("LW", "Hampus Bergman", "16", "C"), P("C", "Viktor Lindgren", "29"), P("RW", "Teddie Storm")] },
   ] } as never)) as unknown as Canvasish;
   images["media-text"] = (await renderMediaPost({ ...common, kind: "text", overlay: "snow", title: "Anmäl er till julmatchen!", body: "Glögg efteråt.", info: "Torsdag 18/12 · 19:00", photo: null, photoDim: 0.5 } as never)) as unknown as Canvasish;
-  images["media-statistik"] = (await renderMediaPost({ ...common, kind: "stats", background: "ute", title: "Poängligan", subtitle: "Säsong 2026/27", valueLabel: "PTS", rows: [
+  images["media-statistik"] = (await renderMediaPost({ ...common, kind: "stats", background: "ute", title: "Poängligan", subtitle: "Säsong 2026/27", valueLabel: "P", rows: [
     { rank: "1", name: "Hampus Bergman", sub: "8+6 · 12 matcher", value: "14" }, { rank: "2", name: "Viktor Lindgren", sub: "5+7 · 11 matcher", value: "12" },
   ] } as never)) as unknown as Canvasish;
   images["media-kort"] = (await renderMediaPost({ ...common, kind: "cards", title: "Veckans spelare", subtitle: "Vecka 40", cards: [images["kort-retro-svart"], images["kort-retro-gron"]] } as never)) as unknown as Canvasish;

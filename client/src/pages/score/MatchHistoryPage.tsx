@@ -1,3 +1,4 @@
+import { posLabel } from "@shared/positions";
 import { matchSides, type SideInfo } from "@/lib/matchSides";
 import { goalsOldestFirst, goalsForStorage, winningGoalIndex } from "@shared/goalOrder";
 import { teamName, teamSingular, teamGenitive, defaultTeamNames } from "@shared/teams";
@@ -972,7 +973,7 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
                           {p.position && (
                             <span className="px-1 py-0.5 rounded text-[9px] font-bold text-white shrink-0"
                               style={{ backgroundColor: posColors[p.position] || '#687076' }}>
-                              {p.position}
+                              {posLabel(p.position)}
                             </span>
                           )}
                           <span className="text-[#ECEDEE] flex-1 truncate">{p.name} #{p.number}</span>

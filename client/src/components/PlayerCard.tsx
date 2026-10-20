@@ -1,3 +1,5 @@
+import { resultLabel, statTitle, wlt } from "@shared/statAbbr";
+import { posLabel } from "@shared/positions";
 // Hockey Lineup App – PlayerCard – Glassmorphism v2
 // Flat design: no colored row backgrounds, just name + number + badges
 // PortalDropdown edit panel preserved with all functionality
@@ -281,7 +283,7 @@ export function DraggablePlayerCard({
                 ? `${positionName(displayPosition)}${showAlt ? ` · spelar även ${positionName(altPos!)}${player.altPosition ? " (hybrid)" : player.secondaryShare ? ` (${Math.round(player.secondaryShare * 100)} % av matcherna)` : ""}` : ""}`
                 : "Ingen position"}
             >
-              {displayPosition || "–"}
+              {posLabel(displayPosition) || "–"}
             </span>
           );
           const badges = compact ? (
@@ -431,7 +433,7 @@ export function DraggablePlayerCard({
                           : "bg-white/5 text-white/30 border border-white/10 hover:bg-white/10 hover:text-white/50"
                       }`}
                     >
-                      {pos}
+                      {posLabel(pos)}
                     </button>
                   ))}
                   {/* Alternativ position (hybridspelare) – går före historiken i brickan och för Auto */}
@@ -686,7 +688,7 @@ export function FormStrip({ form, size = "sm", className = "", placeholder = 5 }
     >
       {form.split("").map((c, i) => (
         <span key={i} className={`${cls} shrink-0 rounded-[3px] font-black leading-none flex items-center justify-center ${color[c] ?? "bg-white/10"}`}>
-          {c}
+          {resultLabel(c)}
         </span>
       ))}
     </span>
@@ -698,7 +700,7 @@ export function PlayerStatsSection({ player }: { player: Player }) {
   const rows: { label: string; r: PlayerRecord }[] = [];
   if (player.statsSeason) rows.push({ label: player.statsSeason.label, r: player.statsSeason });
   if (player.statsTotal) rows.push({ label: "Totalt", r: player.statsTotal });
-  const cols = ["Matcher", "Mål", "Assist", "Poäng", "Vinst"];
+  const cols = ["GP", "G", "A", "P", "W%"];
   return (
     <div className="pt-2 border-t border-white/10 flex gap-3 items-start">
       {/* Hockeykortet är spelarens bild (sparat kort eller standardkortet) */}
@@ -710,7 +712,7 @@ export function PlayerStatsSection({ player }: { player: Player }) {
       ) : (
         <div className="grid grid-cols-[auto_repeat(5,minmax(0,1fr))] gap-x-2 gap-y-0.5 text-[10px] tabular-nums">
           <span />
-          {cols.map((c) => <span key={c} className="text-white/35 text-right">{c}</span>)}
+          {cols.map((c) => <span key={c} className="text-white/35 text-right" title={statTitle(c)}>{c}</span>)}
           {rows.map(({ label, r }) => (
             <Fragment key={label}>
               <span className="text-white/50">{label}</span>
@@ -718,7 +720,7 @@ export function PlayerStatsSection({ player }: { player: Player }) {
               <span className="text-right text-white/85">{r.goals}</span>
               <span className="text-right text-white/85">{r.assists}</span>
               <span className="text-right text-white font-semibold">{r.goals + r.assists}</span>
-              <span className="text-right text-white/85" title={`${r.wins} vinster, ${r.draws} oavgjorda, ${r.losses} förluster`}>
+              <span className="text-right text-white/85" title={`W-L-T ${wlt(r.wins, r.losses, r.draws)}`}>
                 {r.matches ? `${Math.round((r.wins / r.matches) * 100)}%` : "–"}
               </span>
             </Fragment>
@@ -741,7 +743,7 @@ export function PositionShare({ stats }: { stats?: Record<string, number> | null
     <div className="flex items-center gap-1 flex-wrap">
       {ROLES.map((r, i) => (
         <span key={r} className="flex items-center gap-0.5 text-[10px] text-white/70">
-          <span className={`pos-badge pos-badge-xs pos-badge-${r.toLowerCase()}`} title={positionName(r)}>{r}</span>
+          <span className={`pos-badge pos-badge-xs pos-badge-${r.toLowerCase()}`} title={positionName(r)}>{posLabel(r)}</span>
           {total ? Math.round((counts[i] / total) * 100) : 0}%
         </span>
       ))}
@@ -816,7 +818,7 @@ export function PlayerCardOverlay({ player, isRemoving = false }: { player: Play
         </span>
       )}
       <span className={`pos-badge pos-badge-sm pos-badge-${player.position.toLowerCase()} shrink-0`}>
-        {player.position}
+        {posLabel(player.position)}
       </span>
     </div>
   );
@@ -829,7 +831,7 @@ function AltPositionRow({ player, badgeBg }: { player: Player; badgeBg: string }
   const fc = { badgeBg };
   return (
 
-                <span className="flex items-center gap-1 ml-1 pl-1.5 border-l border-white/10" title={!player.altPosition && player.secondaryPosition ? `Enligt historiken: ${player.secondaryPosition} (${Math.round((player.secondaryShare ?? 0) * 100)} % av matcherna)` : "Hybridspelare: position spelaren också kan spela"}>
+                <span className="flex items-center gap-1 ml-1 pl-1.5 border-l border-white/10" title={!player.altPosition && player.secondaryPosition ? `Enligt historiken: ${posLabel(player.secondaryPosition)} (${Math.round((player.secondaryShare ?? 0) * 100)} % av matcherna)` : "Hybridspelare: position spelaren också kan spela"}>
                   <span className="text-white/40 text-[10px]">Alt:</span>
                   {(["", "MV", "B", "C", "F"] as const).map((pos) => (
                     <button
@@ -846,7 +848,7 @@ function AltPositionRow({ player, badgeBg }: { player: Player; badgeBg: string }
                           : "bg-white/5 text-white/30 border border-white/10 hover:bg-white/10 hover:text-white/50"
                       }`}
                     >
-                      {pos || "–"}
+                      {posLabel(pos) || "–"}
                     </button>
                   ))}
                 </span>

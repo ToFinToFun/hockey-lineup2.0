@@ -1,3 +1,4 @@
+import { posLabel } from "@shared/positions";
 /**
  * /live – öppen för alla. Före matchen: lagen, tid, hall, nedräkning och
  * uppställningar (enligt publiceringsreglerna). Under matchen (när en inloggad
@@ -282,7 +283,7 @@ export default function LivePage() {
         {phase !== "before" && tab === "players" && (
           <div className="mx-5 mt-3">
             <div className="grid grid-cols-[minmax(0,1fr)_30px_30px_34px] gap-2 text-[10px] tracking-[0.12em] text-[#7d8e83] px-3">
-              <span>SPELARE</span><span className="text-center">M</span><span className="text-center">A</span><span className="text-center text-[#eef3ef]">P</span>
+              <span>SPELARE</span><span className="text-center" title="Mål">G</span><span className="text-center" title="Assist">A</span><span className="text-center text-[#eef3ef]" title="Poäng">P</span>
             </div>
             <div className="mt-1.5 flex flex-col gap-1">
               {playerRows.length === 0 && <p className="text-center text-sm text-[#7d8e83] py-6">Inga poäng än.</p>}
@@ -301,7 +302,7 @@ export default function LivePage() {
                   {goalies.map((p) => (
                     <div key={p.id} className="rounded-xl bg-white/5 px-3 py-2.5">
                       <div className="text-xs font-semibold truncate">{p.name}</div>
-                      <div className="text-[11px] text-[#8fa196]">{sides[p.team].name} · {p.ga} insläppta</div>
+                      <div className="text-[11px] text-[#8fa196]">{sides[p.team].name} · {p.ga} GA</div>
                     </div>
                   ))}
                 </div>
@@ -327,7 +328,7 @@ export default function LivePage() {
                     {teamPlayers[t].length === 0 && <span className="text-xs text-[#7d8e83]">–</span>}
                     {teamPlayers[t].map((p) => (
                       <div key={p.id} className="flex items-center gap-1.5 text-xs">
-                        <span className="w-[26px] shrink-0 text-center text-[10px] font-bold rounded py-0.5" style={{ background: POS_COLOR[p.pos] ?? "#34d399", color: "#07100b" }}>{p.pos}</span>
+                        <span className="w-[26px] shrink-0 text-center text-[10px] font-bold rounded py-0.5" style={{ background: POS_COLOR[p.pos] ?? "#34d399", color: "#07100b" }}>{posLabel(p.pos)}</span>
                         <span className="truncate">{p.name}</span>
                         {p.number && <span className="ml-auto text-[11px] text-[#7d8e83]">#{p.number}</span>}
                       </div>

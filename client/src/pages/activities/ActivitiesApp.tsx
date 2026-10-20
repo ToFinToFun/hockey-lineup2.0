@@ -1,3 +1,4 @@
+import { posLabel } from "@shared/positions";
 /**
  * Aktiviteter – träningar, matcher, möten och anmälan (styrelsen).
  *
@@ -116,7 +117,7 @@ export function PosBadge({ position }: { position: string }) {
       className={`pos-badge pos-badge-sm ${position ? `pos-badge-${position.toLowerCase()}` : "bg-white/10 text-white/40"} shrink-0`}
       title={position ? positionName(position) : "Ingen position"}
     >
-      {position || "–"}
+      {posLabel(position) || "–"}
     </span>
   );
 }

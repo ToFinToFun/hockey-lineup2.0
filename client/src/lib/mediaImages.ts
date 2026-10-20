@@ -1,3 +1,4 @@
+import { posLabel } from "@shared/positions";
 /**
  * Media – egna Instagram-bilder i samma grafiska profil som matchrapporten
  * (4:5, 1080×1350, mörk arena, Oswald-rubriker, clubHeading() överst).
@@ -103,7 +104,7 @@ export interface StatsPostData extends MediaCommon {
   kind: "stats";
   title: string;
   subtitle: string;
-  /** Rubrik för värdekolumnen, t.ex. "PTS" */
+  /** Rubrik för värdekolumnen, t.ex. "P" */
   valueLabel: string;
   rows: StatsRow[];
 }
@@ -362,15 +363,16 @@ function clubHeader(ctx: CanvasRenderingContext2D, dateLine: string, accent: str
 function posBadge(ctx: CanvasRenderingContext2D, x: number, cy: number, pos: string, h: number) {
   const key = pos === "MV" ? "MV" : pos === "B" ? "B" : pos === "C" ? "C" : pos;
   const color = (POSITION_COLORS as Record<string, string>)[key] ?? "#64748b";
+  const text = posLabel(pos); // NHL: G, D, C, LW, RW
   ctx.font = `700 ${Math.round(h * 0.5)}px ${HEAD}`;
-  const w = Math.max(h * 1.2, ctx.measureText(pos).width + h * 0.6);
+  const w = Math.max(h * 1.2, ctx.measureText(text).width + h * 0.6);
   ctx.fillStyle = color;
   roundRect(ctx, x, cy - h / 2, w, h, h * 0.22);
   ctx.fill();
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(pos, x + w / 2, cy + 1);
+  ctx.fillText(text, x + w / 2, cy + 1);
   ctx.textAlign = "left";
   return w;
 }
@@ -504,7 +506,7 @@ async function renderLineup(d: LineupPostData): Promise<HTMLCanvasElement> {
     ctx.font = `700 ${Math.round(24 * k)}px ${HEAD}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(p.pos, x + 16 * k + bw / 2, y + H.row / 2 + 1);
+    ctx.fillText(posLabel(p.pos), x + 16 * k + bw / 2, y + H.row / 2 + 1);
     // C/A före namnet, namn och nummer
     ctx.textAlign = "left";
     let tx = x + 16 * k + bw + 16 * k;

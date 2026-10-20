@@ -22,7 +22,7 @@ function HallGoalie({ input, venue }: { input: Input; venue: string }) {
     <p className="text-[11px] text-white/60 flex items-center gap-1.5">
       <HockeyGoal size={13} className="text-orange-400 shrink-0" />
       <span>Bäst målvakt i hallen: <b className="text-white/85 font-semibold">{best.name}</b>
-        {" "}– {best.ga60 != null ? `${best.ga60.toString().replace(".", ",")} insl./60 · ` : ""}{best.gkWins} V · {best.shutouts} {best.shutouts === 1 ? "nolla" : "nollor"} ({best.gkMatches} {best.gkMatches === 1 ? "match" : "matcher"})
+        {" "}– {best.ga60 != null ? `${best.ga60.toString().replace(".", ",")} GAA · ` : ""}{best.gkWins} W · {best.shutouts} SO ({best.gkMatches} GP)
       </span>
     </p>
   );
@@ -56,7 +56,7 @@ export function VenuesTab({ input }: { input: Input }) {
               defaultSort="p"
               initial={5}
               columns={[
-                { key: "m", label: "M", title: "Mål", value: (r) => r.goals },
+                { key: "m", label: "G", title: "Mål", value: (r) => r.goals },
                 { key: "a", label: "A", title: "Assist", value: (r) => r.assists },
                 { key: "p", label: "P", title: "Poäng", value: (r) => r.points },
               ]}

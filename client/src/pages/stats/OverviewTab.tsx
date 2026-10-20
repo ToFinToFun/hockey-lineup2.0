@@ -363,7 +363,7 @@ export default function OverviewTab({ stats, pirData, onPlayerClick }: OverviewT
                 </div>
                 <div className="text-right">
                   <p className="text-amber-400 font-bold text-2xl">{topScorer.points}</p>
-                  <p className="text-[#687076] text-[10px]">poäng</p>
+                  <p className="text-[#687076] text-[10px]" title="Poäng (mål + assist)">P</p>
                 </div>
               </div>
             </button>
@@ -468,7 +468,7 @@ export default function OverviewTab({ stats, pirData, onPlayerClick }: OverviewT
                   {gk && (
                     <button onClick={() => onPlayerClick(gk.playerName)} className="flex-1 min-w-0 text-left border-l border-[#2a2a2a] pl-3 hover:opacity-80">
                       <span className="flex items-center gap-1 text-[#ECEDEE] text-xs font-medium truncate"><HockeyGoal size={12} className="text-orange-400 shrink-0" />{gk.playerName}</span>
-                      <span className="block text-[#9BA1A6] text-[10px]">{gk.ga60 != null ? `${String(gk.ga60).replace(".", ",")} /60 · ` : ""}{gk.gkWins} V · {gk.shutouts} 0:or</span>
+                      <span className="block text-[#9BA1A6] text-[10px]">{gk.ga60 != null ? `${String(gk.ga60).replace(".", ",")} GAA · ` : ""}{gk.gkWins} W · {gk.shutouts} SO</span>
                     </button>
                   )}
                 </div>

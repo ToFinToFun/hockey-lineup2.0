@@ -60,6 +60,6 @@ describe("målvakter i Media", () => {
   it("vinster, nollor och svit", () => {
     expect(goalieRows("gk_wins", ice, [], 10).map((r) => r.name)).toEqual(["Gun", "Hans"]);
     expect(goalieRows("gk_shutouts", ice, [], 10).map((r) => r.name)).toEqual(["Gun"]);
-    expect(goalieRows("gk_streak", ice, [{ name: "Hans", gkMatches: 3, max2: 2, current2: 1 }], 10)[0]).toMatchObject({ name: "Hans", value: "2", sub: "3 matcher i mål · pågående 1" });
+    expect(goalieRows("gk_streak", ice, [{ name: "Hans", gkMatches: 3, max2: 2, current2: 1 }], 10)[0]).toMatchObject({ name: "Hans", value: "2", sub: "3 GP · pågående 1" });
   });
 });

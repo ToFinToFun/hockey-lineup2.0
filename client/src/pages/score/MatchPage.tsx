@@ -1,3 +1,4 @@
+import { posLabel } from "@shared/positions";
 /*
  * MatchPage - Main match tracking interface
  * Design: Dark theme with hockey background, team logos, score counters, goal history with sponsors
@@ -50,7 +51,8 @@ function PickPos({ pos }: { pos: string }) {
   if (!pos) return <span className="w-6 shrink-0" />;
   const cls = pos === "M" ? "mv" : pos.toLowerCase();
   const name = { M: "Målvakt", B: "Back", C: "Center", F: "Forward" }[pos] ?? pos;
-  return <span className={`pos-badge pos-badge-sm pos-badge-${cls} shrink-0`} title={name}>{pos}</span>;
+  // Visas som NHL: G, D, C, F
+  return <span className={`pos-badge pos-badge-sm pos-badge-${cls} shrink-0`} title={name}>{posLabel(pos === "M" ? "MV" : pos)}</span>;
 }
 
 /** Lagets logga – eller en rund färgplupp om motståndaren saknar logga. */
@@ -612,9 +614,9 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
     const sorted = Object.entries(playerStats)
       .map(([name, stats]) => {
         const playerInfo = getPlayerInfo(name);
-        const posLabel = playerInfo ? getSlotLabel(playerInfo) : "";
+        const slotPos = playerInfo ? getSlotLabel(playerInfo) : "";
         const displayName = normalizeName(name);
-        return { name: displayName, ...stats, points: stats.goals + stats.assists, posLabel, playerInfo };
+        return { name: displayName, ...stats, points: stats.goals + stats.assists, posLabel: slotPos, playerInfo };
       })
       .sort((a, b) => b.points - a.points || b.goals - a.goals);
 
@@ -1032,7 +1034,7 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
                     {s.posLabel && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ml-2"
                         style={{ backgroundColor: (POS_COLORS[s.posLabel] || POS_COLORS.F).border, color: "#fff" }}>
-                        {s.posLabel}
+                        {posLabel(s.posLabel)}
                       </span>
                     )}
                     <span className="text-[#0a7ea4] font-bold text-sm shrink-0 ml-2">{s.goals} + {s.assists}</span>

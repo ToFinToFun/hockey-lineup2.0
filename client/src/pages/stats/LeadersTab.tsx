@@ -1,3 +1,4 @@
+import { statTitle } from "@shared/statAbbr";
 /**
  * LeadersTab – Scoring leaders with podium, expandable tables, and goal type leaderboards
  */
@@ -122,7 +123,7 @@ function LeaderTable({
         <span className="w-6">#</span>
         <span className="flex-1">Spelare</span>
         {columns.map((col) => (
-          <span key={col.key} className={`text-right ${col.width ?? "w-12"}`}>
+          <span key={col.key} className={`text-right ${col.width ?? "w-12"}`} title={statTitle(col.label)}>
             {col.label}
           </span>
         ))}
@@ -305,9 +306,9 @@ export default function LeadersTab({ stats, onPlayerClick, periodLabel, dateFilt
       icon: Crown,
       data: byPoints,
       valueKey: "points",
-      valueLabel: "p",
+      valueLabel: "P",
       columns: [
-        { key: "goals", label: "M", width: "w-8" },
+        { key: "goals", label: "G", width: "w-8" },
         { key: "assists", label: "A", width: "w-8" },
         { key: "points", label: "P", width: "w-8" },
         { key: "gwg", label: "GWG", width: "w-10" },
@@ -319,9 +320,9 @@ export default function LeadersTab({ stats, onPlayerClick, periodLabel, dateFilt
       icon: HockeyPuck,
       data: byGoals,
       valueKey: "goals",
-      valueLabel: "mål",
+      valueLabel: "G",
       columns: [
-        { key: "goals", label: "M", width: "w-8" },
+        { key: "goals", label: "G", width: "w-8" },
         { key: "assists", label: "A", width: "w-8" },
         { key: "points", label: "P", width: "w-8" },
       ],
@@ -332,10 +333,10 @@ export default function LeadersTab({ stats, onPlayerClick, periodLabel, dateFilt
       icon: HockeyStick,
       data: byAssists,
       valueKey: "assists",
-      valueLabel: "assist",
+      valueLabel: "A",
       columns: [
         { key: "assists", label: "A", width: "w-8" },
-        { key: "goals", label: "M", width: "w-8" },
+        { key: "goals", label: "G", width: "w-8" },
         { key: "points", label: "P", width: "w-8" },
       ],
     },
@@ -348,7 +349,7 @@ export default function LeadersTab({ stats, onPlayerClick, periodLabel, dateFilt
       valueLabel: "GWG",
       columns: [
         { key: "gwg", label: "GWG", width: "w-10" },
-        { key: "goals", label: "M", width: "w-8" },
+        { key: "goals", label: "G", width: "w-8" },
         { key: "points", label: "P", width: "w-8" },
       ],
     },
@@ -358,10 +359,10 @@ export default function LeadersTab({ stats, onPlayerClick, periodLabel, dateFilt
       icon: Users,
       data: byMatches,
       valueKey: "matches",
-      valueLabel: "matcher",
+      valueLabel: "GP",
       columns: [
-        { key: "matches", label: "Sp", width: "w-8" },
-        { key: "goals", label: "M", width: "w-8" },
+        { key: "matches", label: "GP", width: "w-8" },
+        { key: "goals", label: "G", width: "w-8" },
         { key: "assists", label: "A", width: "w-8" },
         { key: "points", label: "P", width: "w-8" },
       ],

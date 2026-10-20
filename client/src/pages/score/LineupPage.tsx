@@ -1,3 +1,4 @@
+import { posLabel } from "@shared/positions";
 /*
  * LineupPage - Team lineup display
  * Design: Dark theme with team panels showing goalkeepers, defense, and forwards
@@ -64,7 +65,7 @@ function SlotRow({ player, label, shortLabel }: { player: Player | undefined; la
       style={{ borderLeftColor: posColors.border, backgroundColor: posColors.bg }}>
       <div className="shrink-0 w-7 h-[18px] rounded flex items-center justify-center text-[9px] font-bold"
         style={{ backgroundColor: posColors.border, color: posColors.text }}>
-        {shortLabel}
+        {posLabel(shortLabel)}
       </div>
       {player.captainRole && (
         <span className="shrink-0 text-[9px] font-bold"

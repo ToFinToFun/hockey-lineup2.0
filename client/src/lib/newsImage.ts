@@ -1,3 +1,4 @@
+import { posLabel } from "@shared/positions";
 /**
  * Ritar bilden till laget.se-nyheten i samma stil som den delade länken:
  * arenabakgrund, mörka lagpaneler, positionsbrickor i positionsfärgerna
@@ -140,7 +141,7 @@ function drawRow(ctx: CanvasRenderingContext2D, slot: Slot, player: Player, x: n
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(slot.shortLabel, bx + badgeW / 2, by + badgeH / 2 + 1);
+  ctx.fillText(posLabel(slot.shortLabel), bx + badgeW / 2, by + badgeH / 2 + 1);
   ctx.textAlign = "left";
 
   let tx = bx + badgeW + 16;

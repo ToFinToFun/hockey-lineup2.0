@@ -427,7 +427,7 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
                         <option key={c.key} value={c.key} className="text-black">{starLine(c)}{c.team === "white" ? " – Vita" : " – Gröna"}</option>
                       ))}
                     </select>
-                    <label className="flex items-center gap-1 text-[10px] text-white/55 shrink-0" title="Visa statistik (G/A/TP eller GA) på bilden och i texten">
+                    <label className="flex items-center gap-1 text-[10px] text-white/55 shrink-0" title="Visa statistik (G/A/P eller GA) på bilden och i texten">
                       <input type="checkbox" checked={showStats[i]} onChange={() => toggleStats(i)} />
                       Stats
                     </label>
