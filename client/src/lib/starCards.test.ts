@@ -22,4 +22,17 @@ describe("Stars of the Game-kort", () => {
     expect(starCardSettings(null, c({ team: "green" }), 2, "x", false).logo).toBe("green");
     expect(starCardSettings(null, c(), 3, "x", false).placeholderLogo).toBe(true);
   });
+
+  it("position och nummer följer matchen, C/A från kortet", () => {
+    const saved = { position: "C", number: "16", captain: "A" as const };
+    const s = starCardSettings(saved, c({ position: "LW", number: "63" }), 1, "x", true);
+    expect(s.position).toBe("LW");
+    expect(s.number).toBe("63");
+    expect(s.captain).toBe("A");
+    expect(starCardSettings({ position: "C" }, c({ position: "MV" }), 1, "x", true).position).toBe("G");
+    // Utanför uppställningen: kortets position och nummer
+    const out = starCardSettings(saved, c({ position: "", number: "" }), 1, "x", true);
+    expect(out.position).toBe("C");
+    expect(out.number).toBe("16");
+  });
 });

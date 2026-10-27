@@ -38,14 +38,13 @@ export function starCardSettings(
   /** Match mot motståndare: vårt lag får klubbens märke, motståndarens spelare inget */
   external = false
 ): CardSettings {
-  const base: CardSettings = {
-    ...DEFAULT_SETTINGS,
-    name: c.name,
-    position: ({ MV: "G", B: "D", C: "C", LW: "LW", RW: "RW" } as Record<string, string>)[c.position] ?? "",
-    ...(saved ?? {}),
-  };
-  // Nummer från det sparade kortet, annars från matchens uppställning (tomt = inget nummer)
-  base.number = (saved?.number ?? "").trim() || c.number || "";
+  const base: CardSettings = { ...DEFAULT_SETTINGS, name: c.name, ...(saved ?? {}) };
+  // Position och nummer följer matchens uppställning; saknas spelaren där
+  // (t.ex. målskytt utanför uppställningen) används det sparade kortet.
+  // Kapten (C/A) och övrigt kommer från det sparade kortet.
+  const matchPos = ({ MV: "G", B: "D", C: "C", LW: "LW", RW: "RW" } as Record<string, string>)[c.position] ?? "";
+  base.position = matchPos || (saved?.position ?? "");
+  base.number = (c.number ?? "").trim() || (saved?.number ?? "").trim() || "";
   return {
     ...base,
     skin: "retro-guld",

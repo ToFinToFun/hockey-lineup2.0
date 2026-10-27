@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.5.1 – 2026-10-27
+
+- **Stjärnkorten i matchrapporten** visar positionen och numret spelaren hade i matchens uppställning, inte det som är sparat på hockeykortet. Kapten (C/A) och övrigt följer kortet. Målskyttar utanför uppställningen får kortets position och nummer som förut.
+
 ## 3.5.0 – 2026-10-21
 
 - **Samma förkortningar överallt (NHL):** GP, G, A, P, P/GP, GWG, P/60, TOI, TOI/GP, W-L-T och W% för utespelare; GP, W, GA, GAA (insläppta per 60 min, tidigare "/60"), GA/GP, SO och TOI för målvakter. Gäller statistiken, spelarprofilen, spelarkortet, Score Tracker, Live, utmärkelser, hockeykort, Media-bilder och videor. Svensk förklaring när man håller över en förkortning; rubriker och löptext är kvar på svenska.
