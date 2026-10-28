@@ -27,8 +27,8 @@ describe.skipIf(!hasDb)("PIR-förklaring", () => {
     const caller = appRouter.createCaller(admin as never);
     const e = await caller.pir.explain({ id: "xa" });
     expect(e).not.toBeNull();
-    expect(e!.history.length).toBeGreaterThanOrEqual(5);
-    expect(e!.history.every((h) => h.result === "V")).toBe(true);
+    expect(e!.history.outfield.length).toBeGreaterThanOrEqual(5);
+    expect(e!.history.outfield.every((h) => h.result === "V")).toBe(true);
     expect(e!.rating).toBe(e!.teamOnlyRating + e!.individual + e!.adjustment);
     expect(e!.individual).toBeGreaterThan(0); // xa gjorde mål i varje match
   });

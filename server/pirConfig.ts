@@ -7,6 +7,18 @@ import { setPirThresholds, pirThresholds, type PirThresholds } from "../shared/p
 export const PIR_WEIGHTS_KEY = "pir_weights";
 export const PIR_ADJUSTMENTS_KEY = "pir_adjustments";
 export const PIR_THRESHOLDS_KEY = "pir_thresholds";
+export const PIR_VISIBILITY_KEY = "pir_visibility";
+
+/**
+ * Vem som ser PIR (betyg, pilar, ranking, kurvor):
+ * - "board": bara styrelsen (Admin) – standard
+ * - "access": även de med Statistik, Spelare, Kort eller Lineup (som tidigare)
+ */
+export type PirVisibility = "board" | "access";
+
+export async function getPirVisibility(): Promise<PirVisibility> {
+  return (await getConfigValue(PIR_VISIBILITY_KEY)) === "access" ? "access" : "board";
+}
 
 /**
  * Vikter och justeringar. Läser också gränserna (pirThresholds) och sätter dem

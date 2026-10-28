@@ -1,4 +1,5 @@
 import { resultLabel, statTitle, wlt } from "@shared/statAbbr";
+import { FORM_MIN_MATCHES } from "@shared/pirThresholds";
 import { posLabel } from "@shared/positions";
 // Hockey Lineup App – PlayerCard – Glassmorphism v2
 // Flat design: no colored row backgrounds, just name + number + badges
@@ -600,9 +601,9 @@ export function DraggablePlayerCard({
 
 // Team color indicator — rounded-rect matching pos-badge-sm size
 /**
- * PIR-trend som ikon. Nivåer (senaste matcherna jämfört med totalen):
- * ↑ stigande (> +20), ↗ svagt stigande (+8…+20), → stabil, ↘ svagt fallande, ↓ fallande (< −20).
- * ? = för lite data (färre än 3 matcher).
+ * Formpil: spelarens senaste 3 matcher jämfört med hans eget snitt (server/pir.ts).
+ * ↑ stigande (> +25), ↗ svagt stigande (+10…+25), → stabil, ↘ svagt fallande, ↓ fallande (< −25).
+ * ? = för lite data (färre än 5 matcher).
  */
 /**
  * Anmälan – samma tre knappar överallt. Med laget.se-koppling uppdateras
@@ -758,13 +759,13 @@ export function TrendIcon({ trendLabel, matchesPlayed, className = "" }: {
   className?: string;
 }) {
   const base = `inline-flex items-center justify-center w-[14px] h-[18px] text-[11px] font-bold leading-none shrink-0 ${className}`;
-  if ((matchesPlayed ?? 0) < 3) return <span className={`${base} text-white/30`} title="För lite matchdata (färre än 3 matcher)">?</span>;
+  if ((matchesPlayed ?? 0) < FORM_MIN_MATCHES) return <span className={`${base} text-white/30`} title={`För lite matchdata för formen (färre än ${FORM_MIN_MATCHES} matcher)`}>?</span>;
   switch (trendLabel) {
-    case "rising": return <span className={`${base} text-emerald-400`} title="Stigande form">↑</span>;
-    case "slightly_rising": return <span className={`${base} text-emerald-400/70`} title="Svagt stigande form">↗</span>;
-    case "slightly_falling": return <span className={`${base} text-red-400/70`} title="Svagt fallande form">↘</span>;
-    case "falling": return <span className={`${base} text-red-400`} title="Fallande form">↓</span>;
-    default: return <span className={`${base} text-white/40`} title="Stabil form">→</span>;
+    case "rising": return <span className={`${base} text-emerald-400`} title="Stigande form – senaste 3 matcherna klart bättre än snittet">↑</span>;
+    case "slightly_rising": return <span className={`${base} text-emerald-400/70`} title="Svagt stigande form – senaste 3 matcherna bättre än snittet">↗</span>;
+    case "slightly_falling": return <span className={`${base} text-red-400/70`} title="Svagt fallande form – senaste 3 matcherna sämre än snittet">↘</span>;
+    case "falling": return <span className={`${base} text-red-400`} title="Fallande form – senaste 3 matcherna klart sämre än snittet">↓</span>;
+    default: return <span className={`${base} text-white/40`} title="Stabil form – senaste 3 matcherna som snittet">→</span>;
   }
 }
 

@@ -24,7 +24,12 @@ vi.mock("@/lib/trpc", () => ({
     pir: { player: { useQuery: ({ id }: { id: string }) => ({ isLoading: false, data: id === "p1" ? {
       outfieldRating: 1062, outfieldTrendLabel: "rising", outfieldMatchesPlayed: 12, outfieldConfidence: 1, outfieldRank: { rank: 2, of: 30 },
       goalkeeperRating: null, goalkeeperRank: null, adjustment: 0,
-    } : null }) } },
+    } : null }) },
+      // PIR över tid (kurvan under PIR-rutorna)
+      history: { useQuery: () => ({ isLoading: false, data: { outfield: [
+        { matchId: 1, date: "2026-09-01T20:00:00Z", rating: 1012, result: "V", score: [4, 2], provisional: false },
+        { matchId: 2, date: "2026-09-08T20:00:00Z", rating: 1062, result: "V", score: [5, 1], provisional: false },
+      ], goalkeeper: [] } }) } },
     players: { list: { useQuery: () => ({ isLoading: false, data: [] }) }, profile: { useQuery: ({ id }: { id: string }, opts?: { enabled?: boolean }) =>
       opts?.enabled === false || !id ? { isLoading: false, data: undefined } : { isLoading: false, data: profiles[id] } } },
     cards: { list: { useQuery: () => ({ isLoading: false, data: [] }) }, stats: { useQuery: () => ({ isLoading: false, data: undefined }) } },
@@ -48,6 +53,9 @@ describe("PlayerProfileView", () => {
     expect(screen.getByText("Rekord")).toBeTruthy();
     expect(screen.getByText("PIR")).toBeTruthy();
     expect(screen.getByText(/#2 av 30/)).toBeTruthy();
+    // Kurvan: två matcher, +50 sedan första
+    expect(screen.getByRole("img", { name: /PIR över tid som utespelare: från 1012 till 1062/ })).toBeTruthy();
+    expect(screen.getByText(/\+50 sedan 1\/9/)).toBeTruthy();
     expect(screen.getByText("Speltid")).toBeTruthy();
     expect(screen.getByText("6 h 52 min")).toBeTruthy();
     expect(screen.getByText("Kemi")).toBeTruthy();

@@ -8,9 +8,10 @@
  *    från analysen som styrelsen kan godkänna.
  */
 import { useEffect, useMemo, useState } from "react";
+import { PirHistoryChart } from "@/components/PirHistoryChart";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Loader2, Target, SlidersHorizontal, Users, Sparkles, Info, X, ChevronRight, Minus, Plus } from "lucide-react";
+import { Loader2, Target, SlidersHorizontal, Users, Sparkles, Info, X, ChevronRight, Minus, Plus, Eye } from "lucide-react";
 
 const pct = (v: number | null | undefined) => (v == null ? "–" : `${Math.round(v * 100)} %`);
 const num = (v: number | null | undefined, d = 3) => (v == null ? "–" : v.toFixed(d).replace(".", ","));
@@ -68,6 +69,14 @@ export function PirPanel() {
       refreshAll();
     },
   });
+  const visibility = trpc.pir.getVisibility.useQuery();
+  const setVisibility = trpc.pir.setVisibility.useMutation({
+    onSuccess: () => {
+      toast.success("Sparat");
+      utils.pir.getVisibility.invalidate();
+      utils.pir.canSee.invalidate();
+    },
+  });
   const setAdjustment = trpc.pir.setAdjustment.useMutation({
     onSuccess: () => {
       utils.pir.getRatings.invalidate();
@@ -96,11 +105,33 @@ export function PirPanel() {
       <Card icon={Info} title="Så fungerar PIR">
         <ul className="text-xs text-white/60 space-y-1.5 list-disc pl-4">
           <li>Alla börjar på <b className="text-white/80">1000</b> (snittet). Betyget ändras efter varje godkänd match utifrån om laget vann, hur starkt det egna och motståndarlaget var, och spelarens egna mål, assist eller målvaktsinsats.</li>
-          <li>Nyare matcher väger mer än gamla (halveringstid under Vikter). Utespelare och målvakter får separata betyg.</li>
+          <li>Nyare matcher väger mer än gamla (halveringstid under Vikter).</li>
+          <li>Utespelare och målvakter får separata betyg: matcher i mål påverkar bara målvaktsbetyget och tvärtom.</li>
+          <li>Mål och assist jämförs inom positionen – backar mot backar, forwards mot forwards – så att backar inte hamnar lägre för att de gör färre poäng.</li>
           <li>Ett betyg visas först efter <b className="text-white/80">{th?.minMatchesShow ?? 3} matcher</b> i rollen; före det räknas spelaren som 1000 i prediktion och Auto.</li>
-          <li>Formpilen jämför de senaste matcherna med betyget över tid.</li>
+          <li>Formpilen jämför spelarens senaste 3 matcher med hur hen brukar prestera, och visas efter 5 matcher i rollen.</li>
           <li>Har en spelare bytt lag i sista stund räknas hen till det lag målen gjordes för.</li>
         </ul>
+      </Card>
+
+      <Card icon={Eye} title="Vem ser PIR">
+        <p className="text-white/50 text-xs">Gäller betyg, formpilar, ranking, kurvor och prediktion. Auto-lag (automatiken före evenemanget) och styrelsens Auto-knapp använder PIR oavsett. När bara styrelsen ser PIR fördelar Auto-knappen för andra (t.ex. Lineup-länkar) efter position och lag, utan PIR.</p>
+        <div className="space-y-1.5" role="radiogroup" aria-label="Vem ser PIR">
+          {([
+            ["board", "Bara styrelsen", "Standard. Ingen annan ser PIR, varken i Lineup, statistiken eller på spelarprofilen."],
+            ["access", "Alla med åtkomst", "Även länkar och medlemmar med Statistik, Spelare, Kort eller Lineup."],
+          ] as const).map(([value, label, hint]) => {
+            const on = (visibility.data ?? "board") === value;
+            return (
+              <button key={value} role="radio" aria-checked={on} disabled={setVisibility.isPending || visibility.isLoading}
+                onClick={() => !on && setVisibility.mutate({ visibility: value })}
+                className={`w-full text-left rounded-lg border px-3 py-2 transition ${on ? "border-[#0a7ea4] bg-[#0a7ea4]/15" : "border-white/10 bg-white/[0.03]"}`}>
+                <p className={`text-sm font-semibold ${on ? "text-white" : "text-white/70"}`}>{label}</p>
+                <p className="text-[11px] text-white/45">{hint}</p>
+              </button>
+            );
+          })}
+        </div>
       </Card>
 
       <Card icon={Users} title="Spelare">
@@ -345,7 +376,6 @@ function PirExplain({ playerKey, name, adjustment, saving, onSaveAdjustment, onC
               </div>
             </div>
             <div>
-              <p className="text-[11px] text-white/40 mb-1">Utveckling – betyget efter var och en av de senaste {e.history.length} matcherna</p>
               <PirHistoryChart history={e.history} />
             </div>
             <div className="rounded-xl bg-white/[0.03] border border-white/10 p-3 space-y-2">
@@ -369,35 +399,6 @@ function PirExplain({ playerKey, name, adjustment, saving, onSaveAdjustment, onC
     </div>
   );
 }
-
-function PirHistoryChart({ history }: { history: Array<{ date: string; rating: number; result: "V" | "O" | "F" }> }) {
-  if (history.length < 2) return <p className="text-xs text-white/40">För få matcher för en kurva.</p>;
-  const W = 440, H = 150, pad = 26;
-  const vals = history.map((h) => h.rating);
-  const min = Math.min(...vals, 1000) - 10;
-  const max = Math.max(...vals, 1000) + 10;
-  const x = (i: number) => pad + (i * (W - pad * 2)) / (history.length - 1);
-  const y = (v: number) => H - pad - ((v - min) * (H - pad * 2)) / (max - min);
-  const path = history.map((h, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(h.rating).toFixed(1)}`).join(" ");
-  const color = { V: "#34d399", O: "#9ca3af", F: "#f87171" };
-  const d = (iso: string) => { const t = new Date(iso); return `${t.getDate()}/${t.getMonth() + 1}`; };
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="PIR över tid">
-      <line x1={pad} x2={W - pad} y1={y(1000)} y2={y(1000)} stroke="rgba(255,255,255,0.15)" strokeDasharray="4 4" />
-      <text x={W - pad} y={y(1000) - 4} textAnchor="end" fontSize="10" fill="rgba(255,255,255,0.35)">1000</text>
-      <path d={path} fill="none" stroke="#38bdf8" strokeWidth="2" />
-      {history.map((h, i) => (
-        <circle key={i} cx={x(i)} cy={y(h.rating)} r="3.5" fill={color[h.result]}>
-          <title>{`${d(h.date)}: ${h.rating} (${h.result === "V" ? "vinst" : h.result === "F" ? "förlust" : "oavgjort"})`}</title>
-        </circle>
-      ))}
-      <text x={pad} y={H - 6} fontSize="10" fill="rgba(255,255,255,0.35)">{d(history[0].date)}</text>
-      <text x={W - pad} y={H - 6} textAnchor="end" fontSize="10" fill="rgba(255,255,255,0.35)">{d(history[history.length - 1].date)}</text>
-      <text x={x(history.length - 1)} y={y(vals[vals.length - 1]) - 8} textAnchor="end" fontSize="11" fontWeight="700" fill="#e2e8f0">{vals[vals.length - 1]}</text>
-    </svg>
-  );
-}
-
 
 /** Gränser: när PIR börjar gälla och hur träffsäkerheten räknas. Standard = som tidigare. */
 const THRESHOLD_FIELDS: Array<{ key: "minMatchesShow" | "fullConfidence" | "newcomerMatches" | "backtestWarmup" | "minMatchesForSuggestion"; label: string; hint: string }> = [

@@ -5,7 +5,8 @@ import { notifySite } from "./integration";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, lineupProcedure, adminProcedure, moduleProcedure, lineupOrModuleProcedure, scoreProcedure, liveProcedure, broadcastProcedure, router } from "./_core/trpc";
 import { authRouter } from "./routers/auth";
-import { canLineup } from "./auth";
+import { canLineup, isAdmin } from "./auth";
+import { pirAllowed } from "./pirAccess";
 import { playersRouter } from "./routers/players";
 import { activitiesRouter } from "./routers/activities";
 import { memberRouter } from "./routers/member";
@@ -29,6 +30,7 @@ import { scoreStatsRouter } from "./routers/scoreStats";
 import { getAllMatchResults, getConfigValue, setConfigValue, getMatchCacheVersion, refreshMatchCacheVersion } from "./scoreDb";
 import { calculatePIR, DEFAULT_PIR_WEIGHTS, type PirWeights } from "./pir";
 import { analyzePir, sanitizeWeights, type PirAnalysis } from "./pirAnalysis";
+import { pirHistoryAll, type PirHistory } from "./pirHistory";
 import { getRegistryMap, getRegistryVersion } from "./playersDb";
 import { getLineupSnapshot, applyLineupPatch, getLineupChangedAt } from "./lineupSync";
 import { readLastPublished, writeLastPublished, type PublishedNews } from "./newsState";
@@ -43,7 +45,7 @@ import { setLiveAutoEndHandler, currentSession, startLive, pushLive, endLive, en
 import { getLineupContext, saveLineupContext } from "./lineupContexts";
 import { opponentPlayerId, isOpponentPlayerId, INTERNAL_SETUP } from "../shared/matchSetup";
 import type { Player } from "../client/src/lib/players";
-import { loadPirConfig, PIR_WEIGHTS_KEY, PIR_ADJUSTMENTS_KEY, PIR_THRESHOLDS_KEY } from "./pirConfig";
+import { loadPirConfig, getPirVisibility, PIR_WEIGHTS_KEY, PIR_ADJUSTMENTS_KEY, PIR_THRESHOLDS_KEY, PIR_VISIBILITY_KEY } from "./pirConfig";
 import { DEFAULT_PIR_THRESHOLDS, PIR_THRESHOLD_LIMITS, sanitizeThresholds } from "../shared/pirThresholds";
 import { positionAndTeamHistory } from "./positionHistory";
 import { nextEvent, eventStart, lagetEvent } from "./autoNews";
@@ -93,8 +95,28 @@ let analysisCache: { key: string; result: PirAnalysis } | null = null;
 // PIR-inställningar i app_config (vikter och manuella justeringar per spelare): server/pirConfig.ts
 let pirConfigVersion = 0;
 
-// Förklaring och historik per spelare – dyrt att räkna, så cachat per spelare och dataläge.
+/** Får den inloggade se PIR? Styrelsen alltid; övriga bara om det öppnats (Inställningar → PIR). */
+async function canSeePir(session: Parameters<typeof isAdmin>[0]): Promise<boolean> {
+  return isAdmin(session) || pirAllowed(session, await getPirVisibility());
+}
+
+// Förklaring per spelare – cachad per spelare och dataläge.
 const pirExplainCache = new Map<string, PirExplanation>();
+
+// PIR över tid för alla spelare – räknas om när matcherna eller inställningarna ändrats.
+let pirHistoryCache: { key: string; result: Promise<Map<string, PirHistory>> } | null = null;
+async function getPirHistory(playerKey: string): Promise<PirHistory> {
+  const key = `${await refreshMatchCacheVersion()}:${pirConfigVersion}`;
+  if (!pirHistoryCache || pirHistoryCache.key !== key) {
+    const result = (async () => {
+      const { weights, adjustments } = await loadPirConfig();
+      return pirHistoryAll(await getAllMatchResults(), { weights, adjustments });
+    })();
+    pirHistoryCache = { key, result };
+    result.catch(() => { if (pirHistoryCache?.result === result) pirHistoryCache = null; });
+  }
+  return (await pirHistoryCache.result).get(playerKey) ?? { outfield: [], goalkeeper: [] };
+}
 
 export interface PirExplanation {
   playerKey: string;
@@ -104,8 +126,8 @@ export interface PirExplanation {
   /** Mål-, assist- och målvaktsbonusarnas bidrag */
   individual: number;
   adjustment: number;
-  /** Betyget efter var och en av spelarens senaste matcher (äldst först) */
-  history: Array<{ matchId: number; date: string; rating: number; result: "V" | "O" | "F" }>;
+  /** Betyget per roll efter var och en av spelarens matcher (äldst först) */
+  history: PirHistory;
 }
 
 async function explainPir(playerKey: string): Promise<PirExplanation | null> {
@@ -121,26 +143,7 @@ async function explainPir(playerKey: string): Promise<PirExplanation | null> {
   const teamOnly = calculatePIR(matches, { weights: { goal: 0, assist: 0, goalkeeper: 0, halfLifeDays: weights.halfLifeDays }, skipTrend: true })
     .find((r) => r.playerKey === playerKey);
 
-  // Spelarens matcher (äldst först) och betyget direkt efter var och en – högst de 20 senaste
-  const dateOf = (m: (typeof matches)[number]) => new Date((m.matchEndTime ?? m.matchStartTime ?? m.createdAt) as unknown as string);
-  const sorted = [...matches].sort((a, b) => dateOf(a).getTime() - dateOf(b).getTime());
-  const aWhite = (m: (typeof matches)[number]) => isTeamAWhite((m.lineup as { teamAName?: string } | null)?.teamAName);
-  const played = sorted.filter((m) => {
-    const lu = (m.lineup as { lineup?: Record<string, { id?: string; name?: string }> } | null)?.lineup ?? {};
-    return Object.values(lu).some((p) => (p?.id ?? p?.name) === playerKey);
-  }).slice(-20);
-  const history: PirExplanation["history"] = [];
-  for (const m of played) {
-    const until = dateOf(m);
-    const upTo = sorted.filter((x) => dateOf(x).getTime() <= until.getTime());
-    const r = calculatePIR(upTo, { weights, adjustments, now: until, skipTrend: true, iterations: 8 }).find((x) => x.playerKey === playerKey);
-    const lu = (m.lineup as { lineup?: Record<string, { id?: string; name?: string }> } | null)?.lineup ?? {};
-    const slot = Object.entries(lu).find(([, p]) => (p?.id ?? p?.name) === playerKey)?.[0] ?? "";
-    const white = slot.startsWith("team-a") === aWhite(m);
-    const own = white ? m.teamWhiteScore : m.teamGreenScore;
-    const opp = white ? m.teamGreenScore : m.teamWhiteScore;
-    if (r) history.push({ matchId: m.id, date: until.toISOString(), rating: r.rating, result: own > opp ? "V" : own < opp ? "F" : "O" });
-  }
+  const history = await getPirHistory(playerKey);
 
   const teamOnlyRating = teamOnly?.rating ?? 1000;
   const result: PirExplanation = {
@@ -1236,15 +1239,30 @@ export const appRouter = router({
 
   pir: router({
     /** Get PIR ratings for all players (enhanced with trend, confidence, etc.) */
-    getRatings: lineupOrModuleProcedure("stats", "cards", "players").query(async () => {
+    getRatings: lineupOrModuleProcedure("stats", "cards", "players").query(async ({ ctx }) => {
+      // Bara styrelsen ser PIR om inget annat valts (Inställningar → PIR) – övriga får en tom lista
+      if (!(await canSeePir(ctx.session))) return [];
       // Räknas bara om när matcherna eller inställningarna har ändrats.
       return getPirRatings();
     }),
 
+    /** Om den inloggade får se PIR (styr vad som visas i appen). */
+    canSee: publicProcedure.query(({ ctx }) => canSeePir(ctx.session)),
+
+    /** Vem som ser PIR (styrelsen). */
+    getVisibility: adminProcedure.query(() => getPirVisibility()),
+    setVisibility: adminProcedure
+      .input(z.object({ visibility: z.enum(["board", "access"]) }))
+      .mutation(async ({ input }) => {
+        await setConfigValue(PIR_VISIBILITY_KEY, input.visibility);
+        return { success: true };
+      }),
+
     /** En spelares PIR med placering bland alla med betyg i samma roll (spelarprofilen). */
     player: moduleProcedure("players", "stats")
       .input(z.object({ id: z.string().min(1).max(64) }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        if (!(await canSeePir(ctx.session))) return null;
         const all = await getPirRatings();
         const me = all.find((r) => r.playerKey === input.id);
         if (!me) return null;
@@ -1259,6 +1277,11 @@ export const appRouter = router({
 
     /** Vikter och manuella justeringar (styrelsen). */
     /** Varför spelaren har sitt betyg: lagresultat, individuella bonusar, justering och utveckling. */
+    /** Spelarens PIR per roll efter var och en av hans matcher (kurvan på profilen). */
+    history: moduleProcedure("players", "stats")
+      .input(z.object({ id: z.string().min(1).max(64) }))
+      .query(async ({ input, ctx }) => ((await canSeePir(ctx.session)) ? getPirHistory(input.id) : null)),
+
     explain: adminProcedure
       .input(z.object({ id: z.string().min(1).max(64) }))
       .query(({ input }) => explainPir(input.id)),

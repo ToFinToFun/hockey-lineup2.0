@@ -3,6 +3,11 @@
  * det alltid varit. Servern läser värdena ur app_config; webbläsaren hämtar
  * dem (pir.thresholds) så att Lineup, prediktion och Auto räknar likadant.
  */
+/** Formpilen: spelarens senaste så många matcher jämförs med hans eget snitt */
+export const FORM_MATCHES = 3;
+/** Formpilen visas först när spelaren har så många matcher (i rollen) */
+export const FORM_MIN_MATCHES = 5;
+
 export interface PirThresholds {
   /** Betyget visas och används först efter så många matcher i rollen */
   minMatchesShow: number;

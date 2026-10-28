@@ -15,6 +15,7 @@ import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "../../../../server/routers";
 import { trpc } from "@/lib/trpc";
 import { FormStrip, TrendIcon } from "@/components/PlayerCard";
+import { PirHistoryChart } from "@/components/PirHistoryChart";
 import { PlayerPhoto } from "@/components/PlayerPhoto";
 import { positionName } from "@/lib/players";
 
@@ -141,7 +142,7 @@ export function PlayerProfileView({ player, all }: { player: Basic; all: Basic[]
           </div>
 
           {/* PIR */}
-          {pir.data && <PirSection pir={pir.data} />}
+          {pir.data && <PirSection pir={pir.data} playerId={player.id} />}
 
           {/* Rekord */}
           <Section title="Rekord">
@@ -286,14 +287,15 @@ function PirTile({ label, rating, trendLabel, matches, rank, confidence }: {
   );
 }
 
-function PirSection({ pir }: { pir: NonNullable<Pir> }) {
+function PirSection({ pir, playerId }: { pir: NonNullable<Pir>; playerId: string }) {
   const hasOut = pir.outfieldRating != null;
   const hasGk = pir.goalkeeperRating != null;
+  const history = trpc.pir.history.useQuery({ id: playerId }, { staleTime: 60_000 });
   return (
     <section className="border-t border-white/5 pt-3">
       <p className="text-xs font-semibold text-white/70">PIR</p>
       <p className="text-[10px] text-white/30 mb-1.5">
-        Player Impact Rating – 1000 är snittet. Pilen visar formen de senaste matcherna. Placering bland alla med betyg i samma roll.
+        Player Impact Rating – 1000 är snittet. Pilen visar formen: de senaste 3 matcherna mot hur spelaren brukar prestera. Placering bland alla med betyg i samma roll.
       </p>
       {!hasOut && !hasGk ? (
         <p className="text-[11px] text-white/30">För få matcher för ett betyg än (minst 3 i en roll).</p>
@@ -312,6 +314,13 @@ function PirSection({ pir }: { pir: NonNullable<Pir> }) {
       {pir.adjustment !== 0 && (
         <p className="text-[10px] text-white/35 mt-1">Inklusive manuell justering {pir.adjustment > 0 ? "+" : ""}{pir.adjustment}.</p>
       )}
+      <div className="mt-2">
+        {history.isLoading ? (
+          <div className="h-[120px] rounded-lg bg-white/[0.03] animate-pulse" aria-label="Laddar kurvan" />
+        ) : history.data ? (
+          <PirHistoryChart history={history.data} initialRole={!hasOut && hasGk ? "goalkeeper" : "outfield"} />
+        ) : null}
+      </div>
     </section>
   );
 }

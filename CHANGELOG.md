@@ -7,6 +7,14 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.6.0 – 2026-10-28
+
+- **PIR syns bara för styrelsen** som standard – betyg, formpilar, ranking, kurvor och prediktion, även i Statistik och på spelarprofilen. Inställningar → PIR → *Vem ser PIR* kan öppna det för alla med Statistik, Spelare, Kort eller Lineup. Auto-lag och styrelsens Auto använder PIR som förut; för övriga fördelar Auto-knappen utan PIR när bara styrelsen ser det.
+- **Formpilen visar aktuell form:** spelarens senaste 3 matcher jämfört med hur hen brukar prestera (tidigare klubbens senaste 16 matcher, vilket gjorde att alla stod på →). Visas efter 5 matcher i rollen, gränser ±10/±25.
+- **Separata betyg för målvakt och utespelare:** matcher i mål påverkar bara målvaktsbetyget och tvärtom (tidigare blev de i praktiken lika). Prediktion och Auto använder rollens betyg.
+- **Backar missgynnas inte:** mål och assist jämförs inom positionen – backar mot backar, forwards mot forwards. Gäller hela historiken, så betygen räknas om.
+- **PIR-kurva på spelarprofilen:** betyget efter varje match per roll, färgat efter resultat; tryck på en punkt för datum, resultat och förändring. Samma kurva i Inställningar → PIR.
+
 ## 3.5.1 – 2026-10-27
 
 - **Stjärnkorten i matchrapporten** visar positionen och numret spelaren hade i matchens uppställning, inte det som är sparat på hockeykortet. Kapten (C/A) och övrigt följer kortet. Målskyttar utanför uppställningen får kortets position och nummer som förut.

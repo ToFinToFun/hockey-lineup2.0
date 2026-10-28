@@ -25,7 +25,9 @@ const bareName = (n: string) => n.replace(/\s*#\d*\s*$/, "").trim().toLowerCase(
 
 /** PIR-ranking som tabell (utespelare eller målvakter). */
 function PirTable({ ratings, role, onPlayerClick }: { ratings: Rating[] | undefined; role: "outfield" | "goalkeeper"; onPlayerClick: (name: string) => void }) {
-  const rows = (ratings ?? []).filter((r) => (role === "outfield" ? r.outfieldRating : r.goalkeeperRating) != null);
+  // Tom lista = PIR visas inte för den här användaren (bara styrelsen som standard)
+  if (!ratings?.length) return null;
+  const rows = ratings.filter((r) => (role === "outfield" ? r.outfieldRating : r.goalkeeperRating) != null);
   return (
     <StatSection title="PIR-ranking" icon={<Gauge size={14} className="text-amber-400" />} hint="PIR kräver minst 3 matcher i rollen. Bara internmatcher räknas.">
       <StatTable

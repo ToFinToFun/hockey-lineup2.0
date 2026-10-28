@@ -23,8 +23,12 @@ vi.mock("@/lib/trpc", () => {
         analysis: { useQuery: () => q({ current: { metrics: { matches: 20, hitRate: 0.6, brier: 0.22, coverage: 0.8, calibration: [] } }, teamOnly: { brier: 0.24, hitRate: 0.55 } }) },
         getRatings: { useQuery: () => q(ratings) },
         explain: { useQuery: () => q({ playerKey: "p1", rating: 1060, teamOnlyRating: 1030, individual: 30, adjustment: 0,
-          history: [{ matchId: 1, date: "2026-09-01T20:00:00Z", rating: 1010, result: "V" }, { matchId: 2, date: "2026-09-08T20:00:00Z", rating: 1060, result: "V" }] }) },
+          history: { outfield: [
+            { matchId: 1, date: "2026-09-01T20:00:00Z", rating: 1010, result: "V", score: [4, 2], provisional: false },
+            { matchId: 2, date: "2026-09-08T20:00:00Z", rating: 1060, result: "V", score: [5, 1], provisional: false },
+          ], goalkeeper: [] } }) },
         setWeights: { useMutation: m }, setAdjustment: { useMutation: m }, setThresholds: { useMutation: m },
+        getVisibility: { useQuery: () => q("board") }, setVisibility: { useMutation: m },
       },
       score: { config: { getPeriods: { useQuery: () => q({ seasonFrom: "2026-09-01", seasonTo: "2027-04-30", playoffFrom: "2027-05-01", playoffTo: "2027-05-31", preseasonFrom: "2026-08-01", preseasonTo: "2026-08-31", recurring: { seasonFrom: "09-01", seasonTo: "04-30", playoffFrom: "05-01", playoffTo: "05-31", preseasonFrom: "08-01", preseasonTo: "08-31" } }) }, updatePeriods: { useMutation: m } } },
       laget: {
@@ -58,6 +62,8 @@ describe("Inställningar", () => {
   it("varje del öppnas via ?flik=", () => {
     let r = show("pir");
     expect(screen.getByText("Så fungerar PIR")).toBeTruthy();
+    // Vem ser PIR: bara styrelsen som standard
+    expect(screen.getByRole("radio", { name: /Bara styrelsen/ }).getAttribute("aria-checked")).toBe("true");
     fireEvent.click(screen.getByText("Kalle"));
     expect(screen.getByText(/Varför 1060/)).toBeTruthy();
     expect(screen.getAllByText("+30").length).toBe(2); // lagresultat och egna insatser

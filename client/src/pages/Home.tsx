@@ -337,10 +337,12 @@ export default function Home() {
   const opponentQ = trpc.opponents.get.useQuery({ id: setup.opponentId ?? 0 }, { enabled: external && !!setup.opponentId && isAdmin, staleTime: 30_000 });
   const addOpponentPlayerM = trpc.opponents.addPlayer.useMutation();
   const opponentUtils = trpc.useUtils();
-  // Tillfälliga länkar ser inte PIR – men Auto balanserar ändå efter det i bakgrunden
+  // PIR syns bara för styrelsen, om inte styrelsen öppnat det (Inställningar → PIR → Vem ser PIR)
+  const pirVisibleQ = trpc.pir.canSee.useQuery(undefined, { staleTime: 60_000 });
+  const pirVisible = isAdmin || pirVisibleQ.data === true;
   const displayPirSettings = useMemo<PirSettings>(
-    () => (isAdmin ? pirSettings : { ...pirSettings, enabled: false, showRating: false, showTrend: false, showTeamStrength: false, showPrediction: false, useForBalance: true }),
-    [pirSettings, isAdmin]
+    () => (pirVisible ? pirSettings : { ...pirSettings, enabled: false, showRating: false, showTrend: false, showTeamStrength: false, showPrediction: false, useForBalance: true }),
+    [pirSettings, pirVisible]
   );
 
   // Toast när någon annan ändrat uppställningen
@@ -2046,8 +2048,8 @@ export default function Home() {
             </div>
           </header>
 
-          {/* Matchprediktion (experimentell, endast styrelsen) */}
-          {isAdmin && pirSettings.enabled && pirSettings.showPrediction && !external && (
+          {/* Matchprediktion (experimentell, de som ser PIR) */}
+          {pirVisible && pirSettings.enabled && pirSettings.showPrediction && !external && (
             <MatchPredictionBar lineup={lineup} teamAName={teamAName} teamBName={teamBName} dark={isLineupDark} />
           )}
 
