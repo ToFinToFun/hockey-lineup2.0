@@ -18,6 +18,8 @@ interface TeamsTabProps {
   dateFilter?: { from?: string; to?: string };
   /** Slutspel: finalen i stället för tabellen */
   playoff?: boolean;
+  /** Säsong: tabellen och finalen */
+  season?: boolean;
 }
 
 // ─── Comparison Bar ─────────────────────────────────────────────────────────
@@ -436,11 +438,11 @@ function TeamStatCard({
 }
 
 // ─── Main Component ─────────────────────────────────────────────────────────
-export default function TeamsTab({ teamData, stats, dateFilter, playoff = false }: TeamsTabProps) {
+export default function TeamsTab({ teamData, stats, dateFilter, playoff = false, season = false }: TeamsTabProps) {
   if (!teamData || teamData.totalMatches === 0) {
     return (
       <div className="space-y-6">
-        <StandingsSection input={dateFilter} playoff={playoff} />
+        <StandingsSection input={dateFilter} playoff={playoff} season={season} />
         <div className="text-center py-10 text-[#687076]">
           <Shield size={32} className="mx-auto mb-3 opacity-30" />
           <p className="text-sm">Ingen lagdata för vald period</p>
@@ -454,7 +456,7 @@ export default function TeamsTab({ teamData, stats, dateFilter, playoff = false 
 
   return (
     <div className="space-y-6">
-      <StandingsSection input={dateFilter} playoff={playoff} />
+      <StandingsSection input={dateFilter} playoff={playoff} season={season} />
       {/* Header */}
       <div className="text-center">
         <div className="flex items-center justify-center gap-4 mb-2">

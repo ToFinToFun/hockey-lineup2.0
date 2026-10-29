@@ -53,7 +53,7 @@ export const MEDIA_BACKGROUNDS: Array<{ id: MediaBackground; name: string; url: 
 const bgUrl = (id: MediaBackground | undefined) => (MEDIA_BACKGROUNDS.find((b) => b.id === id) ?? MEDIA_BACKGROUNDS[0]).url;
 /** De nya bilderna är redan mörka – mörka dem mindre så att miljön syns */
 const DIM: Partial<Record<MediaBackground, number>> = { ute: 0.45, omklad: 0.6, rink: 0.55, klubb: 0.5, gym: 0.55, stig: 0.6, vinterskog: 0.5, sommar: 0.7, slask: 0.5, host: 0.5, pucken: 0.6, malburen: 0.65 };
-const dimFor = (id: MediaBackground | undefined, base: number) => base * (id ? DIM[id] ?? 1 : 1);
+export const dimFor = (id: MediaBackground | undefined, base: number) => base * (id ? DIM[id] ?? 1 : 1);
 
 export interface MediaCommon {
   /** Egen bild (ersätter bakgrunden i alla mallar) och hur mycket den mörkas (0–1) */

@@ -111,17 +111,22 @@ beforeAll(async () => {
   ] } as never)) as unknown as Canvasish;
 
   // Statistik: delningsbilder (tabellen och finalen)
-  const { renderStatsTable, renderFinal } = await import("@/lib/statsImages");
+  const { renderStatsTable, renderFinal, renderChampions } = await import("@/lib/statsImages");
   images["statistik-tabell"] = (await renderStatsTable({ title: "Tabellen", subtitle: "Säsong 26/27", note: "2 poäng för vinst, 1 för oavgjort", highlight: 7,
     columns: ["GP", "W", "L", "T", "GF", "GA", "+/-", "P"].map((label) => ({ label })),
     rows: [
       { rank: "1", name: "Gröna", logo: "/images/logo-green.png", color: "#34d399", cells: ["12", "7", "4", "1", "48", "39", "+9", "15"] },
       { rank: "2", name: "Vita", logo: "/images/logo-white.png", color: "#e2e8f0", cells: ["12", "4", "7", "1", "39", "48", "-9", "9"] },
     ] } as never)) as unknown as Canvasish;
-  images["statistik-final"] = (await renderFinal({ title: "FINAL 26/27", ties: 0,
-    white: { name: "Vita", logo: "/images/logo-white.png", color: "#e2e8f0", wins: 3 },
-    green: { name: "Gröna", logo: "/images/logo-green.png", color: "#34d399", wins: 2 },
-    matches: [{ date: "2027-03-02T20:00:00Z", white: 4, green: 2 }, { date: "2027-03-09T20:00:00Z", white: 1, green: 3 }, { date: "2027-03-16T20:00:00Z", white: 5, green: 5 - 1 }],
+  images["statistik-final"] = (await renderFinal({ title: "FINAL 26/27", ties: 0, winner: null,
+    left: { name: "Gröna", logo: "/images/logo-green.png", color: "#34d399", wins: 3, seed: "1:a i serien · 15 p" },
+    right: { name: "Vita", logo: "/images/logo-white.png", color: "#e2e8f0", wins: 2, seed: "2:a i serien · 9 p" },
+    matches: [{ date: "2027-03-02T20:00:00Z", left: 4, right: 2 }, { date: "2027-03-09T20:00:00Z", left: 1, right: 3 }, { date: "2027-03-16T20:00:00Z", left: 5, right: 4 }],
+  } as never)) as unknown as Canvasish;
+  const names = ["Linus Carbin", "Ludwig Rydén", "Henrik Björling", "Hampus Bergman", "Viktor Lindgren", "Teddie Storm", "Johan Hellgren", "Mikael Paasovaara", "Niklas Bergström", "Jimmy Andersson", "Vide Rönnbäck", "Jerry Paasovaara", "Anders Lund", "Kalle Nilsson", "Erik Ström", "Oskar Berg"];
+  images["statistik-mastare"] = (await renderChampions({ season: "26/27", minMatches: 10, line: "Finalen 3–2 · 15 p i serien",
+    team: { name: "Gröna", logo: "/images/logo-green.png", color: "#34d399" },
+    players: names.map((name, i) => ({ name, number: String((i * 7) % 99 + 1) })),
   } as never)) as unknown as Canvasish;
 }, 60_000);
 

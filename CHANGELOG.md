@@ -7,6 +7,13 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.8.0 – 2026-10-30
+
+- **Finalen syns hela säsongen** (Statistik → Lag, Säsong eller Slutspel): ettan i grundserien till vänster mot tvåan till höger med pokalen mellan, även innan finalserien börjat. Matchserien räknas i slutspelsperioden.
+- **Avgjord final:** Admin markerar vinnaren (går att ångra). Kortet blir guld och visar MÄSTARE.
+- **Mästarbild i guld:** pokalen, lagets logga och alla som spelat minst 10 matcher för laget under säsong och slutspel. 4:5 eller 9:16.
+- **Dela som bild:** välj bakgrund bland Medias bakgrunder (valet sparas). Kolumnerna får den bredd innehållet behöver och texten krymps i stället för att klippas (t.ex. speltid).
+
 ## 3.7.0 – 2026-10-30
 
 - **Tabellen** (Statistik → Lag): GP, W, L, T, GF, GA, +/- och P med 2 poäng för vinst och 1 för oavgjort (NHL-stil). Följer vald period (säsong, försäsong, månad, vecka, totalt). Bara internmatcher.

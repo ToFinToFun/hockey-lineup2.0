@@ -2,12 +2,18 @@
  * Statistik → Lag: serietabellen (NHL-stil, 2 p vinst och 1 p oavgjort) och,
  * i slutspelet, finalen mellan Vita och Gröna som matchserie med pokalen.
  */
+import { useState } from "react";
+import type { inferRouterOutputs } from "@trpc/server";
+import type { AppRouter } from "../../../../server/routers";
 import { Loader2, Trophy } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
+import { ShareImageModal } from "@/components/stats/ShareImageModal";
 import { trpc } from "@/lib/trpc";
 import { teamColor, teamName } from "@shared/teams";
-import { seasonShort, type StandingRow } from "@shared/standings";
+import type { StandingRow } from "@shared/standings";
 import { IMAGES } from "@/lib/scoreConstants";
-import { renderFinal, TROPHY } from "@/lib/statsImages";
+import { renderChampions, renderFinal, TROPHY } from "@/lib/statsImages";
 import { StatSection } from "./StatTable";
 import { useShareImage, useShareTable } from "./shareContext";
 
@@ -75,67 +81,133 @@ function StandingsTable({ rows }: { rows: StandingRow[] }) {
   );
 }
 
-type Series = { white: number; green: number; ties: number; leader: "white" | "green" | null; matches: Array<{ date: string; white: number; green: number }> };
+type FinalData = inferRouterOutputs<AppRouter>["scoreStats"]["final"];
+type Side = "white" | "green";
 
-function FinalCard({ series, title }: { series: Series; title: string }) {
-  const team = (t: "white" | "green") => ({ name: teamName(t), logo: logoOf(t), color: teamColor(t), wins: series[t] });
-  useShareImage((format) => renderFinal({ title, white: team("white"), green: team("green"), ties: series.ties, matches: series.matches, format }), [series, title]);
-  const side = (t: "white" | "green") => {
-    const lead = series.leader === t || !series.leader;
+/** Finalen: ettan i grundserien till vänster, tvåan till höger, pokalen mellan dem. */
+function FinalBracket({ f }: { f: FinalData }) {
+  const auth = useAuth();
+  const utils = trpc.useUtils();
+  const setWinner = trpc.scoreStats.setFinalWinner.useMutation({
+    onSuccess: () => utils.scoreStats.final.invalidate(),
+    onError: (e) => toast.error(e.message),
+  });
+  const [showChampions, setShowChampions] = useState(false);
+  const [left, right] = f.seeds as [Side, Side];
+  const leader = f.series[left] > f.series[right] ? left : f.series[right] > f.series[left] ? right : null;
+  const seedText = (t: Side, i: number) => `${i + 1}:a i serien · ${f.seasonPoints[t]} p`;
+  const title = `FINAL ${f.season}`;
+  const team = (t: Side, i: number) => ({ name: teamName(t), logo: logoOf(t), color: teamColor(t), wins: f.series[t], seed: seedText(t, i) });
+  useShareImage(({ format, background }) => renderFinal({
+    title, left: team(left, 0), right: team(right, 1), ties: f.series.ties, format, background,
+    winner: f.winner ? (f.winner === left ? "left" : "right") : null,
+    matches: f.series.matches.map((m) => ({ date: m.date, left: m[left], right: m[right] })),
+  }), [f]);
+
+  const side = (t: Side, i: number) => {
+    const lost = !!f.winner && f.winner !== t;
+    const won = f.winner === t;
     return (
-      <div className={`flex flex-col items-center gap-1.5 ${lead ? "" : "opacity-55"}`}>
-        <img src={logoOf(t)} alt={teamName(t)} className="w-16 h-16 sm:w-20 sm:h-20 object-contain" />
+      <div className={`flex flex-col items-center gap-1 ${lost ? "opacity-45" : ""}`}>
+        {won && <span className="text-[10px] font-bold tracking-[0.25em] text-amber-300">MÄSTARE</span>}
+        <img src={logoOf(t)} alt={teamName(t)} className={`w-16 h-16 sm:w-20 sm:h-20 object-contain rounded-full ${won ? "ring-2 ring-amber-300" : ""}`} />
         <span className="text-xs font-bold tracking-[0.15em] uppercase" style={{ color: teamColor(t) }}>{teamName(t)}</span>
-        <span className="text-4xl sm:text-5xl font-bold tabular-nums text-white" style={{ fontFamily: "'Oswald', sans-serif" }}>{series[t]}</span>
+        <span className="text-[10px] text-white/40">{seedText(t, i)}</span>
+        <span className="text-4xl sm:text-5xl font-bold tabular-nums text-white" style={{ fontFamily: "'Oswald', sans-serif" }}>{f.series[t]}</span>
       </div>
     );
   };
+  const status = f.winner ? `Avgjord – ${teamName(f.winner)} mästare` : f.started ? (leader ? `${teamName(leader)} leder` : "Jämnt") : `Börjar ${new Date(f.playoffFrom).toLocaleDateString("sv-SE", { day: "numeric", month: "long" })}`;
   return (
-    <div className="rounded-xl bg-[#111] border border-amber-300/20 p-4 sm:p-6 space-y-4">
+    <div className={`rounded-xl border p-4 sm:p-6 space-y-4 ${f.winner ? "bg-gradient-to-b from-[#2a2111] to-[#111] border-amber-300/40" : "bg-[#111] border-amber-300/20"}`}>
       <div className="text-center">
-        <p className="text-[10px] tracking-[0.3em] text-white/45">SLUTSPEL</p>
+        <p className="text-[10px] tracking-[0.3em] text-white/45">SLUTSPEL · {status.toUpperCase()}</p>
         <p className="text-2xl sm:text-3xl font-bold tracking-[0.12em] text-amber-300" style={{ fontFamily: "'Oswald', sans-serif" }}>{title}</p>
       </div>
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-        {side("white")}
-        <img src={TROPHY} alt="Pokalen" className="h-40 sm:h-52 w-auto object-contain mix-blend-lighten" />
-        {side("green")}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1 sm:gap-2">
+        {side(left, 0)}
+        <div className="relative flex items-center">
+          <span className="hidden sm:block absolute right-full w-6 h-px bg-amber-300/40" />
+          <img src={TROPHY} alt="Pokalen" className="h-40 sm:h-52 w-auto object-contain mix-blend-lighten" />
+          <span className="hidden sm:block absolute left-full w-6 h-px bg-amber-300/40" />
+        </div>
+        {side(right, 1)}
       </div>
-      <p className="text-center text-[11px] text-white/45">vunna matcher{series.ties ? ` · ${series.ties} oavgjord${series.ties === 1 ? "" : "a"}` : ""}</p>
-      {series.matches.length > 0 && (
+      <p className="text-center text-[11px] text-white/45">
+        {f.started ? `vunna matcher${f.series.ties ? ` · ${f.series.ties} oavgjord${f.series.ties === 1 ? "" : "a"}` : ""}` : "Finalserien har inte börjat – lagen är seedade efter grundserien."}
+      </p>
+      {f.series.matches.length > 0 && (
         <div className="rounded-lg bg-white/[0.03] divide-y divide-white/5">
-          {series.matches.map((m, i) => (
+          {f.series.matches.map((m, i) => (
             <div key={i} className="flex items-center gap-3 px-3 py-1.5 text-xs">
               <span className="text-white/45 tracking-wider w-16">MATCH {i + 1}</span>
               <span className="text-white/40 flex-1">{new Date(m.date).toLocaleDateString("sv-SE", { day: "numeric", month: "numeric" })}</span>
               <span className="tabular-nums font-semibold">
-                <span style={{ color: m.white > m.green ? teamColor("white") : undefined }} className={m.white > m.green ? "" : "text-white/60"}>{m.white}</span>
+                <span style={{ color: m[left] > m[right] ? teamColor(left) : undefined }} className={m[left] > m[right] ? "" : "text-white/60"}>{m[left]}</span>
                 <span className="text-white/40 px-1">–</span>
-                <span style={{ color: m.green > m.white ? teamColor("green") : undefined }} className={m.green > m.white ? "" : "text-white/60"}>{m.green}</span>
+                <span style={{ color: m[right] > m[left] ? teamColor(right) : undefined }} className={m[right] > m[left] ? "" : "text-white/60"}>{m[right]}</span>
               </span>
             </div>
           ))}
         </div>
       )}
+      {f.winner && (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <button onClick={() => setShowChampions(true)} className="px-4 py-2 rounded-lg text-sm font-semibold text-[#1a1408] bg-gradient-to-b from-[#f6e7bf] to-[#c9a44c]">
+            🏆 Mästarbild
+          </button>
+          <span className="text-[11px] text-white/45">{f.champions.length} spelare med minst {f.minMatches} matcher för {teamName(f.winner)}</span>
+        </div>
+      )}
+      {auth.isAdmin && (
+        <div className="border-t border-white/5 pt-3 flex flex-wrap items-center justify-center gap-2 text-xs">
+          {f.winner ? (
+            <button disabled={setWinner.isPending} onClick={() => { if (confirm("Ångra att finalen är avgjord?")) setWinner.mutate({ season: f.season, winner: null }); }} className="px-3 py-1.5 rounded-lg border border-white/15 text-white/60">Ångra avgjord</button>
+          ) : (
+            <>
+              <span className="text-white/40">Avsluta finalen – vinnare:</span>
+              {([left, right] as Side[]).map((t) => (
+                <button key={t} disabled={setWinner.isPending} onClick={() => { if (confirm(`Markera ${teamName(t)} som mästare ${f.season}?`)) setWinner.mutate({ season: f.season, winner: t }); }}
+                  className={`px-3 py-1.5 rounded-lg border ${t === leader ? "border-amber-300/60 text-amber-200" : "border-white/15 text-white/70"}`}>{teamName(t)}</button>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+      {showChampions && f.winner && (
+        <ShareImageModal
+          title={`Mästare ${f.season}`}
+          fileName={`mastare-${f.season.replace("/", "-")}`}
+          backgrounds={false}
+          onClose={() => setShowChampions(false)}
+          build={({ format }) => renderChampions({
+            season: f.season, format, minMatches: f.minMatches,
+            team: { name: teamName(f.winner!), logo: logoOf(f.winner!), color: teamColor(f.winner!) },
+            line: [f.started ? `Finalen ${f.series[f.winner!]}–${f.series[f.winner === "white" ? "green" : "white"]}` : "", `${f.seasonPoints[f.winner!]} p i serien`].filter(Boolean).join(" · "),
+            players: f.champions.map((p) => ({ name: p.name, number: p.number })),
+          })}
+        />
+      )}
     </div>
   );
 }
 
-export function StandingsSection({ input, playoff }: { input: Input; playoff: boolean }) {
+export function StandingsSection({ input, playoff, season }: { input: Input; playoff: boolean; season: boolean }) {
   const q = trpc.scoreStats.standings.useQuery(input ?? {});
+  const fq = trpc.scoreStats.final.useQuery(undefined, { enabled: playoff || season });
   if (q.isLoading) return <div className="flex justify-center py-6"><Loader2 className="animate-spin text-white/40" /></div>;
-  if (!q.data) return null;
-  if (playoff) {
-    const title = `FINAL ${seasonShort(input?.from ?? new Date().toISOString())}`;
-    return (
-      <StatSection title="Finalen" icon={<Trophy size={14} className="text-amber-300" />} hint="Matchserie mellan lagen i slutspelet – flest vunna matcher vinner.">
-        {q.data.series.matches.length ? <FinalCard series={q.data.series} title={title} /> : <p className="text-xs text-white/40 py-3">Inga slutspelsmatcher än.</p>}
-      </StatSection>
-    );
-  }
   return (
-    <StatSection title="Tabellen" icon={<Trophy size={14} className="text-amber-300" />} hint="GP = matcher, W/L/T = vinster/förluster/oavgjorda, GF/GA = gjorda/insläppta mål, +/- = målskillnad, P = poäng (2 för vinst, 1 för oavgjort).">
-      <StandingsTable rows={q.data.rows} />
-    </StatSection>
+    <div className="space-y-6">
+      {!playoff && q.data && (
+        <StatSection title="Tabellen" icon={<Trophy size={14} className="text-amber-300" />} hint="GP = matcher, W/L/T = vinster/förluster/oavgjorda, GF/GA = gjorda/insläppta mål, +/- = målskillnad, P = poäng (2 för vinst, 1 för oavgjort).">
+          <StandingsTable rows={q.data.rows} />
+        </StatSection>
+      )}
+      {(playoff || season) && fq.data && (
+        <StatSection title="Finalen" icon={<Trophy size={14} className="text-amber-300" />} hint="Ettan i grundserien möter tvåan. Matchserie – flest vunna matcher. Admin markerar när finalen är avgjord.">
+          <FinalBracket f={fq.data} />
+        </StatSection>
+      )}
+    </div>
   );
 }

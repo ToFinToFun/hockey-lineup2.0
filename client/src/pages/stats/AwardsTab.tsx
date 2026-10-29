@@ -188,8 +188,8 @@ function ShareAwards({ awards }: { awards: any[] }) {
           title="Utmärkelser"
           fileName={`utmarkelser-${period}`.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
           onClose={() => setOpen(false)}
-          build={(format) => renderStatsTable({
-            title: "Utmärkelser", subtitle: period, format,
+          build={({ format, background }) => renderStatsTable({
+            title: "Utmärkelser", subtitle: period, format, background,
             columns: [{ label: "" }], highlight: 0,
             rows: awards.slice(0, 10).map((a) => ({ rank: a.emoji, name: a.winner, sub: a.title, cells: [String(a.value).replace(/ \(.*\)$/, "")] })),
           })}

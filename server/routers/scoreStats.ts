@@ -18,6 +18,7 @@ import { getAllMatchResults, getExternalMatches } from "../scoreDb";
 import { z } from "zod";
 import { starCounts } from "../starStats";
 import { series, standings } from "../../shared/standings";
+import { finalStatus, setFinalWinner } from "../finalStats";
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -1099,6 +1100,16 @@ export const scoreStatsRouter = router({
     const matches = filterMatchesByDate(await getAllMatchResults(), input?.from, input?.to);
     return { rows: standings(matches), series: series(matches) };
   }),
+
+  /** Finalen för innevarande hockeyår (seedning, matchserie, vinnare och mästarlaget). */
+  final: moduleProcedure("media", "cards", "stats", "players", "matches", "report").query(() => finalStatus()),
+  /** Markera finalen som avgjord (eller ångra) – bara Admin. */
+  setFinalWinner: adminProcedure
+    .input(z.object({ season: z.string().regex(/^\d{2}\/\d{2}$/), winner: z.enum(["white", "green"]).nullable() }))
+    .mutation(async ({ input, ctx }) => {
+      await setFinalWinner(input.season, input.winner, (ctx as { session?: { memberId?: number } }).session?.memberId ? `medlem ${(ctx as { session?: { memberId?: number } }).session!.memberId}` : "admin");
+      return { ok: true };
+    }),
 
   teamComparison: moduleProcedure("media", "cards", "stats", "players", "matches", "report").input(dateRangeInput).query(async ({ input }) => {
     const allMatches = await getAllMatchResults();

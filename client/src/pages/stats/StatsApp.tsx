@@ -293,6 +293,7 @@ export default function StatsApp() {
                 stats={seasonStats}
                 dateFilter={queryInput as { from?: string; to?: string } | undefined}
                 playoff={periodPreset === "playoff"}
+                season={periodPreset === "season"}
               />
             )}
           </>

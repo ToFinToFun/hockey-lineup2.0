@@ -6,14 +6,30 @@ import { useEffect, useState } from "react";
 import { Download, Loader2, Share2, X } from "lucide-react";
 import { toast } from "sonner";
 import type { PostFormat } from "@/lib/matchReportImages";
+import { MEDIA_BACKGROUNDS, dimFor, type MediaBackground } from "@/lib/mediaImages";
+import type { ShareBackground } from "@/lib/statsImages";
 
-export function ShareImageModal({ title, fileName, build, onClose }: {
+export type ShareOptions = { format: PostFormat; background: ShareBackground };
+
+const BG_KEY = "stats_share_bg";
+const savedBg = (): MediaBackground => {
+  try { return (localStorage.getItem(BG_KEY) as MediaBackground) || "arena"; } catch { return "arena"; }
+};
+
+export function ShareImageModal({ title, fileName, build, onClose, backgrounds = true }: {
   title: string;
   fileName: string;
-  build: (format: PostFormat) => Promise<HTMLCanvasElement>;
+  build: (opts: ShareOptions) => Promise<HTMLCanvasElement>;
   onClose: () => void;
+  /** Bakgrundsval (av för bilder med egen bakgrund, t.ex. mästarbilden i guld) */
+  backgrounds?: boolean;
 }) {
   const [format, setFormat] = useState<PostFormat>("feed");
+  const [bgId, setBgId] = useState<MediaBackground>(savedBg);
+  const chooseBg = (id: MediaBackground) => {
+    setBgId(id);
+    try { localStorage.setItem(BG_KEY, id); } catch { /* inte viktigt */ }
+  };
   const [blob, setBlob] = useState<Blob | null>(null);
   const [url, setUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -21,7 +37,8 @@ export function ShareImageModal({ title, fileName, build, onClose }: {
   useEffect(() => {
     let alive = true;
     setBlob(null);
-    build(format)
+    const bg = MEDIA_BACKGROUNDS.find((b) => b.id === bgId) ?? MEDIA_BACKGROUNDS[0];
+    build({ format, background: { url: bg.url, dim: dimFor(bg.id, 0.72) } })
       .then((c) => new Promise<Blob | null>((res) => c.toBlob(res, "image/jpeg", 0.92)))
       .then((b) => {
         if (!alive || !b) return;
@@ -34,7 +51,7 @@ export function ShareImageModal({ title, fileName, build, onClose }: {
       .catch((e) => toast.error("Bilden kunde inte skapas", { description: (e as Error).message }));
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [format]);
+  }, [format, bgId]);
   useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
 
   const file = () => new File([blob!], `${fileName}${format === "story" ? "-story" : ""}.jpg`, { type: "image/jpeg" });
@@ -70,6 +87,16 @@ export function ShareImageModal({ title, fileName, build, onClose }: {
             <button key={k} onClick={() => setFormat(k)} className={`px-3 py-1 rounded-md text-xs font-medium ${format === k ? "bg-[#0a7ea4] text-white" : "text-white/50"}`}>{l}</button>
           ))}
         </div>
+        {backgrounds && (
+          <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" aria-label="Bakgrund">
+            {MEDIA_BACKGROUNDS.map((b) => (
+              <button key={b.id} onClick={() => chooseBg(b.id)} title={b.name}
+                className={`shrink-0 w-12 h-14 rounded-md overflow-hidden border-2 ${bgId === b.id ? "border-sky-400" : "border-transparent opacity-70 hover:opacity-100"}`}>
+                <img src={b.url} alt={b.name} className="w-full h-full object-cover" loading="lazy" />
+              </button>
+            ))}
+          </div>
+        )}
         <div className={`mx-auto rounded-lg overflow-hidden bg-black/40 flex items-center justify-center ${format === "story" ? "w-[62%] aspect-[9/16]" : "w-full aspect-[4/5]"}`}>
           {blob && url ? <img src={url} alt={title} className="w-full h-full object-contain" /> : <Loader2 className="animate-spin text-white/40" />}
         </div>

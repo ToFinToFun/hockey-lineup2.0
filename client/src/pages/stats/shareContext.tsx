@@ -6,13 +6,13 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { ShareButton, ShareImageModal } from "@/components/stats/ShareImageModal";
 import { renderStatsTable, type ShareTableData } from "@/lib/statsImages";
-import type { PostFormat } from "@/lib/matchReportImages";
+import type { ShareOptions } from "@/components/stats/ShareImageModal";
 
 /** Vald period som text, t.ex. "Säsong 26/27" eller "Vecka 44". */
 export const StatsPeriodContext = createContext<string>("");
 export const useStatsPeriod = () => useContext(StatsPeriodContext);
 
-type Builder = (format: PostFormat) => Promise<HTMLCanvasElement>;
+type Builder = (opts: ShareOptions) => Promise<HTMLCanvasElement>;
 const SectionShareContext = createContext<{ title: string; register: (b: Builder | null) => void } | null>(null);
 
 /** Registrera en tabell för avsnittets Dela-knapp (data hämtas när man trycker). */
@@ -21,9 +21,9 @@ export function useShareTable(data: () => Omit<ShareTableData, "title" | "subtit
   const period = useStatsPeriod();
   useEffect(() => {
     if (!ctx) return;
-    ctx.register((format) => {
+    ctx.register(({ format, background }) => {
       const d = data();
-      return renderStatsTable({ ...d, title: d.title ?? ctx.title, subtitle: period, format });
+      return renderStatsTable({ ...d, title: d.title ?? ctx.title, subtitle: period, format, background });
     });
     return () => ctx.register(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
