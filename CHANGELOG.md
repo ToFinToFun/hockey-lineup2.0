@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.8.1 – 2026-10-30
+
+- Mästarbilden: stjärnan ovanpå rubriken flyttad.
+
 ## 3.8.0 – 2026-10-30
 
 - **Finalen syns hela säsongen** (Statistik → Lag, Säsong eller Slutspel): ettan i grundserien till vänster mot tvåan till höger med pokalen mellan, även innan finalserien börjat. Matchserien räknas i slutspelsperioden.

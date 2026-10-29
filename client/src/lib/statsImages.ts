@@ -359,7 +359,7 @@ function goldBackdrop(ctx: CanvasRenderingContext2D) {
   ctx.fillRect(0, 0, W, H);
   // Små stjärnor
   ctx.fillStyle = "rgba(246,231,191,0.55)";
-  const stars = [[120, 360], [960, 300], [180, 760], [910, 820], [540, 120], [90, 1080], [990, 1150]];
+  const stars = [[120, 360], [960, 300], [180, 760], [910, 820], [60, 640], [90, 1080], [990, 1150]];
   for (const [x, y] of stars) star(ctx, x, (y / IG_H) * H, 10);
   // Tunn guldram
   ctx.strokeStyle = "rgba(233,207,134,0.7)";
