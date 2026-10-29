@@ -1,6 +1,6 @@
 {
   "name": "hockey-lineup",
-  "version": "3.6.1",
+  "version": "3.6.2",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -54,7 +54,7 @@
     "tailwind-merge": "^3.7.0",
     "web-push": "3.6.7",
     "wouter": "^3.11.0",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
@@ -78,5 +78,11 @@
     "vite": "^8.3.1",
     "vitest": "^5.0.1"
   },
-  "packageManager": "pnpm@10.4.1+sha512.c753b6c3ad7afa13af388fa6d808035a008e30ea9993f58c6663e2bc5ff21679aa834db094987129aa4d488b86df57f7b634981b2f827cdcacc698cc0cfb88af"
+  "packageManager": "pnpm@10.4.1+sha512.c753b6c3ad7afa13af388fa6d808035a008e30ea9993f58c6663e2bc5ff21679aa834db094987129aa4d488b86df57f7b634981b2f827cdcacc698cc0cfb88af",
+  "pnpm": {
+    "overrides": {
+      "body-parser@2": "^2.4.0",
+      "undici@7": "^7.30.1"
+    }
+  }
 }

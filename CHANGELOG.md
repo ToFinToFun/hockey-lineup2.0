@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.6.2 – 2026-10-29
+
+- Säkerhet: zod 4.6.7, body-parser 2.4.0 och undici 7.30.1 (kända sårbarheter i beroenden). Kontrollbilden för stjärnkortet uppdaterad efter 3.5.1.
+
 ## 3.6.1 – 2026-10-29
 
 - **Startsidan:** inloggad medlem utan behörighet ser nu sitt namn, "Medlem" och *Logga ut* (tidigare syntes ingenting, så det gick inte att se vem man var inloggad som eller logga ut därifrån). Styrelsens lösenord finns kvar som reserv under.
