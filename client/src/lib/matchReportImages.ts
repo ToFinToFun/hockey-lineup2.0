@@ -164,7 +164,7 @@ export function header(ctx: CanvasRenderingContext2D, title: string, dateLine: s
   ctx.letterSpacing = "0px";
 }
 
-function logo(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null, cx: number, cy: number, r: number, ring: string, initials?: string) {
+export function logo(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null, cx: number, cy: number, r: number, ring: string, initials?: string) {
   ctx.save();
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);

@@ -109,6 +109,20 @@ beforeAll(async () => {
     { label: "Målvakt", players: [P("MV", "Bertil Berg", "1")] },
     { label: "1:a kedjan", players: [P("LW", "Anders Andersson", "9", "C")] },
   ] } as never)) as unknown as Canvasish;
+
+  // Statistik: delningsbilder (tabellen och finalen)
+  const { renderStatsTable, renderFinal } = await import("@/lib/statsImages");
+  images["statistik-tabell"] = (await renderStatsTable({ title: "Tabellen", subtitle: "Säsong 26/27", note: "2 poäng för vinst, 1 för oavgjort", highlight: 7,
+    columns: ["GP", "W", "L", "T", "GF", "GA", "+/-", "P"].map((label) => ({ label })),
+    rows: [
+      { rank: "1", name: "Gröna", logo: "/images/logo-green.png", color: "#34d399", cells: ["12", "7", "4", "1", "48", "39", "+9", "15"] },
+      { rank: "2", name: "Vita", logo: "/images/logo-white.png", color: "#e2e8f0", cells: ["12", "4", "7", "1", "39", "48", "-9", "9"] },
+    ] } as never)) as unknown as Canvasish;
+  images["statistik-final"] = (await renderFinal({ title: "FINAL 26/27", ties: 0,
+    white: { name: "Vita", logo: "/images/logo-white.png", color: "#e2e8f0", wins: 3 },
+    green: { name: "Gröna", logo: "/images/logo-green.png", color: "#34d399", wins: 2 },
+    matches: [{ date: "2027-03-02T20:00:00Z", white: 4, green: 2 }, { date: "2027-03-09T20:00:00Z", white: 1, green: 3 }, { date: "2027-03-16T20:00:00Z", white: 5, green: 5 - 1 }],
+  } as never)) as unknown as Canvasish;
 }, 60_000);
 
 describe("kontrollbilder", () => {

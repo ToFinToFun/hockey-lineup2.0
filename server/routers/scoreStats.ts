@@ -17,6 +17,7 @@ import { adminProcedure, router, moduleProcedure } from "../_core/trpc";
 import { getAllMatchResults, getExternalMatches } from "../scoreDb";
 import { z } from "zod";
 import { starCounts } from "../starStats";
+import { series, standings } from "../../shared/standings";
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -1093,6 +1094,12 @@ export const scoreStatsRouter = router({
   }),
 
   /** Team comparison (Vita vs Gröna) */
+  /** Serietabellen (2 p vinst, 1 p oavgjort) och matchserien i perioden – bara internmatcher. */
+  standings: moduleProcedure("media", "cards", "stats", "players", "matches", "report").input(dateRangeInput).query(async ({ input }) => {
+    const matches = filterMatchesByDate(await getAllMatchResults(), input?.from, input?.to);
+    return { rows: standings(matches), series: series(matches) };
+  }),
+
   teamComparison: moduleProcedure("media", "cards", "stats", "players", "matches", "report").input(dateRangeInput).query(async ({ input }) => {
     const allMatches = await getAllMatchResults();
     const matches = filterMatchesByDate(allMatches, input?.from, input?.to);

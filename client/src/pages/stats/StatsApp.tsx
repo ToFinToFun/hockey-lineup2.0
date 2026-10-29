@@ -15,6 +15,8 @@ import { SkatersTab, GoaliesTab } from "./PlayerTabs";
 import OverviewTab from "./OverviewTab";
 import AwardsTab from "./AwardsTab";
 import TeamsTab from "./TeamsTab";
+import { StatsPeriodContext } from "./shareContext";
+import { seasonShort } from "@shared/standings";
 import { PlayerProfileView } from "../players/PlayerProfile";
 
 // ─── Period helpers ─────────────────────────────────────────────────────────
@@ -42,6 +44,12 @@ function getCalendarMonthRange(): { from: string; to: string } {
 function getCalendarYearRange(): { from: string; to: string } {
   const y = new Date().getFullYear();
   return { from: `${y}-01-01`, to: `${y}-12-31` };
+}
+
+function isoWeek(d: Date): number {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));
+  return Math.ceil(((t.getTime() - Date.UTC(t.getUTCFullYear(), 0, 1)) / 86400000 + 1) / 7);
 }
 
 const PERIOD_OPTIONS: { key: PeriodPreset; label: string }[] = [
@@ -115,6 +123,18 @@ export default function StatsApp() {
     if (periodPreset === "week") return getCalendarWeekRange();
     return {};
   }, [periodPreset, periodConfig]);
+
+  // Perioden som text i delningsbilderna, t.ex. "Säsong 26/27" eller "Vecka 44"
+  const periodText = useMemo(() => {
+    const ref = dateFilter.from ?? new Date().toISOString();
+    if (periodPreset === "season") return `Säsong ${seasonShort(ref)}`;
+    if (periodPreset === "playoff") return `Slutspel ${seasonShort(ref)}`;
+    if (periodPreset === "preseason") return `Försäsong ${seasonShort(ref)}`;
+    if (periodPreset === "month") { const m = new Date().toLocaleDateString("sv-SE", { month: "long", year: "numeric" }); return m.charAt(0).toUpperCase() + m.slice(1); }
+    if (periodPreset === "week") return `Vecka ${isoWeek(new Date())}`;
+    if (periodPreset === "year") return String(new Date().getFullYear());
+    return "Totalt";
+  }, [periodPreset, dateFilter.from]);
 
   // Matcher mot andra lag (beta): av som standard, kan slås på för spelarnas siffror
   const features = useFeatures();
@@ -237,6 +257,7 @@ export default function StatsApp() {
         onTouchEnd={handleTouchEnd}
         className="max-w-6xl mx-auto px-4 py-6 overflow-y-auto"
       >
+        <StatsPeriodContext.Provider value={periodText}>
         {isLoading ? (
           <div className="flex items-center justify-center py-24">
             <Loader2 size={32} className="animate-spin text-[#0a7ea4]" />
@@ -271,10 +292,12 @@ export default function StatsApp() {
                 teamData={teamData}
                 stats={seasonStats}
                 dateFilter={queryInput as { from?: string; to?: string } | undefined}
+                playoff={periodPreset === "playoff"}
               />
             )}
           </>
         )}
+        </StatsPeriodContext.Provider>
       </main>
 
 

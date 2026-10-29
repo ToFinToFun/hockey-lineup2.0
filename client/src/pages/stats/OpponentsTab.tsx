@@ -6,7 +6,8 @@ import { wlt } from "@shared/statAbbr";
 import { useState } from "react";
 import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { StatTable } from "./StatTable";
+import { StatSection, StatTable } from "./StatTable";
+import { NoShare, ShareTable } from "./shareContext";
 import { teamInitials } from "@shared/teams";
 import { club } from "@shared/club";
 
@@ -22,10 +23,18 @@ export function OpponentsTab({ dateFilter }: { dateFilter: Range }) {
   const total = rows.reduce((t, r) => ({ m: t.m + r.matches, w: t.w + r.wins, d: t.d + r.draws, l: t.l + r.losses, gf: t.gf + r.goalsFor, ga: t.ga + r.goalsAgainst }), { m: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0 });
 
   return (
+    <StatSection title="Motståndare">
+    <ShareTable deps={[rows]} data={() => ({
+      columns: ["GP", "W", "L", "T", "GF", "GA", "+/-"].map((label) => ({ label })),
+      rows: rows.slice(0, 10).map((r) => {
+        const d = r.goalsFor - r.goalsAgainst;
+        return { rank: "", name: r.name, logo: r.logoUrl ?? null, color: r.color, cells: [r.matches, r.wins, r.losses, r.draws, r.goalsFor, r.goalsAgainst].map(String).concat(d > 0 ? `+${d}` : String(d)) };
+      }),
+    })} />
     <div className="space-y-3">
       <div className="rounded-xl bg-[#161616] border border-white/10 p-3 grid grid-cols-4 text-center">
-        {[["Matcher", total.m], ["Vinster", total.w], ["Oavgjorda", total.d], ["Förluster", total.l]].map(([l, v]) => (
-          <div key={l as string}><p className="text-xl font-bold text-white">{v}</p><p className="text-[10px] text-white/45 uppercase tracking-wider">{l}</p></div>
+        {([["GP", total.m, "Spelade matcher"], ["W", total.w, "Vinster"], ["L", total.l, "Förluster"], ["T", total.d, "Oavgjorda"]] as const).map(([l, v, t]) => (
+          <div key={l} title={t}><p className="text-xl font-bold text-white">{v}</p><p className="text-[10px] text-white/45 uppercase tracking-wider">{l}</p></div>
         ))}
         <p className="col-span-4 text-[11px] text-white/45 mt-2">Mål {total.gf}–{total.ga} ({total.gf - total.ga >= 0 ? "+" : ""}{total.gf - total.ga})</p>
       </div>
@@ -57,6 +66,7 @@ export function OpponentsTab({ dateFilter }: { dateFilter: Range }) {
         );
       })}
     </div>
+    </StatSection>
   );
 }
 
@@ -64,6 +74,7 @@ function ScorerList({ title, lines, empty = "Inga poäng" }: { title: string; li
   return (
     <div>
       <p className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-1">{title}</p>
+      <NoShare>
       <StatTable
         rows={lines}
         rowKey={(r) => r.name}
@@ -77,6 +88,7 @@ function ScorerList({ title, lines, empty = "Inga poäng" }: { title: string; li
           { key: "p", label: "P", title: "Poäng", value: (r) => r.points },
         ]}
       />
+      </NoShare>
     </div>
   );
 }

@@ -7,6 +7,13 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.7.0 – 2026-10-30
+
+- **Tabellen** (Statistik → Lag): GP, W, L, T, GF, GA, +/- och P med 2 poäng för vinst och 1 för oavgjort (NHL-stil). Följer vald period (säsong, försäsong, månad, vecka, totalt). Bara internmatcher.
+- **Finalen** (Statistik → Lag med perioden Slutspel): Vita mot Gröna som matchserie – flest vunna matcher – med lagens loggor, pokalen och "FINAL 26/27", och varje finalmatch listad.
+- **Dela som bild** på all statistik: tabellen, finalen, poängliga, speltid, PIR, kul statistik, målvakter, sviter, utmärkelser, hallar och motståndare. Inlägg 4:5 (1080×1350) eller Story 9:16 (1080×1920), samma stil som matchrapporten. Topp 10 i den sortering som visas; dela direkt från telefonen eller ladda ner.
+- Motståndare: summeringen visar GP, W, L, T.
+
 ## 3.6.2 – 2026-10-29
 
 - Säkerhet: zod 4.6.7, body-parser 2.4.0 och undici 7.30.1 (kända sårbarheter i beroenden). Kontrollbilden för stjärnkortet uppdaterad efter 3.5.1.

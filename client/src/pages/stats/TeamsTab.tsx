@@ -10,11 +10,14 @@ import { trpc } from "@/lib/trpc";
 import { Shield, Target, Trophy, Users, Flame, Swords, ChevronDown, Search } from "lucide-react";
 import { HockeyGoal } from "@/components/score/HockeyIcons";
 import { IMAGES } from "@/lib/scoreConstants";
+import { StandingsSection } from "./StandingsSection";
 
 interface TeamsTabProps {
   teamData: any;
   stats: any;
   dateFilter?: { from?: string; to?: string };
+  /** Slutspel: finalen i stället för tabellen */
+  playoff?: boolean;
 }
 
 // ─── Comparison Bar ─────────────────────────────────────────────────────────
@@ -433,12 +436,15 @@ function TeamStatCard({
 }
 
 // ─── Main Component ─────────────────────────────────────────────────────────
-export default function TeamsTab({ teamData, stats, dateFilter }: TeamsTabProps) {
+export default function TeamsTab({ teamData, stats, dateFilter, playoff = false }: TeamsTabProps) {
   if (!teamData || teamData.totalMatches === 0) {
     return (
-      <div className="text-center py-16 text-[#687076]">
-        <Shield size={32} className="mx-auto mb-3 opacity-30" />
-        <p className="text-sm">Ingen lagdata för vald period</p>
+      <div className="space-y-6">
+        <StandingsSection input={dateFilter} playoff={playoff} />
+        <div className="text-center py-10 text-[#687076]">
+          <Shield size={32} className="mx-auto mb-3 opacity-30" />
+          <p className="text-sm">Ingen lagdata för vald period</p>
+        </div>
       </div>
     );
   }
@@ -448,6 +454,7 @@ export default function TeamsTab({ teamData, stats, dateFilter }: TeamsTabProps)
 
   return (
     <div className="space-y-6">
+      <StandingsSection input={dateFilter} playoff={playoff} />
       {/* Header */}
       <div className="text-center">
         <div className="flex items-center justify-center gap-4 mb-2">

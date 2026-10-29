@@ -5,6 +5,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { statTitle } from "@shared/statAbbr";
+import { useSectionShare, useShareTable } from "./shareContext";
 
 export interface StatColumn<T> {
   key: string;
@@ -14,6 +15,8 @@ export interface StatColumn<T> {
   /** Hur cellen visas (standard: värdet) */
   render?: (row: T) => ReactNode;
   title?: string;
+  /** Text i delningsbilden när render inte ger text (t.ex. en ikon) */
+  text?: (row: T) => string;
   /** Lägre är bättre (t.ex. insläppta/60) – första klicket sorterar stigande */
   lowerIsBetter?: boolean;
   /** Bredd/justering */
@@ -53,6 +56,21 @@ export function StatTable<T>({ rows, columns, name, nameLabel = "Spelare", rowKe
     });
     return list;
   }, [rows, sort, columns]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Dela som bild: topp 10 i den sortering som visas
+  useShareTable(() => {
+    const text = (v: unknown, fallback: unknown) => (typeof v === "string" || typeof v === "number" ? String(v) : fallback == null ? "–" : String(fallback));
+    const idx = columns.findIndex((c) => c.key === sort.key);
+    return {
+      columns: columns.map((c) => ({ label: c.label })),
+      highlight: idx < 0 ? undefined : idx,
+      rows: sorted.slice(0, 10).map((r, i) => ({
+        rank: String(i + 1),
+        name: text(name(r), ""),
+        cells: columns.map((c) => (c.text ? c.text(r) : text(c.render ? c.render(r) : undefined, c.value(r)))),
+      })),
+    };
+  }, [sorted, columns, sort.key]);
 
   if (!rows.length) return <p className="text-xs text-white/40 py-3">{empty}</p>;
   const shown = all ? sorted : sorted.slice(0, initial);
@@ -111,14 +129,17 @@ export function StatTable<T>({ rows, columns, name, nameLabel = "Spelare", rowKe
 
 /** Rubrik för ett avsnitt i statistiken (samma utseende överallt). */
 export function StatSection({ title, icon, hint, children, right }: { title: string; icon?: ReactNode; hint?: string; children: ReactNode; right?: ReactNode }) {
+  // Dela som bild: knappen visas när innehållet (t.ex. tabellen) har registrerat sig
+  const share = useSectionShare(title);
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-[#ECEDEE] text-sm font-semibold flex items-center gap-2">{icon}{title}</h3>
-        {right}
+        <span className="flex items-center gap-2">{right}{share.button}</span>
       </div>
-      {children}
+      <share.Provider>{children}</share.Provider>
       {hint && <p className="text-[10px] text-white/35">{hint}</p>}
+      {share.modal}
     </section>
   );
 }

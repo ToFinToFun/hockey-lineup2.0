@@ -1,6 +1,9 @@
 /**
  * AwardsTab – Season awards with beautiful cards and export
  */
+import { ShareButton, ShareImageModal } from "@/components/stats/ShareImageModal";
+import { renderStatsTable } from "@/lib/statsImages";
+import { useStatsPeriod } from "./shareContext";
 import { clubHeading, club, teamLogo } from "@shared/club";
 import { useState, useRef, useCallback } from "react";
 import { Award, Download, Share2, Trophy, ChevronDown, ChevronUp, Crown, HandHelping, Zap, Medal, Dumbbell, Flame, ShieldCheck, Star } from "lucide-react";
@@ -173,141 +176,25 @@ function AwardCard({
   );
 }
 
-// ─── Export Canvas ───────────────────────────────────────────────────────────
-function ExportPanel({
-  awards,
-  periodLabel,
-  totalMatches,
-}: {
-  awards: any[];
-  periodLabel: string;
-  totalMatches: number;
-}) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [exporting, setExporting] = useState(false);
-
-  const exportImage = useCallback(async () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    setExporting(true);
-
-    const ctx = canvas.getContext("2d")!;
-    const w = 1080;
-    const h = 1440;
-    canvas.width = w;
-    canvas.height = h;
-
-    // Background
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
-    bgGrad.addColorStop(0, "#0a0a0a");
-    bgGrad.addColorStop(0.5, "#111");
-    bgGrad.addColorStop(1, "#0a0a0a");
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, w, h);
-
-    // Header accent
-    const accentGrad = ctx.createLinearGradient(0, 0, w, 0);
-    accentGrad.addColorStop(0, "rgba(10,126,164,0.3)");
-    accentGrad.addColorStop(0.5, "rgba(10,126,164,0.6)");
-    accentGrad.addColorStop(1, "rgba(10,126,164,0.3)");
-    ctx.fillStyle = accentGrad;
-    ctx.fillRect(0, 0, w, 3);
-
-    // Title
-    ctx.fillStyle = "#ECEDEE";
-    ctx.font = "bold 48px 'Oswald', sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(clubHeading(), w / 2, 80);
-
-    ctx.fillStyle = "#0a7ea4";
-    ctx.font = "bold 28px sans-serif";
-    ctx.fillText(`UTMÄRKELSER — ${periodLabel.toUpperCase()}`, w / 2, 120);
-
-    ctx.fillStyle = "#687076";
-    ctx.font = "16px sans-serif";
-    ctx.fillText(`${totalMatches} matcher spelade`, w / 2, 150);
-
-    // Awards grid
-    let y = 190;
-    const cardW = 480;
-    const cardH = 130;
-    const gap = 16;
-
-    for (let i = 0; i < awards.length; i++) {
-      const award = awards[i];
-      const col = i % 2;
-      const x = col === 0 ? (w / 2 - cardW - gap / 2) : (w / 2 + gap / 2);
-
-      // Card background
-      const style = getAwardStyle(award.id);
-      ctx.fillStyle = "rgba(26,26,26,0.8)";
-      ctx.beginPath();
-      ctx.roundRect(x, y, cardW, cardH, 12);
-      ctx.fill();
-
-      // Border
-      ctx.strokeStyle = `${style.accent}40`;
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      // Emoji
-      ctx.font = "32px sans-serif";
-      ctx.textAlign = "left";
-      ctx.fillText(award.emoji, x + 16, y + 48);
-
-      // Title
-      ctx.fillStyle = "#687076";
-      ctx.font = "bold 14px sans-serif";
-      ctx.fillText(award.title.toUpperCase(), x + 60, y + 28);
-
-      // Winner
-      ctx.fillStyle = "#ECEDEE";
-      ctx.font = "bold 22px sans-serif";
-      ctx.fillText(award.winner, x + 60, y + 56);
-
-      // Value
-      ctx.fillStyle = style.accent;
-      ctx.font = "bold 16px sans-serif";
-      ctx.fillText(award.value, x + 60, y + 82);
-
-      // Runner up
-      if (award.runnerUp) {
-        ctx.fillStyle = "#687076";
-        ctx.font = "13px sans-serif";
-        ctx.fillText(`2:a: ${award.runnerUp} ${award.runnerUpValue ? `(${award.runnerUpValue})` : ""}${award.third ? `   3:e: ${award.third}` : ""}`, x + 60, y + 106);
-      }
-
-      if (col === 1 || i === awards.length - 1) {
-        y += cardH + gap;
-      }
-    }
-
-    // Footer
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#687076";
-    ctx.font = "12px sans-serif";
-    ctx.fillText(club().appUrl.replace(/^https?:\/\//, ""), w / 2, h - 30);
-
-    // Download
-    const link = document.createElement("a");
-    link.download = `${club().fileSlug}-utmarkelser-${periodLabel.toLowerCase()}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-
-    setExporting(false);
-  }, [awards, periodLabel, totalMatches]);
-
+// ─── Dela som bild ───────────────────────────────────────────────────────────
+function ShareAwards({ awards }: { awards: any[] }) {
+  const [open, setOpen] = useState(false);
+  const period = useStatsPeriod();
   return (
     <>
-      <canvas ref={canvasRef} className="hidden" />
-      <button
-        onClick={exportImage}
-        disabled={exporting}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0a7ea4]/10 border border-[#0a7ea4]/30 text-[#0a7ea4] text-xs font-medium hover:bg-[#0a7ea4]/20 transition-colors disabled:opacity-50"
-      >
-        <Download size={14} />
-        {exporting ? "Exporterar..." : "Exportera bild"}
-      </button>
+      <ShareButton onClick={() => setOpen(true)} />
+      {open && (
+        <ShareImageModal
+          title="Utmärkelser"
+          fileName={`utmarkelser-${period}`.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
+          onClose={() => setOpen(false)}
+          build={(format) => renderStatsTable({
+            title: "Utmärkelser", subtitle: period, format,
+            columns: [{ label: "" }], highlight: 0,
+            rows: awards.slice(0, 10).map((a) => ({ rank: a.emoji, name: a.winner, sub: a.title, cells: [String(a.value).replace(/ \(.*\)$/, "")] })),
+          })}
+        />
+      )}
     </>
   );
 }
@@ -349,11 +236,7 @@ export default function AwardsTab({
             {periodLabel} — {totalMatches} matcher
           </p>
         </div>
-        <ExportPanel
-          awards={awardsList}
-          periodLabel={periodLabel}
-          totalMatches={totalMatches}
-        />
+        <ShareAwards awards={awardsList} />
       </div>
 
       {/* Awards grid */}

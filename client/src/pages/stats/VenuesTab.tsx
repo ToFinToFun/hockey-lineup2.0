@@ -5,9 +5,10 @@
  */
 import { Loader2, MapPin } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { teamGenitive } from "@shared/teams";
+import { teamGenitive, teamName } from "@shared/teams";
 import { HockeyGoal } from "@/components/score/HockeyIcons";
-import { StatTable } from "./StatTable";
+import { StatSection, StatTable } from "./StatTable";
+import { NoShare, ShareTable } from "./shareContext";
 
 type Input = { from?: string; to?: string; includeExternal?: boolean } | undefined;
 type Line = { name: string; goals: number; assists: number; points: number };
@@ -36,18 +37,24 @@ export function VenuesTab({ input }: { input: Input }) {
     return <p className="text-sm text-white/45 text-center py-10">Inga matcher med plats under perioden. Platsen sparas från laget.se när matchen avslutas i Score Tracker – äldre matcher kan få plats under Redigera i matchhistoriken.</p>;
   }
   return (
+    <StatSection title="Hallar" icon={<MapPin size={14} className="text-sky-300" />}>
+    <ShareTable deps={[halls]} data={() => ({
+      columns: ["GP", "W " + teamName("white"), "W " + teamName("green"), "T", "G/GP"].map((label) => ({ label })),
+      rows: halls.slice(0, 10).map((h) => ({ rank: "", name: h.venue, cells: [String(h.matches), String(h.whiteWins), String(h.greenWins), String(h.draws), h.goalsPerMatch.toString().replace(".", ",")] })),
+    })} />
     <div className="space-y-4">
       {halls.map((h) => (
         <div key={h.venue} className="rounded-xl bg-[#121212] border border-white/10 p-3 space-y-2.5">
           <div className="flex items-center gap-2">
             <MapPin size={15} className="text-sky-300 shrink-0" />
             <p className="flex-1 text-sm font-semibold text-white truncate">{h.venue}</p>
-            <span className="text-[11px] text-white/45">{h.matches} {h.matches === 1 ? "match" : "matcher"} · {h.goalsPerMatch.toString().replace(".", ",")} mål/match</span>
+            <span className="text-[11px] text-white/45">{h.matches} GP · {h.goalsPerMatch.toString().replace(".", ",")} G/GP</span>
           </div>
           {h.whiteWins + h.greenWins + h.draws > 0 && (
             <p className="text-[11px] text-white/55">{teamGenitive("white")} vinster {h.whiteWins} · {teamGenitive("green")} vinster {h.greenWins} · oavgjort {h.draws}</p>
           )}
           <HallGoalie input={input} venue={h.venue} />
+          <NoShare>
           {h.top.length > 0 && (
             <StatTable<Line>
               rows={h.top as Line[]}
@@ -62,8 +69,10 @@ export function VenuesTab({ input }: { input: Input }) {
               ]}
             />
           )}
+          </NoShare>
         </div>
       ))}
     </div>
+    </StatSection>
   );
 }

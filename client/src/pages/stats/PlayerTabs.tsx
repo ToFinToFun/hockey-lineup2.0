@@ -43,6 +43,7 @@ function PirTable({ ratings, role, onPlayerClick }: { ratings: Rating[] | undefi
           {
             key: "trend", label: "Trend", title: "Formkurva",
             value: (r) => ({ rising: 2, slightly_rising: 1, stable: 0, slightly_falling: -1, falling: -2 } as Record<string, number>)[(role === "outfield" ? r.outfieldTrendLabel : r.goalkeeperTrendLabel) ?? ""] ?? null,
+            text: (r) => ({ rising: "↑", slightly_rising: "↗", stable: "→", slightly_falling: "↘", falling: "↓" } as Record<string, string>)[(role === "outfield" ? r.outfieldTrendLabel : r.goalkeeperTrendLabel) ?? ""] ?? "–",
             render: (r) => <TrendIcon trendLabel={(role === "outfield" ? r.outfieldTrendLabel : r.goalkeeperTrendLabel) ?? undefined} matchesPlayed={role === "outfield" ? r.outfieldMatchesPlayed : r.goalkeeperMatchesPlayed} />,
           },
         ]}
