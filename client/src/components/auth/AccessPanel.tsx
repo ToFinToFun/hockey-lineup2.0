@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
-import { LoginForm } from "./LoginForm";
+import { LoginForm, PasswordForm } from "./LoginForm";
 import { LogOut, KeyRound } from "lucide-react";
 import { ACCESS_MODULES } from "@shared/accessModules";
 
@@ -39,7 +39,30 @@ export function AccessPanel() {
 
   // Ingen behörighet: medlemmen loggar in överst på sidan; lösenordet finns här som reserv
   if (!auth.role) {
-    if (member.data || !opts.data?.password) return null;
+    // Inloggad medlem utan behörighet: visa vem man är och gå att logga ut (t.ex. inloggad som fel person)
+    if (member.data) {
+      return (
+        <div className="w-full max-w-md mt-6 space-y-3">
+          <div className="rounded-2xl bg-[#141414] border border-[#2a2a2a] p-4 flex items-center justify-between gap-3">
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-white/80 truncate">{member.data.name ?? "Medlem"}</span>
+              <span className="block text-[11px] text-white/40 truncate">Medlem</span>
+            </span>
+            <button onClick={() => memberLogout.mutate()} className="flex items-center gap-1 text-xs text-white/40 hover:text-white shrink-0">
+              <LogOut size={12} /> Logga ut
+            </button>
+          </div>
+          {opts.data?.password && (showLogin ? (
+            <PasswordForm onSuccess={() => setShowLogin(false)} />
+          ) : (
+            <button onClick={() => setShowLogin(true)} className="mx-auto flex items-center gap-2 text-white/30 hover:text-white/70 text-xs">
+              <KeyRound size={12} /> Styrelsens lösenord
+            </button>
+          ))}
+        </div>
+      );
+    }
+    if (!opts.data?.password) return null;
     return (
       <div className="w-full max-w-md mt-6">
         {showLogin ? (

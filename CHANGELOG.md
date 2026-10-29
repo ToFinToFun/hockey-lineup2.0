@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.6.1 – 2026-10-29
+
+- **Startsidan:** inloggad medlem utan behörighet ser nu sitt namn, "Medlem" och *Logga ut* (tidigare syntes ingenting, så det gick inte att se vem man var inloggad som eller logga ut därifrån). Styrelsens lösenord finns kvar som reserv under.
+
 ## 3.6.0 – 2026-10-28
 
 - **PIR syns bara för styrelsen** som standard – betyg, formpilar, ranking, kurvor och prediktion, även i Statistik och på spelarprofilen. Inställningar → PIR → *Vem ser PIR* kan öppna det för alla med Statistik, Spelare, Kort eller Lineup. Auto-lag och styrelsens Auto använder PIR som förut; för övriga fördelar Auto-knappen utan PIR när bara styrelsen ser det.

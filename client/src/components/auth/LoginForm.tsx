@@ -31,7 +31,7 @@ export function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
   );
 }
 
-function PasswordForm({ onSuccess }: { onSuccess?: () => void }) {
+export function PasswordForm({ onSuccess }: { onSuccess?: () => void }) {
   const [password, setPassword] = useState("");
   const utils = trpc.useUtils();
   const login = trpc.auth.login.useMutation({
