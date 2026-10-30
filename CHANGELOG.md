@@ -7,6 +7,14 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.11.0 – 2026-10-30
+
+- **Statistik → Export** (diskret längst ned, för den som har Media): all statistik för vald period som underlag till en AI som hjälper till att skriva Stålbladet. Sparas som fil och kopieras till urklipp.
+  - Grundkoncept först: vad klubben, Stålserien, Städet och Stålbladet är, sidtyperna (löpsedel, förstasida, artikel, intervju), ton och regler (inga påhittade citat, inget om nivå, ingen hängs ut) och exakt format så att "Klistra in hela texten" fördelar svaret rätt. AI:n föreslår först vinklar och väntar på val.
+  - Data: Stålserien, lagen jämförda, finalen, utespelare (GP, G, A, P, P/GP, GWG, TOI, TOI/GP, P/60, stjärnor), målvakter med sviter, utmärkelser, rekord, månadens spelare/målvakt, kuriosa, hallar, truppen och varje match med mål i tidsordning (minut, ställning, assist, matchvinnande), matchens stjärnor och lagen per kedja med speltid. Vid vecka/månad även säsongen hittills.
+  - Bara namn och hockeysiffror – inga kontaktuppgifter eller anteckningar.
+- Översikt → Månadens spelare: G/A/P/GP i stället för gamla M/A/P/m.
+
 ## 3.10.0 – 2026-10-30
 
 - **Stålserien:** tabellen i Statistik → Lag heter nu "Stålserien 26/27" (säsongen som perioden hör till), även i delningsbilden.

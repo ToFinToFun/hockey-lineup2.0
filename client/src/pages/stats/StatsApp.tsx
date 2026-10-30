@@ -18,6 +18,9 @@ import TeamsTab from "./TeamsTab";
 import { StatsPeriodContext } from "./shareContext";
 import { seasonShort } from "@shared/standings";
 import { PlayerProfileView } from "../players/PlayerProfile";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+import { buildStatsExport } from "@/lib/statsExport";
 
 // ─── Period helpers ─────────────────────────────────────────────────────────
 type PeriodPreset = "preseason" | "season" | "playoff" | "year" | "month" | "week" | "all";
@@ -168,6 +171,43 @@ export default function StatsApp() {
 
   const isLoading = loadingStats || loadingAwards;
 
+  // Export: all statistik för perioden + grundkoncept, som underlag till en AI som skriver Stålbladet
+  const { hasModule } = useAuth();
+  const utils = trpc.useUtils();
+  const [exporting, setExporting] = useState(false);
+  const runExport = async () => {
+    setExporting(true);
+    try {
+      const inp = queryInput ?? {};
+      const shorter = (periodPreset === "week" || periodPreset === "month") && periodConfig;
+      const seasonRange = shorter ? { from: periodConfig.seasonFrom, to: periodConfig.seasonTo } : null;
+      const [season, awards, teams, standings, final, ice, goalieFun, fun, venues, matches, players, ctxStandings, ctxSeason] = await Promise.all([
+        utils.scoreStats.seasonStats.fetch(inp), utils.scoreStats.seasonAwards.fetch(inp), utils.scoreStats.teamComparison.fetch(inp),
+        utils.scoreStats.standings.fetch(inp), utils.scoreStats.final.fetch().catch(() => null), utils.scoreStats.iceTime.fetch(inp),
+        utils.scoreStats.goalieFun.fetch(inp), utils.scoreStats.funStats.fetch(inp), utils.scoreStats.venueStats.fetch(inp),
+        utils.scoreStats.matchLog.fetch(inp), utils.players.list.fetch(),
+        seasonRange ? utils.scoreStats.standings.fetch(seasonRange) : null, seasonRange ? utils.scoreStats.seasonStats.fetch(seasonRange) : null,
+      ]);
+      const text = buildStatsExport({
+        period: { label: periodText, from: dateFilter.from, to: dateFilter.to, includeExternal: !!(queryInput as { includeExternal?: boolean } | undefined)?.includeExternal },
+        exportedAt: new Date(), season, awards, teams, standings, final, ice, goalieFun, fun, venues, matches, players,
+        seasonContext: ctxStandings && ctxSeason ? { label: `Säsong ${seasonShort(periodConfig!.seasonFrom)}`, standings: ctxStandings, season: ctxSeason } : null,
+      });
+      // Fil (fungerar alltid, bra för långa perioder) och urklipp (om webbläsaren tillåter)
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+      a.download = `stalbladet-underlag-${periodText.toLowerCase().replace(/[åä]/g, "a").replace(/ö/g, "o").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}.txt`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+      const copied = await navigator.clipboard?.writeText(text).then(() => true, () => false);
+      toast.success(copied ? "Exporterad – kopierad och sparad som fil" : "Exporterad som fil");
+    } catch (e) {
+      toast.error("Exporten misslyckades", { description: (e as Error).message });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="min-h-[100dvh] bg-[#0a0a0a] text-white">
       {/* Header */}
@@ -299,6 +339,13 @@ export default function StatsApp() {
           </>
         )}
         </StatsPeriodContext.Provider>
+        {hasModule("media") && !isLoading && (
+          <div className="flex justify-center pt-10 pb-2">
+            <button onClick={runExport} disabled={exporting} className="text-[11px] text-white/30 hover:text-white/60 disabled:opacity-50 inline-flex items-center gap-1">
+              {exporting && <Loader2 size={11} className="animate-spin" />} Export
+            </button>
+          </div>
+        )}
       </main>
 
 

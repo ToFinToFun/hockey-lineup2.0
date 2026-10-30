@@ -19,6 +19,7 @@ import { z } from "zod";
 import { starCounts } from "../starStats";
 import { series, standings } from "../../shared/standings";
 import { finalStatus, setFinalWinner } from "../finalStats";
+import { matchLog } from "../statsExport";
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -1092,6 +1093,14 @@ export const scoreStatsRouter = router({
       goalTypes: Object.entries(goalTypes).map(([type, count]) => ({ type, count })).sort((a, b) => b.count - a.count),
       monthlyMvp, monthlyGoalie, extraRecords,
     };
+  }),
+
+  /** Matcherna i perioden i detalj (mål, stjärnor, lagen med speltid) – Statistik → Export, för Stålbladet */
+  matchLog: moduleProcedure("media").input(dateRangeInput).query(async ({ input }) => {
+    const matches = filterMatchesByDate(await getAllMatchResults({ includeExternal: input?.includeExternal }), input?.from, input?.to);
+    const registry = new Map((await listPlayers()).map((p) => [p.id, p.name]));
+    const opponents = new Map((await listOpponents(true)).map((o) => [o.id, o.name]));
+    return matchLog(matches as never, registry, opponents);
   }),
 
   /** Team comparison (Vita vs Gröna) */

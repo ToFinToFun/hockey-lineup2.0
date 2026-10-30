@@ -463,7 +463,7 @@ export default function OverviewTab({ stats, pirData, onPlayerClick }: OverviewT
                   <span className="text-[#687076] text-xs w-14 shrink-0">{monthLabel}</span>
                   <button onClick={() => onPlayerClick(mvp.playerName)} className="flex-1 min-w-0 text-left hover:opacity-80">
                     <span className="block text-[#ECEDEE] text-xs font-medium truncate">{mvp.playerName}</span>
-                    <span className="block text-[#9BA1A6] text-[10px]">{mvp.goals}M + {mvp.assists}A = {mvp.points}P · {mvp.matches} m</span>
+                    <span className="block text-[#9BA1A6] text-[10px]">{mvp.goals} G + {mvp.assists} A = {mvp.points} P · {mvp.matches} GP</span>
                   </button>
                   {gk && (
                     <button onClick={() => onPlayerClick(gk.playerName)} className="flex-1 min-w-0 text-left border-l border-[#2a2a2a] pl-3 hover:opacity-80">
