@@ -11,9 +11,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { ShareImageModal } from "@/components/stats/ShareImageModal";
 import { trpc } from "@/lib/trpc";
 import { teamColor, teamName } from "@shared/teams";
-import type { StandingRow } from "@shared/standings";
+import { seasonShort, type StandingRow } from "@shared/standings";
 import { IMAGES } from "@/lib/scoreConstants";
-import { renderChampions, renderFinal, TROPHY } from "@/lib/statsImages";
+import { renderChampions, renderFinal, renderSeriesWinner, TROPHY } from "@/lib/statsImages";
 import { StatSection } from "./StatTable";
 import { useShareImage, useShareTable } from "./shareContext";
 
@@ -32,9 +32,9 @@ const COLS: Array<{ key: keyof StandingRow; label: string; title: string }> = [
 const logoOf = (t: "white" | "green") => (t === "white" ? IMAGES.teamWhiteLogo : IMAGES.teamGreenLogo);
 const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
 
-function StandingsTable({ rows }: { rows: StandingRow[] }) {
+function StandingsTable({ rows, title }: { rows: StandingRow[]; title: string }) {
   useShareTable(() => ({
-    title: "Tabellen",
+    title,
     columns: COLS.map((c) => ({ label: c.label })),
     highlight: COLS.length - 1,
     note: "2 poäng för vinst, 1 för oavgjort",
@@ -45,7 +45,7 @@ function StandingsTable({ rows }: { rows: StandingRow[] }) {
       color: teamColor(r.team),
       cells: COLS.map((c) => (c.key === "diff" ? signed(r.diff) : String(r[c.key]))),
     })),
-  }), [rows]);
+  }), [rows, title]);
   return (
     <div className="rounded-xl bg-[#161616] border border-white/10 overflow-x-auto">
       <table className="w-full text-xs">
@@ -199,15 +199,46 @@ function FinalBracket({ f }: { f: FinalData }) {
   );
 }
 
+/** Vinnarbilden för Stålserien (ettan i grundserien och laget). */
+function SeriesWinnerButton({ f }: { f: FinalData }) {
+  const [open, setOpen] = useState(false);
+  const w = f.seriesWinner!;
+  const r = w.row;
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+      <button onClick={() => setOpen(true)} className="px-4 py-2 rounded-lg text-sm font-semibold text-[#0d1620] bg-gradient-to-b from-[#f4f7fb] to-[#9aa6b3]">
+        🏅 {w.finished ? "Seriesegrare" : "Serieledare"} – vinnarbild
+      </button>
+      <span className="text-[11px] text-white/45">{teamName(w.team)} · {w.roster.length} spelare</span>
+      {open && (
+        <ShareImageModal
+          title={`Stålserien ${f.season}`}
+          fileName={`stalserien-${f.season.replace("/", "-")}`}
+          onClose={() => setOpen(false)}
+          build={({ format, background }) => renderSeriesWinner({
+            season: f.season, finished: w.finished, format, background, minMatches: f.minMatches,
+            team: { name: teamName(w.team), logo: logoOf(w.team), color: teamColor(w.team) },
+            stats: [`${r.pts} poäng`, `${r.w}-${r.l}-${r.t}`, `${r.diff > 0 ? "+" : ""}${r.diff}`],
+            players: w.roster.map((p) => ({ name: p.name })),
+          })}
+        />
+      )}
+    </div>
+  );
+}
+
 export function StandingsSection({ input, playoff, season }: { input: Input; playoff: boolean; season: boolean }) {
   const q = trpc.scoreStats.standings.useQuery(input ?? {});
   const fq = trpc.scoreStats.final.useQuery(undefined, { enabled: playoff || season });
   if (q.isLoading) return <div className="flex justify-center py-6"><Loader2 className="animate-spin text-white/40" /></div>;
+  // "Stålserien 26/27" – säsongen som perioden hör till (Totalt: utan år)
+  const seriesTitle = input?.from ? `Stålserien ${seasonShort(input.from)}` : "Stålserien";
   return (
     <div className="space-y-6">
       {!playoff && q.data && (
-        <StatSection title="Tabellen" icon={<Trophy size={14} className="text-amber-300" />} hint="GP = matcher, W/L/T = vinster/förluster/oavgjorda, GF/GA = gjorda/insläppta mål, +/- = målskillnad, P = poäng (2 för vinst, 1 för oavgjort).">
-          <StandingsTable rows={q.data.rows} />
+        <StatSection title={seriesTitle} icon={<Trophy size={14} className="text-amber-300" />} hint="GP = matcher, W/L/T = vinster/förluster/oavgjorda, GF/GA = gjorda/insläppta mål, +/- = målskillnad, P = poäng (2 för vinst, 1 för oavgjort).">
+          <StandingsTable rows={q.data.rows} title={seriesTitle} />
+          {season && fq.data?.seriesWinner && <SeriesWinnerButton f={fq.data} />}
         </StatSection>
       )}
       {(playoff || season) && fq.data && (

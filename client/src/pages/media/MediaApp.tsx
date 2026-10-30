@@ -1,3 +1,4 @@
+import { seasonShort } from "@shared/standings";
 /**
  * Media (styrelsen) – route /media.
  *
@@ -115,6 +116,8 @@ interface Settings {
   pressFocus?: boolean;
   /** Hockey i Norrbotten (Hockeyallsvenskan, SDHL) – på om inget annat valts */
   pressLocal?: boolean;
+  /** Stålserien (Vita mot Gröna i grundserien) – på om inget annat valts */
+  pressStalserien?: boolean;
   /** Artikel/intervju: löpsedel eller förstasida som första bild (karusell) */
   pressCover?: "bill" | "front" | null;
 }
@@ -423,6 +426,9 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
 
   // SHL-tabell och matcher (sparade på servern, hämtas med nyckel under Inställningar)
   const shlQ = trpc.external.shl.useQuery(undefined, { enabled: isPressPage(s.kind), staleTime: 5 * 60_000, retry: false });
+  // Stålserien: grundserien för innevarande säsong
+  const seasonRange = periodsQ.data ? { from: periodsQ.data.seasonFrom, to: periodsQ.data.seasonTo } : undefined;
+  const stalQ = trpc.scoreStats.standings.useQuery(seasonRange ?? {}, { enabled: isPressPage(s.kind) && !!seasonRange, staleTime: 5 * 60_000 });
 
   // Puffarnas bilder (sparade som små JPEG i inställningarna)
   const [teaserImgs, setTeaserImgs] = useState<Array<HTMLImageElement | null>>([]);
@@ -527,6 +533,11 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
         return { league: r.league, team: r.league === "SDHL" ? `${r.team} (dam)` : r.team, last, next: r.next ? `Nästa: ${vs(r.next, r.team)}, ${dayStr(r.next.date, true)}` : null };
       }),
     } : null;
+    const stalRows = stalQ.data?.rows ?? [];
+    const stalserien = s.pressStalserien !== false && stalRows.some((r) => r.gp > 0) && seasonRange ? {
+      title: `Stålserien ${seasonShort(seasonRange.from)}`,
+      rows: stalRows.map((r, i) => ({ pos: i + 1, team: teamName(r.team), color: teamColor(r.team), gp: r.gp, w: r.w, l: r.l, t: r.t, diff: r.diff, pts: r.pts })),
+    } : null;
     return {
       kind: s.kind as PressPageData["kind"], format, dateLine: s.dateLine, sponsor: null,
       kicker: s.kicker ?? "", headline: s.title, quoteHead: s.quoteHead ?? "", ingress: s.subtitle, body: s.body,
@@ -536,7 +547,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
       teasers: s.kind === "front" ? (s.teasers ?? []).map((t, i) => ({ kicker: t.kicker, title: t.title, sub: t.sub, page: t.page, image: teaserImgs[i] ?? null })) : [],
       latest, next,
       results: s.pressResults ? pressResults : [],
-      shlTable, shlGames, focus, local,
+      shlTable, shlGames, focus, local, stalserien,
       ads, issue: issueOf(),
     };
   };
@@ -1017,6 +1028,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
                       <button onClick={() => update({ pressNext: !s.pressNext })} className={chip(!!s.pressNext)}>{s.pressNext ? "✓ " : ""}Nästa match</button>
                       <button onClick={() => update({ pressResults: !s.pressResults })} className={chip(!!s.pressResults)}>{s.pressResults ? "✓ " : ""}Våra matcher</button>
                       {([
+                        ["pressStalserien", "Stålserien", !!stalQ.data?.rows.some((r) => r.gp > 0)],
                         ["pressFocus", "Luleå i SHL", !!shlQ.data?.focus],
                         ["pressLocal", "Hockey i Norrbotten", !!shlQ.data?.local?.rows.length],
                         ["pressShlGames", "SHL-matcher", !!(shlQ.data?.today.length || shlQ.data?.lastRound)],

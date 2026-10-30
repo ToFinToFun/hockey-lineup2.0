@@ -589,32 +589,46 @@ export async function renderChampions(d: ShareChampionsData): Promise<HTMLCanvas
   // Banderoll med lagets namn
   ribbon(ctx, IG_W / 2, ty + th + 34, 520, 76, d.team.name.toUpperCase(), d.team.color && d.team.color !== "#ffffff" ? d.team.color : "#ffffff");
 
-  // Mästarlaget: 1–3 kolumner beroende på antal (ryms upp till 36)
-  const players = d.players.slice(0, 36);
-  const panelTop = ty + th + 94, panelBottom = IG_H - 92;
+  rosterPanel(ctx, d.players, ty + th + 94, IG_H - 92, GOLD_PANEL, "MÄSTARLAGET", `Ingen har spelat ${d.minMatches} matcher för laget än`);
+  ctx.textBaseline = "alphabetic";
+  ctx.textAlign = "center";
+  ctx.font = `400 19px ${BODY}`;
+  ctx.fillStyle = "rgba(246,231,191,0.65)";
+  ctx.fillText(`Kaptenerna och alla som spelat minst ${d.minMatches} matcher för laget under säsongen och slutspelet`, IG_W / 2, IG_H - 58);
+  return c;
+}
+
+interface PanelStyle { bg: string; border: (ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number) => CanvasGradient | string; inner: string; title: string; name: string; muted: string; ornament: "star" | "diamond" }
+const GOLD_PANEL: PanelStyle = { bg: "rgba(14,10,4,0.78)", border: goldGradient, inner: "rgba(233,207,134,0.3)", title: GOLD.mid, name: "#fff8e6", muted: "rgba(246,231,191,0.7)", ornament: "star" };
+
+/** Laget: bara namnen i 1–3 kolumner beroende på antal (ryms upp till 36). */
+function rosterPanel(ctx: CanvasRenderingContext2D, all: Array<{ name: string }>, panelTop: number, panelBottom: number, st: PanelStyle, title: string, empty: string) {
+  const players = all.slice(0, 36);
   const cols = players.length > 14 ? 3 : players.length > 6 ? 2 : 1;
   const perCol = Math.max(1, Math.ceil(players.length / cols));
   const rowH = Math.min(46, Math.floor((panelBottom - panelTop - 64) / perCol));
   const pw = IG_W - 140, px = 70;
   const panelH = 64 + perCol * rowH + 14;
-  ctx.fillStyle = "rgba(14,10,4,0.78)";
+  ctx.fillStyle = st.bg;
   roundRect(ctx, px, panelTop, pw, panelH, 20);
   ctx.fill();
-  ctx.strokeStyle = goldGradient(ctx, px, panelTop, px + pw, panelTop + panelH);
+  ctx.strokeStyle = st.border(ctx, px, panelTop, px + pw, panelTop + panelH);
   ctx.lineWidth = 3;
   roundRect(ctx, px, panelTop, pw, panelH, 20);
   ctx.stroke();
-  ctx.strokeStyle = "rgba(233,207,134,0.3)";
+  ctx.strokeStyle = st.inner;
   ctx.lineWidth = 1;
   roundRect(ctx, px + 8, panelTop + 8, pw - 16, panelH - 16, 14);
   ctx.stroke();
   ctx.textAlign = "center";
-  ctx.fillStyle = GOLD.mid;
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = st.title;
   ctx.font = `700 24px ${HEAD}`;
   ctx.letterSpacing = "8px";
-  ctx.fillText("MÄSTARLAGET", IG_W / 2 + 4, panelTop + 44);
+  ctx.fillText(title, IG_W / 2 + 4, panelTop + 44);
+  const ow = ctx.measureText(title).width / 2 + 38;
   ctx.letterSpacing = "0px";
-  for (const s of [-1, 1]) star(ctx, IG_W / 2 + s * 150, panelTop + 36, 8);
+  for (const sd of [-1, 1]) (st.ornament === "star" ? star : diamond)(ctx, IG_W / 2 + sd * ow, panelTop + 36, 8);
   const colW = (pw - 30) / cols;
   const fontPx = Math.round(Math.min(cols === 3 ? 25 : 30, rowH * 0.6));
   ctx.textBaseline = "middle";
@@ -622,21 +636,104 @@ export async function renderChampions(d: ShareChampionsData): Promise<HTMLCanvas
     const col = Math.floor(i / perCol), row = i % perCol;
     const x = px + 15 + col * colW + colW / 2, y = panelTop + 64 + row * rowH + rowH / 2;
     ctx.textAlign = "center";
-    ctx.fillStyle = "#fff8e6";
+    ctx.fillStyle = st.name;
     // Bara namnet; långa namn krymps hellre än klipps
     fitFont(ctx, p.name, colW - 24, fontPx, (px) => `600 ${px}px ${BODY}`, Math.round(fontPx * 0.78));
     ctx.fillText(fit(ctx, p.name, colW - 24), x, y);
   });
   if (!players.length) {
     ctx.textAlign = "center";
-    ctx.fillStyle = "rgba(246,231,191,0.7)";
+    ctx.fillStyle = st.muted;
     ctx.font = `500 26px ${BODY}`;
-    ctx.fillText(`Ingen har spelat ${d.minMatches} matcher för laget än`, IG_W / 2, panelTop + 100);
+    ctx.fillText(empty, IG_W / 2, panelTop + 100);
   }
   ctx.textBaseline = "alphabetic";
+}
+
+// ─── Stålserien: vinnarbilden (mindre dramatisk än Städet, i stål/silver) ────
+
+const STEEL = { light: "#f4f7fb", mid: "#c3ccd6", dark: "#7d8896" };
+function steelGradient(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number) {
+  const g = ctx.createLinearGradient(x0, y0, x1, y1);
+  g.addColorStop(0, STEEL.light);
+  g.addColorStop(0.45, STEEL.mid);
+  g.addColorStop(0.7, STEEL.dark);
+  g.addColorStop(1, STEEL.light);
+  return g;
+}
+const STEEL_PANEL: PanelStyle = { bg: "rgba(6,10,14,0.72)", border: steelGradient, inner: "rgba(195,204,214,0.25)", title: STEEL.mid, name: "#f4f7fb", muted: "rgba(220,228,236,0.7)", ornament: "diamond" };
+
+export interface ShareSeriesWinnerData {
+  season: string;
+  /** Avslutad grundserie = Seriesegrare, annars Serieledare */
+  finished: boolean;
+  team: { name: string; logo: string | null; color: string };
+  /** T.ex. ["15 poäng", "7-4-1", "+9"] */
+  stats: string[];
+  players: Array<{ name: string }>;
+  minMatches: number;
+  format?: PostFormat;
+  background?: ShareBackground;
+}
+
+export async function renderSeriesWinner(d: ShareSeriesWinnerData): Promise<HTMLCanvasElement> {
+  await ensureFonts();
+  const bgc = d.background ?? { url: STATS_BACKGROUND, dim: 0.8 };
+  const [bg, lg] = await Promise.all([tryLoad(bgc.url), tryLoad(d.team.logo)]);
+  const [c, ctx] = canvas(frameHeight(d.format));
+  const W = ctx.canvas?.width ?? IG_W, H = ctx.canvas?.height ?? IG_H;
+  backdrop(ctx, bg, Math.max(0.72, bgc.dim));
+  // Kall stålton och ett mjukt ljus bakom loggan
+  ctx.fillStyle = "rgba(10,22,34,0.35)";
+  ctx.fillRect(0, 0, W, H);
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = steelGradient(ctx, 0, 0, W, H);
+  roundRect(ctx, 24, 24, W - 48, H - 48, 24);
+  ctx.stroke();
+  contentArea(ctx);
+  const glow = ctx.createRadialGradient(IG_W / 2, 420, 20, IG_W / 2, 420, 360);
+  glow.addColorStop(0, "rgba(220,230,240,0.20)");
+  glow.addColorStop(1, "rgba(220,230,240,0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 100, IG_W, 640);
+
+  // Rubrik
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  ctx.letterSpacing = "12px";
+  ctx.font = `700 104px ${HEAD}`;
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
+  ctx.fillText("STÅLSERIEN", IG_W / 2 + 8, 184);
+  ctx.fillStyle = steelGradient(ctx, 0, 90, 0, 185);
+  ctx.fillText("STÅLSERIEN", IG_W / 2 + 6, 180);
+  ctx.letterSpacing = "8px";
+  ctx.font = `600 30px ${HEAD}`;
+  ctx.fillStyle = "rgba(220,228,236,0.85)";
+  ctx.fillText(`${d.finished ? "SERIESEGRARE" : "SERIELEDARE"} ${d.season}`, IG_W / 2 + 4, 232);
+  ctx.letterSpacing = "0px";
+
+  // Loggan och lagets namn
+  const cy = 420;
+  logo(ctx, lg, IG_W / 2, cy, 140, STEEL.mid);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "rgba(195,204,214,0.45)";
+  ctx.beginPath();
+  ctx.arc(IG_W / 2, cy, 160, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = d.team.color && d.team.color !== "#ffffff" ? d.team.color : "#ffffff";
+  ctx.font = `700 64px ${HEAD}`;
+  ctx.letterSpacing = "10px";
+  ctx.fillText(d.team.name.toUpperCase(), IG_W / 2 + 5, cy + 230);
+  ctx.letterSpacing = "0px";
+  // Siffrorna som en rad med avdelare
+  ctx.font = `600 28px ${BODY}`;
+  ctx.fillStyle = "rgba(235,240,245,0.9)";
+  ctx.fillText(d.stats.join("   ·   "), IG_W / 2, cy + 282);
+
+  rosterPanel(ctx, d.players, cy + 320, IG_H - 92, STEEL_PANEL, "LAGET", `Ingen har spelat ${d.minMatches} matcher för laget än`);
   ctx.textAlign = "center";
   ctx.font = `400 19px ${BODY}`;
-  ctx.fillStyle = "rgba(246,231,191,0.65)";
-  ctx.fillText(`Kaptenerna och alla som spelat minst ${d.minMatches} matcher för laget under säsongen och slutspelet`, IG_W / 2, IG_H - 58);
+  ctx.fillStyle = "rgba(220,228,236,0.6)";
+  ctx.fillText(`Kaptenerna och alla som spelat minst ${d.minMatches} matcher för laget i grundserien`, IG_W / 2, IG_H - 58);
   return c;
 }

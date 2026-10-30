@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.10.0 – 2026-10-30
+
+- **Stålserien:** tabellen i Statistik → Lag heter nu "Stålserien 26/27" (säsongen som perioden hör till), även i delningsbilden.
+- **Vinnarbild för Stålserien:** i stål/silver, lugnare än Städet och utan pokal – lagets logga, namn, poäng, W-L-T och målskillnad, och laget (kaptenerna först och alla med minst 10 matcher i grundserien, bara namnen). "Seriesegrare" när grundserien är slut, annars "Serieledare". Valfri bakgrund, 4:5 eller 9:16.
+- **Stålbladet:** Stålserien som lokalsport i sidospalten (GP, W, L, T, +/-, P), på som standard.
+
 ## 3.9.1 – 2026-10-30
 
 - Mästarbilden: rubriken är pokalens namn **STÄDET** (ingen klubbrad). Under säsongsplattan placering i serien, poäng och finalresultatet i större text.

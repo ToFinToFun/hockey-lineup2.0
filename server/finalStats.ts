@@ -64,11 +64,16 @@ export async function finalStatus() {
   const table = standings(season);
   const label = seasonShort(p.playoffFrom);
   const result = (await readResults())[label] ?? null;
-  let champions: ReturnType<typeof teamRoster> = [];
-  if (result) {
-    const names = new Map((await listPlayers()).filter((r) => r.active).map((r) => [r.id, { name: r.name, number: r.number ?? null, captainRole: r.captainRole, teamColor: r.teamColor }]));
-    champions = teamRoster([...season, ...playoff], result.winner, names);
-  }
+  const names = new Map((await listPlayers()).filter((r) => r.active).map((r) => [r.id, { name: r.name, number: r.number ?? null, captainRole: r.captainRole, teamColor: r.teamColor }]));
+  const champions = result ? teamRoster([...season, ...playoff], result.winner, names) : [];
+  // Stålserien: ettan i grundserien och laget (bara grundseriens matcher)
+  const lead = table[0];
+  const seriesWinner = season.length ? {
+    team: lead.team,
+    finished: new Date() > new Date(`${p.seasonTo}T23:59:59`),
+    row: lead,
+    roster: teamRoster(season, lead.team, names),
+  } : null;
   return {
     season: label,
     playoffFrom: p.playoffFrom, playoffTo: p.playoffTo,
@@ -81,6 +86,7 @@ export async function finalStatus() {
     winner: result?.winner ?? null,
     finishedAt: result?.at ?? null,
     champions,
+    seriesWinner,
     minMatches: CHAMPION_MIN_MATCHES,
   };
 }

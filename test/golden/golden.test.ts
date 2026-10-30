@@ -111,7 +111,7 @@ beforeAll(async () => {
   ] } as never)) as unknown as Canvasish;
 
   // Statistik: delningsbilder (tabellen och finalen)
-  const { renderStatsTable, renderFinal, renderChampions } = await import("@/lib/statsImages");
+  const { renderStatsTable, renderFinal, renderChampions, renderSeriesWinner } = await import("@/lib/statsImages");
   images["statistik-tabell"] = (await renderStatsTable({ title: "Tabellen", subtitle: "Säsong 26/27", note: "2 poäng för vinst, 1 för oavgjort", highlight: 7,
     columns: ["GP", "W", "L", "T", "GF", "GA", "+/-", "P"].map((label) => ({ label })),
     rows: [
@@ -127,6 +127,10 @@ beforeAll(async () => {
   images["statistik-mastare"] = (await renderChampions({ season: "26/27", minMatches: 10, lines: ["1:a i serien", "15 poäng", "Finalen 3–2"],
     team: { name: "Gröna", logo: "/images/logo-green.png", color: "#34d399" },
     players: names.map((name) => ({ name })),
+  } as never)) as unknown as Canvasish;
+  images["statistik-stalserien"] = (await renderSeriesWinner({ season: "26/27", finished: true, minMatches: 10, stats: ["15 poäng", "7-4-1", "+9"],
+    team: { name: "Gröna", logo: "/images/logo-green.png", color: "#34d399" },
+    players: names.slice(0, 22).map((name) => ({ name })),
   } as never)) as unknown as Canvasish;
 }, 60_000);
 
