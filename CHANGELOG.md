@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.9.0 – 2026-10-30
+
+- **Mästarbilden i fler lager:** strålar och glans bakom pokalen, guldstoft, dubbel guldram med hörnornament, präglad rubrik, lagerkrans runt pokalen, säsongsplatta och banderoll med lagets namn. Mästarlaget i tre kolumner – ryms upp till 36 spelare; långa namn krymps i stället för att klippas.
+- Avgjord final i appen: kortet får samma guldlager (strålar, glans, inre ram).
+- Kortare hjälptexter under finalen.
+
 ## 3.8.1 – 2026-10-30
 
 - Mästarbilden: stjärnan ovanpå rubriken flyttad.

@@ -119,7 +119,14 @@ function FinalBracket({ f }: { f: FinalData }) {
   };
   const status = f.winner ? `Avgjord – ${teamName(f.winner)} mästare` : f.started ? (leader ? `${teamName(leader)} leder` : "Jämnt") : `Börjar ${new Date(f.playoffFrom).toLocaleDateString("sv-SE", { day: "numeric", month: "long" })}`;
   return (
-    <div className={`rounded-xl border p-4 sm:p-6 space-y-4 ${f.winner ? "bg-gradient-to-b from-[#2a2111] to-[#111] border-amber-300/40" : "bg-[#111] border-amber-300/20"}`}>
+    <div
+      className={`relative overflow-hidden rounded-xl border p-4 sm:p-6 space-y-4 ${f.winner ? "border-amber-300/60 shadow-[0_0_40px_rgba(233,207,134,0.15)]" : "bg-[#111] border-amber-300/20"}`}
+      // Avgjord: guld i lager – strålar, glans och mörk grund (som mästarbilden)
+      style={f.winner ? {
+        background: "radial-gradient(circle at 50% 38%, rgba(255,236,180,0.28), rgba(233,207,134,0.06) 45%, transparent 70%), repeating-conic-gradient(from 0deg at 50% 38%, rgba(246,231,191,0.05) 0deg 5deg, transparent 5deg 10deg), linear-gradient(160deg, #2c2212, #120d05)",
+      } : undefined}
+    >
+      {f.winner && <div className="pointer-events-none absolute inset-2 rounded-lg border border-amber-200/25" />}
       <div className="text-center">
         <p className="text-[10px] tracking-[0.3em] text-white/45">SLUTSPEL · {status.toUpperCase()}</p>
         <p className="text-2xl sm:text-3xl font-bold tracking-[0.12em] text-amber-300" style={{ fontFamily: "'Oswald', sans-serif" }}>{title}</p>
@@ -134,7 +141,7 @@ function FinalBracket({ f }: { f: FinalData }) {
         {side(right, 1)}
       </div>
       <p className="text-center text-[11px] text-white/45">
-        {f.started ? `vunna matcher${f.series.ties ? ` · ${f.series.ties} oavgjord${f.series.ties === 1 ? "" : "a"}` : ""}` : "Finalserien har inte börjat – lagen är seedade efter grundserien."}
+        {f.started ? `vunna matcher${f.series.ties ? ` · ${f.series.ties} oavgjord${f.series.ties === 1 ? "" : "a"}` : ""}` : "Finalserien har inte börjat."}
       </p>
       {f.series.matches.length > 0 && (
         <div className="rounded-lg bg-white/[0.03] divide-y divide-white/5">
@@ -204,7 +211,7 @@ export function StandingsSection({ input, playoff, season }: { input: Input; pla
         </StatSection>
       )}
       {(playoff || season) && fq.data && (
-        <StatSection title="Finalen" icon={<Trophy size={14} className="text-amber-300" />} hint="Ettan i grundserien möter tvåan. Matchserie – flest vunna matcher. Admin markerar när finalen är avgjord.">
+        <StatSection title="Finalen" icon={<Trophy size={14} className="text-amber-300" />} hint="Ettan i grundserien möter tvåan. Matchserie – flest vunna matcher. Markera manuellt när finalen är avgjord.">
           <FinalBracket f={fq.data} />
         </StatSection>
       )}
