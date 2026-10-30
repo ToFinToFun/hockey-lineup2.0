@@ -124,9 +124,9 @@ beforeAll(async () => {
     matches: [{ date: "2027-03-02T20:00:00Z", left: 4, right: 2 }, { date: "2027-03-09T20:00:00Z", left: 1, right: 3 }, { date: "2027-03-16T20:00:00Z", left: 5, right: 4 }],
   } as never)) as unknown as Canvasish;
   const names = ["Linus Carbin", "Ludwig Rydén", "Henrik Björling", "Hampus Bergman", "Viktor Lindgren", "Teddie Storm", "Johan Hellgren", "Mikael Paasovaara", "Niklas Bergström", "Jimmy Andersson", "Vide Rönnbäck", "Jerry Paasovaara", "Anders Lund", "Kalle Nilsson", "Erik Ström", "Oskar Berg", "Fredrik Lindqvist", "Marcus Öhman", "Patrik Holmström", "Sebastian Wikström", "Daniel Granberg", "Tobias Johansson", "Andreas Johansson", "Robin Bergstedt", "Emil Sundqvist", "Christoffer Lundberg", "Mattias Nordström", "Joakim Pettersson"];
-  images["statistik-mastare"] = (await renderChampions({ season: "26/27", minMatches: 10, line: "Finalen 3–2 · 15 p i serien",
+  images["statistik-mastare"] = (await renderChampions({ season: "26/27", minMatches: 10, lines: ["1:a i serien", "15 poäng", "Finalen 3–2"],
     team: { name: "Gröna", logo: "/images/logo-green.png", color: "#34d399" },
-    players: names.map((name, i) => ({ name, number: String((i * 7) % 99 + 1) })),
+    players: names.map((name) => ({ name })),
   } as never)) as unknown as Canvasish;
 }, 60_000);
 

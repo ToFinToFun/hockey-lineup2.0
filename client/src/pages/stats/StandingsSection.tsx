@@ -190,8 +190,8 @@ function FinalBracket({ f }: { f: FinalData }) {
           build={({ format }) => renderChampions({
             season: f.season, format, minMatches: f.minMatches,
             team: { name: teamName(f.winner!), logo: logoOf(f.winner!), color: teamColor(f.winner!) },
-            line: [f.started ? `Finalen ${f.series[f.winner!]}–${f.series[f.winner === "white" ? "green" : "white"]}` : "", `${f.seasonPoints[f.winner!]} p i serien`].filter(Boolean).join(" · "),
-            players: f.champions.map((p) => ({ name: p.name, number: p.number })),
+            lines: [`${f.seasonRank[f.winner!]}:a i serien`, `${f.seasonPoints[f.winner!]} poäng`, f.started ? `Finalen ${f.series[f.winner!]}–${f.series[f.winner === "white" ? "green" : "white"]}` : ""].filter(Boolean),
+            players: f.champions.map((p) => ({ name: p.name })),
           })}
         />
       )}

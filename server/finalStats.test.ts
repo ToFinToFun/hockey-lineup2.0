@@ -13,4 +13,13 @@ describe("mästarlaget", () => {
     expect(teamRoster(ms, "white", names, 1).map((r) => r.id)).toEqual(["p1", "p2"]);
     expect(teamRoster(ms, "green", names, 2).map((r) => r.id)).toEqual(["p3"]);
   });
+  it("C först, sedan A (alltid med), sedan flest matcher", () => {
+    const ms = [match("Vita", ["p1", "p2", "p4"], []), match("Vita", ["p1", "p4"], []), match("Vita", ["p4"], [])];
+    const names = new Map<string, { name: string; number: string | null; captainRole?: string | null; teamColor?: string | null }>([
+      ["p1", { name: "Ett", number: "1" }], ["p2", { name: "Två", number: null, captainRole: "A" }],
+      ["p4", { name: "Fyra", number: null }], ["p5", { name: "Kapten", number: null, captainRole: "C", teamColor: "white" }],
+      ["p6", { name: "Annan C", number: null, captainRole: "C", teamColor: "green" }],
+    ]);
+    expect(teamRoster(ms, "white", names, 2).map((r) => r.name)).toEqual(["Kapten", "Två", "Fyra", "Ett"]);
+  });
 });

@@ -24,8 +24,13 @@ async function readResults(): Promise<Results> {
   try { return JSON.parse((await getConfigValue(KEY)) ?? "{}") as Results; } catch { return {}; }
 }
 
-/** Spelare som spelat minst `min` matcher för laget i matcherna (exporteras för test). */
-export function teamRoster(matches: MatchRow[], team: TeamKey, names: Map<string, { name: string; number: string | null }>, min = CHAMPION_MIN_MATCHES) {
+type RosterInfo = { name: string; number: string | null; captainRole?: string | null; teamColor?: string | null };
+
+/**
+ * Mästarlaget (exporteras för test): lagkapten (C) först, sedan assisterande (A) – de är
+ * alltid med – och sedan alla som spelat minst `min` matcher för laget, flest matcher först.
+ */
+export function teamRoster(matches: MatchRow[], team: TeamKey, names: Map<string, RosterInfo>, min = CHAMPION_MIN_MATCHES) {
   const count = new Map<string, number>();
   for (const m of matches) {
     const lu = m.lineup as { teamAName?: string; lineup?: Record<string, { id?: string } | null> } | null;
@@ -38,10 +43,17 @@ export function teamRoster(matches: MatchRow[], team: TeamKey, names: Map<string
       count.set(p.id, (count.get(p.id) ?? 0) + 1);
     }
   }
-  return [...count.entries()]
-    .filter(([, n]) => n >= min)
-    .map(([id, n]) => ({ id, name: names.get(id)?.name ?? id, number: names.get(id)?.number ?? null, matches: n }))
-    .sort((a, b) => b.matches - a.matches || a.name.localeCompare(b.name, "sv"));
+  const role = (id: string) => {
+    const r = names.get(id)?.captainRole;
+    return r === "C" || r === "A" ? r : null;
+  };
+  // C och A i laget: lagfärgen är laget, eller så har de spelat för laget
+  const ids = new Set([...count.keys()].filter((id) => (count.get(id) ?? 0) >= min || role(id)));
+  for (const [id, info] of names) if (role(id) && info.teamColor === team) ids.add(id);
+  const rank = (id: string) => (role(id) === "C" ? 0 : role(id) === "A" ? 1 : 2);
+  return [...ids]
+    .map((id) => ({ id, name: names.get(id)?.name ?? id, number: names.get(id)?.number ?? null, role: role(id), matches: count.get(id) ?? 0 }))
+    .sort((a, b) => rank(a.id) - rank(b.id) || b.matches - a.matches || a.name.localeCompare(b.name, "sv"));
 }
 
 export async function finalStatus() {
@@ -54,7 +66,7 @@ export async function finalStatus() {
   const result = (await readResults())[label] ?? null;
   let champions: ReturnType<typeof teamRoster> = [];
   if (result) {
-    const names = new Map((await listPlayers()).map((r) => [r.id, { name: r.name, number: r.number ?? null }]));
+    const names = new Map((await listPlayers()).filter((r) => r.active).map((r) => [r.id, { name: r.name, number: r.number ?? null, captainRole: r.captainRole, teamColor: r.teamColor }]));
     champions = teamRoster([...season, ...playoff], result.winner, names);
   }
   return {
@@ -63,6 +75,7 @@ export async function finalStatus() {
     // Ettan i grundserien till vänster (lika: Vita först)
     seeds: [table[0].team, table[1].team] as [TeamKey, TeamKey],
     seasonPoints: Object.fromEntries(table.map((r) => [r.team, r.pts])) as Record<TeamKey, number>,
+    seasonRank: Object.fromEntries(table.map((r, i) => [r.team, i + 1])) as Record<TeamKey, number>,
     series: series(playoff),
     started: playoff.length > 0,
     winner: result?.winner ?? null,

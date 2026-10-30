@@ -58,9 +58,10 @@ export interface ShareChampionsData {
   /** "26/27" */
   season: string;
   team: { name: string; logo: string | null; color: string };
-  /** T.ex. "Finalen 3–2 mot Gröna" */
-  line: string;
-  players: Array<{ name: string; number: string | null }>;
+  /** Rader under säsongsplattan, t.ex. ["1:a i serien", "15 poäng", "Finalen 3–2"] */
+  lines: string[];
+  /** Bara namnen, i ordning (C, A, sedan flest matcher) */
+  players: Array<{ name: string }>;
   minMatches: number;
   trophy?: string;
   format?: PostFormat;
@@ -531,12 +532,9 @@ export async function renderChampions(d: ShareChampionsData): Promise<HTMLCanvas
   // Rubrik
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
-  ctx.fillStyle = "rgba(246,231,191,0.8)";
-  ctx.font = `600 26px ${HEAD}`;
-  ctx.letterSpacing = "12px";
-  ctx.fillText("STÅLSTADENS SF", IG_W / 2, 92);
-  ctx.letterSpacing = "8px";
-  embossed(ctx, "MÄSTARE", IG_W / 2 + 4, 210, 116);
+  // Pokalen heter Städet (som Stanley Cup)
+  ctx.letterSpacing = "14px";
+  embossed(ctx, "STÄDET", IG_W / 2 + 7, 200, 132);
   ctx.letterSpacing = "0px";
   // Ornamentlinje
   ctx.strokeStyle = "rgba(233,207,134,0.7)";
@@ -580,9 +578,13 @@ export async function renderChampions(d: ShareChampionsData): Promise<HTMLCanvas
   ctx.letterSpacing = "2px";
   embossed(ctx, d.season, IG_W - 175, plY + 98, 50);
   ctx.letterSpacing = "0px";
-  ctx.font = `500 18px ${BODY}`;
-  ctx.fillStyle = "rgba(246,231,191,0.8)";
-  d.line.split(" · ").slice(0, 2).forEach((t, i) => ctx.fillText(fit(ctx, t, plW - 24), IG_W - 175, plY + plH + 30 + i * 26));
+  d.lines.slice(0, 3).forEach((t, i) => {
+    ctx.font = i === 0 ? `700 30px ${HEAD}` : `600 25px ${BODY}`;
+    ctx.fillStyle = i === 0 ? GOLD.mid : "rgba(246,231,191,0.85)";
+    ctx.letterSpacing = i === 0 ? "3px" : "0px";
+    ctx.fillText(fit(ctx, i === 0 ? t.toUpperCase() : t, 260), IG_W - 175, plY + plH + 40 + i * 34);
+  });
+  ctx.letterSpacing = "0px";
 
   // Banderoll med lagets namn
   ribbon(ctx, IG_W / 2, ty + th + 34, 520, 76, d.team.name.toUpperCase(), d.team.color && d.team.color !== "#ffffff" ? d.team.color : "#ffffff");
@@ -618,17 +620,12 @@ export async function renderChampions(d: ShareChampionsData): Promise<HTMLCanvas
   ctx.textBaseline = "middle";
   players.forEach((p, i) => {
     const col = Math.floor(i / perCol), row = i % perCol;
-    const x = px + 15 + col * colW, y = panelTop + 64 + row * rowH + rowH / 2;
-    ctx.textAlign = "right";
-    ctx.fillStyle = "rgba(233,207,134,0.9)";
-    ctx.font = `700 ${fontPx}px ${HEAD}`;
-    const numW = fontPx * 1.9;
-    ctx.fillText(p.number ? `#${p.number}` : "", x + numW, y);
-    ctx.textAlign = "left";
+    const x = px + 15 + col * colW + colW / 2, y = panelTop + 64 + row * rowH + rowH / 2;
+    ctx.textAlign = "center";
     ctx.fillStyle = "#fff8e6";
-    // Långa namn krymps hellre än klipps
-    fitFont(ctx, p.name, colW - numW - 22, fontPx, (px) => `600 ${px}px ${BODY}`, Math.round(fontPx * 0.78));
-    ctx.fillText(fit(ctx, p.name, colW - numW - 22), x + numW + 10, y);
+    // Bara namnet; långa namn krymps hellre än klipps
+    fitFont(ctx, p.name, colW - 24, fontPx, (px) => `600 ${px}px ${BODY}`, Math.round(fontPx * 0.78));
+    ctx.fillText(fit(ctx, p.name, colW - 24), x, y);
   });
   if (!players.length) {
     ctx.textAlign = "center";
@@ -640,6 +637,6 @@ export async function renderChampions(d: ShareChampionsData): Promise<HTMLCanvas
   ctx.textAlign = "center";
   ctx.font = `400 19px ${BODY}`;
   ctx.fillStyle = "rgba(246,231,191,0.65)";
-  ctx.fillText(`Alla som spelat minst ${d.minMatches} matcher för laget under säsongen och slutspelet`, IG_W / 2, IG_H - 58);
+  ctx.fillText(`Kaptenerna och alla som spelat minst ${d.minMatches} matcher för laget under säsongen och slutspelet`, IG_W / 2, IG_H - 58);
   return c;
 }

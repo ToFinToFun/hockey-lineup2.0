@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.9.1 – 2026-10-30
+
+- Mästarbilden: rubriken är pokalens namn **STÄDET** (ingen klubbrad). Under säsongsplattan placering i serien, poäng och finalresultatet i större text.
+- Mästarlaget: bara namnen, lagkapten (C) först, sedan assisterande (A) – alltid med oavsett antal matcher – och sedan efter flest spelade matcher.
+
 ## 3.9.0 – 2026-10-30
 
 - **Mästarbilden i fler lager:** strålar och glans bakom pokalen, guldstoft, dubbel guldram med hörnornament, präglad rubrik, lagerkrans runt pokalen, säsongsplatta och banderoll med lagets namn. Mästarlaget i tre kolumner – ryms upp till 36 spelare; långa namn krymps i stället för att klippas.
