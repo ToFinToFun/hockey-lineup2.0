@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.17.1 – 2026-11-01
+
+- **Vinnare: etiketterna hör till platsen.** Flyttas en bild upp eller ned (eller tas bort) blir det fortfarande Stålborsten på 1:an, Snorbromsen på 2:an och Dunläppen på 3:an. En egen etikett följer personen. Samma för Före/Efter.
+- **Inget datum i kampanjbilderna** (laget.se-datumet lades till automatiskt och gick inte att ändra). Vinnare får "Vinnarna 2026" (eller "Vinnaren 2026" med en bild) – allt går att ändra.
+- **Underrubriken och ramen har bytt plats:** sloganen ("Mer forskning räddar fler liv") står under rubriken och ramen nederst säger vad bilden visar (Deltagare, Före och efter, Vinnarna 2026; i Nyhet "Tillsammans mot prostatacancer"). Fälten i temat har fått tydligare namn.
+
 ## 3.17.0 – 2026-11-01
 
 - **Kampanj → Vinnare:** prispall för 1–3 vinnare – ettan störst i mitten på högsta klossen med en guldmustasch som krona, tvåan och trean på sidorna i silver och brons, konfetti i temats färger. Priserna heter som förval **Stålborsten**, **Snorbromsen** och **Dunläppen** (går att ändra). Underrubriken blir "Vinnaren" med en bild och "Vinnarna" med flera. Bildtexten listar priserna med 🥇🥈🥉.

@@ -33,7 +33,7 @@ import { type CardSettings } from "@shared/cardRender";
 import { renderPlayerCard } from "@/lib/savedCardImage";
 import { cellsFor, defaultStatsTitle } from "@shared/cardStats";
 import CampaignPanel, { CAMPAIGN_MODES, themeLogoUrl, themePhotoUrl, loadImg, type CampaignPersonSetting, type CampaignPhoto, type CampaignTheme } from "./CampaignPanel";
-import { cropRect, moveCrop, zoomCrop, modeTexts, winnersSubtitle, DEFAULT_CROP, type CampaignMode, type CampaignCanvas, type CampaignHit } from "@/lib/campaignImages";
+import { cropRect, moveCrop, zoomCrop, modeTexts, winnersSubtitle, isWinnersDefault, DEFAULT_CROP, type CampaignMode, type CampaignCanvas, type CampaignHit } from "@/lib/campaignImages";
 import { STAT_CATEGORIES, STAT_PERIODS, periodRange, statRows, goalieRows, isGoalieCategory, type StatCategory, type StatPeriod } from "./mediaStats";
 
 type Kind = "lineup" | "text" | "cards" | "stats" | "result" | "award" | "image" | "bill" | "front" | "article" | "interview" | "campaign";
@@ -222,8 +222,8 @@ function defaultCaption(s: Settings, tags: string[]): string {
     const names = s.campaignMode === "news" ? ""
       : s.campaignMode === "winners" ? (s.people ?? []).slice(0, 3).map((p, i) => `${["🥇", "🥈", "🥉"][i]} ${p.tag ? `${p.tag}: ` : ""}${who(p)}`).join("\n")
       : (s.people ?? []).slice(0, s.campaignMode === "beforeafter" ? 1 : 9).map(who).filter((n) => n.trim()).join(", ");
-    const sub = s.campaignMode === "winners" && (s.subtitle === "Vinnaren" || s.subtitle === "Vinnarna") ? winnersSubtitle(Math.min(3, (s.people ?? []).length)) : s.subtitle;
-    return [s.title, sub, s.campaignMode === "news" ? s.body : "", names, s.slogan, s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tagLine].filter((x) => x?.trim()).join("\n\n");
+    const frame = s.campaignMode === "winners" && isWinnersDefault(s.slogan ?? "") ? winnersSubtitle(Math.min(3, (s.people ?? []).length), Number((s.slogan ?? "").match(/\d{4}/)?.[0]) || undefined) : s.slogan;
+    return [s.title, frame, s.campaignMode === "news" ? s.body : "", names, s.subtitle, s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tagLine].filter((x) => x?.trim()).join("\n\n");
   }
   if (s.kind === "stats" || s.kind === "cards" || s.kind === "image") {
     return [s.title, s.subtitle, s.kind === "image" ? s.info : "", s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tagLine].filter(Boolean).join("\n\n");
@@ -310,7 +310,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
   const [campaignPhotos, setCampaignPhotos] = useState<CampaignPhoto[]>([]);
   const [campaignPhotosLoading, setCampaignPhotosLoading] = useState(false);
   /** Temats förval i ett nytt inlägg */
-  const themeTexts = (t: CampaignTheme | null) => ({ title: t?.title ?? "", subtitle: t?.subtitle ?? "", slogan: t?.slogan ?? "" });
+  const themeTexts = (t: CampaignTheme | null) => modeTexts("news", t);
   // Nytt kampanjinlägg innan temana hämtats: fyll i temat och förvalen när de kommer
   useEffect(() => {
     if (s.kind !== "campaign" || s.themeId || postId !== null || !themes.length) return;
@@ -445,7 +445,8 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
     if (postId === null && s.kind === "lineup" && s.groups.length === 0 && lineupState.data) loadTeam(s.team);
   }, [lineupState.data]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (postId === null && !s.dateLine && event.data) update({ dateLine: eventLine(event.data) });
+    // Kampanj: ingen datumrad (fältet finns inte där)
+    if (postId === null && !s.dateLine && event.data && s.kind !== "campaign") update({ dateLine: eventLine(event.data) });
   }, [event.data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Bildtext: statistiken får periodens namn och listan, korten spelarnas namn
@@ -634,7 +635,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
         : s.kind === "image" ? { ...common, kind: "image", title: s.title, subtitle: s.subtitle, info: s.info, image: photo }
         : s.kind === "campaign" ? {
           // Temat ger logga, färg och bakgrund (samma i alla inlägg med temat)
-          ...common, kind: "campaign", mode: s.campaignMode ?? "news",
+          ...common, kind: "campaign", mode: s.campaignMode ?? "news", dateLine: "",
           // Bakgrund: temats, eller inläggets egen (bakgrund ur listan eller egen bild)
           ...(bgFromTheme
             ? { photo: themePhoto, photoDim: (theme?.dim ?? 55) / 100, background: (theme?.background ?? "arena") as MediaBackground }
@@ -826,7 +827,8 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
     const mode = s.campaignMode ?? "news";
     const def = modeTexts(mode, theme, (s.people ?? []).length);
     const extra = s.title.trim() && s.title.trim() !== def.title ? s.title.trim()
-      : s.subtitle.trim() && s.subtitle.trim() !== def.subtitle && !(mode === "winners" && /^Vinnar(en|na)$/.test(s.subtitle.trim())) ? s.subtitle.trim() : "";
+      : s.subtitle.trim() && s.subtitle.trim() !== def.subtitle ? s.subtitle.trim()
+      : (s.slogan ?? "").trim() && (s.slogan ?? "").trim() !== def.slogan && !(mode === "winners" && isWinnersDefault(s.slogan ?? "")) ? (s.slogan ?? "").trim() : "";
     return `${theme?.name ?? "Kampanj"} – ${CAMPAIGN_MODES.find((m) => m.id === mode)?.name ?? "Nyhet"}${extra ? `: ${extra}` : ""}`;
   };
 
@@ -1264,7 +1266,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
                 // Byt tema: texter som är kvar från förra temats förval byts mot det nya temats
                 const old = themes.find((x) => x.id === prev.themeId);
                 const mode = prev.campaignMode ?? "news", n = (prev.people ?? []).length;
-                const was = { ...modeTexts(mode, old, n), slogan: old?.slogan ?? "" }, next = { ...modeTexts(mode, t, n), slogan: t.slogan };
+                const was = modeTexts(mode, old, n), next = modeTexts(mode, t, n);
                 const keep = (k: "title" | "subtitle" | "slogan") => (prev[k] ?? "") !== was[k];
                 return { ...prev, themeId: t.id, title: keep("title") ? prev.title : next.title, subtitle: keep("subtitle") ? prev.subtitle : next.subtitle, slogan: keep("slogan") ? prev.slogan : next.slogan };
               })}

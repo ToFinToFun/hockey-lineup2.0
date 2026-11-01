@@ -18,18 +18,24 @@ export const WINNER_TAGS = ["Stålborsten", "Snorbromsen", "Dunläppen"];
 export const MODE_TAGS: Partial<Record<CampaignMode, string[]>> = { beforeafter: ["Före", "Efter"], winners: WINNER_TAGS };
 /** Hur många bilder läget använder */
 export const MODE_MAX: Record<CampaignMode, number> = { news: 0, people: 9, beforeafter: 2, winners: 3 };
-/** "Vinnaren" med en bild, "Vinnarna" med flera */
-export const winnersSubtitle = (count: number) => (count <= 1 ? "Vinnaren" : "Vinnarna");
+/** "Vinnaren 2026" med en bild, "Vinnarna 2026" med flera */
+export const winnersSubtitle = (count: number, year = new Date().getFullYear()) => `${count <= 1 ? "Vinnaren" : "Vinnarna"} ${year}`;
+/** Förvalet för vinnare (med eller utan år) – byts efter antalet bilder */
+export const isWinnersDefault = (v: string) => /^Vinnar(en|na)( \d{4})?$/.test(v.trim());
 /**
- * Förvalda texter per läge: nyheten använder temats rubrik och underrubrik,
- * bildlägena har temats underrubrik som rubrik och en kort underrubrik.
+ * Förvalda texter per läge. Rubriken överst, underrubriken under den (temats
+ * slogan, t.ex. "Mer forskning räddar fler liv") och ramen nederst (vad bilden
+ * visar: "Deltagare", "Före och efter", "Vinnarna 2026"; nyheten: temats underrubrik).
  */
-export function modeTexts(mode: CampaignMode, theme: { name: string; title: string; subtitle: string } | null | undefined, count = 0, year = new Date().getFullYear()): { title: string; subtitle: string } {
-  if (!theme) return { title: "", subtitle: "" };
-  if (mode === "news") return { title: theme.title, subtitle: theme.subtitle };
-  if (mode === "winners") return { title: `${theme.name} ${year}`, subtitle: winnersSubtitle(count) };
-  return { title: theme.subtitle || theme.title, subtitle: mode === "beforeafter" ? "Före och efter" : "Deltagare" };
+export function modeTexts(mode: CampaignMode, theme: { name: string; title: string; subtitle: string; slogan?: string } | null | undefined, count = 0, year = new Date().getFullYear()): { title: string; subtitle: string; slogan: string } {
+  if (!theme) return { title: "", subtitle: "", slogan: "" };
+  const sub = theme.slogan ?? "";
+  if (mode === "news") return { title: theme.title, subtitle: sub, slogan: theme.subtitle };
+  const title = theme.subtitle || theme.title;
+  if (mode === "winners") return { title, subtitle: sub, slogan: winnersSubtitle(count, year) };
+  return { title, subtitle: sub, slogan: mode === "beforeafter" ? "Före och efter" : "Deltagare" };
 }
+
 /** Beskärning: bildens mittpunkt (0–1) och zoom (1 = så stor som möjligt) */
 export interface CampaignCrop { x: number; y: number; z: number }
 export const DEFAULT_CROP: CampaignCrop = { x: 0.5, y: 0.4, z: 1 };
@@ -475,7 +481,7 @@ export async function renderCampaign(d: CampaignPostData, look: { bgUrl: string;
   look.decorate(ctx);
   contentArea(ctx);
   // Vinnare: "Vinnaren"/"Vinnarna" efter antalet bilder (om underrubriken är förvalet)
-  if (d.mode === "winners" && (d.subtitle === "Vinnaren" || d.subtitle === "Vinnarna")) d = { ...d, subtitle: winnersSubtitle(Math.min(3, d.people.length)) };
+  if (d.mode === "winners" && isWinnersDefault(d.slogan)) d = { ...d, slogan: winnersSubtitle(Math.min(3, d.people.length), Number(d.slogan.match(/\d{4}/)?.[0]) || undefined) };
   if (d.mode === "winners") confetti(ctx, d.accent);
   const hits: CampaignHit[] = [];
   const offsetY = d.format === "story" ? STORY_TOP : 0;

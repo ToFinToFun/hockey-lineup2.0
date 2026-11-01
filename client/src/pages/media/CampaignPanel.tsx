@@ -11,7 +11,7 @@ import { themeLogoPath } from "@shared/campaign";
 import { resizeToJpeg } from "@/lib/jpegResize";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "../../../../server/routers";
-import { cropRect, modeTexts, DEFAULT_CROP, MAX_PEOPLE, MODE_MAX, MODE_TAGS, type CampaignCrop, type CampaignMode } from "@/lib/campaignImages";
+import { cropRect, modeTexts, isWinnersDefault, DEFAULT_CROP, MAX_PEOPLE, MODE_MAX, MODE_TAGS, type CampaignCrop, type CampaignMode } from "@/lib/campaignImages";
 import { MEDIA_BACKGROUNDS } from "@/lib/mediaImages";
 import { prepareSourcePhoto } from "@/lib/cardPhoto";
 
@@ -266,16 +266,25 @@ export default function CampaignPanel(p: Props) {
   };
 
   const setPerson = (i: number, patch: Partial<CampaignPersonSetting>) => p.update({ people: p.people.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
+  /**
+   * Etiketterna hör till platsen, inte personen: efter flytt eller borttag får
+   * platserna lägets förval igen (1:a Stålborsten, 2:a Snorbromsen, 3:e Dunläppen –
+   * eller Före/Efter). Egna etiketter följer med personen.
+   */
+  const placeTags = (people: CampaignPersonSetting[]) => {
+    const auto = MODE_TAGS[p.mode] ?? [];
+    return people.map((x, i) => (!x.tag || auto.includes(x.tag) ? { ...x, tag: auto[i] } : x));
+  };
   const move = (i: number, dir: -1 | 1) => {
     const j = i + dir;
     if (j < 0 || j >= p.people.length) return;
     const people = [...p.people], photos = [...p.photos];
     [people[i], people[j]] = [people[j], people[i]];
     [photos[i], photos[j]] = [photos[j], photos[i]];
-    p.update({ people }); p.setPhotos(photos);
+    p.update({ people: placeTags(people) }); p.setPhotos(photos);
   };
   const remove = (i: number) => {
-    p.update({ people: p.people.filter((_, j) => j !== i) });
+    p.update({ people: placeTags(p.people.filter((_, j) => j !== i)) });
     p.setPhotos(p.photos.filter((_, j) => j !== i));
   };
 
@@ -352,9 +361,9 @@ export default function CampaignPanel(p: Props) {
               <p className="text-[10px] text-white/35">PNG med genomskinlig bakgrund blir snyggast. {draft.builtin && !draft.hasLogo ? "Inbyggd logga används tills en egen laddas upp." : ""}</p>
             </div>
           </div>
-          <label className="block text-[11px] text-white/50">Rubrik (förval)<input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} maxLength={80} className={p.input} /></label>
-          <label className="block text-[11px] text-white/50">Underrubrik (förval)<input value={draft.subtitle} onChange={(e) => setDraft({ ...draft, subtitle: e.target.value })} maxLength={120} className={p.input} /></label>
-          <label className="block text-[11px] text-white/50">Slogan (förval)<input value={draft.slogan} onChange={(e) => setDraft({ ...draft, slogan: e.target.value })} maxLength={80} className={p.input} /></label>
+          <label className="block text-[11px] text-white/50">Rubrik i Nyhet<input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} maxLength={80} className={p.input} /></label>
+          <label className="block text-[11px] text-white/50">Budskap – rubrik i bildinläggen, ramen i Nyhet<input value={draft.subtitle} onChange={(e) => setDraft({ ...draft, subtitle: e.target.value })} maxLength={120} className={p.input} /></label>
+          <label className="block text-[11px] text-white/50">Slogan – under rubriken<input value={draft.slogan} onChange={(e) => setDraft({ ...draft, slogan: e.target.value })} maxLength={80} className={p.input} /></label>
           <label className="block text-[11px] text-white/50">Hashtags i bildtexten<input value={draft.tags} onChange={(e) => setDraft({ ...draft, tags: e.target.value })} maxLength={200} placeholder="#mustaschkampen" className={p.input} /></label>
           <div>
             <p className="text-[11px] text-white/50 mb-1">Bakgrund</p>
@@ -400,11 +409,12 @@ export default function CampaignPanel(p: Props) {
               });
               // Texterna: förvalen för det nya läget, om de inte ändrats
               const was = modeTexts(p.mode, p.theme, p.people.length), next = modeTexts(m.id, p.theme, Math.min(MODE_MAX[m.id] || 1, people.length));
-              const isDefault = (v: string, def: string) => v === def || (p.mode === "winners" && (v === "Vinnaren" || v === "Vinnarna"));
+              const isDefault = (v: string, def: string) => v === def || (p.mode === "winners" && isWinnersDefault(v));
               p.update({
                 campaignMode: m.id, people,
                 ...(isDefault(p.title, was.title) ? { title: next.title } : {}),
                 ...(isDefault(p.subtitle, was.subtitle) ? { subtitle: next.subtitle } : {}),
+                ...(isDefault(p.slogan, was.slogan) ? { slogan: next.slogan } : {}),
               });
             }} className={p.chip(p.mode === m.id)}>{m.name}</button>
           ))}
@@ -413,11 +423,11 @@ export default function CampaignPanel(p: Props) {
       </div>
 
       <label className="block text-[11px] text-white/50">Rubrik<input value={p.title} onChange={(e) => p.update({ title: e.target.value })} maxLength={60} placeholder={modeTexts(p.mode, p.theme, p.people.length).title || "T.ex. Mustaschkampen har startat"} className={p.input} /></label>
-      <label className="block text-[11px] text-white/50">Underrubrik<input value={p.subtitle} onChange={(e) => p.update({ subtitle: e.target.value })} maxLength={80} placeholder={p.mode === "people" ? "T.ex. Vecka 2" : p.mode === "winners" ? "Vinnaren / Vinnarna efter antalet bilder" : ""} className={p.input} /></label>
+      <label className="block text-[11px] text-white/50">Underrubrik<input value={p.subtitle} onChange={(e) => p.update({ subtitle: e.target.value })} maxLength={80} placeholder={modeTexts(p.mode, p.theme, p.people.length).subtitle} className={p.input} /></label>
       {p.mode === "news" && (
         <label className="block text-[11px] text-white/50">Text under loggan (valfri)<textarea value={p.body} onChange={(e) => p.update({ body: e.target.value })} rows={3} maxLength={300} className={p.input} /></label>
       )}
-      <label className="block text-[11px] text-white/50">Slogan (tom = ingen)<input value={p.slogan} onChange={(e) => p.update({ slogan: e.target.value })} maxLength={60} placeholder={p.theme?.slogan || ""} className={p.input} /></label>
+      <label className="block text-[11px] text-white/50">I ramen nederst (tom = ingen)<input value={p.slogan} onChange={(e) => p.update({ slogan: e.target.value })} maxLength={60} placeholder={p.mode === "winners" ? "Vinnaren / Vinnarna 2026 efter antalet bilder" : modeTexts(p.mode, p.theme, p.people.length).slogan} className={p.input} /></label>
 
       {p.mode !== "news" && (
         <div>

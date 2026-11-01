@@ -112,16 +112,15 @@ describe("kampanjmallen – vinnare", () => {
       }
     }
   });
-  it("Vinnaren med en bild, Vinnarna med flera", () => {
-    expect(winnersSubtitle(0)).toBe("Vinnaren");
-    expect(winnersSubtitle(1)).toBe("Vinnaren");
-    expect(winnersSubtitle(3)).toBe("Vinnarna");
+  it("Vinnaren/Vinnarna med året", () => {
+    expect(winnersSubtitle(1, 2026)).toBe("Vinnaren 2026");
+    expect(winnersSubtitle(3, 2026)).toBe("Vinnarna 2026");
   });
-  it("förvalda texter per läge", () => {
-    const t = { name: "Mustaschkampen", title: "Var med i Mustaschkampen", subtitle: "Tillsammans mot prostatacancer" };
-    expect(modeTexts("news", t)).toEqual({ title: "Var med i Mustaschkampen", subtitle: "Tillsammans mot prostatacancer" });
-    expect(modeTexts("people", t)).toEqual({ title: "Tillsammans mot prostatacancer", subtitle: "Deltagare" });
-    expect(modeTexts("beforeafter", t)).toEqual({ title: "Tillsammans mot prostatacancer", subtitle: "Före och efter" });
-    expect(modeTexts("winners", t, 2, 2026)).toEqual({ title: "Mustaschkampen 2026", subtitle: "Vinnarna" });
+  it("förvalda texter per läge: rubrik, underrubrik (slogan) och ramen nederst", () => {
+    const t = { name: "Mustaschkampen", title: "Var med i Mustaschkampen", subtitle: "Tillsammans mot prostatacancer", slogan: "Mer forskning räddar fler liv" };
+    expect(modeTexts("news", t)).toEqual({ title: "Var med i Mustaschkampen", subtitle: "Mer forskning räddar fler liv", slogan: "Tillsammans mot prostatacancer" });
+    expect(modeTexts("people", t)).toEqual({ title: "Tillsammans mot prostatacancer", subtitle: "Mer forskning räddar fler liv", slogan: "Deltagare" });
+    expect(modeTexts("beforeafter", t).slogan).toBe("Före och efter");
+    expect(modeTexts("winners", t, 2, 2026)).toEqual({ title: "Tillsammans mot prostatacancer", subtitle: "Mer forskning räddar fler liv", slogan: "Vinnarna 2026" });
   });
 });
