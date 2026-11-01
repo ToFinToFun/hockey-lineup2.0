@@ -7,6 +7,15 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.16.0 – 2026-11-01
+
+- **Ny modul: Mustaschkampen** (på startsidan). Medlemmarna laddar upp egna bilder på sin mustasch – öppen för alla utan inloggning 1 november–5 december, för styrelsen hela året.
+  - Man väljer sig själv i truppen (namn och nummer blir rätt) eller skriver sitt namn; valet sparas i telefonen. En inloggad medlem som är kopplad till en spelare väljs automatiskt.
+  - Bilden skalas ned i telefonen och kodas om på servern: högst 1080 px, utan metadata (t.ex. var bilden togs).
+  - Man ser och kan ta bort sina egna bilder från samma telefon. Inga godkännanden.
+  - Spärrar: högst 10 bilder per telefon och 30 per nätverk och dygn, högst 1 500 per kampanj. Bidragen raderas automatiskt efter 90 dagar.
+- **Media → Kampanj → Hämta bidrag från medlemmarna:** bidragen per person med datum. Deltagare: bocka i bilder, namn och nummer fylls i. Före/efter: personens första och senaste bild med datumen som etiketter. Styrelsen kan ta bort bidrag.
+
 ## 3.15.1 – 2026-11-01
 
 - Mustaschkampen: ny logga med texten MUSTASCHKAMPEN (ljusblå tröja, genomskinlig bakgrund).

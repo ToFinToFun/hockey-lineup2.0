@@ -3,10 +3,12 @@
  * bilder med beskärning. Temat (logga, bakgrund, färg, standardtexter) gäller
  * alla inlägg med temat och sparas direkt; resten sparas med inlägget.
  */
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, ImagePlus, Loader2, Palette, Plus, Trash2, Upload, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ImagePlus, Loader2, Palette, Plus, Trash2, Upload, Users, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { themeLogoPath } from "@shared/campaign";
+import { resizeToJpeg } from "@/lib/jpegResize";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "../../../../server/routers";
 import { cropRect, DEFAULT_CROP, MAX_PEOPLE, type CampaignCrop, type CampaignMode } from "@/lib/campaignImages";
@@ -24,33 +26,14 @@ export const CAMPAIGN_MODES: Array<{ id: CampaignMode; name: string; help: strin
   { id: "beforeafter", name: "Före/efter", help: "Två bilder bredvid varandra – första och andra bilden i listan." },
 ];
 
-/** Loggans adress: uppladdad logga, annars temats inbyggda */
-export function themeLogoUrl(t: CampaignTheme | null | undefined): string | null {
-  if (!t) return null;
-  if (t.hasLogo) return `/api/media/themes/${t.id}/logo?v=${new Date(t.updatedAt).getTime()}`;
-  // ?v=5: Mustaschkampen-loggan (2026-11-01) – ny adress så att telefonernas cache inte visar en äldre
-  return t.builtin ? `/images/campaigns/${t.builtin}.png?v=5` : null;
-}
+/** Loggans adress: uppladdad logga, annars temats inbyggda (samma som modulen Mustaschkampen) */
+export const themeLogoUrl = (t: CampaignTheme | null | undefined): string | null => themeLogoPath(t);
 export function themePhotoUrl(t: CampaignTheme | null | undefined): string | null {
   return t?.hasPhoto ? `/api/media/themes/${t.id}/photo?v=${new Date(t.updatedAt).getTime()}` : null;
 }
 
 /** Deltagarbild: rätt vänd, högst 1080 px, JPEG under 650 000 tecken */
-export async function participantJpeg(f: File): Promise<string> {
-  const bmp = await createImageBitmap(f, { imageOrientation: "from-image" }).catch(async () => {
-    const url = URL.createObjectURL(f);
-    try {
-      return await new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("Bilden kunde inte läsas")); i.src = url; });
-    } finally { setTimeout(() => URL.revokeObjectURL(url), 0); }
-  });
-  const sc = Math.min(1, 1080 / Math.max(bmp.width, bmp.height));
-  const c = document.createElement("canvas");
-  c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
-  c.getContext("2d")!.drawImage(bmp, 0, 0, c.width, c.height);
-  let q = 0.86, url = c.toDataURL("image/jpeg", q);
-  while (url.length > 650_000 && q > 0.45) { q -= 0.08; url = c.toDataURL("image/jpeg", q); }
-  return url.split(",")[1] ?? "";
-}
+export const participantJpeg = async (f: File): Promise<string> => (await resizeToJpeg(f)).base64;
 
 /** Loggan som PNG (behåller genomskinlig bakgrund), högst 900 px */
 async function logoPng(f: File): Promise<string> {
@@ -109,6 +92,108 @@ function CropBox({ img, aspect, crop, onChange, width = 112 }: { img: HTMLImageE
   );
 }
 
+type Entry = inferRouterOutputs<AppRouter>["campaign"]["entries"][number];
+const entryUrl = (id: number) => `/api/campaign/entries/${id}/photo`;
+/** Bidragets bild som JPEG-base64 (sparas sedan med inlägget som de andra bilderna) */
+async function entryPhoto(id: number): Promise<CampaignPhoto> {
+  const blob = await (await fetch(entryUrl(id))).blob();
+  const buf = new Uint8Array(await blob.arrayBuffer());
+  let bin = "";
+  for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+  const data = btoa(bin);
+  return { img: await loadImg(`data:image/jpeg;base64,${data}`), src: { data } };
+}
+const shortDate = (d: Date | string) => new Date(d).toLocaleDateString("sv-SE", { day: "numeric", month: "short" }).replace(".", "");
+
+/**
+ * Bidrag från modulen Mustaschkampen: Deltagare – bocka i bilder och lägg till;
+ * Före/efter – välj en person, så läggs första och senaste bilden in.
+ */
+function EntriesPicker({ mode, room, onAdd, onPair, onClose, chip }: {
+  mode: CampaignMode; room: number;
+  onAdd: (list: Array<{ entry: Entry; photo: CampaignPhoto }>) => void;
+  onPair: (first: { entry: Entry; photo: CampaignPhoto }, last: { entry: Entry; photo: CampaignPhoto }) => void;
+  onClose: () => void; chip: (on: boolean) => string;
+}) {
+  const utils = trpc.useUtils();
+  const q = trpc.campaign.entries.useQuery(undefined, { staleTime: 10_000 });
+  const del = trpc.campaign.delete.useMutation({ onSuccess: () => utils.campaign.entries.invalidate() });
+  const [sel, setSel] = useState<number[]>([]);
+  const [busy, setBusy] = useState(false);
+  // En grupp per person (spelaren, annars namnet), bilderna i tidsordning
+  const groups = useMemo(() => {
+    const m = new Map<string, Entry[]>();
+    for (const e of q.data ?? []) {
+      const k = e.playerId ?? `n:${e.name.toLowerCase()}`;
+      m.set(k, [...(m.get(k) ?? []), e]);
+    }
+    return [...m.values()].sort((a, b) => a[0].name.localeCompare(b[0].name, "sv"));
+  }, [q.data]);
+  const load = async (list: Entry[]) => Promise.all(list.map(async (entry) => ({ entry, photo: await entryPhoto(entry.id) })));
+  const add = async () => {
+    setBusy(true);
+    try {
+      const chosen = (q.data ?? []).filter((e) => sel.includes(e.id));
+      onAdd(await load(chosen));
+      onClose();
+    } catch {
+      toast.error("Några bilder kunde inte hämtas");
+    } finally { setBusy(false); }
+  };
+  const pair = async (list: Entry[]) => {
+    setBusy(true);
+    try {
+      const [a, b] = await load([list[0], list[list.length - 1]]);
+      onPair(a, b);
+      onClose();
+    } catch {
+      toast.error("Bilderna kunde inte hämtas");
+    } finally { setBusy(false); }
+  };
+  return (
+    <div className="rounded-lg border border-emerald-400/30 bg-emerald-500/5 p-2.5 space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] text-emerald-200/90 font-semibold">Bidrag från medlemmarna ({q.data?.length ?? 0})</p>
+        <button onClick={onClose} className="text-white/50" aria-label="Stäng"><X size={14} /></button>
+      </div>
+      {q.isLoading && <Loader2 size={14} className="animate-spin text-white/40" />}
+      {!q.isLoading && !groups.length && <p className="text-xs text-white/40">Inga bidrag än. Medlemmarna laddar upp under Mustaschkampen på startsidan.</p>}
+      <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
+        {groups.map((list) => (
+          <div key={list[0].id}>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs text-white/80 truncate">{list[0].name}{list[0].number ? ` #${list[0].number}` : ""} <span className="text-white/35">· {list.length} {list.length === 1 ? "bild" : "bilder"}</span></p>
+              {mode === "beforeafter" && <button onClick={() => void pair(list)} disabled={busy || list.length < 2} className={`${chip(false)} !py-1 disabled:opacity-35`} title={list.length < 2 ? "Behöver minst två bilder" : "Första och senaste bilden"}>Före/efter</button>}
+            </div>
+            <div className="flex gap-1.5 overflow-x-auto pb-1">
+              {list.map((e) => {
+                const on = sel.includes(e.id);
+                return (
+                  <div key={e.id} className="relative shrink-0">
+                    <button onClick={() => mode !== "beforeafter" && setSel(on ? sel.filter((x) => x !== e.id) : sel.length < room ? [...sel, e.id] : sel)}
+                      className={`block w-16 h-16 rounded-lg overflow-hidden border-2 ${on ? "border-emerald-400" : "border-white/10"}`}>
+                      <img src={entryUrl(e.id)} alt="" loading="lazy" className="w-full h-full object-cover" />
+                    </button>
+                    <span className="absolute left-0.5 bottom-0.5 text-[9px] bg-black/75 rounded px-0.5">{shortDate(e.createdAt)}</span>
+                    {on && <Check size={12} className="absolute top-0.5 left-0.5 text-emerald-300 bg-black/70 rounded" />}
+                    <button onClick={() => { if (confirm(`Ta bort bilden från ${e.name}? Den försvinner för alla.`)) del.mutate({ id: e.id }); }} className="absolute top-0.5 right-0.5 p-0.5 rounded bg-black/70 text-red-300/80" aria-label="Ta bort bidraget"><Trash2 size={10} /></button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+      {mode !== "beforeafter" && groups.length > 0 && (
+        <button onClick={() => void add()} disabled={busy || !sel.length} className="w-full py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-xs font-semibold disabled:opacity-40">
+          {busy ? "Hämtar …" : `Lägg till ${sel.length || ""} ${sel.length === 1 ? "bild" : "bilder"}`} {room < 9 ? `(plats för ${room})` : ""}
+        </button>
+      )}
+      <p className="text-[10px] text-white/35">{mode === "beforeafter" ? "Före/efter tar personens första och senaste bild, med datumen som etiketter." : "Bocka i bilderna – namn och nummer fylls i."} Papperskorgen tar bort bidraget helt.</p>
+    </div>
+  );
+}
+
 interface Props {
   themes: CampaignTheme[];
   theme: CampaignTheme | null;
@@ -133,6 +218,12 @@ export default function CampaignPanel(p: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<CampaignTheme | null>(null);
   const [adding, setAdding] = useState(false);
+  const [picking, setPicking] = useState(false);
+  /** Bidrag från modulen finns bara för Mustaschkampen (inbyggt tema) */
+  const hasEntries = p.theme?.builtin === "movember";
+  const fromEntry = (x: { entry: Entry; photo: CampaignPhoto }, tag?: string): CampaignPersonSetting => ({
+    name: x.entry.name, number: x.entry.number ?? undefined, playerId: x.entry.playerId ?? undefined, crop: { ...DEFAULT_CROP }, ...(tag ? { tag } : {}),
+  });
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const logoRef = useRef<HTMLInputElement>(null);
@@ -326,6 +417,18 @@ export default function CampaignPanel(p: Props) {
             </button>
             <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { if (e.target.files?.length) void addFiles(e.target.files); e.target.value = ""; }} />
           </div>
+          {hasEntries && !picking && (
+            <button onClick={() => setPicking(true)} className="w-full mb-2 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-400/30 text-emerald-200 text-xs font-semibold">
+              <Users size={12} /> Hämta bidrag från medlemmarna
+            </button>
+          )}
+          {hasEntries && picking && (
+            <div className="mb-2">
+              <EntriesPicker mode={p.mode} room={max - p.people.length} chip={p.chip} onClose={() => setPicking(false)}
+                onAdd={(list) => { p.update({ people: [...p.people, ...list.map((x) => fromEntry(x))] }); p.setPhotos([...p.photos, ...list.map((x) => x.photo)]); }}
+                onPair={(a, b) => { p.update({ people: [fromEntry(a, shortDate(a.entry.createdAt)), fromEntry(b, shortDate(b.entry.createdAt))] }); p.setPhotos([a.photo, b.photo]); }} />
+            </div>
+          )}
           {p.people.length === 0 && <p className="text-xs text-white/35">Välj en eller flera bilder (högst {max}).</p>}
           <div className="space-y-2">
             {p.people.map((person, i) => {

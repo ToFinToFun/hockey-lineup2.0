@@ -21,6 +21,9 @@ const BG_URL = "/images/background.jpg";
 export default function Hub() {
   const { isAdmin, canEditLineup, hasModule } = useAuth();
   const liveQ = trpc.live.isLive.useQuery(undefined, { refetchInterval: 30_000, retry: false });
+  // Mustaschkampen: för alla under november (+5 dagar), styrelsen hela året
+  const campaignQ = trpc.campaign.visible.useQuery(undefined, { staleTime: 5 * 60_000, retry: false });
+  const campaign = campaignQ.data?.visible ? campaignQ.data : null;
   const liveNow = !!liveQ.data?.live;
   const pending = trpc.score.match.pendingCount.useQuery(undefined, { enabled: hasModule("matches") });
   const pendingCount = pending.data?.count ?? 0;
@@ -116,6 +119,24 @@ export default function Hub() {
                   <p className="text-white/40 text-xs sm:text-sm mt-0.5">{liveNow ? "Följ matchen – mål, poäng och Läktaren" : "Nästa match, uppställningar och live under matchen"}</p>
                 </div>
                 <ChevronRight size={20} className="text-white/20 group-hover:text-red-400 transition-colors flex-shrink-0" />
+              </div>
+            </div>
+          </Link>
+          )}
+
+          {/* Mustaschkampen – medlemmarna laddar upp egna bilder (november) */}
+          {campaign && (
+          <Link href="/mustaschkampen">
+            <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#111] border border-[#2a2a2a] transition-all duration-300 cursor-pointer" style={{ borderColor: campaign.open ? `${campaign.accent}66` : undefined }}>
+              <div className="p-5 sm:p-6 flex items-center gap-4">
+                <div className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center">
+                  {campaign.logo ? <img src={campaign.logo} alt="" className="max-w-full max-h-full" /> : <Sparkles size={24} style={{ color: campaign.accent ?? undefined }} />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold tracking-tight">{campaign.name}</h2>
+                  <p className="text-white/40 text-xs sm:text-sm mt-0.5">{campaign.open ? "Ladda upp en bild på din mustasch" : "Stängd för andra – öppen i november"}</p>
+                </div>
+                <ChevronRight size={20} className="text-white/20 transition-colors flex-shrink-0" />
               </div>
             </div>
           </Link>

@@ -25,6 +25,7 @@ const AccessRedeem = lazy(() => import("./pages/AccessRedeem"));
 const LivePage = lazy(() => import("./pages/live/LivePage"));
 const ActivitiesApp = lazy(() => import("./pages/activities/ActivitiesApp"));
 const MemberApp = lazy(() => import("./pages/member/MemberApp"));
+const MustaschApp = lazy(() => import("./pages/campaign/MustaschApp"));
 import InviteRedeem from "./pages/InviteRedeem";
 import { RequireRole } from "./components/auth/RequireRole";
 import { lazy, Suspense, useEffect, type ComponentType } from "react";
@@ -120,6 +121,8 @@ function Router() {
       <Route path="/players" component={PlayersPage} />
       <Route path="/sponsorer" component={SponsorsPage} />
       <Route path="/installningar" component={SettingsPage} />
+      {/* Mustaschkampen: öppen för alla 1 nov–5 dec (styrelsen hela året) – servern avgör */}
+      <Route path="/mustaschkampen">{() => <Suspense fallback={<div className="min-h-[100dvh] bg-[#0a0a0a]" />}><MustaschApp /></Suspense>}</Route>
       <Route path="/media/video" component={VideoPage} />
       <Route path="/media" component={MediaPage} />
 

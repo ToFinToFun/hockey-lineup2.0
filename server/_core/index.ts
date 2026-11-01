@@ -211,16 +211,32 @@ async function startServer() {
     }
   });
 
-  // Media: kampanjtemats logga och bakgrund
+  // Media: kampanjtemats logga (öppen – visas i modulen Mustaschkampen) och bakgrund (styrelsen)
   app.get("/api/media/themes/:id/:which", async (req, res) => {
     try {
       if (req.params.which !== "logo" && req.params.which !== "photo") return res.status(404).end();
       const { session } = await effectiveSession(req);
-      if (!hasModule(session, "media")) return res.status(401).end();
+      if (req.params.which === "photo" && !hasModule(session, "media")) return res.status(401).end();
       const img = await getThemeImage(Number(req.params.id), req.params.which as "logo" | "photo");
       if (!img) return res.status(404).end();
       res.setHeader("Cache-Control", "private, max-age=86400");
       res.type(img.mime).send(img.image);
+    } catch {
+      res.status(500).end();
+    }
+  });
+
+  // Mustaschkampen: bidragets bild – styrelsen (Media), eller enheten som laddade upp den (?device=)
+  app.get("/api/campaign/entries/:id/photo", async (req, res) => {
+    try {
+      const { entryImage } = await import("../campaignEntries");
+      const { session } = await effectiveSession(req);
+      const id = Number(req.params.id);
+      const device = typeof req.query.device === "string" && /^[a-f0-9]{32}$/.test(req.query.device) ? req.query.device : null;
+      const img = hasModule(session, "media") ? await entryImage(id) : device ? await entryImage(id, device) : null;
+      if (!img) return res.status(404).end();
+      res.setHeader("Cache-Control", "private, max-age=86400");
+      res.type("image/jpeg").send(img);
     } catch {
       res.status(500).end();
     }
@@ -285,6 +301,7 @@ async function startServer() {
     startSponsorSync();
     // Kallelser via mejl för Aktiviteter (bara aktiviteter där det är påslaget)
     void import("../activityMail").then((m) => m.startActivityMail());
+    void import("../campaignEntries").then((m) => m.startCampaignPurge());
     void loadPlayerLinkState();
     console.log(`Stålstadens v${APP_VERSION} kör på port ${port}`);
   });

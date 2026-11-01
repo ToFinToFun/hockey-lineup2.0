@@ -5,7 +5,7 @@ import { notifySite } from "./integration";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, lineupProcedure, adminProcedure, moduleProcedure, lineupOrModuleProcedure, scoreProcedure, liveProcedure, broadcastProcedure, router } from "./_core/trpc";
 import { authRouter } from "./routers/auth";
-import { canLineup, isAdmin } from "./auth";
+import { canLineup, isAdmin, hasModule } from "./auth";
 import { pirAllowed } from "./pirAccess";
 import { playersRouter } from "./routers/players";
 import { activitiesRouter } from "./routers/activities";
@@ -32,7 +32,9 @@ import { getAllMatchResults, getConfigValue, setConfigValue, getMatchCacheVersio
 import { calculatePIR, DEFAULT_PIR_WEIGHTS, type PirWeights } from "./pir";
 import { analyzePir, sanitizeWeights, type PirAnalysis } from "./pirAnalysis";
 import { pirHistoryAll, type PirHistory } from "./pirHistory";
-import { getRegistryMap, getRegistryVersion } from "./playersDb";
+import { getRegistryMap, getRegistryVersion, listPlayers } from "./playersDb";
+import { addEntry, allEntries, campaignDates, campaignOpen, campaignTheme, deleteEntry, myEntries, CAMPAIGN_LIMITS } from "./campaignEntries";
+import { themeLogoPath } from "../shared/campaign";
 import { getLineupSnapshot, applyLineupPatch, getLineupChangedAt } from "./lineupSync";
 import { readLastPublished, writeLastPublished, type PublishedNews } from "./newsState";
 import { getAutoNewsConfig, setAutoNewsConfig, getAutoNewsStatus } from "./autoNews";
@@ -666,6 +668,79 @@ export const appRouter = router({
         try { await setLinkSlot(input.token, input.slot, input.playerId); } catch (e) { throw new TRPCError({ code: "BAD_REQUEST", message: (e as Error).message }); }
         return { success: true };
       }),
+  }),
+
+  // ─── Mustaschkampen: medlemmarna laddar upp egna bilder ────────────────────
+  // Öppen för alla 1 nov–5 dec, styrelsen (Media) hela året. Bilderna visas via
+  // GET /api/campaign/entries/:id/photo (se server/_core/index.ts).
+  campaign: router({
+    /** Startsidan: visa modulen? (öppen för alla, eller styrelsen) */
+    visible: publicProcedure.query(async ({ ctx }) => {
+      const theme = await campaignTheme();
+      return { visible: !!theme && (campaignOpen() || hasModule(ctx.session, "media")), name: theme?.name ?? null, logo: themeLogoPath(theme), accent: theme?.accent ?? null, open: campaignOpen() };
+    }),
+    status: publicProcedure
+      .input(z.object({ device: z.string().regex(/^[a-f0-9]{32}$/).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        const board = hasModule(ctx.session, "media");
+        const open = campaignOpen();
+        const theme = await campaignTheme();
+        const canUse = !!theme && (open || board);
+        // Inloggad medlem kopplad till en spelare: väljs automatiskt
+        const players = canUse ? (await listPlayers()).filter((p) => p.active !== false) : [];
+        const meP = ctx.member ? players.find((p) => p.externalId === String(ctx.member!.memberId)) : undefined;
+        return {
+          open, board, canUse, dates: campaignDates(),
+          theme: theme ? { id: theme.id, name: theme.name, accent: theme.accent, slogan: theme.slogan, logo: themeLogoPath(theme) } : null,
+          roster: players.map((p) => ({ id: p.id, name: p.name, number: p.number || null })),
+          me: meP ? { id: meP.id, name: meP.name, number: meP.number || null } : null,
+          mine: canUse && input?.device ? await myEntries(theme!.id, input.device) : [],
+          limits: { perDevicePerDay: CAMPAIGN_LIMITS.perDevicePerDay },
+        };
+      }),
+    upload: publicProcedure
+      .input(z.object({
+        device: z.string().regex(/^[a-f0-9]{32}$/),
+        playerId: z.string().max(64).nullable(),
+        name: z.string().max(60),
+        number: z.string().regex(/^\d{0,2}$/).nullable(),
+        imageBase64: z.string().max(CAMPAIGN_LIMITS.maxUploadBase64, "Bilden är för stor").regex(/^[A-Za-z0-9+/=]+$/),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const theme = await campaignTheme();
+        if (!theme || !(campaignOpen() || hasModule(ctx.session, "media"))) throw new TRPCError({ code: "FORBIDDEN", message: "Mustaschkampen är stängd just nu" });
+        // Vald spelare: namn och nummer från truppen (inte från det som skickats)
+        let { name, number } = input;
+        let playerId: string | null = null;
+        if (input.playerId) {
+          const p = (await listPlayers()).find((x) => x.id === input.playerId && x.active !== false);
+          if (!p) throw new TRPCError({ code: "BAD_REQUEST", message: "Spelaren finns inte – välj igen" });
+          playerId = p.id; name = p.name; number = p.number || null;
+        }
+        const ip = String(ctx.req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() || ctx.req.ip || "";
+        try {
+          const r = await addEntry({ themeId: theme.id, playerId, name, number: number || null, imageBase64: input.imageBase64, device: input.device, ip });
+          if (!r.ok) {
+            const msg = r.reason === "name" ? "Skriv ditt namn" : r.reason === "full" ? "Kampanjen har tagit emot så många bilder den kan" : `Max ${r.reason === "device" ? CAMPAIGN_LIMITS.perDevicePerDay : CAMPAIGN_LIMITS.perIpPerDay} bilder per dygn – prova igen i morgon`;
+            throw new TRPCError({ code: r.reason === "name" ? "BAD_REQUEST" : "TOO_MANY_REQUESTS", message: msg });
+          }
+          return { id: r.id };
+        } catch (e) {
+          if (e instanceof TRPCError) throw e;
+          throw new TRPCError({ code: "BAD_REQUEST", message: (e as Error).message });
+        }
+      }),
+    deleteMine: publicProcedure
+      .input(z.object({ device: z.string().regex(/^[a-f0-9]{32}$/), id: z.number().int().positive() }))
+      .mutation(async ({ input }) => ({ ok: await deleteEntry(input.id, input.device) })),
+    /** Styrelsen (Media): alla bidrag, äldst först */
+    entries: moduleProcedure("media").query(async () => {
+      const theme = await campaignTheme();
+      return theme ? allEntries(theme.id) : [];
+    }),
+    delete: moduleProcedure("media")
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => ({ ok: await deleteEntry(input.id) })),
   }),
 
   // ─── Media: egna Instagram-inlägg ──────────────────────────────────────────

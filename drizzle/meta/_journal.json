@@ -309,6 +309,13 @@
       "when": 1793561210907,
       "tag": "0043_mustaschkampen",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "5",
+      "when": 1793562651737,
+      "tag": "0044_campaign_entries",
+      "breakpoints": true
     }
   ]
 }

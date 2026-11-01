@@ -337,6 +337,28 @@ export const mediaThemes = mysqlTable("media_themes", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+/**
+ * Bidrag till en kampanj (Mustaschkampen): en bild per rad, uppladdad av
+ * medlemmen själv i modulen. Raderas automatiskt efter tre månader.
+ */
+export const campaignEntries = mysqlTable("campaign_entries", {
+  id: int("id").autoincrement().primaryKey(),
+  themeId: int("themeId").notNull(),
+  /** Spelaren i appen (valde sig själv i truppen) – annars bara namnet */
+  playerId: varchar("playerId", { length: 64 }),
+  name: varchar("name", { length: 60 }).notNull(),
+  number: varchar("number", { length: 3 }),
+  /** JPEG, base64 – nedskalad och utan metadata (t.ex. plats) */
+  image: mediumtext("image").notNull(),
+  width: int("width").notNull(),
+  height: int("height").notNull(),
+  /** Enhetens hemliga nyckel (hash) – så att man ser och kan ta bort sina egna bidrag */
+  device: varchar("device", { length: 64 }).notNull(),
+  /** Avsändarens IP (hash) – spärr mot massuppladdning */
+  ipHash: varchar("ipHash", { length: 64 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => [index("campaign_entries_theme").on(t.themeId, t.createdAt), index("campaign_entries_device").on(t.device)]);
+
 // ─── Klubbens loggor (uppladdade – går före klubbprofilens filer) ─────────────
 
 export const clubAssets = mysqlTable("club_assets", {
