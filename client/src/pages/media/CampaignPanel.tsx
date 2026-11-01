@@ -28,8 +28,8 @@ export const CAMPAIGN_MODES: Array<{ id: CampaignMode; name: string; help: strin
 export function themeLogoUrl(t: CampaignTheme | null | undefined): string | null {
   if (!t) return null;
   if (t.hasLogo) return `/api/media/themes/${t.id}/logo?v=${new Date(t.updatedAt).getTime()}`;
-  // ?v=3: ny version av loggan (2026-11-01) – ny adress så att telefonernas cache inte visar en äldre
-  return t.builtin ? `/images/campaigns/${t.builtin}.png?v=4` : null;
+  // ?v=5: Mustaschkampen-loggan (2026-11-01) – ny adress så att telefonernas cache inte visar en äldre
+  return t.builtin ? `/images/campaigns/${t.builtin}.png?v=5` : null;
 }
 export function themePhotoUrl(t: CampaignTheme | null | undefined): string | null {
   return t?.hasPhoto ? `/api/media/themes/${t.id}/photo?v=${new Date(t.updatedAt).getTime()}` : null;

@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.15.1 – 2026-11-01
+
+- Mustaschkampen: ny logga med texten MUSTASCHKAMPEN (ljusblå tröja, genomskinlig bakgrund).
+
 ## 3.15.0 – 2026-11-01
 
 - **Movember heter nu Mustaschkampen** (Prostatacancerförbundets kampanj i november) och texterna är på svenska: rubrik "Var med i Mustaschkampen", underrubrik "Tillsammans mot prostatacancer", slogan "Mer forskning räddar fler liv" och #mustaschkampen. Sparade inlägg får samma byte där de gamla förvalen står kvar; egna texter ändras inte.
