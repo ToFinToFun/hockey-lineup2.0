@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.14.2 – 2026-11-01
+
+- Movember: loggan i ljusblått (som klubbens blå) och temafärgen samma ljusblå som tröjan.
+
 ## 3.14.1 – 2026-11-01
 
 - Movember: ny version av den blå loggan (svart mustasch, genomskinlig bakgrund).

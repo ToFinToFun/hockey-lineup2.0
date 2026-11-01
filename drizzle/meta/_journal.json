@@ -295,6 +295,13 @@
       "when": 1793552583955,
       "tag": "0041_movember_blue",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "5",
+      "when": 1793555085435,
+      "tag": "0042_movember_light_blue",
+      "breakpoints": true
     }
   ]
 }
