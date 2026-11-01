@@ -138,8 +138,9 @@ export interface ImagePostData extends MediaCommon {
 
 export type { BillPostData } from "@/lib/pressImages";
 export type { PressPageData } from "@/lib/pressPages";
+export type { CampaignPostData } from "@/lib/campaignImages";
 export type MediaPostData = LineupPostData | TextPostData | CardsPostData | StatsPostData | ResultPostData | AwardPostData | ImagePostData
-  | import("@/lib/pressImages").BillPostData | import("@/lib/pressPages").PressPageData;
+  | import("@/lib/pressImages").BillPostData | import("@/lib/pressPages").PressPageData | import("@/lib/campaignImages").CampaignPostData;
 
 /** Lagens loggor från klubbens inställningar */
 const LOGO = { get white() { return teamLogo("white"); }, get green() { return teamLogo("green"); } };
@@ -964,6 +965,10 @@ export async function renderMediaPost(d: MediaPostData): Promise<HTMLCanvasEleme
   if (d.kind === "award") return renderAward(d);
   if (d.kind === "stats") return renderStats(d);
   if (d.kind === "image") return renderImage(d);
+  if (d.kind === "campaign") {
+    const { renderCampaign } = await import("@/lib/campaignImages");
+    return renderCampaign(d, { bgUrl: bgUrl(d.background), decorate: (ctx) => decorate(ctx, d.overlay) });
+  }
   if (d.kind === "bill" || d.kind === "front" || d.kind === "article" || d.kind === "interview") {
     // Stålbladet (tidningsstil) – egna typsnitt
     const press = await import("@/lib/pressImages");

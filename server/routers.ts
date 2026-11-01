@@ -23,7 +23,8 @@ import { getFeatures, setFeatures } from "./features";
 import { createOpponentLink, updateOpponentLink, ourViewOf, listOpponentLinks, revokeOpponentLink, resolveLink, linkView, setLinkSlot, afterLinkPlayerChange, getStoredOpponentLineup, getStoredOpponentList, setStoredOpponentList, setLinkList } from "./opponentLinks";
 import { listOpponents, getOpponent, saveOpponent, deleteOpponent, addOpponentPlayer, updateOpponentPlayer, deleteOpponentPlayer, MAX_OPPONENT_LOGO_BASE64 } from "./opponents";
 import { CLUB_ASSET_KEYS, MAX_CLUB_ASSET_BASE64, setClubAsset, deleteClubAsset, listClubAssets } from "./clubAssets";
-import { listMediaPosts, mediaPhotoIds, saveMediaPost, deleteMediaPost, MAX_MEDIA_PHOTO_BASE64 } from "./mediaPosts";
+import { listMediaPosts, mediaPhotoIds, mediaPhotoCounts, saveMediaPost, deleteMediaPost, setPostPhotos, MAX_MEDIA_PHOTO_BASE64, MAX_POST_PHOTOS, MAX_POST_PHOTO_BASE64 } from "./mediaPosts";
+import { listThemes, saveTheme, deleteTheme, imageMime, MAX_THEME_LOGO_BASE64, MAX_THEME_PHOTO_BASE64 } from "./mediaThemes";
 import { listSponsors, createSponsor, updateSponsor, deleteSponsor, moveSponsor, recordSponsorNews } from "./sponsorsDb";
 import { scoreRouter } from "./routers/score";
 import { scoreStatsRouter } from "./routers/scoreStats";
@@ -672,23 +673,63 @@ export const appRouter = router({
 
   media: router({
     list: moduleProcedure("media").query(async () => {
-      const [posts, withPhoto] = await Promise.all([listMediaPosts(), mediaPhotoIds()]);
-      return posts.map((p) => ({ ...p, hasPhoto: withPhoto.has(p.id) }));
+      const [posts, withPhoto, counts] = await Promise.all([listMediaPosts(), mediaPhotoIds(), mediaPhotoCounts()]);
+      return posts.map((p) => ({ ...p, hasPhoto: withPhoto.has(p.id), photoCount: counts.get(p.id) ?? 0 }));
     }),
     save: moduleProcedure("media")
       .input(z.object({
         id: z.number().int().positive().optional(),
-        type: z.enum(["lineup", "text", "cards", "stats", "result", "award", "image", "bill", "front", "article", "interview"]),
+        type: z.enum(["lineup", "text", "cards", "stats", "result", "award", "image", "bill", "front", "article", "interview", "campaign"]),
         title: z.string().trim().min(1).max(120),
         settings: z.record(z.string(), z.unknown()),
         caption: z.string().max(3000),
         photoBase64: z.string().max(MAX_MEDIA_PHOTO_BASE64, "Bilden är för stor").regex(/^[A-Za-z0-9+/=]+$/).nullable().optional(),
+        /** Kampanj: deltagarnas bilder i ordning (undefined = behåll som de är) */
+        photos: z.array(z.union([
+          z.object({ keep: z.number().int().min(0).max(MAX_POST_PHOTOS - 1) }),
+          z.object({ data: z.string().max(MAX_POST_PHOTO_BASE64, "En bild är för stor").regex(/^\/9j\/[A-Za-z0-9+/=]+$/, "Bilderna måste vara JPEG") }),
+        ])).max(MAX_POST_PHOTOS, `Högst ${MAX_POST_PHOTOS} bilder`).optional(),
       }))
       .mutation(async ({ input }) => {
         if (input.photoBase64 && !input.photoBase64.startsWith("/9j/")) throw new TRPCError({ code: "BAD_REQUEST", message: "Bilden måste vara JPEG" });
         if (JSON.stringify(input.settings).length > 200_000) throw new TRPCError({ code: "BAD_REQUEST", message: "För mycket data i inlägget" });
-        return { id: await saveMediaPost(input) };
+        const { photos, ...post } = input;
+        const id = await saveMediaPost(post);
+        if (photos) {
+          try { await setPostPhotos(id, photos, !!input.id && input.id === id); }
+          catch (e) { throw new TRPCError({ code: "BAD_REQUEST", message: (e as Error).message }); }
+        }
+        return { id };
       }),
+    // Kampanjteman (t.ex. Movember) – gäller alla inlägg med temat
+    themes: router({
+      list: moduleProcedure("media").query(() => listThemes()),
+      save: moduleProcedure("media")
+        .input(z.object({
+          id: z.number().int().positive().optional(),
+          name: z.string().trim().min(1).max(60),
+          accent: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+          title: z.string().trim().max(80),
+          subtitle: z.string().trim().max(120),
+          slogan: z.string().trim().max(80),
+          tags: z.string().trim().max(200),
+          background: z.string().max(20),
+          dim: z.number().int().min(0).max(100),
+          logo: z.string().max(MAX_THEME_LOGO_BASE64, "Loggan är för stor").regex(/^[A-Za-z0-9+/=]+$/).nullable().optional(),
+          photo: z.string().max(MAX_THEME_PHOTO_BASE64, "Bilden är för stor").regex(/^[A-Za-z0-9+/=]+$/).nullable().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          if (input.logo && !imageMime(input.logo)) throw new TRPCError({ code: "BAD_REQUEST", message: "Loggan måste vara PNG eller JPEG" });
+          if (input.photo && imageMime(input.photo) !== "image/jpeg") throw new TRPCError({ code: "BAD_REQUEST", message: "Bakgrunden måste vara JPEG" });
+          return { id: await saveTheme(input) };
+        }),
+      delete: moduleProcedure("media")
+        .input(z.object({ id: z.number().int().positive() }))
+        .mutation(async ({ input }) => {
+          await deleteTheme(input.id);
+          return { success: true };
+        }),
+    }),
     delete: moduleProcedure("media")
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ input }) => {

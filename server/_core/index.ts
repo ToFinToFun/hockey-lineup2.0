@@ -23,7 +23,8 @@ import { getOpponentLogo } from "../opponents";
 import { startAutoNewsSchedule } from "../autoNews";
 import { startAutoLineupSchedule } from "../autoLineup";
 import { startExternalSchedule } from "../externalSources";
-import { getMediaPhoto } from "../mediaPosts";
+import { getMediaPhoto, getPostPhoto } from "../mediaPosts";
+import { getThemeImage } from "../mediaThemes";
 import { registerVideoRoutes } from "../video/videoJobs";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -191,6 +192,35 @@ async function startServer() {
       if (!p) return res.status(404).end();
       res.setHeader("Cache-Control", "private, no-cache");
       res.type("image/jpeg").send(p.image);
+    } catch {
+      res.status(500).end();
+    }
+  });
+
+  // Media: kampanjinläggens bilder (deltagarna) – samma behörighet
+  app.get("/api/media/:id/photos/:idx", async (req, res) => {
+    try {
+      const { session } = await effectiveSession(req);
+      if (!hasModule(session, "media")) return res.status(401).end();
+      const img = await getPostPhoto(Number(req.params.id), Number(req.params.idx));
+      if (!img) return res.status(404).end();
+      res.setHeader("Cache-Control", "private, no-cache");
+      res.type("image/jpeg").send(img);
+    } catch {
+      res.status(500).end();
+    }
+  });
+
+  // Media: kampanjtemats logga och bakgrund
+  app.get("/api/media/themes/:id/:which", async (req, res) => {
+    try {
+      if (req.params.which !== "logo" && req.params.which !== "photo") return res.status(404).end();
+      const { session } = await effectiveSession(req);
+      if (!hasModule(session, "media")) return res.status(401).end();
+      const img = await getThemeImage(Number(req.params.id), req.params.which as "logo" | "photo");
+      if (!img) return res.status(404).end();
+      res.setHeader("Cache-Control", "private, max-age=86400");
+      res.type(img.mime).send(img.image);
     } catch {
       res.status(500).end();
     }

@@ -1,11 +1,14 @@
 /**
  * Sparade mediainlägg (utkast) – mall, val, bildtext och ev. egen bild.
  */
-import { desc, eq } from "drizzle-orm";
+import { asc, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "./db";
-import { mediaPosts } from "../drizzle/schema";
+import { mediaPosts, mediaPostPhotos } from "../drizzle/schema";
 
 export const MAX_MEDIA_PHOTO_BASE64 = 1_500_000;
+/** Kampanjinläggens bilder: högst 9, var och en mindre än huvudbilden */
+export const MAX_POST_PHOTOS = 9;
+export const MAX_POST_PHOTO_BASE64 = 700_000;
 
 async function requireDb() {
   const db = await getDb();
@@ -53,5 +56,49 @@ export async function saveMediaPost(input: {
 
 export async function deleteMediaPost(id: number) {
   const db = await requireDb();
+  await db.delete(mediaPostPhotos).where(eq(mediaPostPhotos.postId, id));
   await db.delete(mediaPosts).where(eq(mediaPosts.id, id));
+}
+
+/** Antal bilder per inlägg (kampanjinläggen) */
+export async function mediaPhotoCounts(): Promise<Map<number, number>> {
+  const db = await requireDb();
+  const rows = await db.select({ postId: mediaPostPhotos.postId, n: sql<number>`count(*)` }).from(mediaPostPhotos).groupBy(mediaPostPhotos.postId);
+  return new Map(rows.map((r) => [r.postId, Number(r.n)]));
+}
+
+export async function getPostPhoto(id: number, idx: number): Promise<Buffer | null> {
+  const db = await requireDb();
+  const [row] = await db.select({ image: mediaPostPhotos.image }).from(mediaPostPhotos)
+    .where(sql`${mediaPostPhotos.postId} = ${id} and ${mediaPostPhotos.idx} = ${idx}`).limit(1);
+  return row ? Buffer.from(row.image, "base64") : null;
+}
+
+export type PostPhotoInput = { keep: number } | { data: string };
+
+/**
+ * Ny lista med bilder, i ordning: { keep: i } behåller inläggets bild nr i
+ * (bara vid sparning av samma inlägg), { data } är en ny bild (JPEG, base64).
+ */
+export function resolvePostPhotos(input: PostPhotoInput[], existing: string[]): string[] {
+  return input.map((p) => {
+    if ("data" in p) return p.data;
+    const img = existing[p.keep];
+    if (img === undefined) throw new Error("En bild saknas – ladda upp den igen");
+    return img;
+  });
+}
+
+export async function setPostPhotos(postId: number, input: PostPhotoInput[], sameId: boolean) {
+  const db = await requireDb();
+  const existing = sameId
+    ? (await db.select({ idx: mediaPostPhotos.idx, image: mediaPostPhotos.image }).from(mediaPostPhotos).where(eq(mediaPostPhotos.postId, postId)).orderBy(asc(mediaPostPhotos.idx)))
+    : [];
+  const byIdx: string[] = [];
+  for (const r of existing) byIdx[r.idx] = r.image;
+  const next = resolvePostPhotos(input, byIdx);
+  await db.transaction(async (tx) => {
+    await tx.delete(mediaPostPhotos).where(eq(mediaPostPhotos.postId, postId));
+    if (next.length) await tx.insert(mediaPostPhotos).values(next.map((image, idx) => ({ postId, idx, image })));
+  });
 }

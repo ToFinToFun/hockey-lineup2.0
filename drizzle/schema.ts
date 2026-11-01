@@ -302,6 +302,41 @@ export const mediaPosts = mysqlTable("media_posts", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+/** Kampanjinläggens bilder (deltagarna), i ordning – en rad per bild */
+export const mediaPostPhotos = mysqlTable("media_post_photos", {
+  postId: int("postId").notNull(),
+  idx: int("idx").notNull(),
+  /** JPEG, base64 */
+  image: mediumtext("image").notNull(),
+}, (t) => [uniqueIndex("media_post_photos_post_idx").on(t.postId, t.idx)]);
+
+/**
+ * Kampanjteman (t.ex. Movember): logga, bakgrund, färg och standardtexter.
+ * Gäller alla inlägg med temat. builtin = temat har en inbyggd logga (används
+ * när ingen egen logga är uppladdad).
+ */
+export const mediaThemes = mysqlTable("media_themes", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 60 }).notNull(),
+  builtin: varchar("builtin", { length: 20 }),
+  accent: varchar("accent", { length: 9 }).notNull().default("#2e9e44"),
+  title: varchar("title", { length: 80 }).notNull().default(""),
+  subtitle: varchar("subtitle", { length: 120 }).notNull().default(""),
+  slogan: varchar("slogan", { length: 80 }).notNull().default(""),
+  /** Hashtags som läggs till i bildtexten, t.ex. "#movember" */
+  tags: varchar("tags", { length: 200 }).notNull().default(""),
+  /** Bakgrund ur Medias lista (när ingen egen bild finns) */
+  background: varchar("background", { length: 20 }).notNull().default("arena"),
+  /** Mörkning av bakgrunden, 0–100 */
+  dim: int("dim").notNull().default(55),
+  /** Egen logga (PNG eller JPEG, base64) */
+  logo: mediumtext("logo"),
+  /** Egen bakgrundsbild (JPEG, base64) */
+  photo: mediumtext("photo"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 // ─── Klubbens loggor (uppladdade – går före klubbprofilens filer) ─────────────
 
 export const clubAssets = mysqlTable("club_assets", {

@@ -19,7 +19,7 @@ import { club } from "@shared/club";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
-import { ArrowLeft, Download, Share2, Copy, Check, Save, Plus, Trash2, Loader2, RefreshCw, Upload, X, Users, Type, CalendarDays, IdCard, BarChart3, Trophy, Film, Award, ImageIcon, Clapperboard, Newspaper, Wand2 } from "lucide-react";
+import { ArrowLeft, Download, Share2, Copy, Check, Save, Plus, Trash2, Loader2, RefreshCw, Upload, X, Users, Type, CalendarDays, IdCard, BarChart3, Trophy, Film, Award, ImageIcon, Clapperboard, Newspaper, Wand2, Megaphone } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useSponsors, logoForName, randomSponsorName } from "@/lib/sponsors";
 import { createTeamSlots, groupSlots, type TeamConfig } from "@/lib/lineup";
@@ -32,9 +32,11 @@ import { pressFacts, headlineSuggestions, articleText, cleanName, splitPasted, e
 import { type CardSettings } from "@shared/cardRender";
 import { renderPlayerCard } from "@/lib/savedCardImage";
 import { cellsFor, defaultStatsTitle } from "@shared/cardStats";
+import CampaignPanel, { themeLogoUrl, themePhotoUrl, loadImg, type CampaignPersonSetting, type CampaignPhoto, type CampaignTheme } from "./CampaignPanel";
+import type { CampaignMode } from "@/lib/campaignImages";
 import { STAT_CATEGORIES, STAT_PERIODS, periodRange, statRows, goalieRows, isGoalieCategory, type StatCategory, type StatPeriod } from "./mediaStats";
 
-type Kind = "lineup" | "text" | "cards" | "stats" | "result" | "award" | "image" | "bill" | "front" | "article" | "interview";
+type Kind = "lineup" | "text" | "cards" | "stats" | "result" | "award" | "image" | "bill" | "front" | "article" | "interview" | "campaign";
 /** Stålbladet: löpsedeln och tidningssidorna */
 const isPress = (k: Kind) => k === "bill" || isPressPage(k);
 /** Tidningssidorna (förstasida, artikel, intervju) – fritext med tidningens rutor runt omkring */
@@ -120,6 +122,11 @@ interface Settings {
   pressStalserien?: boolean;
   /** Artikel/intervju: löpsedel eller förstasida som första bild (karusell) */
   pressCover?: "bill" | "front" | null;
+  // Kampanj (t.ex. Movember): tema, läge, slogan och deltagarna (bilderna sparas separat, i samma ordning)
+  themeId?: number;
+  campaignMode?: CampaignMode;
+  slogan?: string;
+  people?: CampaignPersonSetting[];
 }
 
 const BASE: Omit<Settings, "kind"> = {
@@ -138,6 +145,7 @@ const NEW: Record<Kind, Settings> = {
   front: { ...BASE, kind: "front", title: "", kicker: "Lokalsport", pressPhoto: true, pressLatest: false, pressNext: true, pressResults: false, boxTitle: "", teasers: EMPTY_TEASERS, background: "omklad" },
   article: { ...BASE, kind: "article", title: "", kicker: "Lokalsport", pressPhoto: true, pressLatest: false, pressNext: true, background: "malburen" },
   interview: { ...BASE, kind: "interview", title: "", kicker: "Intervju", pressPhoto: true, pressLatest: false, pressNext: true, background: "omklad" },
+  campaign: { ...BASE, kind: "campaign", campaignMode: "news", people: [], slogan: "" },
 };
 
 const WEEKDAYS = ["Söndag", "Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag"];
@@ -206,6 +214,10 @@ function defaultCaption(s: Settings, tags: string[]): string {
     const text = body.length > room ? `${body.slice(0, Math.max(0, room - 1)).replace(/\s+\S*$/, "")}…` : body;
     return [head, s.subtitle, text, tagLine].filter(Boolean).join("\n\n");
   }
+  if (s.kind === "campaign") {
+    const names = s.campaignMode === "news" ? "" : (s.people ?? []).slice(0, s.campaignMode === "beforeafter" ? 1 : 9).map((p) => `${p.name}${p.number ? ` #${p.number}` : ""}`).filter((n) => n.trim()).join(", ");
+    return [s.title, s.subtitle, s.campaignMode === "news" ? s.body : "", names, s.slogan, s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tagLine].filter((x) => x?.trim()).join("\n\n");
+  }
   if (s.kind === "stats" || s.kind === "cards" || s.kind === "image") {
     return [s.title, s.subtitle, s.kind === "image" ? s.info : "", s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tagLine].filter(Boolean).join("\n\n");
   }
@@ -261,6 +273,36 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
   const fileRef = useRef<HTMLInputElement>(null);
   const update = (patch: Partial<Settings>) => setS((prev) => ({ ...prev, ...patch }));
   const tags = tagsQuery.data ?? [];
+
+  // ─── Kampanj (t.ex. Movember): temat och deltagarnas bilder ───
+  const themesQ = trpc.media.themes.list.useQuery(undefined, { staleTime: 60_000 });
+  const themes = themesQ.data ?? [];
+  const theme: CampaignTheme | null = s.kind === "campaign" ? themes.find((t) => t.id === s.themeId) ?? themes[0] ?? null : null;
+  const [themeLogo, setThemeLogo] = useState<HTMLImageElement | null>(null);
+  const [themePhoto, setThemePhoto] = useState<HTMLImageElement | null>(null);
+  const [themeImgsFor, setThemeImgsFor] = useState("");
+  const themeKey = theme ? `${theme.id}:${new Date(theme.updatedAt).getTime()}` : "";
+  useEffect(() => {
+    if (!theme) { setThemeLogo(null); setThemePhoto(null); setThemeImgsFor(""); return; }
+    let cancelled = false;
+    const get = (u: string | null) => (u ? loadImg(u).catch(() => null) : Promise.resolve(null));
+    void Promise.all([get(themeLogoUrl(theme)), get(themePhotoUrl(theme))]).then(([l, ph]) => {
+      if (cancelled) return;
+      setThemeLogo(l); setThemePhoto(ph); setThemeImgsFor(themeKey);
+    });
+    return () => { cancelled = true; };
+  }, [themeKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [campaignPhotos, setCampaignPhotos] = useState<CampaignPhoto[]>([]);
+  const [campaignPhotosLoading, setCampaignPhotosLoading] = useState(false);
+  /** Temats förval i ett nytt inlägg */
+  const themeTexts = (t: CampaignTheme | null) => ({ title: t?.title ?? "", subtitle: t?.subtitle ?? "", slogan: t?.slogan ?? "" });
+  // Nytt kampanjinlägg innan temana hämtats: fyll i temat och förvalen när de kommer
+  useEffect(() => {
+    if (s.kind !== "campaign" || s.themeId || postId !== null || !themes.length) return;
+    const t = themes[0];
+    setS((prev) => (prev.kind === "campaign" && !prev.themeId ? { ...prev, themeId: t.id, ...(prev.title || prev.subtitle || prev.slogan ? {} : themeTexts(t)) } : prev));
+  }, [themesQ.data, s.kind]); // eslint-disable-line react-hooks/exhaustive-deps
+  const themeTags = (theme?.tags ?? "").split(/\s+/).filter((t) => t.startsWith("#"));
 
   // ─── Senaste resultat: matchrapportens resultatbild för en vald match ───
   const needsMatch = s.kind === "result" || isPress(s.kind);
@@ -406,8 +448,8 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
       const names = s.cardPlayers.map((id) => registry.data?.find((p) => p.id === id)?.name).filter(Boolean).join(", ");
       return [s.title, s.subtitle, names, s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tags.join(" ")].filter(Boolean).join("\n\n");
     }
-    return defaultCaption(s, tags);
-  }, [s, tags, rows, range.label, statCat.title, registry.data, reportData]);
+    return defaultCaption(s, s.kind === "campaign" ? [...new Set([...themeTags, ...tags])] : tags);
+  }, [s, tags, rows, range.label, statCat.title, registry.data, reportData, theme?.tags]);
   useEffect(() => { if (!captionEdited) setCaption(autoCaption); }, [autoCaption, captionEdited]);
 
   const sponsor = s.sponsorName ? { name: s.sponsorName, logo: logoForName(sponsors, s.sponsorName) } : null;
@@ -575,6 +617,13 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
         : s.kind === "award" ? { ...common, kind: "award", title: s.title || award?.title || "Utmärkelse", emoji: award?.emoji ?? "", subtitle: s.subtitle || range.label, places: awardCards }
         : s.kind === "result" ? (reportData ? { ...common, kind: "result", report: reportData } : { ...common, kind: "text", title: "Inga matcher än", body: "", info: "" })
         : s.kind === "image" ? { ...common, kind: "image", title: s.title, subtitle: s.subtitle, info: s.info, image: photo }
+        : s.kind === "campaign" ? {
+          // Temat ger logga, färg och bakgrund (samma i alla inlägg med temat)
+          ...common, kind: "campaign", mode: s.campaignMode ?? "news", photo: themePhoto, photoDim: (theme?.dim ?? 55) / 100,
+          background: (theme?.background ?? "arena") as MediaBackground, accent: theme?.accent ?? "#2e9e44", logo: themeLogo,
+          title: s.title, subtitle: s.subtitle, body: s.body, slogan: s.slogan ?? "",
+          people: (s.people ?? []).map((p, i) => ({ name: p.name, number: p.number, tag: p.tag, crop: p.crop, image: campaignPhotos[i]?.img ?? null })),
+        }
         : s.kind === "bill" ? { kind: "bill", format, dateLine: s.dateLine, sponsor, style: s.pressStyle ?? "yellow", kicker: s.kicker ?? "", headline: s.title, sub: s.subtitle, photo: billPhotoOn ? pressImg : null, photoY: s.billPhotoY }
         : isPressPage(s.kind) ? pageData(format)
         : { ...common, kind: "text", title: s.title, body: s.body, info: s.info };
@@ -617,7 +666,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
       first.toBlob((b) => { if (!cancelled) setBlob(b); }, "image/jpeg", 0.92);
     }, 120);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [s, photo, sponsor?.name, sponsor?.logo, cardCanvases, rows, range.label, reportData, awardCards, award?.title, bgImg, press, teaserImgs, pressResults, event.data, sponsors, shlQ.data, previewPage]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [s, photo, sponsor?.name, sponsor?.logo, cardCanvases, rows, range.label, reportData, awardCards, award?.title, bgImg, press, teaserImgs, pressResults, event.data, sponsors, shlQ.data, previewPage, themeLogo, themePhoto, theme?.accent, theme?.dim, theme?.background, campaignPhotos]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Byt tidningsstil: allt som skrivits följer med, nya fält får stilens standard */
   const DEFAULT_KICKERS = ["", "Lokalsport", "Intervju", "SPORT", "Matchreferat"];
@@ -638,13 +687,19 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
     // (bilden i mallen Bild blir inte bakgrund i nästa mall)
     const look = { background: s.background, overlay: s.overlay, photoDim: s.photoDim, useOwnPhoto: s.kind === "image" ? false : s.useOwnPhoto, format: s.format };
     // Egen bild från ett öppnat inlägg: ta med den som ny bild så att den sparas med det nya inlägget
-    if (photo && newPhoto === undefined) void currentPhotoBase64().then((b) => setNewPhoto(b)).catch(() => undefined);
+    if (photo && newPhoto === undefined && kind !== "campaign") void currentPhotoBase64().then((b) => setNewPhoto(b)).catch(() => undefined);
     // Varje ny mall får en slumpad sponsor (kan ändras till "Ingen sponsor")
     const sponsorName = randomSponsorName(sponsors);
     const others = sponsors.filter((sp) => sp.active && sp.name !== sponsorName);
     const sponsor2Name = isPressPage(kind) && others.length ? others[Math.floor(Math.random() * others.length)].name : null;
     const today = new Date().toLocaleDateString("sv-SE", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
     setS({ ...NEW[kind], ...look, sponsorName, sponsor2Name, dateLine: kind === "lineup" || kind === "text" ? eventLine(event.data) : isPressPage(kind) ? today.charAt(0).toUpperCase() + today.slice(1) : "" });
+    setCampaignPhotos([]);
+    if (kind === "campaign") {
+      // Senast använda temat (annars det första) med dess förval; inget överlägg
+      const t = themes.find((x) => x.id === s.themeId) ?? themes[0] ?? null;
+      setS((prev) => ({ ...prev, overlay: "none", people: [], themeId: t?.id, ...themeTexts(t) }));
+    }
     if (kind === "lineup" && lineupState.data) {
       const { name, groups } = teamGroups(lineupState.data as never, "green");
       setS({ ...NEW.lineup, ...look, sponsorName, dateLine: eventLine(event.data), teamName: name, groups });
@@ -675,6 +730,15 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
     setCaptionEdited(!!p.caption);
     setNewPhoto(undefined);
     setPhoto(null);
+    setCampaignPhotos([]);
+    if (p.type === "campaign" && p.photoCount > 0) {
+      setCampaignPhotosLoading(true);
+      const v = new Date(p.updatedAt).getTime();
+      void Promise.all(Array.from({ length: p.photoCount }, (_, i) => loadImg(`/api/media/${p.id}/photos/${i}?v=${v}`).then((img) => ({ img, src: { keep: i } }))))
+        .then((list) => setCampaignPhotos(list))
+        .catch(() => toast.error("Några bilder kunde inte hämtas"))
+        .finally(() => setCampaignPhotosLoading(false));
+    }
     if (p.hasPhoto) {
       setPhotoLoading(true);
       const img = new Image();
@@ -699,6 +763,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
     s.kind === "cards" ? !!savedCards.data && !!registry.data && cardCanvases.length >= knownCardPlayers
     : s.kind === "stats" ? !statsQ.isFetching && !awardsQ.isFetching && !gkIceQ.isFetching && !gkFunQ.isFetching && !periodsQ.isLoading
     : s.kind === "award" ? awardsQ.isSuccess && !!registry.data && !!savedCards.data && (!award || awardCards.length > 0)
+    : s.kind === "campaign" ? !campaignPhotosLoading && themesQ.isSuccess && (!theme || themeImgsFor === themeKey)
     : s.kind === "result" || isPress(s.kind) ? matchesQ.isSuccess && !opponentsForResult.isLoading && (!isPress(s.kind) || !!bgImg || ownActive) && teasersLoaded && (!isPressPage(s.kind) || !shlQ.isLoading)
     : true);
   useEffect(() => {
@@ -708,7 +773,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
     if (!headlessReady) return () => clearTimeout(giveUp);
     const t = setTimeout(() => void finishHeadless(), 500);
     return () => { clearTimeout(t); clearTimeout(giveUp); };
-  }, [headlessReady, s, photo, cardCanvases, rows, reportData, awardCards]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [headlessReady, s, photo, cardCanvases, rows, reportData, awardCards, campaignPhotos, themeLogo, themePhoto]); // eslint-disable-line react-hooks/exhaustive-deps
   const finishHeadless = async () => {
     if (renderedRef.current || postId !== renderPostId) return;
     renderedRef.current = true;
@@ -733,6 +798,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
     s.kind === "lineup" ? `${s.title || "Dagens lag"} – ${s.teamName}${s.dateLine ? ` (${s.dateLine.split(" · ")[0]})` : ""}`
     : s.kind === "stats" ? `${s.title || statCat.title} – ${s.subtitle || range.label}`
     : s.kind === "result" ? `Resultat – ${resultMatch?.name ?? ""}`
+    : s.kind === "campaign" ? `${theme?.name ?? "Kampanj"}: ${s.title.trim() || (s.campaignMode === "people" ? "Deltagare" : s.campaignMode === "beforeafter" ? "Före/efter" : "Nyhet")}`
     : s.title.replace(/\s*\n\s*/g, " ") || "Inlägg utan rubrik";
 
   const doSave = async (asNew: boolean) => {
@@ -745,15 +811,27 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
         settings: s as unknown as Record<string, unknown>,
         caption: captionEdited ? caption : "",
         photoBase64: asNew ? (newPhoto ?? (photo ? await currentPhotoBase64() : null)) : newPhoto,
+        // Kampanj: deltagarnas bilder i ordning – sparade behålls, nya skickas (som nytt inlägg skickas alla)
+        ...(s.kind === "campaign" ? { photos: campaignPhotos.map((p) => (asNew && "keep" in p.src ? { data: imageBase64(p.img) } : p.src)) } : {}),
       });
       setPostId(res.id);
       setNewPhoto(undefined);
+      // Bilderna finns nu sparade i den här ordningen
+      if (s.kind === "campaign") setCampaignPhotos((list) => list.map((p, i) => ({ img: p.img, src: { keep: i } })));
       toast.success(asNew || !postId ? "Inlägget är sparat" : "Ändringarna är sparade");
     } catch (e) {
       toast.error("Kunde inte spara", { description: (e as Error).message });
     } finally {
       setBusy(null);
     }
+  };
+
+  /** En hämtad bild som JPEG-base64 (kampanjbild när inlägget sparas som nytt) */
+  const imageBase64 = (img: HTMLImageElement): string => {
+    const c = document.createElement("canvas");
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    c.getContext("2d")!.drawImage(img, 0, 0);
+    return c.toDataURL("image/jpeg", 0.88).split(",")[1] ?? "";
   };
 
   /** Befintlig bild som base64 (när ett inlägg sparas som nytt) */
@@ -847,6 +925,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
             <button onClick={() => startNew("award")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Award size={14} /> Utmärkelse</button>
             <button onClick={() => startNew("result")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Trophy size={14} /> Senaste resultat</button>
             <button onClick={() => startNew("image")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><ImageIcon size={14} /> Bild</button>
+            <button onClick={() => startNew("campaign")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Megaphone size={14} /> Kampanj{themes[0] ? ` (${themes.map((t) => t.name).slice(0, 2).join(", ")})` : ""}</button>
             <button onClick={startNextTraining} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><CalendarDays size={14} /> Nästa träning</button>
             <p className="col-span-2 lg:col-span-1 text-[11px] text-white/45 mt-1" style={{ fontFamily: "'Playfair Display', serif" }}>{PRESS_NAME} <span className="font-sans text-white/30">– som i lokaltidningen</span></p>
             <button onClick={() => startNew("bill")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-300/10 border border-amber-300/30 text-sm"><Newspaper size={14} /> Löpsedel</button>
@@ -1068,6 +1147,20 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
               <p className="text-[10px] text-white/35">{PRESS_NAME} är klubbens egen påhittade lokaltidning. Sponsorerna syns som vanliga annonser (annonstexten ändras under Sponsorer). Bilden väljs bland bakgrunderna nedan (eller egen bild).</p>
             </>
           )}
+          {s.kind === "campaign" && (
+            <CampaignPanel
+              themes={themes} theme={theme} loading={themesQ.isLoading} themeId={theme?.id}
+              mode={s.campaignMode ?? "news"} title={s.title} subtitle={s.subtitle} body={s.body} slogan={s.slogan ?? ""}
+              people={s.people ?? []} photos={campaignPhotos} players={cardPlayers}
+              onTheme={(t) => setS((prev) => {
+                // Byt tema: texter som är kvar från förra temats förval byts mot det nya temats
+                const old = themes.find((x) => x.id === prev.themeId);
+                const keep = (k: "title" | "subtitle" | "slogan") => (prev[k] ?? "") !== (old?.[k] ?? "");
+                return { ...prev, themeId: t.id, title: keep("title") ? prev.title : t.title, subtitle: keep("subtitle") ? prev.subtitle : t.subtitle, slogan: keep("slogan") ? prev.slogan : t.slogan };
+              })}
+              update={update} setPhotos={setCampaignPhotos} input={input} chip={chip}
+            />
+          )}
           {s.kind === "image" && (
             <>
               <div>
@@ -1170,7 +1263,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
               {(statsQ.isFetching || awardsQ.isFetching || gkIceQ.isFetching || gkFunQ.isFetching) && <p className="text-[11px] text-white/40 flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> Hämtar statistik …</p>}
             </>
           )}
-          {s.kind === "cards" || s.kind === "stats" || s.kind === "result" || s.kind === "award" || s.kind === "image" || isPress(s.kind) ? null : s.kind === "lineup" ? (
+          {s.kind === "cards" || s.kind === "stats" || s.kind === "result" || s.kind === "award" || s.kind === "image" || s.kind === "campaign" || isPress(s.kind) ? null : s.kind === "lineup" ? (
             <>
               <div>
                 <p className="text-[11px] text-white/50 mb-1.5">Lag</p>
@@ -1197,7 +1290,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
             </>
           )}
 
-          {s.kind !== "result" && (
+          {s.kind !== "result" && s.kind !== "campaign" && (
           <label className="block text-[11px] text-white/50">Rad överst (datum/plats)
             <div className="flex gap-2">
               <input value={s.dateLine} onChange={(e) => update({ dateLine: e.target.value })} maxLength={60} className={input} />
@@ -1206,6 +1299,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
           </label>
           )}
 
+          {s.kind !== "campaign" && (
           <div>
             <p className="text-[11px] text-white/50 mb-1.5">{isPress(s.kind) ? "Bild" : "Bakgrund"}</p>
             <div className="grid grid-cols-4 gap-1.5">
@@ -1238,6 +1332,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
             )}
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); e.target.value = ""; }} />
           </div>
+          )}
 
           {!isPress(s.kind) && (
           <div>

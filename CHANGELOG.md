@@ -7,6 +7,16 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.12.0 – 2026-11-01
+
+- **Media → Kampanj** (Movember först): en mall för kampanjer med eget tema – logga, bakgrund, färg, rubrik, underrubrik, slogan och hashtags. Temat gäller alla inlägg med temat och ändras under *Ändra tema*; *Nytt tema* för t.ex. Rosa bandet. Movember finns från start med loggan.
+  - **Nyhet:** loggan stor med rubrik, valfri text och slogan – t.ex. att Movember har startat.
+  - **Deltagare:** 1–9 bilder, lika stora i ram med namn och nummer under. Rutnätet anpassar sig efter antalet (1–3 i rad, 4 = 2×2, 5–6 = 3+3, 7–8 = 4+4, 9 = 3×3) och alla namn får samma storlek.
+  - **Före/efter:** två bilder bredvid varandra med etiketter (Före/Efter eller t.ex. 1 nov/30 nov) och namnet under.
+  - Varje bild beskärs genom att dra i den och zoomas med reglaget. Namnet väljs ur truppen eller skrivs fritt; valfri etikett på bilden. Bilderna kan flyttas upp/ned och tas bort.
+  - Både 4:5 och 9:16, presenteras av sponsor, och kan användas före ett videoklipp. Bildtexten får temats hashtags.
+  - Bilderna sparas med inlägget (högst 9); en ändring skickar bara nya bilder.
+
 ## 3.11.0 – 2026-10-30
 
 - **Statistik → Export** (diskret längst ned, för den som har Media): all statistik för vald period som underlag till en AI som hjälper till att skriva Stålbladet. Sparas som fil och kopieras till urklipp.
