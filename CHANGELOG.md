@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.12.1 – 2026-11-01
+
+- Säkerhet: follow-redirects (via axios) uppdaterad till 1.16.2.
+
 ## 3.12.0 – 2026-11-01
 
 - **Media → Kampanj** (Movember först): en mall för kampanjer med eget tema – logga, bakgrund, färg, rubrik, underrubrik, slogan och hashtags. Temat gäller alla inlägg med temat och ändras under *Ändra tema*; *Nytt tema* för t.ex. Rosa bandet. Movember finns från start med loggan.
