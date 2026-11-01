@@ -1,5 +1,5 @@
 /**
- * Media – kampanjmallen (t.ex. Movember): tema, läge, texter och deltagarnas
+ * Media – kampanjmallen (t.ex. Mustaschkampen): tema, läge, texter och deltagarnas
  * bilder med beskärning. Temat (logga, bakgrund, färg, standardtexter) gäller
  * alla inlägg med temat och sparas direkt; resten sparas med inlägget.
  */
@@ -262,7 +262,7 @@ export default function CampaignPanel(p: Props) {
           <label className="block text-[11px] text-white/50">Rubrik (förval)<input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} maxLength={80} className={p.input} /></label>
           <label className="block text-[11px] text-white/50">Underrubrik (förval)<input value={draft.subtitle} onChange={(e) => setDraft({ ...draft, subtitle: e.target.value })} maxLength={120} className={p.input} /></label>
           <label className="block text-[11px] text-white/50">Slogan (förval)<input value={draft.slogan} onChange={(e) => setDraft({ ...draft, slogan: e.target.value })} maxLength={80} className={p.input} /></label>
-          <label className="block text-[11px] text-white/50">Hashtags i bildtexten<input value={draft.tags} onChange={(e) => setDraft({ ...draft, tags: e.target.value })} maxLength={200} placeholder="#movember" className={p.input} /></label>
+          <label className="block text-[11px] text-white/50">Hashtags i bildtexten<input value={draft.tags} onChange={(e) => setDraft({ ...draft, tags: e.target.value })} maxLength={200} placeholder="#mustaschkampen" className={p.input} /></label>
           <div>
             <p className="text-[11px] text-white/50 mb-1">Bakgrund</p>
             <div className="grid grid-cols-5 gap-1">
@@ -310,7 +310,7 @@ export default function CampaignPanel(p: Props) {
         <p className="text-[10px] text-white/35 mt-1">{CAMPAIGN_MODES.find((m) => m.id === p.mode)?.help}</p>
       </div>
 
-      <label className="block text-[11px] text-white/50">Rubrik<input value={p.title} onChange={(e) => p.update({ title: e.target.value })} maxLength={60} placeholder={p.theme?.title || "T.ex. Movember har startat"} className={p.input} /></label>
+      <label className="block text-[11px] text-white/50">Rubrik<input value={p.title} onChange={(e) => p.update({ title: e.target.value })} maxLength={60} placeholder={p.theme?.title || "T.ex. Mustaschkampen har startat"} className={p.input} /></label>
       <label className="block text-[11px] text-white/50">Underrubrik<input value={p.subtitle} onChange={(e) => p.update({ subtitle: e.target.value })} maxLength={80} placeholder={p.mode === "people" ? "T.ex. Vecka 2" : ""} className={p.input} /></label>
       {p.mode === "news" && (
         <label className="block text-[11px] text-white/50">Text under loggan (valfri)<textarea value={p.body} onChange={(e) => p.update({ body: e.target.value })} rows={3} maxLength={300} className={p.input} /></label>

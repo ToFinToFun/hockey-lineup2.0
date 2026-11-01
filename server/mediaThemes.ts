@@ -1,5 +1,5 @@
 /**
- * Kampanjteman i Media (t.ex. Movember): logga, bakgrund, färg och
+ * Kampanjteman i Media (t.ex. Mustaschkampen): logga, bakgrund, färg och
  * standardtexter som gäller alla inlägg med temat.
  * Loggan och bakgrunden visas via GET /api/media/themes/:id/(logo|photo).
  */

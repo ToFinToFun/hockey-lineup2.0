@@ -1,7 +1,7 @@
 /**
- * Media – kampanjmallen (t.ex. Movember). Temat ger logga, bakgrund, färg och
+ * Media – kampanjmallen (t.ex. Mustaschkampen). Temat ger logga, bakgrund, färg och
  * standardtexter; inlägget har tre lägen:
- *  - news:        stor logga, rubrik, text och slogan ("Movember har startat")
+ *  - news:        stor logga, rubrik, text och slogan ("Mustaschkampen har startat")
  *  - people:      1–9 deltagarbilder, lika stora i ram, med namn under
  *  - beforeafter: två bilder bredvid varandra (t.ex. dag 1 och dag 30)
  * Samma 4:5-innehåll som övriga mallar; i 9:16 läggs det i Storyns säkra yta.

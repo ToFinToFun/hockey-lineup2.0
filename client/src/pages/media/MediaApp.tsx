@@ -122,7 +122,7 @@ interface Settings {
   pressStalserien?: boolean;
   /** Artikel/intervju: löpsedel eller förstasida som första bild (karusell) */
   pressCover?: "bill" | "front" | null;
-  // Kampanj (t.ex. Movember): tema, läge, slogan och deltagarna (bilderna sparas separat, i samma ordning)
+  // Kampanj (t.ex. Mustaschkampen): tema, läge, slogan och deltagarna (bilderna sparas separat, i samma ordning)
   themeId?: number;
   campaignMode?: CampaignMode;
   slogan?: string;
@@ -284,7 +284,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
   const update = (patch: Partial<Settings>) => setS((prev) => ({ ...prev, ...patch }));
   const tags = tagsQuery.data ?? [];
 
-  // ─── Kampanj (t.ex. Movember): temat och deltagarnas bilder ───
+  // ─── Kampanj (t.ex. Mustaschkampen): temat och deltagarnas bilder ───
   const themesQ = trpc.media.themes.list.useQuery(undefined, { staleTime: 60_000 });
   const themes = themesQ.data ?? [];
   const theme: CampaignTheme | null = s.kind === "campaign" ? themes.find((t) => t.id === s.themeId) ?? themes[0] ?? null : null;

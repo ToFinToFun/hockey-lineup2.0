@@ -302,6 +302,13 @@
       "when": 1793555085435,
       "tag": "0042_movember_light_blue",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "5",
+      "when": 1793561210907,
+      "tag": "0043_mustaschkampen",
+      "breakpoints": true
     }
   ]
 }

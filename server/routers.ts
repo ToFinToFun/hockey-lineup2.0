@@ -701,7 +701,7 @@ export const appRouter = router({
         }
         return { id };
       }),
-    // Kampanjteman (t.ex. Movember) – gäller alla inlägg med temat
+    // Kampanjteman (t.ex. Mustaschkampen) – gäller alla inlägg med temat
     themes: router({
       list: moduleProcedure("media").query(() => listThemes()),
       save: moduleProcedure("media")

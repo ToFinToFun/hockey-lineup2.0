@@ -32,10 +32,10 @@ describe("Media – kampanjens bilder", () => {
 });
 
 describe.skipIf(!process.env.DATABASE_URL)("Media – kampanj och teman", () => {
-  it("Movember finns från start och teman kan sparas med logga och bakgrund", async () => {
+  it("Mustaschkampen finns från start och teman kan sparas med logga och bakgrund", async () => {
     const c = appRouter.createCaller(admin as never);
     const movember = (await c.media.themes.list()).find((t) => t.builtin === "movember")!;
-    expect(movember).toMatchObject({ name: "Movember", hasLogo: false, slogan: "Grow together • Change men's health", tags: "#movember" });
+    expect(movember).toMatchObject({ name: "Mustaschkampen", hasLogo: false, title: "Var med i Mustaschkampen", slogan: "Mer forskning räddar fler liv", tags: "#mustaschkampen" });
     const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
     const { id } = await c.media.themes.save({ name: "Rosa bandet", accent: "#ec4899", title: "", subtitle: "", slogan: "", tags: "#rosabandet", background: "arena", dim: 50, logo: PNG, photo: JPEG });
     const saved = (await c.media.themes.list()).find((t) => t.id === id)!;
