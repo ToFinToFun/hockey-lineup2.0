@@ -25,7 +25,7 @@ import { useSponsors, logoForName, randomSponsorName } from "@/lib/sponsors";
 import { createTeamSlots, groupSlots, type TeamConfig } from "@/lib/lineup";
 import type { Player } from "@/lib/players";
 import { prepareSourcePhoto } from "@/lib/cardPhoto";
-import { renderMediaPages, MEDIA_OVERLAYS, MEDIA_BACKGROUNDS, overlayFromTheme, type MediaOverlay, type MediaBackground, type LineupGroup, type MediaPostData, type PostFormat, type PressPageData } from "@/lib/mediaImages";
+import { renderMediaPages, dimFor, MEDIA_OVERLAYS, MEDIA_BACKGROUNDS, overlayFromTheme, type MediaOverlay, type MediaBackground, type LineupGroup, type MediaPostData, type PostFormat, type PressPageData } from "@/lib/mediaImages";
 import { setVideoStill, type VideoStill } from "@/lib/videoStill";
 import { PRESS_NAME, issueOf, type BillStyle } from "@/lib/pressImages";
 import { pressFacts, headlineSuggestions, articleText, cleanName, splitPasted, excerpt } from "@/lib/pressText";
@@ -127,6 +127,8 @@ interface Settings {
   campaignMode?: CampaignMode;
   slogan?: string;
   people?: CampaignPersonSetting[];
+  /** Kampanj: temats bakgrund (standard) eller inläggets egen val nedan (bakgrund ur listan eller egen bild) */
+  themeBackground?: boolean;
 }
 
 const BASE: Omit<Settings, "kind"> = {
@@ -258,6 +260,9 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
   const [newPhoto, setNewPhoto] = useState<string | null | undefined>(undefined);
   // Egen bild används när en bild finns och den inte valts bort till förmån för en bakgrund
   const ownActive = !!photo && s.useOwnPhoto !== false;
+  /** Kampanj: temats bakgrund tills en annan väljs för inlägget */
+  const bgFromTheme = s.kind === "campaign" && s.themeBackground !== false;
+  const ownShown = ownActive && !bgFromTheme;
   const [caption, setCaption] = useState("");
   const [captionEdited, setCaptionEdited] = useState(false);
   const [blob, setBlob] = useState<Blob | null>(null);
@@ -624,8 +629,12 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
         : s.kind === "image" ? { ...common, kind: "image", title: s.title, subtitle: s.subtitle, info: s.info, image: photo }
         : s.kind === "campaign" ? {
           // Temat ger logga, färg och bakgrund (samma i alla inlägg med temat)
-          ...common, kind: "campaign", mode: s.campaignMode ?? "news", photo: themePhoto, photoDim: (theme?.dim ?? 55) / 100,
-          background: (theme?.background ?? "arena") as MediaBackground, accent: theme?.accent ?? "#2e9e44", logo: themeLogo,
+          ...common, kind: "campaign", mode: s.campaignMode ?? "news",
+          // Bakgrund: temats, eller inläggets egen (bakgrund ur listan eller egen bild)
+          ...(bgFromTheme
+            ? { photo: themePhoto, photoDim: (theme?.dim ?? 55) / 100, background: (theme?.background ?? "arena") as MediaBackground }
+            : ownShown ? { photo, photoDim: s.photoDim } : { photo: null, photoDim: dimFor(s.background, 0.62) }),
+          accent: theme?.accent ?? "#2e9e44", logo: themeLogo,
           title: s.title, subtitle: s.subtitle, body: s.body, slogan: s.slogan ?? "",
           people: (s.people ?? []).map((p, i) => ({ name: p.name, number: p.number, tag: p.tag, crop: p.crop, image: campaignPhotos[i]?.img ?? null })),
         }
@@ -693,7 +702,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
     // (bilden i mallen Bild blir inte bakgrund i nästa mall)
     const look = { background: s.background, overlay: s.overlay, photoDim: s.photoDim, useOwnPhoto: s.kind === "image" ? false : s.useOwnPhoto, format: s.format };
     // Egen bild från ett öppnat inlägg: ta med den som ny bild så att den sparas med det nya inlägget
-    if (photo && newPhoto === undefined && kind !== "campaign") void currentPhotoBase64().then((b) => setNewPhoto(b)).catch(() => undefined);
+    if (photo && newPhoto === undefined) void currentPhotoBase64().then((b) => setNewPhoto(b)).catch(() => undefined);
     // Varje ny mall får en slumpad sponsor (kan ändras till "Ingen sponsor")
     const sponsorName = randomSponsorName(sponsors);
     const others = sponsors.filter((sp) => sp.active && sp.name !== sponsorName);
@@ -704,7 +713,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
     if (kind === "campaign") {
       // Senast använda temat (annars det första) med dess förval; inget överlägg
       const t = themes.find((x) => x.id === s.themeId) ?? themes[0] ?? null;
-      setS((prev) => ({ ...prev, overlay: "none", people: [], themeId: t?.id, ...themeTexts(t) }));
+      setS((prev) => ({ ...prev, overlay: "none", people: [], themeBackground: true, themeId: t?.id, ...themeTexts(t) }));
     }
     if (kind === "lineup" && lineupState.data) {
       const { name, groups } = teamGroups(lineupState.data as never, "green");
@@ -794,7 +803,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
       img.onload = () => setPhoto(img);
       img.src = `data:image/jpeg;base64,${base64}`;
       setNewPhoto(base64);
-      if (s.kind !== "image") update({ useOwnPhoto: true }); // vald bild används direkt
+      if (s.kind !== "image") update({ useOwnPhoto: true, themeBackground: false }); // vald bild används direkt
     } catch (e) {
       toast.error("Bilden kunde inte läsas", { description: (e as Error).message });
     }
@@ -1384,27 +1393,34 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
           </label>
           )}
 
-          {s.kind !== "campaign" && (
           <div>
             <p className="text-[11px] text-white/50 mb-1.5">{isPress(s.kind) ? "Bild" : "Bakgrund"}</p>
             <div className="grid grid-cols-4 gap-1.5">
+              {/* Kampanj: temats bakgrund först (standard) */}
+              {s.kind === "campaign" && theme && (
+                <button onClick={() => update({ themeBackground: true })} title="Temats bakgrund"
+                  className={`relative rounded-lg overflow-hidden border-2 aspect-[4/5] ${bgFromTheme ? "border-emerald-400" : "border-white/10 opacity-70 hover:opacity-100"}`}>
+                  <img src={themePhotoUrl(theme) ?? MEDIA_BACKGROUNDS.find((b) => b.id === theme.background)?.url ?? MEDIA_BACKGROUNDS[0].url} alt="" className="w-full h-full object-cover" />
+                  <span className="absolute inset-x-0 bottom-0 text-[10px] bg-black/60 text-white/85 py-0.5 text-center truncate px-1">Temat</span>
+                </button>
+              )}
               {MEDIA_BACKGROUNDS.map((b) => (
-                <button key={b.id} onClick={() => update({ background: b.id, useOwnPhoto: false })} title={b.name}
-                  className={`relative rounded-lg overflow-hidden border-2 aspect-[4/5] ${s.background === b.id && (!ownActive || s.kind === "image") ? "border-emerald-400" : "border-white/10 opacity-70 hover:opacity-100"}`}>
+                <button key={b.id} onClick={() => update({ background: b.id, useOwnPhoto: false, themeBackground: false })} title={b.name}
+                  className={`relative rounded-lg overflow-hidden border-2 aspect-[4/5] ${s.background === b.id && !bgFromTheme && (!ownActive || s.kind === "image") ? "border-emerald-400" : "border-white/10 opacity-70 hover:opacity-100"}`}>
                   <img src={b.url} alt="" className="w-full h-full object-cover" />
                   <span className="absolute inset-x-0 bottom-0 text-[10px] bg-black/60 text-white/85 py-0.5 text-center truncate px-1">{b.name}</span>
                 </button>
               ))}
               {/* Egen bild: tom ruta med rött streck tills en bild valts (inte i mallen Bild – där är bilden innehållet) */}
-              {s.kind !== "image" && <button onClick={() => (photo && !ownActive ? update({ useOwnPhoto: true }) : fileRef.current?.click())} title={photo ? (ownActive ? "Byt bild" : "Egen bild") : "Välj en egen bild"}
-                className={`relative rounded-lg overflow-hidden border-2 aspect-[4/5] bg-[#151515] ${ownActive ? "border-emerald-400" : "border-white/10 opacity-80 hover:opacity-100"}`}>
+              {s.kind !== "image" && <button onClick={() => (photo && !ownShown ? update({ useOwnPhoto: true, themeBackground: false }) : fileRef.current?.click())} title={photo ? (ownShown ? "Byt bild" : "Egen bild") : "Välj en egen bild"}
+                className={`relative rounded-lg overflow-hidden border-2 aspect-[4/5] bg-[#151515] ${ownShown ? "border-emerald-400" : "border-white/10 opacity-80 hover:opacity-100"}`}>
                 {photo ? <img src={photo.src} alt="" className="w-full h-full object-cover" /> : (
                   <svg viewBox="0 0 40 50" preserveAspectRatio="none" className="absolute inset-0 w-full h-full"><line x1="2" y1="48" x2="38" y2="2" stroke="#ef4444" strokeWidth="1.5" /></svg>
                 )}
-                <span className="absolute inset-x-0 bottom-0 text-[10px] bg-black/60 text-white/85 py-0.5 text-center truncate px-1">{ownActive ? "Byt bild" : "Egen bild"}</span>
+                <span className="absolute inset-x-0 bottom-0 text-[10px] bg-black/60 text-white/85 py-0.5 text-center truncate px-1">{ownShown ? "Byt bild" : "Egen bild"}</span>
               </button>}
             </div>
-            {ownActive && s.kind !== "image" && (
+            {ownShown && s.kind !== "image" && (
               <div className="mt-2 space-y-1.5">
                 <label className="block text-[11px] text-white/50">Mörka bilden
                   <input type="range" min={0} max={1} step={0.01} value={s.photoDim} onChange={(e) => update({ photoDim: Number(e.target.value) })} className="w-full accent-emerald-400" />
@@ -1416,8 +1432,8 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
               </div>
             )}
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); e.target.value = ""; }} />
+            {s.kind === "campaign" && <p className="text-[10px] text-white/35 mt-1">Temat = bakgrunden som valts för temat (under Ändra tema). Ett annat val gäller bara det här inlägget.</p>}
           </div>
-          )}
 
           {!isPress(s.kind) && (
           <div>

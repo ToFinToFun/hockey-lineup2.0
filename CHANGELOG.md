@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.14.0 – 2026-11-01
+
+- **Kampanj: bakgrund per inlägg** som i övriga mallar – temats bakgrund (standard), en bakgrund ur listan eller en egen bild med mörkning. Temats bakgrund ändras fortfarande under Ändra tema och gäller de inlägg som använder den.
+- **Movember: ny logga i blått** (blå tröja i stället för grön). Ny adress så att telefonerna inte visar den gamla ur cachen.
+
 ## 3.13.0 – 2026-11-01
 
 - **Kampanj: dra och nyp direkt i förhandsvisningen**, som i hockeykorten: dra i en bild för att flytta den, nyp med två fingrar (eller scrolla) för att zooma. Det är bilden under fingret som ändras, så det fungerar även med många bilder. Klick utanför bilderna förstorar som förut. Den lilla beskärningsrutan i listan finns kvar.

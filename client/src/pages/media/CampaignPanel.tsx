@@ -28,7 +28,8 @@ export const CAMPAIGN_MODES: Array<{ id: CampaignMode; name: string; help: strin
 export function themeLogoUrl(t: CampaignTheme | null | undefined): string | null {
   if (!t) return null;
   if (t.hasLogo) return `/api/media/themes/${t.id}/logo?v=${new Date(t.updatedAt).getTime()}`;
-  return t.builtin ? `/images/campaigns/${t.builtin}.png` : null;
+  // ?v=2: den blå loggan (2026-11-01) – ny adress så att telefonernas cache inte visar den gröna
+  return t.builtin ? `/images/campaigns/${t.builtin}.png?v=2` : null;
 }
 export function themePhotoUrl(t: CampaignTheme | null | undefined): string | null {
   return t?.hasPhoto ? `/api/media/themes/${t.id}/photo?v=${new Date(t.updatedAt).getTime()}` : null;
@@ -288,7 +289,7 @@ export default function CampaignPanel(p: Props) {
                 className="ml-auto flex items-center gap-1 text-[11px] text-red-300/70"><Trash2 size={12} /> Ta bort temat</button>
             )}
           </div>
-          <p className="text-[10px] text-white/35">Förvalen fylls i på nya inlägg. Loggan, färgen och bakgrunden ändras direkt i alla inlägg med temat.</p>
+          <p className="text-[10px] text-white/35">Förvalen fylls i på nya inlägg. Loggan och färgen ändras direkt i alla inlägg med temat, bakgrunden i de inlägg som använder temats bakgrund.</p>
         </div>
       )}
 
