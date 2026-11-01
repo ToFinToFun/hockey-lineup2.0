@@ -288,6 +288,13 @@
       "when": 1793549400351,
       "tag": "0040_campaigns",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "5",
+      "when": 1793552583955,
+      "tag": "0041_movember_blue",
+      "breakpoints": true
     }
   ]
 }

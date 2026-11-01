@@ -33,7 +33,7 @@ import { type CardSettings } from "@shared/cardRender";
 import { renderPlayerCard } from "@/lib/savedCardImage";
 import { cellsFor, defaultStatsTitle } from "@shared/cardStats";
 import CampaignPanel, { themeLogoUrl, themePhotoUrl, loadImg, type CampaignPersonSetting, type CampaignPhoto, type CampaignTheme } from "./CampaignPanel";
-import type { CampaignMode } from "@/lib/campaignImages";
+import { cropRect, moveCrop, zoomCrop, DEFAULT_CROP, type CampaignMode, type CampaignCanvas, type CampaignHit } from "@/lib/campaignImages";
 import { STAT_CATEGORIES, STAT_PERIODS, periodRange, statRows, goalieRows, isGoalieCategory, type StatCategory, type StatPeriod } from "./mediaStats";
 
 type Kind = "lineup" | "text" | "cards" | "stats" | "result" | "award" | "image" | "bill" | "front" | "article" | "interview" | "campaign";
@@ -270,6 +270,11 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
   const [busy, setBusy] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  /** Kampanj: var deltagarbilderna ligger i förhandsvisningen (dra och nyp i dem som i hockeykorten) */
+  const previewHits = useRef<CampaignHit[]>([]);
+  const gesture = useRef<{ index: number; aspect: number; w: number; startZoom: number; startDist: number | null; moved: boolean } | null>(null);
+  const gPointers = useRef(new Map<number, { x: number; y: number }>());
+  const suppressClick = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const update = (patch: Partial<Settings>) => setS((prev) => ({ ...prev, ...patch }));
   const tags = tagsQuery.data ?? [];
@@ -659,12 +664,13 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
       // Sida 2 och framåt (tidningssidor där texten fortsätter)
       void Promise.all(pages.slice(1).map((p) => new Promise<Blob | null>((res) => p.toBlob(res, "image/jpeg", 0.92)))).then((bs) => { if (!cancelled) setExtraBlobs(bs.filter(Boolean) as Blob[]); });
       const c = pages[Math.min(previewPage, pages.length - 1)];
+      previewHits.current = (c as CampaignCanvas).campaignHits ?? [];
       const first = pages[0];
       canvasRef.current.width = c.width;
       canvasRef.current.height = c.height;
       canvasRef.current.getContext("2d")!.drawImage(c, 0, 0);
       first.toBlob((b) => { if (!cancelled) setBlob(b); }, "image/jpeg", 0.92);
-    }, 120);
+    }, gesture.current ? 0 : 120); // under dragning/nypning: rita direkt
     return () => { cancelled = true; clearTimeout(t); };
   }, [s, photo, sponsor?.name, sponsor?.logo, cardCanvases, rows, range.label, reportData, awardCards, award?.title, bgImg, press, teaserImgs, pressResults, event.data, sponsors, shlQ.data, previewPage, themeLogo, themePhoto, theme?.accent, theme?.dim, theme?.background, campaignPhotos]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -900,6 +906,82 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
     setTimeout(() => setCopied(false), 1500);
   };
 
+  // ─── Kampanj: dra i en bild i förhandsvisningen för att flytta den, nyp eller scrolla för att zooma ───
+  const canDragPhotos = s.kind === "campaign" && s.campaignMode !== "news" && campaignPhotos.length > 0;
+  const toCanvas = (e: { clientX: number; clientY: number }) => {
+    const c = canvasRef.current!;
+    const r = c.getBoundingClientRect();
+    return { x: ((e.clientX - r.left) * c.width) / r.width, y: ((e.clientY - r.top) * c.height) / r.height, k: c.width / r.width };
+  };
+  const hitAt = (e: { clientX: number; clientY: number }) => {
+    const p = toCanvas(e);
+    return previewHits.current.find((h) => p.x >= h.x && p.x <= h.x + h.w && p.y >= h.y && p.y <= h.y + h.h) ?? null;
+  };
+  /** Ändra en deltagares utsnitt (fn får bildens storlek och nuvarande utsnitt) */
+  const changeCrop = (index: number, fn: (iw: number, ih: number, crop: typeof DEFAULT_CROP) => typeof DEFAULT_CROP) => {
+    const img = campaignPhotos[index]?.img;
+    if (!img) return;
+    const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    setS((prev) => ({ ...prev, people: (prev.people ?? []).map((p, i) => (i === index ? { ...p, crop: fn(iw, ih, p.crop ?? DEFAULT_CROP) } : p)) }));
+  };
+  const pinchDist = () => { const [a, b] = [...gPointers.current.values()]; return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0; };
+  const onPreviewDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!canDragPhotos) return;
+    if (gPointers.current.size === 0) {
+      const h = hitAt(e);
+      if (!h) return; // utanför bilderna: vanligt klick (förstora)
+      gesture.current = { index: h.index, aspect: h.w / h.h, w: h.w, startZoom: s.people?.[h.index]?.crop?.z ?? 1, startDist: null, moved: false };
+    }
+    if (!gesture.current) return;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    gPointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (gPointers.current.size === 2) {
+      gesture.current.startDist = pinchDist();
+      gesture.current.startZoom = s.people?.[gesture.current.index]?.crop?.z ?? 1;
+    }
+  };
+  const onPreviewMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const g = gesture.current;
+    const last = gPointers.current.get(e.pointerId);
+    if (!g || !last) return;
+    gPointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (gPointers.current.size >= 2 && g.startDist) {
+      const z = g.startZoom * (pinchDist() / Math.max(1, g.startDist));
+      g.moved = true;
+      changeCrop(g.index, (iw, ih, crop) => zoomCrop(iw, ih, g.aspect, crop, z));
+      return;
+    }
+    const { k } = toCanvas(e);
+    const dx = (e.clientX - last.x) * k, dy = (e.clientY - last.y) * k;
+    if (Math.abs(dx) + Math.abs(dy) > 0.5) g.moved = true;
+    // Förhandsvisningens pixlar → bildens pixlar (utsnittets bredd delat med rutans)
+    changeCrop(g.index, (iw, ih, crop) => {
+      const r = cropRect(iw, ih, g.aspect, crop);
+      const f = r.sw / g.w;
+      return moveCrop(iw, ih, g.aspect, crop, dx * f, dy * f);
+    });
+  };
+  const onPreviewUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!gPointers.current.has(e.pointerId)) return;
+    gPointers.current.delete(e.pointerId);
+    if (gesture.current && gPointers.current.size < 2) gesture.current.startDist = null;
+    if (gPointers.current.size === 0) {
+      suppressClick.current = !!gesture.current?.moved;
+      gesture.current = null;
+    }
+  };
+  const onPreviewWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    if (!canDragPhotos) return;
+    const h = hitAt(e);
+    if (!h) return;
+    const aspect = h.w / h.h;
+    changeCrop(h.index, (iw, ih, crop) => zoomCrop(iw, ih, aspect, crop, crop.z * (e.deltaY < 0 ? 1.06 : 1 / 1.06)));
+  };
+  const onPreviewClick = () => {
+    if (suppressClick.current) { suppressClick.current = false; return; }
+    void openZoom();
+  };
+
   const input = "w-full rounded-lg bg-white/5 border border-white/10 text-white text-sm px-3 py-2";
   const chip = (on: boolean) => `px-3 py-1.5 rounded-lg text-xs font-semibold border ${on ? "bg-emerald-500/20 border-emerald-400/60 text-emerald-200" : "bg-white/5 border-white/10 text-white/60"}`;
 
@@ -914,9 +996,9 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto p-4 grid gap-5 lg:grid-cols-[220px_minmax(0,360px)_minmax(0,1fr)]">
+      <main className="max-w-5xl mx-auto p-4 grid gap-5 grid-cols-[minmax(0,1fr)] lg:grid-cols-[220px_minmax(0,360px)_minmax(0,1fr)]">
         {/* Nytt och sparade */}
-        <section className="space-y-3">
+        <section className="space-y-3 min-w-0">
           <div className="grid grid-cols-2 lg:grid-cols-1 gap-2">
             <button onClick={() => startNew("lineup")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Users size={14} /> Lagets uppställning</button>
             <button onClick={() => startNew("text")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Type size={14} /> Text</button>
@@ -925,7 +1007,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
             <button onClick={() => startNew("award")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Award size={14} /> Utmärkelse</button>
             <button onClick={() => startNew("result")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Trophy size={14} /> Senaste resultat</button>
             <button onClick={() => startNew("image")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><ImageIcon size={14} /> Bild</button>
-            <button onClick={() => startNew("campaign")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Megaphone size={14} /> Kampanj{themes[0] ? ` (${themes.map((t) => t.name).slice(0, 2).join(", ")})` : ""}</button>
+            <button onClick={() => startNew("campaign")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><Megaphone size={14} /> Kampanj</button>
             <button onClick={startNextTraining} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"><CalendarDays size={14} /> Nästa träning</button>
             <p className="col-span-2 lg:col-span-1 text-[11px] text-white/45 mt-1" style={{ fontFamily: "'Playfair Display', serif" }}>{PRESS_NAME} <span className="font-sans text-white/30">– som i lokaltidningen</span></p>
             <button onClick={() => startNew("bill")} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-300/10 border border-amber-300/30 text-sm"><Newspaper size={14} /> Löpsedel</button>
@@ -956,12 +1038,15 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
         </section>
 
         {/* Förhandsvisning och åtgärder */}
-        <section className="space-y-2">
+        <section className="space-y-2 min-w-0">
           <div className="flex gap-1.5 justify-center">
             <button onClick={() => update({ format: "feed" })} className={chip(format === "feed")}>Flöde 4:5</button>
             <button onClick={() => update({ format: "story" })} className={chip(format === "story")}>Story/Reel 9:16</button>
           </div>
-          <canvas ref={canvasRef} onClick={() => void openZoom()} title="Klicka för att förstora" className={`cursor-zoom-in w-full h-auto rounded-xl shadow-2xl bg-black ${format === "story" ? "aspect-[9/16] max-w-[300px] mx-auto block" : "aspect-[4/5]"}`} aria-label="Förhandsvisning" />
+          <canvas ref={canvasRef} onClick={onPreviewClick} onPointerDown={onPreviewDown} onPointerMove={onPreviewMove} onPointerUp={onPreviewUp} onPointerCancel={onPreviewUp} onWheel={onPreviewWheel}
+            title={canDragPhotos ? "Dra i en bild för att flytta den, nyp eller scrolla för att zooma. Klicka utanför bilderna för att förstora." : "Klicka för att förstora"}
+            style={canDragPhotos ? { touchAction: "none" } : undefined}
+            className={`${canDragPhotos ? "cursor-grab" : "cursor-zoom-in"} w-full h-auto rounded-xl shadow-2xl bg-black ${format === "story" ? "aspect-[9/16] max-w-[300px] mx-auto block" : "aspect-[4/5]"}`} aria-label="Förhandsvisning" />
           {pageCount > 1 && (
             <div className="flex items-center justify-center gap-1.5">
               {Array.from({ length: pageCount }, (_, i) => <button key={i} onClick={() => setPreviewPage(i)} className={chip(Math.min(previewPage, pageCount - 1) === i)}>Sida {i + 1}</button>)}
@@ -979,7 +1064,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
               </div>
             </div>
           )}
-          <p className="text-[10px] text-white/35 text-center">Klicka på bilden för att förstora. {format === "story" ? "9:16 (1080×1920) – innehållet ligger inom Instagrams säkra yta för Story och Reels." : "4:5 (1080×1350) – samma format som matchrapporten."}</p>
+          <p className="text-[10px] text-white/35 text-center">{canDragPhotos ? <span className="text-emerald-300/80">Dra i en bild för att flytta den, nyp med två fingrar (eller scrolla) för att zooma. </span> : null}Klicka {canDragPhotos ? "utanför bilderna " : "på bilden "}för att förstora. {format === "story" ? "9:16 (1080×1920) – innehållet ligger inom Instagrams säkra yta för Story och Reels." : "4:5 (1080×1350) – samma format som matchrapporten."}</p>
           <div className="grid grid-cols-3 gap-2">
             <button onClick={download} disabled={!blob} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-sm disabled:opacity-40"><Download size={14} /> Ladda ned</button>
             <button onClick={() => void share()} disabled={!blob || !!busy} className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-gradient-to-r from-fuchsia-500 to-orange-400 text-white text-sm font-semibold disabled:opacity-40">
@@ -999,7 +1084,7 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
         </section>
 
         {/* Inställningar */}
-        <section className="space-y-4">
+        <section className="space-y-4 min-w-0">
           {s.kind === "result" && (
             <>
               <label className="block text-[11px] text-white/50">Match

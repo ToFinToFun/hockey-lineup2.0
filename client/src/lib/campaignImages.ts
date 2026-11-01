@@ -7,7 +7,7 @@
  * Samma 4:5-innehåll som övriga mallar; i 9:16 läggs det i Storyns säkra yta.
  */
 import { clubHeading } from "@shared/club";
-import { IG_W, IG_H, HEAD, BODY, fit, canvas, backdrop, photoBackdrop, contentArea, presentedBy, frameHeight, tryLoad } from "@/lib/matchReportImages";
+import { IG_W, IG_H, HEAD, BODY, STORY_TOP, fit, canvas, backdrop, photoBackdrop, contentArea, presentedBy, frameHeight, tryLoad } from "@/lib/matchReportImages";
 import { roundRect } from "@/lib/canvas";
 import type { MediaCommon } from "@/lib/mediaImages";
 
@@ -55,6 +55,24 @@ export function cropRect(iw: number, ih: number, aspect: number, crop: CampaignC
   const sy = clamp(crop.y * ih - sh / 2, 0, ih - sh);
   return { sx, sy, sw, sh };
 }
+
+/** Flytta bildutsnittet: dx/dy i bildens pixlar. Mittpunkten hålls där bilden fyller rutan. */
+export function moveCrop(iw: number, ih: number, aspect: number, crop: CampaignCrop, dx: number, dy: number): CampaignCrop {
+  const r = cropRect(iw, ih, aspect, crop);
+  const next = cropRect(iw, ih, aspect, { ...crop, x: (r.sx + r.sw / 2 - dx) / iw, y: (r.sy + r.sh / 2 - dy) / ih });
+  return { x: (next.sx + next.sw / 2) / iw, y: (next.sy + next.sh / 2) / ih, z: crop.z };
+}
+
+/** Zooma kring samma mittpunkt (1–3) */
+export function zoomCrop(iw: number, ih: number, aspect: number, crop: CampaignCrop, z: number): CampaignCrop {
+  const zz = clamp(z, 1, 3);
+  const next = cropRect(iw, ih, aspect, { ...crop, z: zz });
+  return { x: (next.sx + next.sw / 2) / iw, y: (next.sy + next.sh / 2) / ih, z: zz };
+}
+
+/** Var deltagarbild nr index ritades (hela bildens koordinater) – för att dra och nypa i förhandsvisningen */
+export interface CampaignHit { index: number; x: number; y: number; w: number; h: number }
+export type CampaignCanvas = HTMLCanvasElement & { campaignHits?: CampaignHit[] };
 
 /** Kolumner per antal bilder: 1–3 i en rad, 4 = 2×2, 5–6 = 3+3, 7–8 = 4+4, 9 = 3×3 (exporteras för test) */
 export function peopleColumns(n: number): number {
@@ -320,6 +338,9 @@ export async function renderCampaign(d: CampaignPostData, look: { bgUrl: string;
   if (d.photo) photoBackdrop(ctx, d.photo, d.photoDim ?? 0.5); else backdrop(ctx, bg, d.photoDim ?? 0.55);
   look.decorate(ctx);
   contentArea(ctx);
+  const hits: CampaignHit[] = [];
+  const offsetY = d.format === "story" ? STORY_TOP : 0;
+  const hit = (index: number, slot: PeopleSlot) => hits.push({ index, x: slot.x, y: slot.y + offsetY, w: slot.w, h: slot.h });
 
   const bottom = d.sponsor ? IG_H - 205 : IG_H - 70;
   const sloganH = d.slogan.trim() ? 76 : 0;
@@ -355,6 +376,7 @@ export async function renderCampaign(d: CampaignPostData, look: { bgUrl: string;
         const p = pair[i];
         if (!p?.image) { emptySlot(ctx, slot, i === 0 ? "Före" : "Efter"); return; }
         framedPhoto(ctx, p.image, slot, p.crop, d.accent);
+        hit(i, slot);
         if (p.tag?.trim()) photoTag(ctx, p.tag, slot, d.accent);
       });
       // Pil mellan bilderna
@@ -384,6 +406,7 @@ export async function renderCampaign(d: CampaignPostData, look: { bgUrl: string;
       slots.forEach((slot, i) => {
         const p = people[i];
         const border = framedPhoto(ctx, p.image, slot, p.crop, d.accent);
+        if (p.image) hit(i, slot);
         if (p.tag?.trim()) photoTag(ctx, p.tag, slot, d.accent);
         if (p.name.trim()) nameLine(ctx, p.name, p.number, slot.x + slot.w / 2, slot.y + slot.h + border + labelSize(w0) * 1.25, size, maxW, d.accent);
       });
@@ -391,6 +414,7 @@ export async function renderCampaign(d: CampaignPostData, look: { bgUrl: string;
   }
   if (sloganH) sloganPill(ctx, d.slogan, sloganY, d.accent);
   presentedBy(ctx, d.sponsor ? { name: d.sponsor.name, img: sp } : null, IG_H - 150);
+  (c as CampaignCanvas).campaignHits = hits;
   return c;
 }
 

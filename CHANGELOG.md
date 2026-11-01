@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.13.0 – 2026-11-01
+
+- **Kampanj: dra och nyp direkt i förhandsvisningen**, som i hockeykorten: dra i en bild för att flytta den, nyp med två fingrar (eller scrolla) för att zooma. Det är bilden under fingret som ändras, så det fungerar även med många bilder. Klick utanför bilderna förstorar som förut. Den lilla beskärningsrutan i listan finns kvar.
+- **Movember i ljusblått** (klubbens blå, ljusare så att texten syns på mörk bakgrund). Ändras bara om färgen inte redan ändrats i appen.
+- **Media i mobilen:** en lång rubrik bland sparade inlägg gjorde sidan bredare än skärmen så att telefonen zoomade ut (såg ut som datorläge). Kolumnen håller nu skärmens bredd och rubriken kortas med ….
+
 ## 3.12.1 – 2026-11-01
 
 - Säkerhet: follow-redirects (via axios) uppdaterad till 1.16.2.

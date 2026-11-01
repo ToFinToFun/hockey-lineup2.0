@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cropRect, peopleColumns, peopleSlots, MAX_PEOPLE } from "./campaignImages";
+import { cropRect, moveCrop, zoomCrop, peopleColumns, peopleSlots, MAX_PEOPLE } from "./campaignImages";
 
 describe("kampanjmallen – beskärning", () => {
   it("fyller alltid rutan och håller sig inom bilden", () => {
@@ -21,6 +21,28 @@ describe("kampanjmallen – beskärning", () => {
     const zoom = cropRect(1000, 1000, 1, { x: 0.5, y: 0.5, z: 2 });
     expect(zoom.sw).toBeCloseTo(full.sw / 2);
     expect(zoom.sx + zoom.sw / 2).toBeCloseTo(500);
+  });
+});
+
+describe("kampanjmallen – dra och nyp i förhandsvisningen", () => {
+  it("drar bilden åt höger: utsnittet flyttas åt vänster i bilden", () => {
+    const c = moveCrop(1000, 1000, 1, { x: 0.5, y: 0.5, z: 2 }, 100, 0);
+    expect(c.x).toBeCloseTo(0.4);
+    expect(c.y).toBeCloseTo(0.5);
+    expect(c.z).toBe(2);
+  });
+  it("kan inte dras utanför bilden", () => {
+    const c = moveCrop(1000, 1000, 1, { x: 0.5, y: 0.5, z: 2 }, 5000, -5000);
+    const r = cropRect(1000, 1000, 1, c);
+    expect(r.sx).toBe(0);
+    expect(r.sy + r.sh).toBeCloseTo(1000);
+  });
+  it("zoom stannar mellan 1 och 3 och håller mittpunkten", () => {
+    expect(zoomCrop(1000, 1000, 1, { x: 0.5, y: 0.5, z: 1 }, 9).z).toBe(3);
+    expect(zoomCrop(1000, 1000, 1, { x: 0.5, y: 0.5, z: 2 }, 0.2).z).toBe(1);
+    const c = zoomCrop(1000, 1000, 1, { x: 0.3, y: 0.6, z: 1.5 }, 2.5);
+    expect(c.x).toBeCloseTo(0.3);
+    expect(c.y).toBeCloseTo(0.6);
   });
 });
 
