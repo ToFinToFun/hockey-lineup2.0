@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.17.0 – 2026-11-01
+
+- **Kampanj → Vinnare:** prispall för 1–3 vinnare – ettan störst i mitten på högsta klossen med en guldmustasch som krona, tvåan och trean på sidorna i silver och brons, konfetti i temats färger. Priserna heter som förval **Stålborsten**, **Snorbromsen** och **Dunläppen** (går att ändra). Underrubriken blir "Vinnaren" med en bild och "Vinnarna" med flera. Bildtexten listar priserna med 🥇🥈🥉.
+- **Texter per typ:** Nyhet "Var med i Mustaschkampen" / "Tillsammans mot prostatacancer"; Deltagare och Före/efter "Tillsammans mot prostatacancer" / "Deltagare" respektive "Före och efter"; Vinnare "Mustaschkampen 2026". Vid byte av typ byts bara texter som inte ändrats.
+- Sparade kampanjinlägg heter efter typen, t.ex. "Mustaschkampen – Deltagare: Vecka 2".
+
 ## 3.16.0 – 2026-11-01
 
 - **Ny modul: Mustaschkampen** (på startsidan). Medlemmarna laddar upp egna bilder på sin mustasch – öppen för alla utan inloggning 1 november–5 december, för styrelsen hela året.

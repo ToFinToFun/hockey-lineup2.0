@@ -11,7 +11,7 @@ import { themeLogoPath } from "@shared/campaign";
 import { resizeToJpeg } from "@/lib/jpegResize";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "../../../../server/routers";
-import { cropRect, DEFAULT_CROP, MAX_PEOPLE, type CampaignCrop, type CampaignMode } from "@/lib/campaignImages";
+import { cropRect, modeTexts, DEFAULT_CROP, MAX_PEOPLE, MODE_MAX, MODE_TAGS, type CampaignCrop, type CampaignMode } from "@/lib/campaignImages";
 import { MEDIA_BACKGROUNDS } from "@/lib/mediaImages";
 import { prepareSourcePhoto } from "@/lib/cardPhoto";
 
@@ -24,6 +24,7 @@ export const CAMPAIGN_MODES: Array<{ id: CampaignMode; name: string; help: strin
   { id: "news", name: "Nyhet", help: "Loggan stor med rubrik, text och slogan – t.ex. att kampanjen har startat." },
   { id: "people", name: "Deltagare", help: "1–9 bilder, lika stora i ram, med namn under. Rutnätet anpassar sig efter antalet." },
   { id: "beforeafter", name: "Före/efter", help: "Två bilder bredvid varandra – första och andra bilden i listan." },
+  { id: "winners", name: "Vinnare", help: "Prispall för 1–3 vinnare (de tre första bilderna): ettan störst i mitten med guldmustasch, tvåan och trean på sidorna." },
 ];
 
 /** Loggans adress: uppladdad logga, annars temats inbyggda (samma som modulen Mustaschkampen) */
@@ -236,7 +237,7 @@ export default function CampaignPanel(p: Props) {
     setDraft({ ...p.theme }); setNewLogo(undefined); setNewBg(undefined); setEditing(true);
   };
 
-  const aspect = p.mode === "beforeafter" ? 4 / 5 : 1;
+  const aspect = p.mode === "beforeafter" || p.mode === "winners" ? 4 / 5 : 1;
   const max = MAX_PEOPLE;
 
   const addFiles = async (files: FileList) => {
@@ -251,7 +252,8 @@ export default function CampaignPanel(p: Props) {
         const data = await participantJpeg(f);
         const img = await loadImg(`data:image/jpeg;base64,${data}`);
         const i = people.length;
-        people.push({ name: "", crop: { ...DEFAULT_CROP }, ...(p.mode === "beforeafter" && i < 2 ? { tag: i === 0 ? "Före" : "Efter" } : {}) });
+        const tag = MODE_TAGS[p.mode]?.[i];
+        people.push({ name: "", crop: { ...DEFAULT_CROP }, ...(tag ? { tag } : {}) });
         photos.push({ img, src: { data } });
       }
       p.update({ people });
@@ -389,20 +391,29 @@ export default function CampaignPanel(p: Props) {
         <div className="flex flex-wrap gap-1.5">
           {CAMPAIGN_MODES.map((m) => (
             <button key={m.id} onClick={() => {
-              // Före/efter: första två bilderna får etiketterna om de saknar egna – och de tas bort igen i de andra lägena
-              const auto = (i: number) => (i === 0 ? "Före" : "Efter");
-              const people = m.id === "beforeafter"
-                ? p.people.map((x, i) => (i < 2 && !x.tag ? { ...x, tag: auto(i) } : x))
-                : p.people.map((x, i) => (i < 2 && x.tag === auto(i) ? { ...x, tag: undefined } : x));
-              p.update({ campaignMode: m.id, people });
+              // Etiketter: Före/Efter och vinnarnas (Stålborsten …) läggs på där det saknas egna,
+              // och de automatiska tas bort igen i de andra lägena
+              const autoOld = MODE_TAGS[p.mode] ?? [], autoNew = MODE_TAGS[m.id] ?? [];
+              const people = p.people.map((x, i) => {
+                const tag = x.tag && autoOld[i] === x.tag ? undefined : x.tag;
+                return { ...x, tag: tag ?? autoNew[i] };
+              });
+              // Texterna: förvalen för det nya läget, om de inte ändrats
+              const was = modeTexts(p.mode, p.theme, p.people.length), next = modeTexts(m.id, p.theme, Math.min(MODE_MAX[m.id] || 1, people.length));
+              const isDefault = (v: string, def: string) => v === def || (p.mode === "winners" && (v === "Vinnaren" || v === "Vinnarna"));
+              p.update({
+                campaignMode: m.id, people,
+                ...(isDefault(p.title, was.title) ? { title: next.title } : {}),
+                ...(isDefault(p.subtitle, was.subtitle) ? { subtitle: next.subtitle } : {}),
+              });
             }} className={p.chip(p.mode === m.id)}>{m.name}</button>
           ))}
         </div>
         <p className="text-[10px] text-white/35 mt-1">{CAMPAIGN_MODES.find((m) => m.id === p.mode)?.help}</p>
       </div>
 
-      <label className="block text-[11px] text-white/50">Rubrik<input value={p.title} onChange={(e) => p.update({ title: e.target.value })} maxLength={60} placeholder={p.theme?.title || "T.ex. Mustaschkampen har startat"} className={p.input} /></label>
-      <label className="block text-[11px] text-white/50">Underrubrik<input value={p.subtitle} onChange={(e) => p.update({ subtitle: e.target.value })} maxLength={80} placeholder={p.mode === "people" ? "T.ex. Vecka 2" : ""} className={p.input} /></label>
+      <label className="block text-[11px] text-white/50">Rubrik<input value={p.title} onChange={(e) => p.update({ title: e.target.value })} maxLength={60} placeholder={modeTexts(p.mode, p.theme, p.people.length).title || "T.ex. Mustaschkampen har startat"} className={p.input} /></label>
+      <label className="block text-[11px] text-white/50">Underrubrik<input value={p.subtitle} onChange={(e) => p.update({ subtitle: e.target.value })} maxLength={80} placeholder={p.mode === "people" ? "T.ex. Vecka 2" : p.mode === "winners" ? "Vinnaren / Vinnarna efter antalet bilder" : ""} className={p.input} /></label>
       {p.mode === "news" && (
         <label className="block text-[11px] text-white/50">Text under loggan (valfri)<textarea value={p.body} onChange={(e) => p.update({ body: e.target.value })} rows={3} maxLength={300} className={p.input} /></label>
       )}
@@ -411,7 +422,7 @@ export default function CampaignPanel(p: Props) {
       {p.mode !== "news" && (
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <p className="text-[11px] text-white/50">{p.mode === "beforeafter" ? "Bilder (de två första används)" : `Deltagare (${p.people.length} av ${max})`}</p>
+            <p className="text-[11px] text-white/50">{p.mode === "beforeafter" ? "Bilder (de två första används)" : p.mode === "winners" ? "Vinnarna (de tre första: 1:a, 2:a, 3:e)" : `Deltagare (${p.people.length} av ${max})`}</p>
             <button onClick={() => fileRef.current?.click()} disabled={adding || p.people.length >= max} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-xs disabled:opacity-40">
               {adding ? <Loader2 size={12} className="animate-spin" /> : <ImagePlus size={12} />} Lägg till bilder
             </button>
@@ -424,8 +435,8 @@ export default function CampaignPanel(p: Props) {
           )}
           {hasEntries && picking && (
             <div className="mb-2">
-              <EntriesPicker mode={p.mode} room={max - p.people.length} chip={p.chip} onClose={() => setPicking(false)}
-                onAdd={(list) => { p.update({ people: [...p.people, ...list.map((x) => fromEntry(x))] }); p.setPhotos([...p.photos, ...list.map((x) => x.photo)]); }}
+              <EntriesPicker mode={p.mode} room={Math.max(0, (p.mode === "winners" ? MODE_MAX.winners : max) - p.people.length)} chip={p.chip} onClose={() => setPicking(false)}
+                onAdd={(list) => { p.update({ people: [...p.people, ...list.map((x, j) => fromEntry(x, MODE_TAGS[p.mode]?.[p.people.length + j]))] }); p.setPhotos([...p.photos, ...list.map((x) => x.photo)]); }}
                 onPair={(a, b) => { p.update({ people: [fromEntry(a, shortDate(a.entry.createdAt)), fromEntry(b, shortDate(b.entry.createdAt))] }); p.setPhotos([a.photo, b.photo]); }} />
             </div>
           )}
@@ -433,10 +444,10 @@ export default function CampaignPanel(p: Props) {
           <div className="space-y-2">
             {p.people.map((person, i) => {
               const photo = p.photos[i];
-              const unused = p.mode === "beforeafter" && i >= 2;
+              const unused = (p.mode === "beforeafter" || p.mode === "winners") && i >= MODE_MAX[p.mode];
               return (
                 <div key={i} className={`flex gap-2.5 rounded-lg border border-white/10 bg-white/[0.03] p-2 ${unused ? "opacity-45" : ""}`}>
-                  {photo ? <CropBox img={photo.img} aspect={aspect} crop={person.crop ?? DEFAULT_CROP} onChange={(crop) => setPerson(i, { crop })} width={p.mode === "beforeafter" ? 96 : 104} />
+                  {photo ? <CropBox img={photo.img} aspect={aspect} crop={person.crop ?? DEFAULT_CROP} onChange={(crop) => setPerson(i, { crop })} width={aspect < 1 ? 96 : 104} />
                     : <div className="w-[104px] h-[104px] rounded-lg bg-white/5 flex items-center justify-center"><Loader2 size={14} className="animate-spin text-white/40" /></div>}
                   <div className="flex-1 min-w-0 space-y-1.5">
                     <select value={person.playerId ?? ""} onChange={(e) => {
@@ -450,7 +461,7 @@ export default function CampaignPanel(p: Props) {
                       <input value={person.name} onChange={(e) => setPerson(i, { name: e.target.value })} maxLength={40} placeholder="Namn under bilden" className={`${p.input} !py-1.5 !text-xs`} />
                       <input value={person.number ?? ""} onChange={(e) => setPerson(i, { number: e.target.value.replace(/[^0-9]/g, "").slice(0, 2) || undefined })} inputMode="numeric" placeholder="#" className={`${p.input} !py-1.5 !text-xs !w-12 shrink-0`} />
                     </div>
-                    <input value={person.tag ?? ""} onChange={(e) => setPerson(i, { tag: e.target.value || undefined })} maxLength={16} placeholder="Etikett på bilden (valfri), t.ex. Dag 1" className={`${p.input} !py-1.5 !text-xs`} />
+                    <input value={person.tag ?? ""} onChange={(e) => setPerson(i, { tag: e.target.value || undefined })} maxLength={20} placeholder={p.mode === "winners" ? "Pris, t.ex. Stålborsten" : "Etikett på bilden (valfri), t.ex. Dag 1"} className={`${p.input} !py-1.5 !text-xs`} />
                     <div className="flex items-center gap-2 text-white/50">
                       <button onClick={() => move(i, -1)} disabled={i === 0} className="disabled:opacity-25" aria-label="Flytta upp"><ArrowUp size={13} /></button>
                       <button onClick={() => move(i, 1)} disabled={i === p.people.length - 1} className="disabled:opacity-25" aria-label="Flytta ned"><ArrowDown size={13} /></button>

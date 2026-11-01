@@ -32,8 +32,8 @@ import { pressFacts, headlineSuggestions, articleText, cleanName, splitPasted, e
 import { type CardSettings } from "@shared/cardRender";
 import { renderPlayerCard } from "@/lib/savedCardImage";
 import { cellsFor, defaultStatsTitle } from "@shared/cardStats";
-import CampaignPanel, { themeLogoUrl, themePhotoUrl, loadImg, type CampaignPersonSetting, type CampaignPhoto, type CampaignTheme } from "./CampaignPanel";
-import { cropRect, moveCrop, zoomCrop, DEFAULT_CROP, type CampaignMode, type CampaignCanvas, type CampaignHit } from "@/lib/campaignImages";
+import CampaignPanel, { CAMPAIGN_MODES, themeLogoUrl, themePhotoUrl, loadImg, type CampaignPersonSetting, type CampaignPhoto, type CampaignTheme } from "./CampaignPanel";
+import { cropRect, moveCrop, zoomCrop, modeTexts, winnersSubtitle, DEFAULT_CROP, type CampaignMode, type CampaignCanvas, type CampaignHit } from "@/lib/campaignImages";
 import { STAT_CATEGORIES, STAT_PERIODS, periodRange, statRows, goalieRows, isGoalieCategory, type StatCategory, type StatPeriod } from "./mediaStats";
 
 type Kind = "lineup" | "text" | "cards" | "stats" | "result" | "award" | "image" | "bill" | "front" | "article" | "interview" | "campaign";
@@ -217,8 +217,13 @@ function defaultCaption(s: Settings, tags: string[]): string {
     return [head, s.subtitle, text, tagLine].filter(Boolean).join("\n\n");
   }
   if (s.kind === "campaign") {
-    const names = s.campaignMode === "news" ? "" : (s.people ?? []).slice(0, s.campaignMode === "beforeafter" ? 1 : 9).map((p) => `${p.name}${p.number ? ` #${p.number}` : ""}`).filter((n) => n.trim()).join(", ");
-    return [s.title, s.subtitle, s.campaignMode === "news" ? s.body : "", names, s.slogan, s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tagLine].filter((x) => x?.trim()).join("\n\n");
+    const who = (p: CampaignPersonSetting) => `${p.name}${p.number ? ` #${p.number}` : ""}`;
+    // Vinnare: en rad per pris ("🥇 Stålborsten: Namn #63")
+    const names = s.campaignMode === "news" ? ""
+      : s.campaignMode === "winners" ? (s.people ?? []).slice(0, 3).map((p, i) => `${["🥇", "🥈", "🥉"][i]} ${p.tag ? `${p.tag}: ` : ""}${who(p)}`).join("\n")
+      : (s.people ?? []).slice(0, s.campaignMode === "beforeafter" ? 1 : 9).map(who).filter((n) => n.trim()).join(", ");
+    const sub = s.campaignMode === "winners" && (s.subtitle === "Vinnaren" || s.subtitle === "Vinnarna") ? winnersSubtitle(Math.min(3, (s.people ?? []).length)) : s.subtitle;
+    return [s.title, sub, s.campaignMode === "news" ? s.body : "", names, s.slogan, s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tagLine].filter((x) => x?.trim()).join("\n\n");
   }
   if (s.kind === "stats" || s.kind === "cards" || s.kind === "image") {
     return [s.title, s.subtitle, s.kind === "image" ? s.info : "", s.sponsorName ? `Presenteras av ${s.sponsorName}` : "", tagLine].filter(Boolean).join("\n\n");
@@ -813,8 +818,17 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
     s.kind === "lineup" ? `${s.title || "Dagens lag"} – ${s.teamName}${s.dateLine ? ` (${s.dateLine.split(" · ")[0]})` : ""}`
     : s.kind === "stats" ? `${s.title || statCat.title} – ${s.subtitle || range.label}`
     : s.kind === "result" ? `Resultat – ${resultMatch?.name ?? ""}`
-    : s.kind === "campaign" ? `${theme?.name ?? "Kampanj"}: ${s.title.trim() || (s.campaignMode === "people" ? "Deltagare" : s.campaignMode === "beforeafter" ? "Före/efter" : "Nyhet")}`
+    : s.kind === "campaign" ? campaignTitle()
     : s.title.replace(/\s*\n\s*/g, " ") || "Inlägg utan rubrik";
+
+  /** Namnet i listan: "Mustaschkampen – Deltagare: Vecka 2" (det som skiljer sig från förvalen) */
+  const campaignTitle = () => {
+    const mode = s.campaignMode ?? "news";
+    const def = modeTexts(mode, theme, (s.people ?? []).length);
+    const extra = s.title.trim() && s.title.trim() !== def.title ? s.title.trim()
+      : s.subtitle.trim() && s.subtitle.trim() !== def.subtitle && !(mode === "winners" && /^Vinnar(en|na)$/.test(s.subtitle.trim())) ? s.subtitle.trim() : "";
+    return `${theme?.name ?? "Kampanj"} – ${CAMPAIGN_MODES.find((m) => m.id === mode)?.name ?? "Nyhet"}${extra ? `: ${extra}` : ""}`;
+  };
 
   const doSave = async (asNew: boolean) => {
     setBusy("save");
@@ -1249,8 +1263,10 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
               onTheme={(t) => setS((prev) => {
                 // Byt tema: texter som är kvar från förra temats förval byts mot det nya temats
                 const old = themes.find((x) => x.id === prev.themeId);
-                const keep = (k: "title" | "subtitle" | "slogan") => (prev[k] ?? "") !== (old?.[k] ?? "");
-                return { ...prev, themeId: t.id, title: keep("title") ? prev.title : t.title, subtitle: keep("subtitle") ? prev.subtitle : t.subtitle, slogan: keep("slogan") ? prev.slogan : t.slogan };
+                const mode = prev.campaignMode ?? "news", n = (prev.people ?? []).length;
+                const was = { ...modeTexts(mode, old, n), slogan: old?.slogan ?? "" }, next = { ...modeTexts(mode, t, n), slogan: t.slogan };
+                const keep = (k: "title" | "subtitle" | "slogan") => (prev[k] ?? "") !== was[k];
+                return { ...prev, themeId: t.id, title: keep("title") ? prev.title : next.title, subtitle: keep("subtitle") ? prev.subtitle : next.subtitle, slogan: keep("slogan") ? prev.slogan : next.slogan };
               })}
               update={update} setPhotos={setCampaignPhotos} input={input} chip={chip}
             />

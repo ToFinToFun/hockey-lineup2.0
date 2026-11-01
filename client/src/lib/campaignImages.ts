@@ -11,7 +11,25 @@ import { IG_W, IG_H, HEAD, BODY, STORY_TOP, fit, canvas, backdrop, photoBackdrop
 import { roundRect } from "@/lib/canvas";
 import type { MediaCommon } from "@/lib/mediaImages";
 
-export type CampaignMode = "news" | "people" | "beforeafter";
+export type CampaignMode = "news" | "people" | "beforeafter" | "winners";
+/** Vinnarnas etiketter (förval) – ettan, tvåan, trean */
+export const WINNER_TAGS = ["Stålborsten", "Snorbromsen", "Dunläppen"];
+/** Etiketter som läggs på automatiskt per läge (och tas bort igen i andra lägen) */
+export const MODE_TAGS: Partial<Record<CampaignMode, string[]>> = { beforeafter: ["Före", "Efter"], winners: WINNER_TAGS };
+/** Hur många bilder läget använder */
+export const MODE_MAX: Record<CampaignMode, number> = { news: 0, people: 9, beforeafter: 2, winners: 3 };
+/** "Vinnaren" med en bild, "Vinnarna" med flera */
+export const winnersSubtitle = (count: number) => (count <= 1 ? "Vinnaren" : "Vinnarna");
+/**
+ * Förvalda texter per läge: nyheten använder temats rubrik och underrubrik,
+ * bildlägena har temats underrubrik som rubrik och en kort underrubrik.
+ */
+export function modeTexts(mode: CampaignMode, theme: { name: string; title: string; subtitle: string } | null | undefined, count = 0, year = new Date().getFullYear()): { title: string; subtitle: string } {
+  if (!theme) return { title: "", subtitle: "" };
+  if (mode === "news") return { title: theme.title, subtitle: theme.subtitle };
+  if (mode === "winners") return { title: `${theme.name} ${year}`, subtitle: winnersSubtitle(count) };
+  return { title: theme.subtitle || theme.title, subtitle: mode === "beforeafter" ? "Före och efter" : "Deltagare" };
+}
 /** Beskärning: bildens mittpunkt (0–1) och zoom (1 = så stor som möjligt) */
 export interface CampaignCrop { x: number; y: number; z: number }
 export const DEFAULT_CROP: CampaignCrop = { x: 0.5, y: 0.4, z: 1 };
@@ -141,12 +159,12 @@ function fitTitle(ctx: CanvasRenderingContext2D, text: string, maxW: number, max
 }
 
 /** Bild i ram (som hockeykorten): ljus kant, rundade hörn och skugga */
-function framedPhoto(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null, slot: PeopleSlot, crop: CampaignCrop | undefined, accent: string) {
-  const border = Math.max(4, Math.round(slot.w * 0.022));
+function framedPhoto(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null, slot: PeopleSlot, crop: CampaignCrop | undefined, accent: string, frame = "#f4f4f2") {
+  const border = Math.max(4, Math.round(slot.w * (frame === "#f4f4f2" ? 0.022 : 0.03)));
   const r = Math.max(8, slot.w * 0.05);
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = Math.max(14, slot.w * 0.08); ctx.shadowOffsetY = Math.max(5, slot.w * 0.025);
-  ctx.fillStyle = "#f4f4f2";
+  ctx.fillStyle = frame;
   roundRect(ctx, slot.x - border, slot.y - border, slot.w + border * 2, slot.h + border * 2, r + border);
   ctx.fill();
   ctx.restore();
@@ -331,6 +349,124 @@ function emptySlot(ctx: CanvasRenderingContext2D, slot: PeopleSlot, text: string
 
 const labelSize = (w: number) => clamp(Math.round(w * 0.105), 22, 42);
 
+/** Guld, silver och brons */
+const METAL = ["#f5c84c", "#d5dde6", "#d4915a"];
+const METAL_DARK = ["#a8791a", "#8c98a6", "#8a5326"];
+
+export interface PodiumSlot extends PeopleSlot { place: number; blockH: number }
+/**
+ * Prispallen (1–3 vinnare, bilderna 4:5): tvåan till vänster, ettan i mitten
+ * (störst, på högsta klossen), trean till höger. Alla står på samma golv.
+ * nameH = plats för namnet mellan bilden och klossen. Exporteras för test.
+ */
+export function podiumSlots(n: number, top: number, bottom: number, nameH = 66): PodiumSlot[] {
+  const count = clamp(n, 0, 3);
+  if (!count) return [];
+  const order = count === 1 ? [0] : count === 2 ? [1, 0] : [1, 0, 2];
+  const small = 0.74, gap = 30, base = 420;
+  const units = order.reduce((sum, p) => sum + (p === 0 ? 1 : small), 0);
+  let w1 = Math.min(count === 1 ? 500 : base, (IG_W - 100 - gap * (count - 1)) / units);
+  const blocks = [118, 80, 54];
+  const need = (w: number) => w * 0.3 + w * 1.25 + nameH + blocks[0] * (w / base);
+  while (w1 > 80 && need(w1) > bottom - top) w1 -= 2;
+  const k = w1 / base;
+  const total = order.reduce((sum, p) => sum + (p === 0 ? w1 : w1 * small), 0) + gap * (count - 1);
+  let x = IG_W / 2 - total / 2;
+  const out: PodiumSlot[] = [];
+  for (const place of order) {
+    const w = place === 0 ? w1 : w1 * small, h = w * 1.25, blockH = blocks[place] * k;
+    out.push({ place, x, y: bottom - blockH - nameH - h, w, h, blockH });
+    x += w + gap;
+  }
+  return out.sort((a, b) => a.place - b.place);
+}
+
+/** Guldmustasch – kronan över vinnaren */
+function goldMustache(ctx: CanvasRenderingContext2D, cx: number, cy: number, w: number) {
+  const h = w * 0.36;
+  const half = (dir: 1 | -1) => {
+    ctx.moveTo(cx, cy - h * 0.12);
+    ctx.bezierCurveTo(cx + dir * w * 0.14, cy - h * 0.62, cx + dir * w * 0.34, cy - h * 0.3, cx + dir * w * 0.42, cy + h * 0.02);
+    ctx.bezierCurveTo(cx + dir * w * 0.47, cy + h * 0.2, cx + dir * w * 0.53, cy - h * 0.05, cx + dir * w * 0.5, cy - h * 0.32);
+    ctx.bezierCurveTo(cx + dir * w * 0.6, cy - h * 0.02, cx + dir * w * 0.52, cy + h * 0.5, cx + dir * w * 0.36, cy + h * 0.46);
+    ctx.bezierCurveTo(cx + dir * w * 0.22, cy + h * 0.44, cx + dir * w * 0.1, cy + h * 0.18, cx, cy + h * 0.28);
+    ctx.closePath();
+  };
+  ctx.save();
+  ctx.beginPath(); half(1); half(-1);
+  const g = ctx.createLinearGradient(0, cy - h * 0.6, 0, cy + h * 0.5);
+  g.addColorStop(0, "#fff1b8"); g.addColorStop(0.45, "#f5c84c"); g.addColorStop(1, "#a8791a");
+  ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = w * 0.08; ctx.shadowOffsetY = w * 0.03;
+  ctx.fillStyle = g; ctx.fill();
+  ctx.shadowColor = "transparent";
+  ctx.lineWidth = Math.max(2, w * 0.022); ctx.strokeStyle = "#5c3d06"; ctx.lineJoin = "round"; ctx.stroke();
+  // Glans
+  ctx.globalAlpha = 0.55; ctx.strokeStyle = "#fffbe6"; ctx.lineWidth = Math.max(1.5, w * 0.012);
+  for (const dir of [1, -1]) { ctx.beginPath(); ctx.moveTo(cx + dir * w * 0.06, cy - h * 0.18); ctx.quadraticCurveTo(cx + dir * w * 0.2, cy - h * 0.42, cx + dir * w * 0.34, cy - h * 0.22); ctx.stroke(); }
+  ctx.restore();
+}
+
+/** Konfetti över hela bilden (fast slump – ser likadan ut varje gång) */
+function confetti(ctx: CanvasRenderingContext2D, accent: string) {
+  const W = ctx.canvas?.width ?? IG_W, H = ctx.canvas?.height ?? IG_H;
+  let seed = 11;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const cols = [accent, "#f5c84c", "#ffffff", accent, "#d5dde6"];
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  for (let i = 0; i < 110; i++) {
+    const x = rnd() * W, y = rnd() < 0.7 ? rnd() * H * 0.45 : rnd() * H, s = 6 + rnd() * 12;
+    ctx.save();
+    ctx.translate(x, y); ctx.rotate(rnd() * Math.PI);
+    ctx.globalAlpha = 0.45 + rnd() * 0.45;
+    ctx.fillStyle = cols[i % cols.length];
+    if (i % 3 === 0) { ctx.beginPath(); ctx.arc(0, 0, s * 0.35, 0, Math.PI * 2); ctx.fill(); }
+    else ctx.fillRect(-s / 2, -s * 0.2, s, s * 0.4);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+/** Etikett (t.ex. STÅLBORSTEN) över bildens nederkant, i medaljens färg */
+function prizeLabel(ctx: CanvasRenderingContext2D, text: string, slot: PeopleSlot, place: number) {
+  const h = clamp(slot.w * 0.15, 36, 64);
+  ctx.font = `700 ${Math.round(h * 0.55)}px ${HEAD}`;
+  ctx.letterSpacing = "3px";
+  const label = fit(ctx, text.toUpperCase(), slot.w * 1.05);
+  const w = Math.min(slot.w * 1.15, ctx.measureText(label).width + h * 0.9);
+  const x = slot.x + slot.w / 2 - w / 2, y = slot.y + slot.h - h * 0.55;
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 12;
+  ctx.fillStyle = "rgba(10,10,10,0.9)";
+  roundRect(ctx, x, y, w, h, h / 2); ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle = METAL[place]; ctx.lineWidth = 3;
+  roundRect(ctx, x, y, w, h, h / 2); ctx.stroke();
+  ctx.fillStyle = METAL[place]; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(label, slot.x + slot.w / 2 + 1, y + h / 2 + 1);
+  ctx.textBaseline = "alphabetic"; ctx.letterSpacing = "0px";
+}
+
+/** Klossen på prispallen med placeringens siffra */
+function podiumBlock(ctx: CanvasRenderingContext2D, slot: PodiumSlot, floor: number) {
+  const x = slot.x - 6, w = slot.w + 12, y = floor - slot.blockH;
+  const g = ctx.createLinearGradient(0, y, 0, floor);
+  g.addColorStop(0, METAL[slot.place]); g.addColorStop(1, METAL_DARK[slot.place]);
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = 18; ctx.shadowOffsetY = 6;
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  const r = 12;
+  ctx.moveTo(x, floor); ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r); ctx.lineTo(x + w, floor); ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.font = `700 ${Math.round(Math.min(slot.blockH * 0.75, slot.w * 0.3))}px ${HEAD}`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(String(slot.place + 1), slot.x + slot.w / 2, y + slot.blockH / 2 + 3);
+  ctx.textBaseline = "alphabetic";
+}
+
 /** bgUrl och decorate kommer från mediaImages (bakgrundslistan och överläggen) */
 export async function renderCampaign(d: CampaignPostData, look: { bgUrl: string; decorate: (ctx: CanvasRenderingContext2D) => void }): Promise<HTMLCanvasElement> {
   const [bg, sp] = await Promise.all([d.photo ? Promise.resolve(null) : tryLoad(look.bgUrl), tryLoad(d.sponsor?.logo)]);
@@ -338,6 +474,9 @@ export async function renderCampaign(d: CampaignPostData, look: { bgUrl: string;
   if (d.photo) photoBackdrop(ctx, d.photo, d.photoDim ?? 0.5); else backdrop(ctx, bg, d.photoDim ?? 0.55);
   look.decorate(ctx);
   contentArea(ctx);
+  // Vinnare: "Vinnaren"/"Vinnarna" efter antalet bilder (om underrubriken är förvalet)
+  if (d.mode === "winners" && (d.subtitle === "Vinnaren" || d.subtitle === "Vinnarna")) d = { ...d, subtitle: winnersSubtitle(Math.min(3, d.people.length)) };
+  if (d.mode === "winners") confetti(ctx, d.accent);
   const hits: CampaignHit[] = [];
   const offsetY = d.format === "story" ? STORY_TOP : 0;
   const hit = (index: number, slot: PeopleSlot) => hits.push({ index, x: slot.x, y: slot.y + offsetY, w: slot.w, h: slot.h });
@@ -367,7 +506,25 @@ export async function renderCampaign(d: CampaignPostData, look: { bgUrl: string;
     const headerBottom = d.logo ? sideHeader(ctx, d, d.logo) : centeredHeader(ctx, d, 76);
     const top = headerBottom + 34;
     const gridBottom = sloganH ? sloganY - 30 : bottom;
-    if (d.mode === "beforeafter") {
+    if (d.mode === "winners") {
+      // Prispallen: ettan störst i mitten med guldmustasch, tvåan och trean på sidorna
+      const people = d.people.slice(0, 3);
+      const nameH = 66;
+      const slots = podiumSlots(Math.max(1, people.length), top, gridBottom, nameH);
+      for (const slot of slots) {
+        const p = people[slot.place];
+        podiumBlock(ctx, slot, gridBottom);
+        if (!p?.image) { emptySlot(ctx, slot, "Vinnare"); continue; }
+        const border = framedPhoto(ctx, p.image, slot, p.crop, d.accent, METAL[slot.place]);
+        hit(slot.place, slot);
+        if (p.tag?.trim()) prizeLabel(ctx, p.tag, slot, slot.place);
+        if (p.name.trim()) {
+          const size = clamp(Math.round(slot.w * (slot.place === 0 ? 0.095 : 0.11)), 22, 44);
+          nameLine(ctx, p.name, p.number, slot.x + slot.w / 2, slot.y + slot.h + border + nameH * 0.62, nameSize(ctx, p.name, p.number, size, slot.w + 40), slot.w + 40, d.accent);
+        }
+        if (slot.place === 0) goldMustache(ctx, slot.x + slot.w / 2, slot.y - slot.w * 0.13, slot.w * 0.72);
+      }
+    } else if (d.mode === "beforeafter") {
       // Två bilder (4:5) bredvid varandra, namnet under
       const pair = [d.people[0], d.people[1]];
       const nameH = d.people[0]?.name ? 64 : 0;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cropRect, moveCrop, zoomCrop, peopleColumns, peopleSlots, MAX_PEOPLE } from "./campaignImages";
+import { cropRect, moveCrop, zoomCrop, peopleColumns, peopleSlots, podiumSlots, modeTexts, winnersSubtitle, MAX_PEOPLE } from "./campaignImages";
 
 describe("kampanjmallen – beskärning", () => {
   it("fyller alltid rutan och håller sig inom bilden", () => {
@@ -85,5 +85,43 @@ describe("kampanjmallen – deltagarnas rutnät", () => {
     expect(a.h / a.w).toBeCloseTo(5 / 4);
     expect(a.y).toBeCloseTo(b.y);
     expect(a.w).toBeLessThanOrEqual(470);
+  });
+});
+
+describe("kampanjmallen – vinnare", () => {
+  it("prispallen: ettan störst i mitten och högst, alla på samma golv, inom ytan", () => {
+    for (const n of [1, 2, 3]) {
+      const top = 280, floor = 1060, nameH = 66;
+      const slots = podiumSlots(n, top, floor, nameH);
+      expect(slots.map((x) => x.place)).toEqual([0, 1, 2].slice(0, n));
+      const [first, ...rest] = slots;
+      for (const s of slots) {
+        expect(s.h / s.w).toBeCloseTo(1.25);
+        expect(s.y + s.h + nameH + s.blockH).toBeCloseTo(floor); // står på golvet
+        expect(s.x).toBeGreaterThanOrEqual(50 - 1e-6);
+        expect(s.x + s.w).toBeLessThanOrEqual(1030 + 1e-6);
+        expect(s.y - s.w * 0.3).toBeGreaterThanOrEqual(top - 1); // plats för guldmustaschen
+      }
+      for (const r of rest) {
+        expect(r.w).toBeLessThan(first.w);
+        expect(r.y).toBeGreaterThan(first.y); // ettan står högst
+      }
+      if (n === 3) {
+        const byX = [...slots].sort((a, b) => a.x - b.x).map((x) => x.place);
+        expect(byX).toEqual([1, 0, 2]); // tvåan vänster, ettan mitten, trean höger
+      }
+    }
+  });
+  it("Vinnaren med en bild, Vinnarna med flera", () => {
+    expect(winnersSubtitle(0)).toBe("Vinnaren");
+    expect(winnersSubtitle(1)).toBe("Vinnaren");
+    expect(winnersSubtitle(3)).toBe("Vinnarna");
+  });
+  it("förvalda texter per läge", () => {
+    const t = { name: "Mustaschkampen", title: "Var med i Mustaschkampen", subtitle: "Tillsammans mot prostatacancer" };
+    expect(modeTexts("news", t)).toEqual({ title: "Var med i Mustaschkampen", subtitle: "Tillsammans mot prostatacancer" });
+    expect(modeTexts("people", t)).toEqual({ title: "Tillsammans mot prostatacancer", subtitle: "Deltagare" });
+    expect(modeTexts("beforeafter", t)).toEqual({ title: "Tillsammans mot prostatacancer", subtitle: "Före och efter" });
+    expect(modeTexts("winners", t, 2, 2026)).toEqual({ title: "Mustaschkampen 2026", subtitle: "Vinnarna" });
   });
 });
