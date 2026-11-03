@@ -37,6 +37,7 @@ vi.mock("@/lib/trpc", () => {
         setAutoNews: { useMutation: m },
       },
       club: { get: { useQuery: () => q({ club: {}, overrides: {}, features: { opponents: false } }) } },
+      campaign: { badge: { useQuery: () => q({ name: "Mustaschkampen", logo: "/images/campaigns/movember.png?v=5" }) } },
       notifications: {
         get: { useQuery: () => q({ smtpConfigured: false, from: null, types: [{ id: "matchPending", label: "Match väntar på godkännande" }], recipients: [] }) },
         set: { useMutation: m }, test: { useMutation: m },

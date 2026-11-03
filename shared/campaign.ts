@@ -15,3 +15,15 @@ export function themeLogoPath(t: { id: number; builtin: string | null; hasLogo: 
   if (t.hasLogo) return `/api/media/themes/${t.id}/logo?v=${new Date(t.updatedAt).getTime()}`;
   return t.builtin ? `/images/campaigns/${t.builtin}.png?v=${BUILTIN_LOGO_VERSION}` : null;
 }
+
+/**
+ * Kampanjmånaden (november, svensk tid): då kan kampanjens logga följa med i
+ * matchrapporten, laget.se-nyheten och Score Tracker. Datumet är matchens
+ * eller evenemangets (så att en novembermatch får loggan även om rapporten görs i december).
+ */
+export function isCampaignMonth(date: Date | string | null | undefined = new Date()): boolean {
+  const d = date instanceof Date ? date : date ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(date) ? `${date}T12:00:00` : date) : new Date();
+  if (Number.isNaN(d.getTime())) return false;
+  const month = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", month: "numeric" }).format(d);
+  return Number(month) === 11;
+}

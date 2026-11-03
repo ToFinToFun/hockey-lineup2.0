@@ -7,6 +7,14 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.18.0 – 2026-11-03
+
+- **Mustaschkampen-loggan i november**, diskret:
+  - **Matchrapporten:** liten logga i övre högra hörnet på resultat- och målbilden.
+  - **Nyhet till laget.se:** loggan mellan lagens loggor med "VS" under – i bildens mitt, det som syns i flödet.
+  - **Score Tracker:** litet märke mellan lagens loggor.
+- Rapporten, nyheten och den automatiska nyheten (Inställningar) har en kryssruta för loggan – förkryssad för matcher i november (matchens datum), osynlig resten av året. Laddas en annan logga upp under Media → Kampanj → Ändra tema används den.
+
 ## 3.17.1 – 2026-11-01
 
 - **Vinnare: etiketterna hör till platsen.** Flyttas en bild upp eller ned (eller tas bort) blir det fortfarande Stålborsten på 1:an, Snorbromsen på 2:an och Dunläppen på 3:an. En egen etikett följer personen. Samma för Före/Efter.

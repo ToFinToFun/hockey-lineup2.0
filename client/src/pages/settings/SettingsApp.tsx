@@ -8,6 +8,7 @@
  *  - Om appen: version och databas
  * Fliken styrs av ?flik= i adressen, så länkar och tillbaka-knappen fungerar.
  */
+import { useCampaignBadge } from "@/lib/campaignBadge";
 import { useEffect, useState } from "react";
 import { Link, useSearch, useLocation } from "wouter";
 import { ArrowLeft, Gauge, Handshake, CalendarRange, Link2, Info, Loader2, CheckCircle2, AlertTriangle, ExternalLink, Bell, Shield, Swords, KeyRound, ChevronRight, Radio, Globe } from "lucide-react";
@@ -171,7 +172,9 @@ function AutoNewsSettings() {
   const utils = trpc.useUtils();
   const q = trpc.laget.autoNews.useQuery();
   const save = trpc.laget.setAutoNews.useMutation({ onSuccess: () => { void utils.laget.autoNews.invalidate(); } });
-  const [cfg, setCfg] = useState<{ enabled: boolean; minutesBefore: number; minPlayers: number } | null>(null);
+  const [cfg, setCfg] = useState<{ enabled: boolean; minutesBefore: number; minPlayers: number; campaignLogo?: boolean } | null>(null);
+  // Mustaschkampen: valet syns bara i november (som i Nyhet till laget.se)
+  const campaignBadge = useCampaignBadge();
   useEffect(() => { if (q.data && !cfg) setCfg(q.data.config); }, [q.data, cfg]);
   if (!cfg) return null;
   const dirty = JSON.stringify(cfg) !== JSON.stringify(q.data?.config);
@@ -195,6 +198,12 @@ function AutoNewsSettings() {
             className="w-full rounded-lg bg-white/5 border border-white/10 text-white text-sm px-2.5 py-1.5" />
         </label>
       </div>
+      {campaignBadge && (
+        <label className="flex items-center gap-2 text-[11px] text-white/60">
+          <input type="checkbox" checked={cfg.campaignLogo !== false} onChange={(e) => setCfg({ ...cfg, campaignLogo: e.target.checked })} />
+          {campaignBadge.name}-loggan mellan lagen (november)
+        </label>
+      )}
       <p className="text-[10px] text-white/35">
         Redan publicerade nyheter rörs inte. Förhandsvisning (eller varning vid för få spelare) går ut 15 min innan till dem som valt det under Notiser.
       </p>

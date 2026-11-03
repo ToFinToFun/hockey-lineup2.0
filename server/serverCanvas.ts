@@ -49,7 +49,15 @@ async function init(): Promise<Napi | null> {
           if (!asset) throw new Error(`Saknar logga ${src}`);
           return (await napi!.loadImage(asset.image)) as unknown as HTMLImageElement;
         }
-        const file = src.startsWith("/") ? path.join(pub, src) : src;
+        if (src.startsWith("/api/media/themes/")) {
+          // Kampanjtemats uppladdade logga (t.ex. Mustaschkampen i nyhetsbilden)
+          const { getThemeImage } = await import("./mediaThemes");
+          const asset = await getThemeImage(Number(src.split("/")[4]), "logo");
+          if (!asset) throw new Error(`Saknar logga ${src}`);
+          return (await napi!.loadImage(asset.image)) as unknown as HTMLImageElement;
+        }
+        // Statiska filer (adresser kan ha ?v= för cachen)
+        const file = src.startsWith("/") ? path.join(pub, src.split("?")[0]) : src;
         return (await napi!.loadImage(file)) as unknown as HTMLImageElement;
       },
     });

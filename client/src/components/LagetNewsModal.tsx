@@ -2,6 +2,7 @@
 // Publicera direkt på laget.se (servern loggar in med föreningens konto),
 // eller spara bilden och kopiera texten för att lägga in den manuellt.
 
+import { useCampaignBadge } from "@/lib/campaignBadge";
 import { teamAccent, teamName } from "@shared/teams";
 import { club } from "@shared/club";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -83,6 +84,8 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
   const { onClose, teamAName, teamBName, teamASlots, teamBSlots, teamALineup, teamBLineup, lineupText, logoWhite, logoGreen, bgUrl } = props;
 
   const [event, setEvent] = useState<EventDetails | null>(null);
+  /** Märket gäller evenemangets dag (annars i dag) */
+  const campaignBadge = useCampaignBadge(event?.date ?? null);
   const [eventLoaded, setEventLoaded] = useState(false);
   const { sponsors, query: sponsorsQuery } = useSponsors();
   const activeSponsors = useMemo(() => sponsors.filter((s) => s.active), [sponsors]);
@@ -98,6 +101,8 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
     setSponsorId(pickLeastShown(activeSponsors, (s) => s.counts.lineups)?.id ?? 0);
   }, [sponsorId, sponsorsQuery.isLoading, activeSponsors]);
   const [home, setHome] = useState<TeamKey>("a");
+  // Mustaschkampen: loggan mellan lagen (i stället för VS) för matcher i november – förkryssad
+  const [showCampaign, setShowCampaign] = useState(true);
   const [title, setTitle] = useState("");
   const [titleEdited, setTitleEdited] = useState(false);
   const [body, setBody] = useState("");
@@ -216,6 +221,7 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
       sponsor,
       sponsorLogoUrl: sponsorObj?.logo ?? undefined,
       backgroundUrl: p.bgUrl,
+      campaignLogoUrl: campaignBadge && showCampaign ? campaignBadge.logo : null,
     })
       .then(
         (canvas) =>
@@ -236,7 +242,7 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
     return () => {
       cancelled = true;
     };
-  }, [eventLoaded, home, sponsorId, sponsor, sponsorObj?.logo, placeLine, event?.date, contentKey]);
+  }, [eventLoaded, home, sponsorId, sponsor, sponsorObj?.logo, placeLine, event?.date, contentKey, campaignBadge?.logo, showCampaign]);
 
   useEffect(() => () => {
     if (imageUrl) URL.revokeObjectURL(imageUrl);
@@ -418,6 +424,12 @@ export function LagetNewsModal(props: LagetNewsModalProps) {
               </div>
               <p className="text-white/35 text-[10px] mt-1">Hemmalaget står till vänster i matchbilden. Standard: {homeRuleText()}, andra dagar slumpas.</p>
             </div>
+            {campaignBadge && (
+              <label className="flex items-center gap-2 text-[11px] text-white/60">
+                <input type="checkbox" checked={showCampaign} onChange={(e) => setShowCampaign(e.target.checked)} />
+                {campaignBadge.name}-loggan mellan lagen
+              </label>
+            )}
 
             <div>
               <label className="block text-white/50 text-[11px] mb-1.5" htmlFor="news-sponsor">Matchsponsor</label>
