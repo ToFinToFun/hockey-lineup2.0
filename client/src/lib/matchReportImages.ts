@@ -51,6 +51,20 @@ export interface ReportData {
   photoDim?: number;
   /** Media: 4:5 (standard) eller 9:16 */
   format?: PostFormat;
+  /** Kampanjens logga i övre högra hörnet (Mustaschkampen i november) – null/utan = ingen */
+  campaignLogo?: string | null;
+}
+
+/** Kampanjens logga, liten i övre högra hörnet (diskret, krockar inte med rubriken) */
+export function campaignCorner(ctx: CanvasRenderingContext2D, img: HTMLImageElement | null) {
+  if (!img) return;
+  const maxH = 150, maxW = 150;
+  const s = Math.min(maxH / img.height, maxW / img.width);
+  const w = img.width * s, h = img.height * s;
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 18; ctx.shadowOffsetY = 6;
+  ctx.drawImage(img, IG_W - 38 - w, 34, w, h);
+  ctx.restore();
 }
 
 /** Lagets färg i rapporten: rapportens egen (motståndare) eller klubbens. */
@@ -230,14 +244,15 @@ export function star(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: n
 /** Bild 1: resultatet */
 export async function renderResultImage(d: ReportData): Promise<HTMLCanvasElement> {
   await ensureFonts();
-  const [bg, lw, lg, ...sp] = await Promise.all([
-    tryLoad(d.background), tryLoad(d.logoWhite), tryLoad(d.logoGreen), tryLoad(d.sponsor?.logo),
+  const [bg, lw, lg, cl, ...sp] = await Promise.all([
+    tryLoad(d.background), tryLoad(d.logoWhite), tryLoad(d.logoGreen), tryLoad(d.campaignLogo), tryLoad(d.sponsor?.logo),
   ]);
   const [c, ctx] = canvas(frameHeight(d.format));
   if (d.photo) photoBackdrop(ctx, d.photo, d.photoDim ?? 0.5);
   else backdrop(ctx, bg);
   contentArea(ctx);
-  header(ctx, fit(ctx, (d.title?.trim() || "Slutresultat").toUpperCase(), IG_W - 120), d.dateLine);
+  header(ctx, fit(ctx, (d.title?.trim() || "Slutresultat").toUpperCase(), IG_W - (cl ? 400 : 120)), d.dateLine);
+  campaignCorner(ctx, cl);
 
   const whiteWon = d.whiteScore > d.greenScore;
   const greenWon = d.greenScore > d.whiteScore;
@@ -371,10 +386,11 @@ export function goalsLayout(n: number, top = 300, bottom = IG_H - 90) {
 /** Bild 2: målen */
 export async function renderGoalsImage(d: ReportData): Promise<HTMLCanvasElement> {
   await ensureFonts();
-  const [bg] = await Promise.all([tryLoad(d.background)]);
+  const [bg, cl] = await Promise.all([tryLoad(d.background), tryLoad(d.campaignLogo)]);
   const [c, ctx] = canvas();
   backdrop(ctx, bg, 0.72);
   header(ctx, "MÅLEN", `${d.whiteName} ${d.whiteScore}–${d.greenScore} ${d.greenName} · ${d.dateLine}`);
+  campaignCorner(ctx, cl);
 
   if (d.goals.length === 0) {
     ctx.textAlign = "center";

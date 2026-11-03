@@ -39,6 +39,8 @@ export interface NewsImageOptions {
   sponsor?: string;
   sponsorLogoUrl?: string;
   backgroundUrl: string;
+  /** Kampanjens logga mellan lagens loggor i stället för "VS" (Mustaschkampen i november) */
+  campaignLogoUrl?: string | null;
 }
 
 const FONT_HEAD = "'Oswald', sans-serif";
@@ -246,7 +248,8 @@ function drawBand(
   logos: { a: HTMLImageElement | null; b: HTMLImageElement | null },
   sponsorLogo: HTMLImageElement | null,
   y: number,
-  h: number
+  h: number,
+  campaignLogo: HTMLImageElement | null = null
 ) {
   const W = L.WIDTH;
   const mid = W / 2;
@@ -281,10 +284,21 @@ function drawBand(
   drawLogo(ctx, left.logo, mid - dx, logoY, logoR, left.team.accent, left.team.name);
   drawLogo(ctx, right.logo, mid + dx, logoY, logoR, right.team.accent, right.team.name);
 
-  ctx.font = `700 64px ${FONT_HEAD}`;
-  ctx.fillStyle = "rgba(255,255,255,0.55)";
   ctx.textBaseline = "middle";
-  ctx.fillText("VS", mid, logoY + 4);
+  if (campaignLogo) {
+    // Kampanjens logga mellan lagen – mindre än lagens loggor, i bildens mitt (syns i laget.se:s beskärning)
+    const box = 2 * (dx - logoR) - 40;
+    const s = Math.min(box / campaignLogo.width, (logoR * 1.75) / campaignLogo.height);
+    const w = campaignLogo.width * s, h = campaignLogo.height * s;
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 16; ctx.shadowOffsetY = 5;
+    ctx.drawImage(campaignLogo, mid - w / 2, logoY - h / 2, w, h);
+    ctx.restore();
+  } else {
+    ctx.font = `700 64px ${FONT_HEAD}`;
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.fillText("VS", mid, logoY + 4);
+  }
 
   ctx.font = `700 34px ${FONT_HEAD}`;
   ctx.letterSpacing = "4px";
@@ -340,11 +354,12 @@ function drawBand(
 /** Ritar hela nyhetsbilden och returnerar canvasen. */
 export async function renderNewsImage(opts: NewsImageOptions): Promise<HTMLCanvasElement> {
   await ensureFonts();
-  const [bg, logoA, logoB, sponsorLogo] = await Promise.all([
+  const [bg, logoA, logoB, sponsorLogo, campaignLogo] = await Promise.all([
     tryLoad(opts.backgroundUrl),
     tryLoad(opts.teamA.logoUrl),
     tryLoad(opts.teamB.logoUrl),
     tryLoad(opts.sponsor ? opts.sponsorLogoUrl : undefined),
+    tryLoad(opts.campaignLogoUrl ?? undefined),
   ]);
 
   const hA = teamPanelHeight(teamColumns(opts.teamA.slots, opts.teamA.lineup));
@@ -362,7 +377,7 @@ export async function renderNewsImage(opts: NewsImageOptions): Promise<HTMLCanva
   ctx.fillRect(0, 0, layout.width, layout.height);
 
   drawTeamPanel(ctx, opts.teamA, logoA, layout.panelA.y, layout.panelA.h);
-  drawBand(ctx, opts, { a: logoA, b: logoB }, sponsorLogo, layout.band.y, layout.band.h);
+  drawBand(ctx, opts, { a: logoA, b: logoB }, sponsorLogo, layout.band.y, layout.band.h, campaignLogo);
   drawTeamPanel(ctx, opts.teamB, logoB, layout.panelB.y, layout.panelB.h);
 
   return canvas;

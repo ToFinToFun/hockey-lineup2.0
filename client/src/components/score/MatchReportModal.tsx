@@ -3,6 +3,7 @@
  * Två bilder i 4:5 – resultatet och målen – plus en färdig bildtext.
  * Dela öppnar telefonens delningsmeny (Instagram m.fl.), annars laddas bilderna ned.
  */
+import { useCampaignBadge } from "@/lib/campaignBadge";
 import { isTeamAWhite, teamName } from "@shared/teams";
 import { teamLogo, club, clubHeading } from "@shared/club";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -207,9 +208,12 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
   const removeTag = (tag: string) => saveTags.mutate(tags.filter((t) => t !== tag));
 
   const [showLocation, setShowLocation] = useState(true);
+  // Mustaschkampen: loggan i hörnet för matcher i november (förkryssat, går att ta bort)
+  const campaignBadge = useCampaignBadge(match.matchStartTime ?? match.matchEndTime ?? match.createdAt);
+  const [showCampaign, setShowCampaign] = useState(true);
   const opponentsQ = trpc.opponents.list.useQuery({ includeArchived: true }, { enabled: !!match.opponentId, staleTime: 5 * 60_000 });
   const opponent = match.opponentId ? opponentsQ.data?.find((o) => o.id === match.opponentId) ?? null : null;
-  const data = useMemo(() => buildReportData(match, stars, sponsor, showStats, titleDebounced, showLocation, opponent), [match, stars, sponsor?.name, sponsor?.logo, showStats, titleDebounced, showLocation, opponent]); // eslint-disable-line react-hooks/exhaustive-deps
+  const data = useMemo(() => ({ ...buildReportData(match, stars, sponsor, showStats, titleDebounced, showLocation, opponent), campaignLogo: campaignBadge && showCampaign ? campaignBadge.logo : null }), [match, stars, sponsor?.name, sponsor?.logo, showStats, titleDebounced, showLocation, opponent, campaignBadge?.logo, showCampaign]); // eslint-disable-line react-hooks/exhaustive-deps
   const autoCaption = useMemo(() => buildCaption(stars, sponsorName, tags, showStats), [stars, sponsorName, tags, showStats]);
   const [caption, setCaption] = useState(autoCaption);
   const [captionEdited, setCaptionEdited] = useState(false);
@@ -409,6 +413,12 @@ export function MatchReportModal({ match, onClose }: { match: ReportMatch; onClo
                 <label className="flex items-center gap-2 mt-2 text-[11px] text-white/60">
                   <input type="checkbox" checked={showLocation} onChange={(e) => setShowLocation(e.target.checked)} />
                   Visa plats ({match.location})
+                </label>
+              )}
+              {campaignBadge && (
+                <label className="flex items-center gap-2 mt-2 text-[11px] text-white/60">
+                  <input type="checkbox" checked={showCampaign} onChange={(e) => setShowCampaign(e.target.checked)} />
+                  {campaignBadge.name}-loggan i hörnet
                 </label>
               )}
             </div>

@@ -674,6 +674,11 @@ export const appRouter = router({
   // Öppen för alla 1 nov–5 dec, styrelsen (Media) hela året. Bilderna visas via
   // GET /api/campaign/entries/:id/photo (se server/_core/index.ts).
   campaign: router({
+    /** Kampanjens logga (för märket i matchrapport, nyhet och Score Tracker under november) */
+    badge: publicProcedure.query(async () => {
+      const theme = await campaignTheme();
+      return theme ? { name: theme.name, logo: themeLogoPath(theme) } : null;
+    }),
     /** Startsidan: visa modulen? (öppen för alla, eller styrelsen) */
     visible: publicProcedure.query(async ({ ctx }) => {
       const theme = await campaignTheme();

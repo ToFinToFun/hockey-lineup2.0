@@ -32,6 +32,14 @@ import { buildNewsBody, defaultHomeForDate, formatNewsTitle, shortDate } from ".
 import { lineupStateToText, generateLineupText } from "../client/src/lib/lineupText";
 import { listAsSlots } from "../client/src/lib/opponentList";
 import { createTeamSlots, MAX_TEAM_CONFIG } from "../client/src/lib/lineup";
+
+/** Kampanjens logga (Mustaschkampen) om matchen är i november, annars ingen */
+async function campaignLogoFor(date: string | null | undefined): Promise<string | null> {
+  const { isCampaignMonth, themeLogoPath } = await import("../shared/campaign");
+  if (!isCampaignMonth(date ?? new Date())) return null;
+  const { campaignTheme } = await import("./campaignEntries");
+  return themeLogoPath(await campaignTheme().catch(() => null));
+}
 import type { Player } from "../client/src/lib/players";
 
 export interface AutoNewsConfig {
@@ -168,6 +176,8 @@ export async function buildNews(ev: { date: string; time?: string; location?: st
     sponsor: sponsor?.name,
     sponsorLogoUrl: sponsor?.logo ?? undefined,
     backgroundUrl: "/images/background.jpg",
+    // Mustaschkampen: loggan mellan lagen för matcher i november (som förkryssat i appen)
+    campaignLogoUrl: await campaignLogoFor(ev.date),
   })) as unknown as import("@napi-rs/canvas").Canvas;
   const image = await canvas.encode("jpeg", 90);
 

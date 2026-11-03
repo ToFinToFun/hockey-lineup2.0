@@ -10,6 +10,7 @@ import { isOpponentPlayerId, opponentPlayerId } from "@shared/matchSetup";
 import { useState, useEffect, useCallback, useMemo, useRef, type CSSProperties } from "react";
 import { IMAGES, COLORS, STORAGE_KEY, type GoalEvent, type MatchState } from "@/lib/scoreConstants";
 import { useSponsors, pickLeastShown, logoForName } from "@/lib/sponsors";
+import { useCampaignBadge } from "@/lib/campaignBadge";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { resolveMatchStart, matchName, eventLocationFor, plannedMinutesFor } from "@shared/matchTiming";
 import { matchSides, type SideInfo } from "@/lib/matchSides";
@@ -64,6 +65,8 @@ function SideLogo({ side }: { side: SideInfo }) {
 
 export default function MatchPage({ lineupState }: MatchPageProps) {
   const sides = matchSides(lineupState?.setup, lineupState?.opponent, lineupState?.teamAName);
+  // Kampanjens logga (Mustaschkampen) mellan lagens loggor i november – offline: inget märke
+  const campaignBadge = useCampaignBadge();
   /** Rubrik i väljaren i lagets färg (mot annat lag: motståndarens färg) */
   const sideHeaderStyle = (team: "white" | "green"): CSSProperties => {
     if (!sides.external) return team === "white" ? { backgroundColor: "rgba(255,255,255,0.9)", color: "#1a1a1a" } : { backgroundColor: "rgba(51,121,49,0.85)", color: "#fff" };
@@ -717,7 +720,12 @@ export default function MatchPage({ lineupState }: MatchPageProps) {
         </div>
 
         {/* Teams Side by Side */}
-        <div className="flex gap-3">
+        <div className="relative flex gap-3">
+          {/* Mustaschkampen (november): litet märke mellan lagens loggor, ovanpå korten */}
+          {campaignBadge && (
+            <img src={campaignBadge.logo} alt={campaignBadge.name} title={campaignBadge.name}
+              className="absolute left-1/2 top-[26px] -translate-x-1/2 z-10 w-[60px] h-[60px] object-contain pointer-events-none drop-shadow-[0_4px_10px_rgba(0,0,0,0.7)]" />
+          )}
           {/* Team White */}
           <div className="flex-1 bg-[#2a2a2a]/80 rounded-3xl p-4 border border-[#3a3a3a] backdrop-blur-sm">
             <div className="flex justify-center mb-2">
