@@ -12,7 +12,7 @@ import { activitiesRouter } from "./routers/activities";
 import { memberRouter } from "./routers/member";
 import { appAttendance, getAttendanceSource, setAppAttendanceByName } from "./activities";
 import { newsExists, fetchAttendance, updateAttendance, publishNews, deleteNews, fetchAccountName, NEWS_ADMIN_URL, type AttendingStatus } from "./lagetSe";
-import { seasonHistory, seasonOf, recentForm, recentWinners } from "./playerHistory";
+import { seasonHistory, seasonOf, recentForm, recentWinners, teamCountsBetween } from "./playerHistory";
 import { ENV } from "./_core/env";
 import { setPlayerPhoto, deletePlayerPhoto, MAX_PHOTO_BASE64 } from "./playerPhotos";
 import { listCards, cardStats, saveCard, deleteCard, MAX_CARD_SOURCE_BASE64 } from "./playerCards";
@@ -1199,8 +1199,13 @@ export const appRouter = router({
         };
       }
 
-      const result: Record<string, { mostPlayed: string; stats: Record<string, number>; mostPlayedTeam?: string; teamStats?: Record<string, number>; record?: (typeof records)[string] }> = {};
-      for (const [playerKey, h] of Object.entries(history)) result[playerKey] = { ...h, record: records[playerKey] };
+      // Matcher per lag under det pågående hockeyåret (försäsong, säsong och slutspel – Inställningar → Perioder)
+      const { getCurrentPeriods } = await import("./periodsConfig");
+      const periods = await getCurrentPeriods();
+      const yearTeams = teamCountsBetween(allMatches, periods.preseasonFrom, periods.playoffTo);
+
+      const result: Record<string, { mostPlayed: string; stats: Record<string, number>; mostPlayedTeam?: string; teamStats?: Record<string, number>; record?: (typeof records)[string]; yearTeams?: { white: number; green: number } }> = {};
+      for (const [playerKey, h] of Object.entries(history)) result[playerKey] = { ...h, record: records[playerKey], yearTeams: yearTeams.get(playerKey) };
 
       return result;
     }),

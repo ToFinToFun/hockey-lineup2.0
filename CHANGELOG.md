@@ -7,6 +7,10 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.19.0 – 2026-11-13
+
+- **Lineup – spelarbrickan:** efter lagväljaren en vit och en grön ruta med hur många matcher spelaren spelat i Vita respektive Gröna under hockeyåret (försäsong, säsong och slutspel enligt Inställningar → Perioder). Förklaring vid hovring. Samma i truppens spelarruta i mobilen.
+
 ## 3.18.0 – 2026-11-03
 
 - **Mustaschkampen-loggan i november**, diskret:

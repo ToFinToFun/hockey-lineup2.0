@@ -53,6 +53,8 @@ export interface Player {
   statsTotal?: PlayerRecord;
   /** Form de senaste 10 matcherna, äldst först ("VFVVO…") – räknas fram, synkas inte. */
   statsForm?: string;
+  /** Matcher i Vita och Gröna under det pågående hockeyåret (försäsong, säsong, slutspel) */
+  statsTeams?: { white: number; green: number };
   /** Namnet som det står i laget.se om det skiljer sig. */
   lagetName?: string;
   /** Motståndarens spelare (id "opp-…") – inte i vårt register */

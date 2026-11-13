@@ -368,6 +368,7 @@ export default function Home() {
   type PosEntry = {
     mostPlayed: string; stats: Record<string, number>; mostPlayedTeam?: string; teamStats?: Record<string, number>;
     record?: { season: PlayerRecord & { label: string }; total: PlayerRecord; form?: string };
+    yearTeams?: { white: number; green: number };
   };
   const posHistoryRef = useRef<Record<string, PosEntry> | null>(null);
   // Alternativ position: manuell (hybridspelare) och tröskel för historiken
@@ -389,6 +390,8 @@ export default function Home() {
         enriched.statsTotal = hist.record.total;
         enriched.statsForm = hist.record.form ?? "";
       }
+      // Matcher per lag i år – spelare som inte spelat än får 0–0
+      enriched.statsTeams = hist?.yearTeams ?? { white: 0, green: 0 };
       // Andra positionen från historiken (om minst X % av matcherna)
       const sec = secondaryFromStats(p.position, hist?.stats, altThresholdRef.current);
       enriched.secondaryPosition = sec?.pos ?? null;

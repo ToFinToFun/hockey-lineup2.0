@@ -413,6 +413,7 @@ export function DraggablePlayerCard({
                       {label}
                     </button>
                   ))}
+                  <TeamYearCounts teams={player.statsTeams} />
                 </div>
               )}
               {/* Position */}
@@ -767,6 +768,22 @@ export function TrendIcon({ trendLabel, matchesPlayed, className = "" }: {
     case "falling": return <span className={`${base} text-red-400`} title="Fallande form – senaste 3 matcherna klart sämre än snittet">↓</span>;
     default: return <span className={`${base} text-white/40`} title="Stabil form – senaste 3 matcherna som snittet">→</span>;
   }
+}
+
+/**
+ * Matcher i Vita och Gröna under det pågående hockeyåret (försäsong, säsong och
+ * slutspel enligt Inställningar → Perioder) – en vit och en grön ruta med antalet.
+ */
+export function TeamYearCounts({ teams }: { teams?: { white: number; green: number } }) {
+  if (!teams) return null;
+  const box = "min-w-[26px] h-[24px] px-1.5 rounded flex items-center justify-center text-[11px] font-black tabular-nums leading-none";
+  const tip = (team: "white" | "green", n: number) => `${n} ${n === 1 ? "match" : "matcher"} i ${teamName(team)} i år (försäsong, säsong och slutspel)`;
+  return (
+    <div className="flex items-center gap-1 ml-1" onPointerDown={(e) => e.stopPropagation()}>
+      <span title={tip("white", teams.white)} aria-label={tip("white", teams.white)} className={`${box} bg-white text-slate-900`}>{teams.white}</span>
+      <span title={tip("green", teams.green)} aria-label={tip("green", teams.green)} className={`${box} bg-emerald-400 text-emerald-950`}>{teams.green}</span>
+    </div>
+  );
 }
 
 export function TeamColorIndicator({ teamColor, compact, mostPlayedTeam }: { teamColor: TeamColor; compact?: boolean; mostPlayedTeam?: "green" | "white" }) {

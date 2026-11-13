@@ -15,7 +15,7 @@ import { ALL_POSITIONS, getPositionBadgeColor, positionName } from "@/lib/player
 import type { Slot, TeamConfig } from "@/lib/lineup";
 import { useForwardColor } from "@/hooks/useForwardColor";
 import { usePirSettings, usePirEnabled } from "@/hooks/usePirEnabled";
-import { TeamColorIndicator, TrendIcon, AttendanceButtons, PositionShare, PlayerStatsSection } from "@/components/PlayerCard";
+import { TeamColorIndicator, TeamYearCounts, TrendIcon, AttendanceButtons, PositionShare, PlayerStatsSection } from "@/components/PlayerCard";
 import { sortRoster, positionsForSlot, slotTeamColor } from "@/lib/rosterSort";
 
 interface MobileRosterDrawerProps {
@@ -892,6 +892,7 @@ export function MobileRosterDrawer({
                         {label}
                       </button>
                     ))}
+                    <TeamYearCounts teams={editingPlayer.statsTeams} />
                   </div>
                 </div>
               )}

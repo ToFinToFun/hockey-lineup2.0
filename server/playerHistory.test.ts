@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MatchResult } from "../drizzle/schema";
-import { seasonHistory, seasonOf } from "./playerHistory";
+import { seasonHistory, seasonOf, teamCountsBetween } from "./playerHistory";
 
 const match = (date: string, white: number, green: number, lineup: Record<string, { id: string }>, goals: object[] = []) =>
   ({
@@ -28,5 +28,27 @@ describe("historik per säsong", () => {
     expect(a[1]).toMatchObject({ matches: 1, losses: 1, positions: { B: 1 } });
     expect(h.get("c")![0]).toMatchObject({ matches: 2, goals: 1, positions: { C: 2 }, teams: { white: 1, green: 1 } });
     expect(h.get("b")![0]).toMatchObject({ matches: 1, losses: 1, positions: { B: 1 } });
+  });
+});
+
+describe("matcher per lag under hockeyåret", () => {
+  const ids = (o: Record<string, string>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, { id: v }]));
+  it("räknar Vita och Gröna mellan försäsongens start och slutspelets slut (båda dagarna med)", () => {
+    const ms = [
+      match("2026-08-31T19:00:00Z", 1, 0, ids({ "team-a-fwd-1-c": "p1" })), // före försäsongen
+      match("2026-09-01T19:00:00Z", 2, 1, ids({ "team-a-fwd-1-c": "p1", "team-b-def-1-1": "p2" })), // första dagen
+      match("2026-11-12T20:00:00Z", 1, 3, ids({ "team-b-fwd-1-c": "p1", "team-a-gk-1": "p2" })),
+      match("2027-05-01T18:00:00Z", 0, 0, ids({ "team-b-fwd-1-c": "p1" })), // sista dagen
+      match("2027-05-02T18:00:00Z", 0, 0, ids({ "team-a-fwd-1-c": "p1" })), // efter slutspelet
+    ];
+    const t = teamCountsBetween(ms, "2026-09-01", "2027-05-01");
+    expect(t.get("p1")).toEqual({ white: 1, green: 2 });
+    expect(t.get("p2")).toEqual({ white: 1, green: 1 });
+    expect(t.get("p3")).toBeUndefined();
+  });
+  it("lag A är Gröna när matchen sparats så", () => {
+    const m = match("2026-10-01T19:00:00Z", 1, 0, ids({ "team-a-fwd-1-c": "p1" }));
+    (m.lineup as { teamAName: string }).teamAName = "Gröna";
+    expect(teamCountsBetween([m], "2026-09-01", "2027-05-01").get("p1")).toEqual({ white: 0, green: 1 });
   });
 });

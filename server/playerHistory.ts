@@ -160,3 +160,33 @@ export function recentWinners(matches: MatchResult[], n = 30): MatchWinner[] {
 export function normalizeGoalType(other: string | null | undefined): "Straff" | null {
   return (other ?? "").trim() === "Straff" ? "Straff" : null;
 }
+
+/** Svenskt datum (ÅÅÅÅ-MM-DD) för en match */
+function matchDay(m: MatchResult): string {
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", year: "numeric", month: "2-digit", day: "2-digit" }).format(matchDate(m));
+}
+
+/**
+ * Matcher per lag (Vita/Gröna) för varje spelare mellan två datum (inklusive),
+ * t.ex. hela hockeyåret: försäsongens start till slutspelets slut.
+ */
+export function teamCountsBetween(matches: MatchResult[], from: string, to: string): Map<string, { white: number; green: number }> {
+  const out = new Map<string, { white: number; green: number }>();
+  for (const m of matches) {
+    const wrap = m.lineup as { teamAName?: string; lineup?: Record<string, { id?: string }> } | null;
+    if (!wrap?.lineup) continue;
+    const day = matchDay(m);
+    if (day < from || day > to) continue;
+    const teamAWhite = isTeamAWhite(wrap.teamAName);
+    const seen = new Set<string>();
+    for (const [slot, p] of Object.entries(wrap.lineup)) {
+      if (!p?.id || seen.has(p.id)) continue;
+      seen.add(p.id);
+      const team: "white" | "green" = slot.startsWith("team-a") === teamAWhite ? "white" : "green";
+      let c = out.get(p.id);
+      if (!c) out.set(p.id, (c = { white: 0, green: 0 }));
+      c[team]++;
+    }
+  }
+  return out;
+}
