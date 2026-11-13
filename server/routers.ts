@@ -12,7 +12,7 @@ import { activitiesRouter } from "./routers/activities";
 import { memberRouter } from "./routers/member";
 import { appAttendance, getAttendanceSource, setAppAttendanceByName } from "./activities";
 import { newsExists, fetchAttendance, updateAttendance, publishNews, deleteNews, fetchAccountName, NEWS_ADMIN_URL, type AttendingStatus } from "./lagetSe";
-import { seasonHistory, seasonOf, recentForm, recentWinners, teamCountsBetween } from "./playerHistory";
+import { seasonHistory, seasonOf, recentForm, recentWinners } from "./playerHistory";
 import { ENV } from "./_core/env";
 import { setPlayerPhoto, deletePlayerPhoto, MAX_PHOTO_BASE64 } from "./playerPhotos";
 import { listCards, cardStats, saveCard, deleteCard, MAX_CARD_SOURCE_BASE64 } from "./playerCards";
@@ -1181,6 +1181,8 @@ export const appRouter = router({
       const seasonNow = seasonOf(new Date());
       const form = recentForm(allMatches, 10);
       const records: Record<string, { season: PlayerRecord & { label: string }; total: PlayerRecord; form: string }> = {};
+      // Matcher per lag under hockeyåret – samma underlag som GP, så rutorna summerar till säsongens matcher
+      const yearTeams = new Map<string, { white: number; green: number }>();
       for (const [id, lines] of seasonHistory(allMatches)) {
         const total: PlayerRecord = { matches: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0 };
         for (const l of lines) {
@@ -1188,6 +1190,7 @@ export const appRouter = router({
           total.losses += l.losses; total.goals += l.goals; total.assists += l.assists;
         }
         const cur = lines.find((l) => l.season === seasonNow);
+        if (cur) yearTeams.set(id, { white: cur.teams.white, green: cur.teams.green });
         records[id] = {
           season: {
             label: seasonNow,
@@ -1198,11 +1201,6 @@ export const appRouter = router({
           form: (form.players.get(id) ?? []).join(""),
         };
       }
-
-      // Matcher per lag under det pågående hockeyåret (försäsong, säsong och slutspel – Inställningar → Perioder)
-      const { getCurrentPeriods } = await import("./periodsConfig");
-      const periods = await getCurrentPeriods();
-      const yearTeams = teamCountsBetween(allMatches, periods.preseasonFrom, periods.playoffTo);
 
       const result: Record<string, { mostPlayed: string; stats: Record<string, number>; mostPlayedTeam?: string; teamStats?: Record<string, number>; record?: (typeof records)[string]; yearTeams?: { white: number; green: number } }> = {};
       for (const [playerKey, h] of Object.entries(history)) result[playerKey] = { ...h, record: records[playerKey], yearTeams: yearTeams.get(playerKey) };

@@ -4,7 +4,8 @@
  * Varje sparad match innehåller uppställningen som den såg ut då, så vi vet
  * vilka som spelade, i vilket lag och på vilken position. Spelarna kopplas via
  * fast ID (se playersDb.canonicalizeMatch), så historiken följer med vid namn-
- * och nummerbyte. En säsong räknas från 1 augusti till 31 juli.
+ * och nummerbyte. En säsong (hockeyår) räknas från försäsongens start enligt
+ * Inställningar → Perioder (standard 1 september) och ett år framåt.
  */
 import { isTeamAWhite } from "../shared/teams";
 import type { MatchResult } from "../drizzle/schema";
@@ -23,11 +24,22 @@ export interface SeasonLine {
   teams: { white: number; green: number };
 }
 
-const SEASON_START_MONTH = 7; // augusti (0-indexerat)
+/** Hockeyårets start som "MM-DD" – försäsongens start (Inställningar → Perioder) */
+let seasonStart = "09-01";
+export function setSeasonStart(md: string) {
+  if (/^\d{2}-\d{2}$/.test(md)) seasonStart = md;
+}
 
+/** Svensk tid: år och "MM-DD" */
+function stockholmYMD(date: Date): { y: number; md: string } {
+  const [y, m, d] = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", year: "numeric", month: "2-digit", day: "2-digit" }).format(date).split("-");
+  return { y: Number(y), md: `${m}-${d}` };
+}
+
+/** Hockeyåret ett datum hör till, t.ex. "2026/27" (från försäsongens start) */
 export function seasonOf(date: Date): string {
-  const y = date.getFullYear();
-  const start = date.getMonth() >= SEASON_START_MONTH ? y : y - 1;
+  const { y, md } = stockholmYMD(date);
+  const start = md >= seasonStart ? y : y - 1;
   return `${start}/${String((start + 1) % 100).padStart(2, "0")}`;
 }
 
@@ -161,32 +173,3 @@ export function normalizeGoalType(other: string | null | undefined): "Straff" | 
   return (other ?? "").trim() === "Straff" ? "Straff" : null;
 }
 
-/** Svenskt datum (ÅÅÅÅ-MM-DD) för en match */
-function matchDay(m: MatchResult): string {
-  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", year: "numeric", month: "2-digit", day: "2-digit" }).format(matchDate(m));
-}
-
-/**
- * Matcher per lag (Vita/Gröna) för varje spelare mellan två datum (inklusive),
- * t.ex. hela hockeyåret: försäsongens start till slutspelets slut.
- */
-export function teamCountsBetween(matches: MatchResult[], from: string, to: string): Map<string, { white: number; green: number }> {
-  const out = new Map<string, { white: number; green: number }>();
-  for (const m of matches) {
-    const wrap = m.lineup as { teamAName?: string; lineup?: Record<string, { id?: string }> } | null;
-    if (!wrap?.lineup) continue;
-    const day = matchDay(m);
-    if (day < from || day > to) continue;
-    const teamAWhite = isTeamAWhite(wrap.teamAName);
-    const seen = new Set<string>();
-    for (const [slot, p] of Object.entries(wrap.lineup)) {
-      if (!p?.id || seen.has(p.id)) continue;
-      seen.add(p.id);
-      const team: "white" | "green" = slot.startsWith("team-a") === teamAWhite ? "white" : "green";
-      let c = out.get(p.id);
-      if (!c) out.set(p.id, (c = { white: 0, green: 0 }));
-      c[team]++;
-    }
-  }
-  return out;
-}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MatchResult } from "../drizzle/schema";
-import { seasonHistory, seasonOf, teamCountsBetween } from "./playerHistory";
+import { seasonHistory, seasonOf, setSeasonStart } from "./playerHistory";
 
 const match = (date: string, white: number, green: number, lineup: Record<string, { id: string }>, goals: object[] = []) =>
   ({
@@ -10,10 +10,6 @@ const match = (date: string, white: number, green: number, lineup: Record<string
   }) as unknown as MatchResult;
 
 describe("historik per säsong", () => {
-  it("säsongen börjar 1 augusti", () => {
-    expect(seasonOf(new Date("2026-07-31"))).toBe("2025/26");
-    expect(seasonOf(new Date("2026-08-01"))).toBe("2026/27");
-  });
 
   it("räknar matcher, positioner, lag, resultat, mål och assist per säsong", () => {
     const h = seasonHistory([
@@ -31,24 +27,24 @@ describe("historik per säsong", () => {
   });
 });
 
-describe("matcher per lag under hockeyåret", () => {
-  const ids = (o: Record<string, string>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, { id: v }]));
-  it("räknar Vita och Gröna mellan försäsongens start och slutspelets slut (båda dagarna med)", () => {
-    const ms = [
-      match("2026-08-31T19:00:00Z", 1, 0, ids({ "team-a-fwd-1-c": "p1" })), // före försäsongen
-      match("2026-09-01T19:00:00Z", 2, 1, ids({ "team-a-fwd-1-c": "p1", "team-b-def-1-1": "p2" })), // första dagen
-      match("2026-11-12T20:00:00Z", 1, 3, ids({ "team-b-fwd-1-c": "p1", "team-a-gk-1": "p2" })),
-      match("2027-05-01T18:00:00Z", 0, 0, ids({ "team-b-fwd-1-c": "p1" })), // sista dagen
-      match("2027-05-02T18:00:00Z", 0, 0, ids({ "team-a-fwd-1-c": "p1" })), // efter slutspelet
-    ];
-    const t = teamCountsBetween(ms, "2026-09-01", "2027-05-01");
-    expect(t.get("p1")).toEqual({ white: 1, green: 2 });
-    expect(t.get("p2")).toEqual({ white: 1, green: 1 });
-    expect(t.get("p3")).toBeUndefined();
+describe("hockeyåret följer försäsongens start (Inställningar → Perioder)", () => {
+  it("standard 1 september, svensk tid", () => {
+    setSeasonStart("09-01");
+    expect(seasonOf(new Date("2026-08-31T12:00:00Z"))).toBe("2025/26");
+    expect(seasonOf(new Date("2026-08-31T22:30:00Z"))).toBe("2026/27"); // 00:30 1 sep i Sverige
+    expect(seasonOf(new Date("2027-05-01T12:00:00Z"))).toBe("2026/27"); // slutspelet hör till samma år
   });
-  it("lag A är Gröna när matchen sparats så", () => {
-    const m = match("2026-10-01T19:00:00Z", 1, 0, ids({ "team-a-fwd-1-c": "p1" }));
-    (m.lineup as { teamAName: string }).teamAName = "Gröna";
-    expect(teamCountsBetween([m], "2026-09-01", "2027-05-01").get("p1")).toEqual({ white: 0, green: 1 });
+  it("annan start ger andra gränser – och lagen räknas per hockeyår", () => {
+    setSeasonStart("08-15");
+    expect(seasonOf(new Date("2026-08-14T12:00:00Z"))).toBe("2025/26");
+    expect(seasonOf(new Date("2026-08-15T12:00:00Z"))).toBe("2026/27");
+    const h = seasonHistory([
+      match("2026-08-20T19:00:00Z", 1, 0, { "team-a-fwd-1-c": { id: "p" } }),
+      match("2026-11-12T19:00:00Z", 1, 0, { "team-b-fwd-1-c": { id: "p" } }),
+      match("2027-04-20T19:00:00Z", 1, 0, { "team-b-def-1-1": { id: "p" } }),
+    ]).get("p")!;
+    expect(h).toHaveLength(1);
+    expect(h[0]).toMatchObject({ season: "2026/27", matches: 3, teams: { white: 1, green: 2 } });
+    setSeasonStart("09-01");
   });
 });
