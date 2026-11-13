@@ -302,8 +302,6 @@ async function startServer() {
     // Kallelser via mejl för Aktiviteter (bara aktiviteter där det är påslaget)
     void import("../activityMail").then((m) => m.startActivityMail());
     void import("../campaignEntries").then((m) => m.startCampaignPurge());
-    // Hockeyårets start (försäsongen i Inställningar → Perioder) för spelarhistoriken
-    void import("../periodsConfig").then((m) => m.refreshSeasonStart());
     void loadPlayerLinkState();
     console.log(`Stålstadens v${APP_VERSION} kör på port ${port}`);
   });

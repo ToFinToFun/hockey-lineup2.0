@@ -12,7 +12,7 @@ import { activitiesRouter } from "./routers/activities";
 import { memberRouter } from "./routers/member";
 import { appAttendance, getAttendanceSource, setAppAttendanceByName } from "./activities";
 import { newsExists, fetchAttendance, updateAttendance, publishNews, deleteNews, fetchAccountName, NEWS_ADMIN_URL, type AttendingStatus } from "./lagetSe";
-import { seasonHistory, seasonOf, recentForm, recentWinners } from "./playerHistory";
+import { seasonHistory, recentForm, recentWinners, matchesBetween } from "./playerHistory";
 import { ENV } from "./_core/env";
 import { setPlayerPhoto, deletePlayerPhoto, MAX_PHOTO_BASE64 } from "./playerPhotos";
 import { listCards, cardStats, saveCard, deleteCard, MAX_CARD_SOURCE_BASE64 } from "./playerCards";
@@ -1177,29 +1177,29 @@ export const appRouter = router({
       const allMatches = await getAllMatchResults();
       const history = positionAndTeamHistory(allMatches);
 
-      // Matcher, vinster, mål och assist – innevarande säsong och totalt
-      const seasonNow = seasonOf(new Date());
+      // Spelarbrickan: säsongens siffror (GP m.m.) och rutorna för Vita/Gröna räknas över samma period –
+      // det pågående hockeyåret enligt Inställningar → Perioder (försäsong, säsong och slutspel).
+      // Övriga delar av appen (spelarsidan, hockeykorten …) räknar säsongen som förut.
+      const { getCurrentPeriods } = await import("./periodsConfig");
+      const periods = await getCurrentPeriods();
+      const seasonLabel = `${periods.preseasonFrom.slice(0, 4)}/${String((Number(periods.preseasonFrom.slice(0, 4)) + 1) % 100).padStart(2, "0")}`;
+      const sum = (lines: Array<PlayerRecord & { teams: { white: number; green: number } }>) => {
+        const r = { matches: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, teams: { white: 0, green: 0 } };
+        for (const l of lines) {
+          r.matches += l.matches; r.wins += l.wins; r.draws += l.draws; r.losses += l.losses; r.goals += l.goals; r.assists += l.assists;
+          r.teams.white += l.teams.white; r.teams.green += l.teams.green;
+        }
+        return r;
+      };
+      const yearLines = seasonHistory(matchesBetween(allMatches, periods.preseasonFrom, periods.playoffTo));
       const form = recentForm(allMatches, 10);
       const records: Record<string, { season: PlayerRecord & { label: string }; total: PlayerRecord; form: string }> = {};
-      // Matcher per lag under hockeyåret – samma underlag som GP, så rutorna summerar till säsongens matcher
       const yearTeams = new Map<string, { white: number; green: number }>();
       for (const [id, lines] of seasonHistory(allMatches)) {
-        const total: PlayerRecord = { matches: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0 };
-        for (const l of lines) {
-          total.matches += l.matches; total.wins += l.wins; total.draws += l.draws;
-          total.losses += l.losses; total.goals += l.goals; total.assists += l.assists;
-        }
-        const cur = lines.find((l) => l.season === seasonNow);
-        if (cur) yearTeams.set(id, { white: cur.teams.white, green: cur.teams.green });
-        records[id] = {
-          season: {
-            label: seasonNow,
-            matches: cur?.matches ?? 0, wins: cur?.wins ?? 0, draws: cur?.draws ?? 0,
-            losses: cur?.losses ?? 0, goals: cur?.goals ?? 0, assists: cur?.assists ?? 0,
-          },
-          total,
-          form: (form.players.get(id) ?? []).join(""),
-        };
+        const { teams: _t, ...total } = sum(lines);
+        const { teams, ...year } = sum(yearLines.get(id) ?? []);
+        yearTeams.set(id, teams);
+        records[id] = { season: { label: seasonLabel, ...year }, total, form: (form.players.get(id) ?? []).join("") };
       }
 
       const result: Record<string, { mostPlayed: string; stats: Record<string, number>; mostPlayedTeam?: string; teamStats?: Record<string, number>; record?: (typeof records)[string]; yearTeams?: { white: number; green: number } }> = {};

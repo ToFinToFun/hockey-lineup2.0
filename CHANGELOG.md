@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.20.1 – 2026-11-13
+
+- **Tillbaka:** spelarsidan, hockeykorten och statistiken till hemsidan räknar säsongen som före 3.20.0 (från 1 augusti).
+- **Bara spelarbrickan i Lineup** följer Perioder: säsongens siffror (GP, mål, assist, W%) och rutorna för Vita/Gröna räknas över samma period – från försäsongens start till slutspelets slut – och summerar alltid till varandra.
+
 ## 3.20.0 – 2026-11-13
 
 - **Säsongen följer Perioder:** hockeyåret räknas nu från försäsongens start i Inställningar → Perioder (i stället för fast 1 augusti) – i spelarbrickans statistik (GP), spelarsidan, hockeykorten och statistiken till hemsidan. Rutorna för Vita/Gröna räknas ur samma underlag och summerar alltid till säsongens GP. Ändras försäsongens start följer allt med direkt.

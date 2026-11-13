@@ -124,8 +124,6 @@ export const scoreRouter = router({
         if (input.playoffTo) await setConfigValue("playoff_to", input.playoffTo);
         if (input.preseasonFrom) await setConfigValue("preseason_from", input.preseasonFrom);
         if (input.preseasonTo) await setConfigValue("preseason_to", input.preseasonTo);
-        // Hockeyåret (GP, spelarhistorik, hockeykort) följer försäsongens start
-        await (await import("../periodsConfig")).refreshSeasonStart();
         return { success: true };
       }),
   }),
