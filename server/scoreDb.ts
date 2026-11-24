@@ -3,8 +3,9 @@
  */
 
 import { isTeamAWhite, defaultTeamNames } from "../shared/teams";
+import { OPP_PREFIX } from "../shared/matchSetup";
 import { correctLineupFromGoals } from "./lineupCorrection";
-import { eq, inArray, desc, and, or, isNull, isNotNull } from "drizzle-orm";
+import { eq, inArray, notInArray, notLike, desc, and, or, isNull, isNotNull } from "drizzle-orm";
 import { getDb, tableChecksum } from "./db";
 import { getRegistryMap, onRegistryChange, onPlayersRenamed, labelOf, normalizeName } from "./playersDb";
 import { findGoalLinks, type GoalLink, type Rename } from "./goalLinking";
@@ -337,6 +338,34 @@ export async function updateMatch(
   });
   invalidateMatches();
   if (data.goalHistory?.length) void linkUnlinkedGoals();
+}
+
+/**
+ * Byt matchens uppställning i efterhand (redigeras i Lineup för just den matchen).
+ * slots: plats → spelar-id, lag A = Vita. Målen ligger kvar (de är kopplade till
+ * spelarna, inte till platserna); namn som inte var kopplade försöker kopplas igen.
+ */
+export async function updateMatchLineup(id: number, slots: Record<string, string>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const registry = await getRegistryMap();
+  const lineup = Object.fromEntries(Object.entries(slots).map(([slot, pid]) => [slot, { id: pid }]));
+  const participants = matchPlayersFrom(id, { teamAName: defaultTeamNames().teamAName, lineup } as MatchInput["lineup"], registry);
+  await db.transaction(async (tx) => {
+    await tx.delete(matchPlayers).where(eq(matchPlayers.matchId, id));
+    if (participants.length) await tx.insert(matchPlayers).values(participants);
+    // Spelare som inte är med längre: målet och resultatet ligger kvar, men utan målskytt/assist.
+    // (Byter en spelare lag följer poängen med – målet står kvar på sitt lag.)
+    const ids = participants.map((p) => p.playerId);
+    // Motståndarens spelare (id "opp-…") ingår aldrig i vår uppställning och rörs inte
+    const gone = (col: typeof matchGoals.scorerId | typeof matchGoals.assistId) => and(isNotNull(col), notLike(col, `${OPP_PREFIX}%`), ids.length ? notInArray(col, ids) : undefined);
+    await tx.update(matchGoals).set({ scorerId: null, scorerName: null }).where(and(eq(matchGoals.matchId, id), gone(matchGoals.scorerId)));
+    await tx.update(matchGoals).set({ assistId: null, assistName: null }).where(and(eq(matchGoals.matchId, id), gone(matchGoals.assistId)));
+    await tx.update(matchResults).set({ editedAt: new Date() }).where(eq(matchResults.id, id));
+  });
+  invalidateMatches();
+  void linkUnlinkedGoals();
+  return participants.length;
 }
 
 /** Godkända matcher – det enda som räknas i statistik och PIR. */

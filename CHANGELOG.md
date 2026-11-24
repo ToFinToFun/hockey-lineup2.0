@@ -7,6 +7,11 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.21.0 – 2026-11-24
+
+- **Redigera en matchs uppställning i efterhand:** i Matchhistorik → Redigera finns knappen *Redigera uppställning*. Den öppnar Lineup för just den matchen med en gul rad överst som visar vilken match det gäller. Utgångsläget är matchens sparade lag, och *Auto* är ersatt av *Återställ* (tillbaka till matchens lag). Man kan lägga till, ta bort och flytta spelare mellan positioner och lag. *Spara* skriver till matchen och tar en tillbaka till matchens redigering. Dagens uppställning, anmälningar och laget.se påverkas inte.
+- **Resultatet ändras aldrig:** byter en spelare lag följer poängen med spelaren, och målet står kvar på sitt lag. Tas en spelare med mål eller assist bort blir målet kvar men utan den spelaren som målskytt/assist – man får en fråga innan det sparas. Speltiden räknas om efter den nya uppställningen.
+
 ## 3.20.1 – 2026-11-13
 
 - **Tillbaka:** spelarsidan, hockeykorten och statistiken till hemsidan räknar säsongen som före 3.20.0 (från 1 augusti).

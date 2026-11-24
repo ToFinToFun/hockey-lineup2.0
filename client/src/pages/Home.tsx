@@ -1,4 +1,6 @@
 import { posLabel } from "@shared/positions";
+import type { LineupDoc } from "@shared/lineupDoc";
+import { buildMatchEditDoc, removedScorers, slotsToSave } from "@/lib/matchEditDoc";
 // Hockey Lineup App – Home
 // Design: Industrial Ice Arena
 
@@ -54,11 +56,11 @@ import { useLineupDocSync } from "@/hooks/useLineupDocSync";
 import { useAuth } from "@/hooks/useAuth";
 import { MatchPredictionBar } from "@/components/MatchPredictionBar";
 import type { Player as PlayerType } from "@/lib/players";
-import { Newspaper, RefreshCw, TrendingUp, Link2, BookmarkPlus, X as XIconSmall, Wifi, WifiOff, Share2, FileText, Check, CalendarDays, Shuffle, PanelLeft, Columns3, Undo2, BarChart3, Settings, Sun, Moon, Home as HomeIcon, Users, FlaskConical, Wand2, Swords } from "lucide-react";
+import { Newspaper, RefreshCw, TrendingUp, Link2, BookmarkPlus, X as XIconSmall, Wifi, WifiOff, Share2, FileText, Check, CalendarDays, Shuffle, PanelLeft, Columns3, Undo2, BarChart3, Settings, Sun, Moon, Home as HomeIcon, Users, FlaskConical, Wand2, Swords, RotateCcw, PencilLine } from "lucide-react";
 import { toast } from "sonner";
 import { useLineupTheme } from "@/hooks/useLineupTheme";
 import { useForwardColor } from "@/hooks/useForwardColor";
-import { Link } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { SettingsModal } from "@/components/SettingsModal";
 import { AutoLineupModal } from "@/components/AutoLineupModal";
 import { matchRegisteredPlayers, matchDeclinedPlayers, fetchAttendanceFromApi, updateAttendanceOnLaget } from "@/lib/laget";
@@ -155,13 +157,26 @@ export function formatChanged(d: Date, now = new Date()): string {
   return `${d.getDate()}/${d.getMonth() + 1} ${time}`;
 }
 
+/**
+ * Lineup. Med ?match=ID redigeras uppställningen för en sparad match i stället
+ * för dagens: ingen synk, inget laget.se, Auto blir Återställ och Spara skriver
+ * till matchen (score.matches.updateLineup). Ny nyckel = nytt tillstånd vid byte.
+ */
 export default function Home() {
-  const local = loadLocalState();
+  const search = useSearch();
+  const raw = new URLSearchParams(search).get("match");
+  const matchEditId = raw && /^\d+$/.test(raw) ? Number(raw) : null;
+  return <LineupBoard key={matchEditId ?? "live"} matchEditId={matchEditId} />;
+}
+
+function LineupBoard({ matchEditId }: { matchEditId: number | null }) {
+  const matchMode = matchEditId != null;
+  const local = matchMode ? null : loadLocalState();
   const { theme: lineupTheme, toggle: toggleLineupTheme, isDark: isLineupDark } = useLineupTheme();
   const { colors: fc } = useForwardColor();
 
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>(
-    local?.availablePlayers ?? initialPlayers
+    local?.availablePlayers ?? (matchMode ? [] : initialPlayers)
   );
   const [teamAName, setTeamAName] = useState(local?.teamAName ?? defaultTeamNames().teamAName);
   const [teamBName, setTeamBName] = useState(local?.teamBName ?? defaultTeamNames().teamBName);
@@ -172,7 +187,7 @@ export default function Home() {
   useEffect(() => { lineupRef.current = lineup; }, [lineup]);
 
   // Ref för availablePlayers (undviker stale closure i undo)
-  const availablePlayersRef = useRef<Player[]>(local?.availablePlayers ?? initialPlayers);
+  const availablePlayersRef = useRef<Player[]>(local?.availablePlayers ?? (matchMode ? [] : initialPlayers));
   useEffect(() => { availablePlayersRef.current = availablePlayers; }, [availablePlayers]);
 
   // Dynamisk lagkonfiguration
@@ -434,18 +449,8 @@ export default function Home() {
   }, [enrichPlayer]);
 
   // ─── Live-synk ─────────────────────────────────────────────────────────────
-  const sync = useLineupDocSync({
-    readLocalDoc: () => ({
-      players: availablePlayersRef.current,
-      lineup: lineupRef.current,
-      teamAName: teamANameRef.current,
-      teamBName: teamBNameRef.current,
-      teamAConfig: teamAConfigRef.current,
-      teamBConfig: teamBConfigRef.current,
-      deletedPlayerIds: Array.from(deletedPlayerIdsRef.current),
-      setup: setupRef.current,
-    }),
-    writeLocalDoc: (doc) => {
+  /** Skriv ett helt dokument till sidans state (från servern eller en sparad match). */
+  const writeDoc = (doc: LineupDoc) => {
       const players = doc.players.map(enrichPlayer);
       const l = enrichLineup(doc.lineup);
       // Uppdatera refs direkt så att nästa jämförelse ser det nya läget.
@@ -466,13 +471,74 @@ export default function Home() {
       setDeletedPlayerIds(deleted);
       setupRef.current = doc.setup ?? INTERNAL_SETUP;
       setSetup(doc.setup ?? INTERNAL_SETUP);
-    },
+  };
+  const sync = useLineupDocSync({
+    // Redigerar en sparad match: ingen kontakt med dagens uppställning
+    disabled: matchMode,
+    readLocalDoc: () => ({
+      players: availablePlayersRef.current,
+      lineup: lineupRef.current,
+      teamAName: teamANameRef.current,
+      teamBName: teamBNameRef.current,
+      teamAConfig: teamAConfigRef.current,
+      teamBConfig: teamBConfigRef.current,
+      deletedPlayerIds: Array.from(deletedPlayerIdsRef.current),
+      setup: setupRef.current,
+    }),
+    writeLocalDoc: writeDoc,
     onRemoteChange: (description) => {
       setRemoteChangeToast(description);
       if (remoteToastTimer.current) clearTimeout(remoteToastTimer.current);
       remoteToastTimer.current = setTimeout(() => setRemoteChangeToast(null), 2500);
     },
   });
+
+  // ─── Redigera en sparad match (/lineup?match=ID) ───────────────────────────
+  const [, navigate] = useLocation();
+  const matchesQ = trpc.score.match.list.useQuery(undefined, { enabled: matchMode, staleTime: 0 });
+  const rosterQ = trpc.lineup.getState.useQuery(undefined, { enabled: matchMode, staleTime: 0, refetchOnWindowFocus: false });
+  const editMatch = matchMode ? matchesQ.data?.find((m) => m.id === matchEditId) ?? null : null;
+  const opponentsQ = trpc.opponents.list.useQuery({ includeArchived: true }, { enabled: editMatch?.opponentId != null, staleTime: 5 * 60_000 });
+  const matchOriginal = useRef<LineupDoc | null>(null);
+  const updateMatchLineup = trpc.score.match.updateLineup.useMutation();
+  const editUtils = trpc.useUtils();
+  useEffect(() => {
+    if (!editMatch || !rosterQ.data || matchOriginal.current) return;
+    if (editMatch.opponentId != null && !opponentsQ.data) return;
+    const roster = [...rosterQ.data.players, ...Object.values(rosterQ.data.lineup)] as Player[];
+    const oppName = opponentsQ.data?.find((o) => o.id === editMatch.opponentId)?.name ?? null;
+    const doc = buildMatchEditDoc(editMatch, roster, oppName);
+    matchOriginal.current = doc;
+    writeDoc(doc);
+  }, [editMatch, rosterQ.data, opponentsQ.data]); // eslint-disable-line react-hooks/exhaustive-deps
+  const matchLoadError = matchMode && (matchesQ.isError || rosterQ.isError || (matchesQ.data && !editMatch))
+    ? (matchesQ.error?.message ?? rosterQ.error?.message ?? "Matchen finns inte")
+    : null;
+  const matchTitle = editMatch
+    ? `${(editMatch.report as { title?: string | null } | null)?.title || editMatch.name} · ${editMatch.teamWhiteScore}–${editMatch.teamGreenScore}`
+    : "";
+  const backToMatch = () => navigate(`/history?edit=${matchEditId}`);
+  const resetToMatch = () => {
+    if (!matchOriginal.current) return;
+    pushUndo();
+    writeDoc(matchOriginal.current);
+    toast.success("Återställd till matchens uppställning", { duration: 2000 });
+  };
+  const saveMatchLineup = async () => {
+    if (!editMatch || !matchOriginal.current) return;
+    const slots = slotsToSave(lineupRef.current, editMatch.opponentId != null);
+    const names = new Map([...availablePlayersRef.current, ...Object.values(lineupRef.current)].map((p) => [p.id, p.name]));
+    const removed = removedScorers(editMatch, slots, names);
+    if (removed.length && !confirm(`De här har poäng i matchen men är inte med längre:\n\n• ${removed.join("\n• ")}\n\nResultatet ändras inte – målen blir kvar men utan dem som målskytt/assist. Spara?`)) return;
+    try {
+      const r = await updateMatchLineup.mutateAsync({ id: editMatch.id, slots });
+      void editUtils.score.match.invalidate();
+      toast.success(`Uppställningen sparad (${r.players} spelare)`);
+      backToMatch();
+    } catch (e) {
+      toast.error("Kunde inte spara", { description: (e as Error).message });
+    }
+  };
 
   // Spärr efter publicering: kontrolleras när uppställningen synkats och varje minut
   const lockStatus = trpc.lineup.lockStatus.useQuery(undefined, { refetchInterval: 60_000, refetchOnWindowFocus: true });
@@ -526,6 +592,7 @@ export default function Home() {
 
   // Varje ändring: spara lokalt (för start utan nät) och skicka till servern.
   useEffect(() => {
+    if (matchMode) return; // en sparad match sparas bara med Spara
     saveLocalState({ availablePlayers, lineup, teamAName, teamBName, teamAConfig, teamBConfig, matchTime });
     sync.notifyLocalChange();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1192,6 +1259,8 @@ export default function Home() {
 
   // Hämta anmälningar från laget.se via backend-API och markera matchade spelare
   const handleBulkRegister = useCallback(async (forceRefresh = false): Promise<{ matched: number; declined?: number; unmatched: string[]; unmatchedDeclined?: string[]; changes?: string[]; eventTitle?: string; eventDate?: string; eventTime?: string; eventEndTime?: string; eventLocation?: string; error?: string; noEvent?: boolean }> => {
+    // Sparad match: anmälningarna gäller dagens match och hämtas inte
+    if (matchMode) return { matched: 0, unmatched: [], noEvent: true };
     try {
       const data = await fetchAttendanceFromApi(forceRefresh);
 
@@ -1273,6 +1342,7 @@ export default function Home() {
 
   // Synka en spelares status till laget.se och uppdatera lokalt
   const handleSyncToLaget = useCallback(async (playerId: string, playerName: string, status: "Attending" | "NotAttending" | "NotAnswered"): Promise<AttendancePatch | null> => {
+    if (matchMode) return null; // sparad match: rör inte laget.se
     setSyncingPlayerIds((prev) => new Set(prev).add(playerId));
     const apply = (patch: AttendancePatch) => {
       const update = (p: Player): Player => p.id === playerId ? { ...p, ...patch } : p;
@@ -1323,6 +1393,7 @@ export default function Home() {
 
   // Bulk-ändra status för flera spelare till laget.se
   const handleBulkSyncToLaget = useCallback(async (playerIds: string[], status: "Attending" | "NotAttending" | "NotAnswered") => {
+    if (matchMode) return; // sparad match: rör inte laget.se
     // Hitta spelarnamn för varje ID
     const allPlayers = [...availablePlayersRef.current, ...Object.values(lineupRef.current)];
     const playerMap = new Map(allPlayers.map(p => [p.id, p]));
@@ -1340,7 +1411,7 @@ export default function Home() {
   // så att matchRegisteredPlayers har spelare att matcha mot
   const autoFetchDone = useRef(false);
   useEffect(() => {
-    if (autoFetchDone.current) return;
+    if (autoFetchDone.current || matchMode) return;
     if (!sync.ready) return; // Vänta på server-state först
     autoFetchDone.current = true;
     // Liten fördröjning så att serverns state hunnit renderas
@@ -1642,6 +1713,17 @@ export default function Home() {
         >
           <Undo2 className={icon} />{label("Ångra")}
         </button>
+        {matchMode ? (
+          <button
+            onClick={resetToMatch}
+            disabled={!matchOriginal.current}
+            title="Tillbaka till matchens sparade uppställning (går att ångra)"
+            aria-label="Återställ"
+            className={`${btn} ${size} bg-emerald-500 text-white hover:bg-emerald-400`}
+          >
+            <RotateCcw className={icon} />{label("Återställ")}
+          </button>
+        ) : (
         <button
           disabled={external}
           onClick={onAutoClick}
@@ -1651,6 +1733,8 @@ export default function Home() {
         >
           <Shuffle className={icon} />{label("Auto")}
         </button>
+        )}
+        {!matchMode && (<>
         {isAdmin && (
         <button
             onClick={() => setShowNews(true)}
@@ -1698,6 +1782,7 @@ export default function Home() {
         >
           <BookmarkPlus className={icon} />{label("Sparade")}
         </button>
+        </>)}
       </div>
     );
   };
@@ -1747,6 +1832,29 @@ export default function Home() {
           className="relative flex flex-col min-h-screen"
         >
           {/* Header – compact toolbar matching mockup exactly */}
+          {matchMode ? (
+            <header className="shrink-0 sticky top-0 z-40">
+              <div className="px-3 py-2 bg-amber-400 text-black shadow-lg">
+                <div className={`flex items-center gap-2 mx-auto ${!isMobile && !sideLayout ? "max-w-[940px]" : "max-w-[1400px]"}`}>
+                  <PencilLine className="w-4 h-4 shrink-0" />
+                  <div className="min-w-0 flex-1 leading-tight">
+                    <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">Redigerar uppställningen för en sparad match</p>
+                    <p className="text-sm font-black truncate" style={{ fontFamily: "'Oswald', sans-serif" }} data-testid="match-edit-title">
+                      {matchLoadError ?? (matchTitle || "Laddar matchen …")}
+                    </p>
+                  </div>
+                  <button onClick={backToMatch} className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold bg-black/10 hover:bg-black/20">Avbryt</button>
+                  <button
+                    onClick={() => void saveMatchLineup()}
+                    disabled={!matchOriginal.current || updateMatchLineup.isPending}
+                    className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold bg-black text-amber-300 hover:bg-black/80 disabled:opacity-40 flex items-center gap-1"
+                  >
+                    <Check className="w-3.5 h-3.5" /> Spara
+                  </button>
+                </div>
+              </div>
+            </header>
+          ) : (
           <header className="shrink-0">
             <div className="glass-header px-3 py-1.5 sm:py-2">
               <div className={`flex items-center gap-2 mx-auto ${!isMobile && !sideLayout ? "max-w-[940px]" : "max-w-[1400px]"}`}>
@@ -2050,6 +2158,7 @@ export default function Home() {
               </div>
             </div>
           </header>
+          )}
 
           {/* Matchprediktion (experimentell, de som ser PIR) */}
           {pirVisible && pirSettings.enabled && pirSettings.showPrediction && !external && (
@@ -2544,7 +2653,7 @@ export default function Home() {
 
 
       {/* Låst lag efter publicering: Lineup har ändrats sedan dess */}
-      {lockStatus.data?.locked && lockStatus.data.changed && (
+      {!matchMode && lockStatus.data?.locked && lockStatus.data.changed && (
         <button
           onClick={() => {
             if (!confirm("Låsa upp laget? Score Tracker och statistiken använder då uppställningen som den ser ut nu i stället för den publicerade.")) return;

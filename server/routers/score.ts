@@ -31,6 +31,7 @@ import {
   setMatchReviewStatus,
   getMatchResultById,
   updateMatch,
+  updateMatchLineup,
   setMatchReport,
   deleteMatchResult,
   deleteMultipleMatchResults,
@@ -340,6 +341,24 @@ export const scoreRouter = router({
         });
         scheduleLiveProfileRefresh(); // profilkort med statistik ritas om i bakgrunden
         return { success: true };
+      }),
+
+    /**
+     * Uppställningen i efterhand – redigeras i Lineup för just den matchen.
+     * slots: plats → spelar-id (lag A = Vita). Statistiken räknas om direkt.
+     */
+    updateLineup: moduleProcedure("matches")
+      .input(z.object({
+        id: z.number().int().positive(),
+        slots: z.record(z.string().regex(/^team-[ab]-[a-z0-9-]+$/).max(40), z.string().min(1).max(64)),
+      }))
+      .mutation(async ({ input }) => {
+        if (Object.keys(input.slots).length > 80) throw new TRPCError({ code: "BAD_REQUEST", message: "För många platser" });
+        const m = await getMatchResultById(input.id);
+        if (!m) throw new TRPCError({ code: "NOT_FOUND", message: "Matchen finns inte" });
+        const players = await updateMatchLineup(input.id, input.slots);
+        scheduleLiveProfileRefresh(); // profilkort med statistik ritas om i bakgrunden
+        return { success: true, players };
       }),
 
     /** Matchrapportens val: Stars of the Game och "presenteras av". */

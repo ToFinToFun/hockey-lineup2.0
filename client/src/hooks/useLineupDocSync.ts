@@ -35,6 +35,11 @@ interface Options {
   writeLocalDoc: (doc: LineupDoc) => void;
   /** Anropas när någon annan ändrat något – kort beskrivning för en toast. */
   onRemoteChange?: (description: string) => void;
+  /**
+   * Av: ingen kontakt med servern alls (Lineup redigerar en sparad match –
+   * dagens uppställning ska inte röras). Gäller hela komponentens livstid.
+   */
+  disabled?: boolean;
 }
 
 type Status = "connecting" | "live" | "offline";
@@ -57,7 +62,8 @@ function describeRemote(ops: LineupOp[]): string {
   return "Uppställningen uppdaterades";
 }
 
-export function useLineupDocSync({ readLocalDoc, writeLocalDoc, onRemoteChange }: Options) {
+export function useLineupDocSync({ readLocalDoc, writeLocalDoc, onRemoteChange, disabled = false }: Options) {
+  const disabledRef = useRef(disabled);
   const utils = trpc.useUtils();
   const [ready, setReady] = useState(false);
   const [status, setStatus] = useState<Status>("connecting");
@@ -182,6 +188,7 @@ export function useLineupDocSync({ readLocalDoc, writeLocalDoc, onRemoteChange }
 
   /** Anropas av komponenten när dess state ändrats (drag, knappar, ångra …). */
   const notifyLocalChange = useCallback(() => {
+    if (disabledRef.current) return;
     if (!base.current || !shown.current) return;
     const current = normalizeDoc(readRef.current());
     const ops = diffDocs(shown.current, current);
@@ -196,6 +203,7 @@ export function useLineupDocSync({ readLocalDoc, writeLocalDoc, onRemoteChange }
   }, [flush]);
 
   useEffect(() => {
+    if (disabledRef.current) return;
     bootDoc.current = normalizeDoc(readRef.current());
     let es: EventSource | null = null;
     let closed = false;

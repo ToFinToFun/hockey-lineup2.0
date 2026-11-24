@@ -9,7 +9,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { IMAGES } from "@/lib/scoreConstants";
 import { useSponsors, logoForName } from "@/lib/sponsors";
 import { POSITION_COLORS } from "@/lib/positionColors";
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { useLocation, useSearch } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowLeft, Trash2, Trophy, Clock, Target, Search, Filter, X, Pencil, GripVertical, Plus, ChevronDown, Users, UserCheck, CheckSquare, Square, XCircle, Share2, Star } from "lucide-react";
 import { MatchReportModal, type ReportMatch } from "@/components/score/MatchReportModal";
@@ -246,7 +247,28 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
     // Sparas nyast först (som Score Tracker visar). Här redigeras i tidsordning: första målet överst.
     const gh = (match.goalHistory as GoalEvent[] | null) ?? [];
     setEditGoals(goalsOldestFirst<GoalEvent>(gh).map(g => ({ ...g })));
+    editOrig.current = JSON.stringify([match.name, (match as { location?: string | null }).location ?? "", String((match as { plannedMinutes?: number | null }).plannedMinutes ?? ""), hhmm, goalsOldestFirst<GoalEvent>(gh)]);
     setEditDialog(matchId);
+  };
+  const editOrig = useRef("");
+
+  // Uppställningen redigeras i Lineup (/lineup?match=ID); därifrån kommer man tillbaka hit med ?edit=ID
+  const [, navigate] = useLocation();
+  const search = useSearch();
+  const reopenId = Number(new URLSearchParams(search).get("edit")) || null;
+  useEffect(() => {
+    if (!reopenId || !matches) return;
+    if (matches.some(m => m.id === reopenId)) {
+      setSelectedMatch(reopenId);
+      openEditDialog(reopenId);
+    }
+    navigate("/history", { replace: true });
+  }, [reopenId, matches]); // eslint-disable-line react-hooks/exhaustive-deps
+  const editLineupInLineup = () => {
+    if (editDialog === null) return;
+    const now = JSON.stringify([editName, editLocation, editMinutes, editStart, editGoals]);
+    if (now !== editOrig.current && !confirm("Ändringarna här är inte sparade och försvinner. Fortsätta till uppställningen?")) return;
+    navigate(`/lineup?match=${editDialog}`);
   };
 
   const handlePasswordSubmit = () => {
@@ -1167,6 +1189,13 @@ export default function MatchHistoryPage({ onBack }: MatchHistoryPageProps) {
             <DialogTitle className="text-[#ECEDEE] text-center">Redigera match</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Vem som spelade och var – redigeras i Lineup */}
+            <button
+              onClick={editLineupInLineup}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold bg-amber-400/15 border border-amber-400/40 text-amber-200 hover:bg-amber-400/25"
+            >
+              <Users size={15} /> Redigera uppställning
+            </button>
             {/* Match name - score suffix auto-updates */}
             <div>
               <label className="text-[#9BA1A6] text-xs font-medium block mb-1">Matchnamn</label>
