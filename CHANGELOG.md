@@ -7,6 +7,12 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.22.0 – 2026-11-26
+
+- **Klistra in hela texten fyller i alla fält:** utöver rubrik, ingress och brödtext känns rader som börjar med Etikett:, Citatrubrik:, Citat:, Vem:, Bildtext: och Byline: igen, även med punktlistor och "(högst 24)" som i AI:ns tidigare förslag. På förstasidan även Textrutans rubrik: och Puff 1–3: (Etikett | Rubrik | Text). Fält som inte finns med lämnas orörda, och för långa värden kortas.
+- **Att kontrollera:** rader som börjar med Kontrollera: (t.ex. påhittade citat), platshållare inom [ ] och sådant som kortats visas i en gul ruta i redigeraren. Den syns inte på bilden, och varje rad bockas av när den är kontrollerad.
+- **Export till AI:** instruktionerna ber nu om allt i ett enda kodblock, med fälten sist efter `---`. AI:n får hitta på citat, intervjusvar, bildtexter och stämning för att göra texten levande, men aldrig siffror, resultat eller händelser. Allt påhittat ska stå på Kontrollera:-rader, och den skriver om utan det som inte godkänns.
+
 ## 3.21.0 – 2026-11-24
 
 - **Redigera en matchs uppställning i efterhand:** i Matchhistorik → Redigera finns knappen *Redigera uppställning*. Den öppnar Lineup för just den matchen med en gul rad överst som visar vilken match det gäller. Utgångsläget är matchens sparade lag, och *Auto* är ersatt av *Återställ* (tillbaka till matchens lag). Man kan lägga till, ta bort och flytta spelare mellan positioner och lag. *Spara* skriver till matchen och tar en tillbaka till matchens redigering. Dagens uppställning, anmälningar och laget.se påverkas inte.

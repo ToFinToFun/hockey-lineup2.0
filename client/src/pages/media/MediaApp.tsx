@@ -28,7 +28,7 @@ import { prepareSourcePhoto } from "@/lib/cardPhoto";
 import { renderMediaPages, dimFor, MEDIA_OVERLAYS, MEDIA_BACKGROUNDS, overlayFromTheme, type MediaOverlay, type MediaBackground, type LineupGroup, type MediaPostData, type PostFormat, type PressPageData } from "@/lib/mediaImages";
 import { setVideoStill, type VideoStill } from "@/lib/videoStill";
 import { PRESS_NAME, issueOf, type BillStyle } from "@/lib/pressImages";
-import { pressFacts, headlineSuggestions, articleText, cleanName, splitPasted, excerpt } from "@/lib/pressText";
+import { pressFacts, headlineSuggestions, articleText, cleanName, parsePasted, excerpt } from "@/lib/pressText";
 import { type CardSettings } from "@shared/cardRender";
 import { renderPlayerCard } from "@/lib/savedCardImage";
 import { cellsFor, defaultStatsTitle } from "@shared/cardStats";
@@ -122,6 +122,8 @@ interface Settings {
   pressStalserien?: boolean;
   /** Artikel/intervju: löpsedel eller förstasida som första bild (karusell) */
   pressCover?: "bill" | "front" | null;
+  /** Att kontrollera efter Klistra in (påhittade citat m.m.) – visas bara i redigeraren */
+  verify?: string[];
   // Kampanj (t.ex. Mustaschkampen): tema, läge, slogan och deltagarna (bilderna sparas separat, i samma ordning)
   themeId?: number;
   campaignMode?: CampaignMode;
@@ -287,6 +289,24 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
   const suppressClick = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const update = (patch: Partial<Settings>) => setS((prev) => ({ ...prev, ...patch }));
+  /** Klistra in hela texten: rubrik, ingress, brödtext och de övriga fälten som finns med */
+  const applyPasted = () => {
+    const p = parsePasted(pasteText);
+    const patch: Partial<Settings> = { body: p.body, verify: p.verify };
+    if (p.headline) patch.title = p.headline;
+    if (p.ingress) patch.subtitle = p.ingress;
+    for (const [k, v] of Object.entries(p.fields)) if (v) (patch as Record<string, string>)[k] = v;
+    if (s.kind !== "front") delete patch.boxTitle;
+    if (s.kind === "front" && p.teasers.length) {
+      const ts = [...(s.teasers ?? EMPTY_TEASERS)].map((t) => ({ ...t }));
+      for (const t of p.teasers) if (ts[t.index]) ts[t.index] = { ...ts[t.index], kicker: t.kicker.slice(0, 20), title: t.title.slice(0, 70), sub: t.sub.slice(0, 70) };
+      patch.teasers = ts;
+    }
+    update(patch);
+    setPasteText(""); setPasteOpen(false);
+    const n = Object.keys(p.fields).filter((k) => k !== "boxTitle" || s.kind === "front").length + (s.kind === "front" ? p.teasers.length : 0);
+    toast.success(n ? `Texten och ${n} fält är ifyllda` : "Texten är fördelad i fälten", p.verify.length ? { description: `${p.verify.length} saker att kontrollera – se den gula rutan` } : undefined);
+  };
   const tags = tagsQuery.data ?? [];
 
   // ─── Kampanj (t.ex. Mustaschkampen): temat och deltagarnas bilder ───
@@ -1169,14 +1189,27 @@ export default function MediaApp({ renderPostId, onRendered }: { renderPostId?: 
                 </div>
               )}
               <label className="block text-[11px] text-white/50">Etikett<input value={s.kicker ?? ""} onChange={(e) => update({ kicker: e.target.value })} maxLength={24} placeholder={s.kind === "bill" ? "T.ex. EXTRA, SPORT, VÄNDNINGEN" : "T.ex. Lokalsport, Intervju, Krönika"} className={input} /></label>
+              {isPressPage(s.kind) && !!s.verify?.length && (
+                <div className="rounded-lg border border-amber-400/50 bg-amber-400/10 p-2 space-y-1" data-testid="press-verify">
+                  <p className="text-[11px] font-bold text-amber-200">Att kontrollera innan publicering</p>
+                  <ul className="space-y-1">
+                    {s.verify.map((v, i) => (
+                      <li key={i} className="flex items-start gap-2 text-[11px] text-amber-100/90">
+                        <span className="flex-1">{v}</span>
+                        <button onClick={() => update({ verify: s.verify!.filter((_, j) => j !== i) })} className="shrink-0 px-1.5 rounded bg-amber-400/20 text-amber-100 font-semibold" title="Kontrollerat">✓</button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {isPressPage(s.kind) && (
                 <div className="rounded-lg border border-sky-400/25 bg-sky-500/5 p-2">
                   <button onClick={() => setPasteOpen(!pasteOpen)} className="text-[11px] text-sky-200/90 font-semibold">{pasteOpen ? "▾" : "▸"} Klistra in hela texten (t.ex. från ett mejl)</button>
                   {pasteOpen && (
                     <div className="mt-2 space-y-1.5">
                       <textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)} rows={6} placeholder={"Rubrik\n\nIngress …\n\nFråga?\n– Svar …"} className={input} />
-                      <p className="text-[10px] text-white/40">Första raden blir rubrik, nästa stycke ingress och resten text. Allt går att ändra efteråt.</p>
-                      <button onClick={() => { const p = splitPasted(pasteText); update({ ...(p.headline ? { title: p.headline } : {}), ...(p.ingress ? { subtitle: p.ingress } : {}), body: p.body }); setPasteText(""); setPasteOpen(false); toast.success("Texten är fördelad i fälten"); }}
+                      <p className="text-[10px] text-white/40">Första raden blir rubrik, nästa stycke ingress och resten text. Rader som börjar med Etikett:, Citatrubrik:, Citat:, Vem:, Bildtext:, Byline:{s.kind === "front" ? " Textrutans rubrik:, Puff 1: (Etikett | Rubrik | Text)" : ""} och Kontrollera: hamnar i sina fält. Allt går att ändra efteråt.</p>
+                      <button onClick={() => applyPasted()}
                         disabled={!pasteText.trim()} className="px-3 py-1.5 rounded-lg bg-sky-500/20 border border-sky-400/40 text-sky-200 text-xs font-semibold disabled:opacity-40">Fördela i fälten</button>
                     </div>
                   )}

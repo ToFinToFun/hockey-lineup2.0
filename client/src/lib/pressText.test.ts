@@ -89,3 +89,73 @@ describe("excerpt (förstasidan som första bild)", () => {
     expect(r).toBe("Första meningen är här. …");
   });
 });
+
+describe("parsePasted (Klistra in med övriga fält)", () => {
+  it("det nya formatet från Export: text, --- och fälten", async () => {
+    const { parsePasted } = await import("./pressText");
+    const r = parsePasted(`Vita stängde november med stil
+
+Sista matchen i Mustaschkampens månad blev en uppvisning.
+
+Första stycket.
+
+Andra stycket.
+
+---
+Etikett (högst 24 tecken, t.ex. Stålserien eller Lokalsport): Stålserien
+Citatrubrik: ”Vi spelade för varandra”
+Citat: "Mustascherna kliar, men det var värt det."
+Vem: Hampus Bergman Lahti, lagkapten
+Bildtext: Kvällens match blev den sista i november.
+Byline: Stålbladets redaktion
+Kontrollera: Citatet från Hampus Bergman Lahti är påhittat
+Kontrollera: Citatrubriken är påhittad`);
+    expect(r.headline).toBe("Vita stängde november med stil");
+    expect(r.ingress).toBe("Sista matchen i Mustaschkampens månad blev en uppvisning.");
+    expect(r.body).toBe("Första stycket.\n\nAndra stycket.");
+    expect(r.fields).toEqual({ kicker: "Stålserien", quoteHead: "Vi spelade för varandra", pullQuote: "Mustascherna kliar, men det var värt det.", pullQuoteBy: "Hampus Bergman Lahti, lagkapten", info: "Kvällens match blev den sista i november.", byline: "Stålbladets redaktion" });
+    expect(r.verify).toEqual(["Citatet från Hampus Bergman Lahti är påhittat", "Citatrubriken är påhittad"]);
+  });
+
+  it("förslagen som AI:n tidigare skrev under kodblocket (punktlista med längdgränser)", async () => {
+    const { parsePasted } = await import("./pressText");
+    const r = parsePasted(`Rubriken
+
+Ingressen.
+
+Brödtexten.
+
+Övriga fält
+
+* Etikett (högst 24): Stålserien
+* Citatrubrik (högst 80): [Citat från lagkapten om varför Mustaschkampen betyder något för laget]
+* Citat i marginalen (högst 160): [Citat från en spelare eller ledare om kvällens match eller Mustaschkampen]
+   * Vem som sa det (högst 60): [Namn, roll]
+* Bildtext (högst 90): Kvällens match blir den sista i november och den sista i Mustaschkampens månad.
+* Byline (högst 50): Stålbladets redaktion`);
+    expect(r.body).toBe("Brödtexten.");
+    expect(r.fields.kicker).toBe("Stålserien");
+    expect(r.fields.pullQuoteBy).toBe("[Namn, roll]");
+    expect(r.fields.info).toBe("Kvällens match blir den sista i november och den sista i Mustaschkampens månad.");
+    expect(r.fields.byline).toBe("Stålbladets redaktion");
+    expect(r.verify).toHaveLength(3); // tre platshållare
+    expect(r.verify[0]).toMatch(/^Citatrubrik är en platshållare/);
+  });
+
+  it("förstasidans puffar och listor under Kontrollera", async () => {
+    const { parsePasted } = await import("./pressText");
+    const r = parsePasted("**Rubrik**\n\nIngress.\n\n```\nTextrutans rubrik: Om november\nPuff 1: Stålserien | Vita tar ledningen | Två raka segrar\nPuff 3: Bara en rubrik\nKontrollera:\n- Bildtexten är påhittad\n- Svaret i intervjun är påhittat\n```");
+    expect(r.headline).toBe("Rubrik");
+    expect(r.fields.boxTitle).toBe("Om november");
+    expect(r.teasers).toEqual([{ index: 0, kicker: "Stålserien", title: "Vita tar ledningen", sub: "Två raka segrar" }, { index: 2, kicker: "", title: "Bara en rubrik", sub: "" }]);
+    expect(r.verify).toEqual(["Bildtexten är påhittad", "Svaret i intervjun är påhittat"]);
+  });
+
+  it("för långt kortas och noteras; vanlig text och intervjusvar rörs inte", async () => {
+    const { parsePasted } = await import("./pressText");
+    const r = parsePasted(`Rubrik\n\nIngress.\n\nHur var matchen?\n– Bra: vi vann.\n\nBildtext: ${"x".repeat(100)}`);
+    expect(r.body).toBe("Hur var matchen?\n– Bra: vi vann.");
+    expect(r.fields.info).toHaveLength(90);
+    expect(r.verify).toEqual(["Bildtext kortades till 90 tecken"]);
+  });
+});

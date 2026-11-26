@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildStatsExport, exportInstructions, type StatsExportData } from "./statsExport";
-import { splitPasted } from "./pressText";
+import { splitPasted, parsePasted } from "./pressText";
 
 const empty = { totalMatches: 0, whiteWins: 0, greenWins: 0, draws: 0, totalGoalsWhite: 0, totalGoalsGreen: 0, topScorers: [], starLeaders: [], recentForm: [], biggestWinWhite: null, biggestWinGreen: null, highestScoringMatch: null, goalTypes: [], playerRecordGoals: null, playerRecordAssists: null, playerRecordPoints: null, monthlyMvp: [], monthlyGoalie: [], extraRecords: [] };
 const data = {
@@ -36,5 +36,16 @@ describe("Statistik → Export", () => {
   it("formatet i instruktionerna fördelas rätt av Klistra in", () => {
     const answer = "Vita tog kommandot\n\nTvå raka segrar och ett lag i form inför helgen.\n\nFörsta stycket.\n\nAndra stycket.";
     expect(splitPasted(answer)).toEqual({ headline: "Vita tog kommandot", ingress: "Två raka segrar och ett lag i form inför helgen.", body: "Första stycket.\n\nAndra stycket." });
+  });
+  it("fältmallen i instruktionerna läses av Klistra in", () => {
+    // Mallraderna ur instruktionerna, med ett värde i stället för …
+    const tmpl = exportInstructions().match(/^(Etikett|Citatrubrik|Citat|Vem|Bildtext|Byline|Kontrollera|Textrutans rubrik|Puff 1) \([^)]*\): .*$/gm)!;
+    expect(tmpl).toHaveLength(9);
+    const r = parsePasted("Rubrik\n\nIngress.\n\nText.\n\n---\n" + tmpl.map((l) => l.replace(/: .*$/, l.startsWith("Puff") ? ": A | B | C" : ": Värde")).join("\n"));
+    expect(Object.keys(r.fields).sort()).toEqual(["boxTitle", "byline", "info", "kicker", "pullQuote", "pullQuoteBy", "quoteHead"]);
+    expect(r.teasers).toEqual([{ index: 0, kicker: "A", title: "B", sub: "C" }]);
+    expect(r.verify).toEqual(["Värde"]);
+    expect(r.body).toBe("Text.");
+    expect(exportInstructions()).toContain("Hitta aldrig på siffror");
   });
 });

@@ -205,3 +205,108 @@ export function excerpt(text: string, max = 520): string {
   }
   return res;
 }
+
+/** Övriga fält som Klistra in känner igen (namnet först på raden, följt av kolon) */
+export interface PastedFields {
+  kicker?: string;
+  quoteHead?: string;
+  pullQuote?: string;
+  pullQuoteBy?: string;
+  info?: string;
+  byline?: string;
+  boxTitle?: string;
+}
+export const PASTED_LIMITS: Required<{ [K in keyof PastedFields]: number }> = {
+  kicker: 24, quoteHead: 80, pullQuote: 160, pullQuoteBy: 60, info: 90, byline: 50, boxTitle: 60,
+};
+const FIELD_LABELS: Array<[RegExp, keyof PastedFields]> = [
+  [/^etikett$/, "kicker"],
+  [/^citatrubrik$/, "quoteHead"],
+  [/^(citat i marginalen|marginalcitat|citat)$/, "pullQuote"],
+  [/^(vem som sa det|vem sa det|vem|citat av|sagt av)$/, "pullQuoteBy"],
+  [/^bildtext$/, "info"],
+  [/^byline$/, "byline"],
+  [/^(textrutans rubrik|rubrik i textrutan|textrutan)$/, "boxTitle"],
+];
+export const PASTED_LABEL_NAMES: Record<keyof PastedFields, string> = {
+  kicker: "Etikett", quoteHead: "Citatrubrik", pullQuote: "Citat", pullQuoteBy: "Vem", info: "Bildtext", byline: "Byline", boxTitle: "Textrutans rubrik",
+};
+
+export interface PastedArticle {
+  headline: string;
+  ingress: string;
+  body: string;
+  fields: PastedFields;
+  /** Förstasidans puffar (index 0–2), bara de som fanns med */
+  teasers: Array<{ index: number; kicker: string; title: string; sub: string }>;
+  /** Påhittat som redaktören ska kontrollera, platshållare inom [ ] och sådant som kortats */
+  verify: string[];
+}
+
+type Label = { kind: "field"; key: keyof PastedFields } | { kind: "teaser"; index: number } | { kind: "verify" };
+
+/** "* Etikett (högst 24): Stålserien" → etiketten och värdet, annars null */
+function labelLine(line: string): { label: Label; value: string } | null {
+  const m = line.match(/^\s*(?:[*•-]\s+)?\**([A-Za-zÅÄÖåäö][A-Za-zÅÄÖåäö ]{1,30}?)\s*(\d)?\**\s*(?:\([^)]*\))?\s*\**:\**\s*(.*)$/);
+  if (!m) return null;
+  const name = m[1].trim().toLowerCase(), value = m[3].trim();
+  if (/^puff$/.test(name) && m[2]) return { label: { kind: "teaser", index: Number(m[2]) - 1 }, value };
+  if (m[2]) return null;
+  if (/^(kontrollera|att kontrollera|påhittat|att verifiera|verifiera)$/.test(name)) return { label: { kind: "verify" }, value };
+  const f = FIELD_LABELS.find(([re]) => re.test(name));
+  return f ? { label: { kind: "field", key: f[1] }, value } : null;
+}
+
+const unquote = (s: string) => s.trim().replace(/^["”“'»]+|["”“'«]+$/g, "").trim();
+
+/**
+ * Inklistrat svar från AI:n (Statistik → Export) eller ett mejl: rubrik, ingress och
+ * brödtext som splitPasted, plus de övriga fälten som står på egna rader –
+ * "Etikett: …", "Citat: …", "Puff 1: Etikett | Rubrik | Text", "Kontrollera: …".
+ * Fungerar också med punktlistor och "(högst 24)" efter namnet.
+ */
+export function parsePasted(raw: string): PastedArticle {
+  const lines = raw.replace(/\r\n?/g, "\n").split("\n").filter((l) => !/^\s*```/.test(l));
+  const text: string[] = [];
+  const fields: PastedFields = {};
+  const teasers = new Map<number, { kicker: string; title: string; sub: string }>();
+  const verify: string[] = [];
+  let open: Label | null = null; // fält utan värde på raden: punkterna under hör till det
+  for (const line of lines) {
+    const lab = labelLine(line);
+    if (lab) {
+      open = null;
+      const { label, value } = lab;
+      if (label.kind === "verify") { if (value) verify.push(value); else open = label; }
+      else if (label.kind === "teaser") {
+        if (label.index < 0 || label.index > 2) continue;
+        const parts = value.split("|").map((p) => unquote(p));
+        const t = parts.length >= 3 ? { kicker: parts[0], title: parts[1], sub: parts.slice(2).join(" | ") }
+          : parts.length === 2 ? { kicker: parts[0], title: parts[1], sub: "" } : { kicker: "", title: parts[0] ?? "", sub: "" };
+        if (t.title) teasers.set(label.index, t);
+      } else if (value) fields[label.key] = value;
+      else open = label;
+      continue;
+    }
+    const bullet = line.match(/^\s*[*•-]\s+(.+)$/);
+    if (open && bullet) {
+      if (open.kind === "verify") verify.push(bullet[1].trim());
+      else if (open.kind === "field" && !fields[open.key]) fields[open.key] = bullet[1].trim();
+      continue;
+    }
+    open = null;
+    text.push(line);
+  }
+  // Avgränsare och rubriker för fältblocket ("---", "Övriga fält") i slutet av texten
+  while (text.length && /^\s*(-{3,}|_{3,}|\*{3,}|(förslag på )?övriga fält:?|)\s*$/i.test(text[text.length - 1])) text.pop();
+
+  for (const k of ["pullQuote", "quoteHead"] as const) if (fields[k]) fields[k] = unquote(fields[k]!);
+  for (const k of Object.keys(fields) as Array<keyof PastedFields>) {
+    const v = fields[k]!, max = PASTED_LIMITS[k];
+    if (/\[[^\]]+\]/.test(v)) verify.push(`${PASTED_LABEL_NAMES[k]} är en platshållare – byt ut: ${v}`);
+    if (v.length > max) { fields[k] = v.slice(0, max).trim(); verify.push(`${PASTED_LABEL_NAMES[k]} kortades till ${max} tecken`); }
+  }
+  const { headline, ingress, body } = splitPasted(text.join("\n"));
+  if (/\[[^\]]+\]/.test(`${headline}\n${ingress}\n${body}`)) verify.push("Texten innehåller platshållare inom [ ] – byt ut");
+  return { headline: headline.replace(/^#+\s*/, "").replace(/^\*\*(.*)\*\*$/, "$1").trim(), ingress, body, fields, teasers: [...teasers].map(([index, t]) => ({ index, ...t })), verify };
+}
