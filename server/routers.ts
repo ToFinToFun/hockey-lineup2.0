@@ -35,6 +35,7 @@ import { pirHistoryAll, type PirHistory } from "./pirHistory";
 import { getRegistryMap, getRegistryVersion, listPlayers } from "./playersDb";
 import { addEntry, allEntries, campaignDates, campaignOpen, campaignTheme, deleteEntry, myEntries, CAMPAIGN_LIMITS } from "./campaignEntries";
 import { themeLogoPath } from "../shared/campaign";
+import { castVote, deletePoll, listPolls, openPollsSummary, removeVote, savePoll, setPollClosed, POLL_LIMITS } from "./polls";
 import { getLineupSnapshot, applyLineupPatch, getLineupChangedAt } from "./lineupSync";
 import { readLastPublished, writeLastPublished, type PublishedNews } from "./newsState";
 import { getAutoNewsConfig, setAutoNewsConfig, getAutoNewsStatus } from "./autoNews";
@@ -747,6 +748,59 @@ export const appRouter = router({
     delete: moduleProcedure("media")
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ input }) => ({ ok: await deleteEntry(input.id) })),
+  }),
+
+  // ─── Omröstningar och intresseanmälningar (server/polls.ts) ────────────────
+  polls: router({
+    /** Startsidan: öppna omröstningar (rutan visas när det finns någon, eller för admin) */
+    summary: publicProcedure.query(async () => openPollsSummary()),
+    list: publicProcedure
+      .input(z.object({ device: z.string().regex(/^[a-f0-9]{32}$/).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        const admin = isAdmin(ctx.session);
+        const players = admin ? await listPlayers() : [];
+        const byId = new Map(players.map((p) => [p.id, p.name]));
+        return listPolls({ device: input?.device ?? null, memberId: ctx.member?.memberId ?? null, admin, playerName: (id) => byId.get(id) ?? null });
+      }),
+    vote: publicProcedure
+      .input(z.object({ device: z.string().regex(/^[a-f0-9]{32}$/), pollId: z.number().int().positive(), choices: z.array(z.number().int().positive()).min(1).max(POLL_LIMITS.maxOptions) }))
+      .mutation(async ({ ctx, input }) => {
+        const memberId = ctx.member?.memberId ?? null;
+        const playerId = memberId != null ? (await listPlayers()).find((p) => p.externalId === String(memberId))?.id ?? null : null;
+        const ip = String(ctx.req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() || ctx.req.ip || "";
+        const r = await castVote({ ...input, memberId, playerId, ip });
+        if (!r.ok) {
+          const msg = { missing: "Omröstningen finns inte längre", closed: "Omröstningen är stängd", choices: "Välj ett alternativ", ip: "För många svar från samma nätverk" }[r.reason];
+          throw new TRPCError({ code: r.reason === "ip" ? "TOO_MANY_REQUESTS" : "BAD_REQUEST", message: msg });
+        }
+        return { ok: true };
+      }),
+    unvote: publicProcedure
+      .input(z.object({ device: z.string().regex(/^[a-f0-9]{32}$/), pollId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => ({ ok: await removeVote(input.pollId, input.device, ctx.member?.memberId ?? null) })),
+    save: adminProcedure
+      .input(z.object({
+        id: z.number().int().positive().optional(),
+        kind: z.enum(["poll", "interest"]),
+        title: z.string().max(120),
+        description: z.string().max(2000).nullable(),
+        options: z.array(z.object({ id: z.number().int().positive().nullable().optional(), text: z.string().max(120) })).max(POLL_LIMITS.maxOptions),
+        multi: z.boolean(),
+        closesAt: z.string().datetime({ offset: true }).nullable(),
+      }))
+      .mutation(async ({ input }) => {
+        try {
+          return { id: await savePoll({ ...input, closesAt: input.closesAt ? new Date(input.closesAt) : null }) };
+        } catch (e) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: (e as Error).message });
+        }
+      }),
+    setClosed: adminProcedure
+      .input(z.object({ id: z.number().int().positive(), closed: z.boolean() }))
+      .mutation(async ({ input }) => ({ ok: await setPollClosed(input.id, input.closed) })),
+    delete: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => { await deletePoll(input.id); return { ok: true }; }),
   }),
 
   // ─── Media: egna Instagram-inlägg ──────────────────────────────────────────

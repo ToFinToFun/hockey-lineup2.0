@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { AccessPanel } from "@/components/auth/AccessPanel";
 import { AppVersion } from "@/components/AppVersion";
-import { BarChart3, Users, ChevronRight, Trophy, ClipboardList, Timer, TrendingUp, Sparkles, History, Settings as SettingsIcon, Image as ImageIcon, Radio, CalendarDays, UserRound } from "lucide-react";
+import { BarChart3, Users, ChevronRight, Trophy, ClipboardList, Timer, TrendingUp, Sparkles, History, Settings as SettingsIcon, Image as ImageIcon, Radio, CalendarDays, UserRound, ListChecks } from "lucide-react";
 
 // Keep the hub artwork on the same origin as the application. The old external
 // CDN links can expire or reject requests in production, while Vite serves
@@ -24,6 +24,8 @@ export default function Hub() {
   // Mustaschkampen: för alla under november (+5 dagar), styrelsen hela året
   const campaignQ = trpc.campaign.visible.useQuery(undefined, { staleTime: 5 * 60_000, retry: false });
   const campaign = campaignQ.data?.visible ? campaignQ.data : null;
+  const pollsQ = trpc.polls.summary.useQuery(undefined, { staleTime: 60_000, retry: false });
+  const openPolls = pollsQ.data ?? [];
   const liveNow = !!liveQ.data?.live;
   const pending = trpc.score.match.pendingCount.useQuery(undefined, { enabled: hasModule("matches") });
   const pendingCount = pending.data?.count ?? 0;
@@ -137,6 +139,27 @@ export default function Hub() {
                   <p className="text-white/40 text-xs sm:text-sm mt-0.5">{campaign.open ? "Ladda upp en bild på din mustasch" : "Stängd för andra – öppen i november"}</p>
                 </div>
                 <ChevronRight size={20} className="text-white/20 transition-colors flex-shrink-0" />
+              </div>
+            </div>
+          </Link>
+          )}
+
+          {/* Omröstningar – syns när något är öppet (admin ser alltid rutan för att kunna skapa) */}
+          {(openPolls.length > 0 || isAdmin) && (
+          <Link href="/omrostningar">
+            <div className={`group relative overflow-hidden rounded-2xl border transition-all duration-300 cursor-pointer ${openPolls.length ? "bg-gradient-to-br from-[#2a2208] to-[#121008] border-amber-400/45 hover:border-amber-300" : "bg-gradient-to-br from-[#1a1a1a] to-[#111] border-[#2a2a2a] hover:border-amber-400/50"}`}>
+              <div className="p-5 sm:p-6 flex items-center gap-4">
+                <div className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-amber-400/15 border border-amber-400/30 flex items-center justify-center">
+                  <ListChecks size={24} className="text-amber-300" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold tracking-tight flex items-center gap-2">
+                    Omröstningar
+                    {openPolls.length > 0 && <span className="text-[11px] font-bold bg-amber-400 text-black rounded-full px-2 py-0.5">{openPolls.length}</span>}
+                  </h2>
+                  <p className="text-white/40 text-xs sm:text-sm mt-0.5 truncate">{openPolls.length ? openPolls.map((p) => p.title).join(" · ") : "Inget öppet just nu – skapa en ny"}</p>
+                </div>
+                <ChevronRight size={20} className="text-white/20 group-hover:text-amber-300 transition-colors flex-shrink-0" />
               </div>
             </div>
           </Link>

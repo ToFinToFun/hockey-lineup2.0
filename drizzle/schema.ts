@@ -585,3 +585,42 @@ export const memberCalendars = mysqlTable("member_calendars", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   lastFetchedAt: timestamp("lastFetchedAt"),
 });
+
+// ─── Omröstningar och intresseanmälningar ─────────────────────────────────────
+// Öppna för alla (utan inloggning). En röst per telefon (hemlig nyckel); är man
+// inloggad sparas också vem man är, så att det följer med när alla loggar in.
+
+export type PollOption = { id: number; text: string };
+
+export const polls = mysqlTable("polls", {
+  id: int("id").autoincrement().primaryKey(),
+  /** "poll" = omröstning, "interest" = intresseanmälan */
+  kind: varchar("kind", { length: 12 }).notNull(),
+  title: varchar("title", { length: 120 }).notNull(),
+  description: text("description"),
+  /** Svarsalternativen med fasta id:n (rösterna pekar på id:t) */
+  options: json("options").$type<PollOption[]>().notNull(),
+  multi: boolean("multi").default(false).notNull(),
+  /** Stänger automatiskt (valfritt) */
+  closesAt: timestamp("closesAt"),
+  /** Stängd för hand */
+  closed: boolean("closed").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const pollVotes = mysqlTable("poll_votes", {
+  id: int("id").autoincrement().primaryKey(),
+  pollId: int("pollId").notNull(),
+  /** Telefonens hemliga nyckel (hash) */
+  device: varchar("device", { length: 64 }).notNull(),
+  /** Inloggad medlem och dess spelare (annars tomt) */
+  memberId: int("memberId"),
+  playerId: varchar("playerId", { length: 64 }),
+  /** Valda alternativ (id:n) */
+  choices: json("choices").$type<number[]>().notNull(),
+  /** Avsändarens IP (hash) – spärr mot massröstning */
+  ipHash: varchar("ipHash", { length: 64 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => [uniqueIndex("poll_votes_device").on(t.pollId, t.device), index("poll_votes_member").on(t.pollId, t.memberId)]);

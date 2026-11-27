@@ -7,6 +7,15 @@ Versionsnummer: `MAJOR.MINOR.PATCH`
 
 Versionen höjs i `package.json` vid varje deploy till `production`, och commiten taggas `vX.Y.Z` på GitHub. Versionen och byggdatumet visas diskret längst ner i appen och i `/api/health`.
 
+## 3.23.0 – 2026-11-27
+
+- **Omröstningar och intresseanmälningar** (ny modul, /omrostningar):
+  - Admin skapar med rubrik, beskrivning, svarsalternativ, ett eller flera val och en valfri stängningstid, och kan ändra, stänga, öppna igen och ta bort.
+  - Alla kan svara utan inloggning och utan namn. Det blir en röst per telefon, som går att ändra eller ta tillbaka. Är man inloggad sparas vem man är, och svaret följer med mellan telefonerna.
+  - Resultatet visas när man har svarat, när omröstningen har stängt och alltid för admin. Admin ser också namnen på inloggade som svarat.
+  - Startsidan har en ruta *Omröstningar* som syns när något är öppet. Admin ser den alltid.
+  - Spärr: högst 40 svar per nätverk och omröstning.
+
 ## 3.22.0 – 2026-11-26
 
 - **Klistra in hela texten fyller i alla fält:** utöver rubrik, ingress och brödtext känns rader som börjar med Etikett:, Citatrubrik:, Citat:, Vem:, Bildtext: och Byline: igen, även med punktlistor och "(högst 24)" som i AI:ns tidigare förslag. På förstasidan även Textrutans rubrik: och Puff 1–3: (Etikett | Rubrik | Text). Fält som inte finns med lämnas orörda, och för långa värden kortas.

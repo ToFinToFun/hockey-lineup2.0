@@ -316,6 +316,13 @@
       "when": 1793562651737,
       "tag": "0044_campaign_entries",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "5",
+      "when": 1795777725656,
+      "tag": "0045_polls",
+      "breakpoints": true
     }
   ]
 }
